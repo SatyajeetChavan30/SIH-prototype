@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -iE '(india-wris|ffs\\.india-water|bhuvan|cartoudem)' || true",
+            "statusMessage": "Checking for forbidden data sources..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -m pip show ruff > /dev/null 2>&1 || echo 'Tip: Install ruff for auto-formatting: pip install ruff'; python -m ruff format --quiet --line-length 100 2>/dev/null || true",
+            "statusMessage": "Auto-formatting Python code with ruff..."
+          }
+        ]
+      }
+    ]
+  }
+}

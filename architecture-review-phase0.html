@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JalRaksha Phase 0 Architecture Exploration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        .card-border { border: 2px solid #ddd; }
+        .strength-strong { @apply bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold; }
+        .strength-worth { @apply bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold; }
+        .strength-spec { @apply bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold; }
+        .problem-box { @apply bg-red-50 border-l-4 border-red-400 p-4 my-3; }
+        .solution-box { @apply bg-green-50 border-l-4 border-green-400 p-4 my-3; }
+        .benefit-box { @apply bg-blue-50 border-l-4 border-blue-400 p-4 my-3; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">JalRaksha Phase 0 Architecture Exploration</h1>
+            <p class="text-lg text-gray-600">Structural audit & deepening opportunities</p>
+            <p class="text-sm text-gray-500 mt-4">📅 Generated: Aug 23, 2026 | 🔍 Scope: Phase 0 Skeleton Only</p>
+        </div>
+
+        <!-- Current State Summary -->
+        <div class="bg-white border card-border p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Current State Analysis</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-100 p-4 rounded">
+                    <h3 class="font-bold text-gray-900 mb-2">What Exists</h3>
+                    <ul class="text-gray-700 text-sm space-y-1">
+                        <li>✓ <code class="bg-gray-200 px-2 py-1 rounded">build_ppt.py</code> — SIH presentation generation</li>
+                        <li>✓ <code class="bg-gray-200 px-2 py-1 rounded">check_ppt.py</code> — Deck validation (font metrics, overflow)</li>
+                        <li>✓ Documentation: literature.md, prototype specs.md, research findings</li>
+                        <li>✓ CLAUDE.md — Project guidance + 4 skills</li>
+                        <li>✓ Hooks configured (.claude/settings.json)</li>
+                    </ul>
+                </div>
+                <div class="bg-red-50 p-4 rounded border border-red-200">
+                    <h3 class="font-bold text-red-900 mb-2">What's Missing (Phase 0)</h3>
+                    <ul class="text-red-700 text-sm space-y-1">
+                        <li>✗ CLI entry point / command-line interface</li>
+                        <li>✗ Data cache system (no directory structure)</li>
+                        <li>✗ DEM fetch pipeline (no download logic)</li>
+                        <li>✗ Configuration loader (no config schema)</li>
+                        <li>✗ Main module / package structure</li>
+                        <li>✗ Git repository initialization</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="problem-box">
+                <strong>⚠️ CRITICAL OBSERVATION:</strong> Phase 0 has NOT been scaffolded. The codebase is presentation-centric (build_ppt.py) with extensive documentation but zero solver/data-pipeline code. This is correct — Phase 0 is supposed to create the skeleton. However, it creates a shallow module problem: presentation code and documentation are mixed with where the Phase 0 skeleton should live.
+            </div>
+        </div>
+
+        <!-- Friction Points -->
+        <div class="bg-white border card-border p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">🔴 Friction Points (Shallow Modules)</h2>
+
+            <div class="space-y-4">
+                <div class="border-l-4 border-red-500 pl-4 py-2">
+                    <h3 class="font-bold text-gray-900">1. Presentation Logic Dominates Root</h3>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> <code>build_ppt.py</code> and <code>check_ppt.py</code> occupy the root alongside where Phase 0 skeleton should go. No <code>jalraksha/</code> package exists yet.</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> A developer cloning the repo sees presentation scripts first, not the solver. The interface (what's visible at root) is as complex as the implementation (only 2 files, but they're 750 and 177 lines of dense PowerPoint logic).</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Deletion test:</strong> If you deleted <code>build_ppt.py</code>, the core system would still work. It's not a load-bearing module.</p>
+                </div>
+
+                <div class="border-l-4 border-red-500 pl-4 py-2">
+                    <h3 class="font-bold text-gray-900">2. No Package Structure Yet</h3>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> There's no <code>jalraksha/</code> package directory, no <code>jalraksha/cli/</code>, no <code>jalraksha/solver/</code>. The prototype specs and literature are loose .md files in root.</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> Nowhere to put Phase 0 code (CLI, cache, DEM fetch). New developers won't know where to start implementing.</p>
+                </div>
+
+                <div class="border-l-4 border-red-500 pl-4 py-2">
+                    <h3 class="font-bold text-gray-900">3. Documentation Scattered</h3>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> CLAUDE.md, literature.md, prototype specs.md, docs/RESEARCH-FINDINGS.md, docs/DEEP-RESEARCH-PROMPT.md — all at different levels.</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> No single source of truth for phase definitions, constraints, or data sources. Hard to keep in sync.</p>
+                </div>
+
+                <div class="border-l-4 border-red-500 pl-4 py-2">
+                    <h3 class="font-bold text-gray-900">4. No Configuration Story</h3>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> <code>build_ppt.py</code> hardcodes paths (template location, output path). Phase 0 needs a configuration system (where to cache DEMs, API keys, demo dam, etc.) but none exists.</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> Hard to parameterize Phase 1–4. Every phase will re-invent config handling.</p>
+                </div>
+
+                <div class="border-l-4 border-red-500 pl-4 py-2">
+                    <h3 class="font-bold text-gray-900">5. No Test Co-Location</h3>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> No <code>tests/</code> directory. The `/verify-jalraksha` skill exists but has nowhere to live in the codebase.</p>
+                    <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> Analytical tests (Ritter, Stoker, Thacker) need to be importable by Phase 1 solver. Right now they have no home.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Recommendation -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-blue-900 mb-4">🎯 Top Recommendation: STRONG</h2>
+            <p class="text-blue-900 font-semibold mb-3">Deepen Phase 0 by extracting presentation concerns into a separate <code>tools/sih-presentation/</code> module and scaffolding the core <code>jalraksha/</code> package.</p>
+            <p class="text-blue-800 text-sm">This makes Phase 0 itself deep: a single entry point to a well-organized data pipeline, with presentation tooling clearly separated.</p>
+        </div>
+
+        <!-- Deepening Candidates -->
+        <div class="space-y-6 mb-8">
+            <!-- Candidate 1 -->
+            <div class="bg-white border card-border p-6 rounded-lg">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Candidate 1: Extract Presentation to <code>tools/sih-presentation/</code></h3>
+                    <span class="strength-strong">Strong</span>
+                </div>
+
+                <div class="problem-box">
+                    <strong>Problem:</strong> Presentation generation scripts (build_ppt.py, check_ppt.py) dominate root, obscuring the solver codebase structure. They're 927 lines total but not load-bearing for the core system. A developer cloning the repo sees presentation first, not the dam-break solver.
+                </div>
+
+                <div class="solution-box">
+                    <strong>Solution:</strong> Move both scripts to <code>tools/sih-presentation/</code>. Create:
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li><code>tools/sih-presentation/build_ppt.py</code> (unchanged logic)</li>
+                        <li><code>tools/sih-presentation/check_ppt.py</code> (unchanged logic)</li>
+                        <li><code>tools/sih-presentation/README.md</code> — explains SIH deck generation</li>
+                        <li>Root <code>Makefile</code> or <code>justfile</code> with <code>make sih-deck</code> to keep it accessible</li>
+                    </ul>
+                </div>
+
+                <div class="benefit-box">
+                    <strong>Benefits:</strong>
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li><strong>Locality:</strong> Presentation logic is isolated; root now shows <code>jalraksha/</code> package first</li>
+                        <li><strong>Leverage:</strong> Frees root for Phase 0 scaffolding without path confusion</li>
+                        <li><strong>Clarity:</strong> New contributor immediately sees the solver package, not the submission tool</li>
+                        <li><strong>Testability:</strong> Presentation can be tested independently; solver code untangled from it</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4 text-sm text-gray-600">
+                    <strong>Before/After Diagram:</strong>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                            <p class="font-semibold text-gray-900 mb-2">Before (Shallow):</p>
+                            <pre class="bg-gray-100 p-2 text-xs overflow-x-auto rounded">
+.
+├── build_ppt.py (750 lines)
+├── check_ppt.py (177 lines)
+├── CLAUDE.md
+├── literature.md
+└── prototype specs.md
+<span style="color: red;">❌ No jalraksha/ yet</span></pre>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-900 mb-2">After (Deep):</p>
+                            <pre class="bg-gray-100 p-2 text-xs overflow-x-auto rounded">
+.
+├── jalraksha/
+│   ├── __init__.py
+│   ├── cli.py       (Phase 0)
+│   ├── cache.py     (Phase 0)
+│   ├── dem.py       (Phase 0)
+│   └── solver/
+├── tests/
+├── tools/
+│   └── sih-presentation/
+│       ├── build_ppt.py
+│       └── check_ppt.py
+└── Makefile
+<span style="color: green;">✓ Clear hierarchy</span></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Candidate 2 -->
+            <div class="bg-white border card-border p-6 rounded-lg">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Candidate 2: Create <code>jalraksha/</code> Package & Config Module</h3>
+                    <span class="strength-strong">Strong</span>
+                </div>
+
+                <div class="problem-box">
+                    <strong>Problem:</strong> No <code>jalraksha/</code> package exists. Phase 0 will add CLI, cache, and DEM fetch, but there's nowhere to put them yet. Each phase will have to re-invent where to store its logic.
+                </div>
+
+                <div class="solution-box">
+                    <strong>Solution:</strong> Scaffold the package structure before Phase 0 code:
+                    <pre class="bg-gray-100 p-3 text-xs overflow-x-auto rounded mt-2">
+jalraksha/
+├── __init__.py
+├── config.py          (Phase 0) — loads config, validates CRS, dam location
+├── cli.py             (Phase 0) — CLI entry point
+├── cache.py           (Phase 0) — data cache system (DEM, GEE assets)
+├── dem.py             (Phase 0) — DEM fetch pipeline
+├── solver/
+│   ├── __init__.py
+│   ├── core.py        (Phase 1) — SWE solver (HLLC, Audusse)
+│   ├── flux.py        (Phase 1) — HLLC Riemann solver
+│   ├── types.py       (Phase 1) — state vector, mesh cell types
+│   └── test_exact_solutions.py  — Ritter, Stoker, Thacker
+├── terrain/
+│   ├── __init__.py
+│   ├── conditioning.py (Phase 2)
+│   └── breach.py      (Phase 3)
+├── export/
+│   ├── __init__.py
+│   ├── geotiff.py     (Phase 5)
+│   ├── shapefile.py   (Phase 5)
+│   └── kml.py         (Phase 5)
+└── sph/
+    ├── __init__.py
+    └── coupling.py    (Phase 7)
+
+tests/
+├── conftest.py
+├── test_cache.py      (Phase 0)
+├── test_dem.py        (Phase 0)
+├── test_solver.py     (Phase 1)
+└── test_export.py     (Phase 5)</pre>
+                </div>
+
+                <div class="benefit-box">
+                    <strong>Benefits:</strong>
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li><strong>Locality:</strong> Each phase knows exactly where its code lives</li>
+                        <li><strong>Leverage:</strong> Phases 1–4 can depend on Phase 0's cache and config without path searching</li>
+                        <li><strong>Testability:</strong> Tests live next to modules; importing is clean</li>
+                        <li><strong>Independence:</strong> SPH (Phase 7) can import <code>jalraksha.solver</code> without depending on export logic</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4 text-sm text-gray-600">
+                    <strong>Key Design:</strong> Phase dependencies flow one-way: Phase 0 → 1 → 2 → ... → 5. No backwards imports.
+                </div>
+            </div>
+
+            <!-- Candidate 3 -->
+            <div class="bg-white border card-border p-6 rounded-lg">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Candidate 3: Create <code>CONTEXT.md</code> Domain Glossary</h3>
+                    <span class="strength-worth">Worth Exploring</span>
+                </div>
+
+                <div class="problem-box">
+                    <strong>Problem:</strong> Domain vocabulary is spread across CLAUDE.md, literature.md, prototype specs, and undocumented in code. Terms like "Tier-1", "lake-at-rest", "Manning's n", "breach hydrograph" have no single definition.
+                </div>
+
+                <div class="solution-box">
+                    <strong>Solution:</strong> Create <code>CONTEXT.md</code> as a living glossary:
+                    <pre class="bg-gray-100 p-3 text-xs overflow-x-auto rounded mt-2">
+# JalRaksha Domain Glossary
+
+## Hydrodynamics
+- **Lake-at-rest:** Zero-velocity condition over arbitrary bathymetry; test of hydrostatic balance
+- **Manning's n:** Friction coefficient (s/m^1/3); inferred from land cover
+- **HLLC flux:** Riemann solver with transverse-momentum correction
+
+## Geometry
+- **Metric CRS:** EPSG:32643 or equivalent UTM (never degrees)
+- **30m DEM:** Copernicus GLO-30 resolution; indicative only, not survey-grade
+- **Ter-1/2/3:** CWC screening framework; Tier-1 = rapid without survey
+
+## Validation
+- **Ritter test:** Dry-bed dam-break; exact solution for correctness gating
+- **Chamoli 2021:** Real event; published <5% travel-time benchmark
+
+## Data Sources (Approved)
+- Copernicus DEM (free, COG)
+- Google Open Buildings (CC BY 4.0)
+- CWC NRLD/NRSD (public)
+
+## Data Sources (Forbidden)
+- India-WRIS, Bhuvan, CartoDEM (geo-fenced / login-gated)
+</pre>
+                </div>
+
+                <div class="benefit-box">
+                    <strong>Benefits:</strong>
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li><strong>Locality:</strong> Single source of truth for domain terms</li>
+                        <li><strong>Leverage:</strong> Code comments can reference CONTEXT.md; reduces redundancy</li>
+                        <li><strong>Communication:</strong> New team members understand domain without reading all research</li>
+                        <li><strong>Maintainability:</strong> Update glossary once, everywhere reflects it</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4 text-sm text-gray-600">
+                    <strong>Note:</strong> CONTEXT.md is lazy-created during grilling (first time a term needs clarification). Not blocking for Phase 0, but recommend starting it.
+                </div>
+            </div>
+
+            <!-- Candidate 4 -->
+            <div class="bg-white border card-border p-6 rounded-lg">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Candidate 4: Consolidate Documentation to <code>docs/</code></h3>
+                    <span class="strength-worth">Worth Exploring</span>
+                </div>
+
+                <div class="problem-box">
+                    <strong>Problem:</strong> Documentation at multiple levels: root (CLAUDE.md, literature.md, prototype specs.md), <code>docs/</code> (research findings, deep research prompt). Hard to navigate.
+                </div>
+
+                <div class="solution-box">
+                    <strong>Solution:</strong> Organize under <code>docs/</code> with clear hierarchy:
+                    <pre class="bg-gray-100 p-3 text-xs overflow-x-auto rounded mt-2">
+docs/
+├── ARCHITECTURE.md       (from CLAUDE.md "Build Order" section)
+├── DOMAIN.md             (CONTEXT.md + glossary)
+├── CONSTRAINTS.md        (from CLAUDE.md "Critical Constraints")
+├── TESTING.md            (from CLAUDE.md "Testing Strategy")
+├── research/
+│   ├── literature.md     (moved from root)
+│   ├── findings.md       (from docs/RESEARCH-FINDINGS.md)
+│   └── deep_research.md  (from docs/DEEP-RESEARCH-PROMPT.md)
+├── specs/
+│   ├── prototype.md      (from prototype specs.md)
+│   └── verification_queue.md
+└── phases/
+    ├── phase-0.md        (skeleton: CLI, cache, DEM)
+    ├── phase-1.md        (solver core: HLLC, Audusse)
+    └── ... (phases 2–17)
+</pre>
+                </div>
+
+                <div class="benefit-box">
+                    <strong>Benefits:</strong>
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li><strong>Locality:</strong> Related docs are grouped</li>
+                        <li><strong>Navigability:</strong> Clear tree structure; fewer surprises</li>
+                        <li><strong>Maintainability:</strong> Each phase has its own spec; easier to update incrementally</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4 text-sm text-gray-600">
+                    <strong>Trade-off:</strong> More files to manage, but root becomes cleaner and code is easier to understand.
+                </div>
+            </div>
+        </div>
+
+        <!-- Grilling Decision Tree -->
+        <div class="bg-white border card-border p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">📋 Recommended Grilling Order</h2>
+            <p class="text-gray-700 mb-4">If you choose to deepen Phase 0, tackle these in order:</p>
+
+            <ol class="space-y-4 list-decimal list-inside text-gray-700">
+                <li>
+                    <strong>Candidate 2 (jalraksha/ package):</strong> Create the package structure and Phase 0 entry points (cli.py, cache.py, dem.py, config.py). This unblocks all other phases.
+                </li>
+                <li>
+                    <strong>Candidate 1 (move presentation):</strong> After jalraksha/ exists, move tools to tools/sih-presentation/. This frees root and makes Phase 0 visible.
+                </li>
+                <li>
+                    <strong>Candidate 3 (CONTEXT.md):</strong> Start the glossary as code is written. Lazy-update it during Phase 1 grilling when terminology solidifies.
+                </li>
+                <li>
+                    <strong>Candidate 4 (consolidate docs):</strong> Optional, lower priority. Do after Phase 0 code is stable.
+                </li>
+            </ol>
+        </div>
+
+        <!-- Why This Matters -->
+        <div class="bg-indigo-50 border border-indigo-300 p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-indigo-900 mb-4">🤔 Why This Architecture?</h2>
+            <p class="text-indigo-900 mb-3">These deepenings follow the <strong>deep modules</strong> principle:</p>
+            <ul class="space-y-2 text-indigo-800">
+                <li><strong>High functionality, simple interface:</strong> Phase 0 will have ~500 lines of CLI + cache + DEM logic, but from the user's perspective it's one command: <code>jalraksha run --dam tehri</code></li>
+                <li><strong>One responsible module per concern:</strong> Presentation is separated from solver. Solver is separated from export. SPH is separated from SWE.</li>
+                <li><strong>Testable in isolation:</strong> Tests can import <code>jalraksha.solver</code> without loading the React dashboard (Phase 10).</li>
+                <li><strong>Supports the 18-phase plan:</strong> Each phase can build on earlier ones without circular dependencies.</li>
+            </ul>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="bg-green-50 border border-green-300 p-6 mb-8 rounded-lg">
+            <h2 class="text-2xl font-bold text-green-900 mb-4">✅ Next Steps</h2>
+            <ol class="space-y-2 text-green-900 list-decimal list-inside">
+                <li>Review these candidates. Do any resonate with your team's vision?</li>
+                <li>Pick the top 1–2 candidates for grilling (recommend Candidate 2 first).</li>
+                <li>Call `/improve-architecture grill jalraksha-package` to deep-dive on the chosen refactoring.</li>
+                <li>Once deepenings are approved, Phase 0 code can be scaffolded into the new package structure.</li>
+            </ol>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm mt-12 pt-8 border-t border-gray-200">
+            <p>Architecture exploration for JalRaksha Phase 0 | Generated with `/improve-architecture explore phase 0`</p>
+            <p class="mt-2">To deepen a candidate, use: <code class="bg-gray-100 px-2 py-1 rounded">/improve-architecture grill &lt;candidate-name&gt;</code></p>
+        </div>
+    </div>
+</body>
+</html>
