@@ -1,24 +1,23 @@
 """
-Export module for dam-break simulation results.
+Output modules for JalRaksha results.
 
-Phase 5: Export formats — Cloud-Optimized GeoTIFF, Shapefile, KML.
+Phase 5+: Export results in various formats (GeoTIFF, Shapefile, KML, keyframes).
 
-Provides:
-  - export_raster_to_cog() - single raster → COG
-  - export_ensemble_to_cogs() - ensemble results → multiple COGs
-  - validate_cog() - verify COG integrity
-
-Exports are used by Phase 4 (end-to-end pipeline) to write final rasters.
+Exports:
+- GeoTIFF (Cloud-Optimized GeoTIFF)
+- Shapefile (polygons)
+- KML/KMZ (for visualization)
+- Keyframe PNGs for 3D visualization
 """
 
-from .geotiff import (
-    export_raster_to_cog,
-    export_ensemble_to_cogs,
-    validate_cog,
-)
+from jalraksha.export.geotiff import export_cog
+from jalraksha.export.shapefile import export_shapefile
+from jalraksha.export.kml import export_kml
+from jalraksha.export.keyframes import export_keyframes
 
 __all__ = [
-    "export_raster_to_cog",
-    "export_ensemble_to_cogs",
-    "validate_cog",
+    "export_cog",
+    "export_shapefile",
+    "export_kml",
+    "export_keyframes"
 ]

@@ -273,3 +273,7 @@ def validate_cog(cog_path: str) -> bool:
     except Exception as e:
         warnings.warn(f"{cog_path}: Failed to open as COG: {e}")
         return False
+
+
+# Backwards-compatible alias expected by tests and export/__init__.py.
+export_cog = export_raster_to_cog

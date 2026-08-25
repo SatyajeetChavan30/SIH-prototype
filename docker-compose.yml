@@ -1,0 +1,79 @@
+# JalRaksha platform — 5-service stack (integration brief §5.8).
+#
+# Brings up the full pipeline behind a browser UI:
+#   api     FastAPI REST surface (enqueue + status + results)
+#   worker  Celery worker running the existing jalraksha pipeline
+#   redis   broker + result backend
+#   postgres thin run/job metadata + gauge time series (no PostGIS needed)
+#   tiles   nginx serving Cesium terrain tiles + keyframe PNGs
+#   frontend React + Leaflet 2D + Cesium 3D (builds separately)
+#
+# Offline-first: pre-bake Tehri DEM/imagery/tiles + one sample run's keyframes
+# into ./data before `docker compose up` so the judged demo never needs internet.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jalraksha
+      POSTGRES_USER: jalraksha
+      POSTGRES_PASSWORD: jalraksha
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    command: uvicorn jalraksha_service.main:app --host 0.0.0.0 --port 8000
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      DATABASE_URL: "postgresql://jalraksha:jalraksha@postgres:5432/jalraksha"
+      JALRAKSHA_DATA_DIR: "/data"
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    command: celery -A jalraksha_service.worker worker -l info
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      DATABASE_URL: "postgresql://jalraksha:jalraksha@postgres:5432/jalraksha"
+      JALRAKSHA_DATA_DIR: "/data"
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./data:/data
+
+  tiles:
+    image: nginx:alpine
+    volumes:
+      - ./data/tiles:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+      VITE_TILES_URL: "http://localhost:8080"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

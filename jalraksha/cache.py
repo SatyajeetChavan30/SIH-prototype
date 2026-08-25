@@ -235,6 +235,53 @@ def get_cache_metadata(cache_dir: Path) -> Dict[str, Any]:
         raise CacheError(f"Cannot parse cache metadata: {e}")
 
 
+def get_cached_dem(
+    lat: float, lon: float, cache_dir: Path = Path("./data/dem")
+) -> Optional[str]:
+    """
+    Find a locally cached DEM mosaic/tile covering (lat, lon).
+
+    Looks first in the CACHE_METADATA.json (in case the DEM was fetched
+    through check_cache/store_cache), then falls back to the filename
+    convention already used for pre-staged DEMs in this repo
+    (e.g. "mosaic_30.38_78.48.tif", "dem_30.38_78.48_clipped.tif").
+
+    Args:
+        lat, lon: Location to cover (degrees)
+        cache_dir: DEM cache directory (default "./data/dem")
+
+    Returns:
+        Path string to a cached DEM file, or None if nothing is cached.
+    """
+    cache_dir = Path(cache_dir)
+    if not cache_dir.exists():
+        return None
+
+    # Prefer an entry recorded via store_cache(), matched by proximity of the
+    # lat/lon embedded in the metadata (if present).
+    try:
+        metadata = get_cache_metadata(cache_dir)
+        for entry in metadata.values():
+            if (
+                abs(entry.get("lat", 1e9) - lat) < 0.01
+                and abs(entry.get("lon", 1e9) - lon) < 0.01
+            ):
+                path = Path(entry["path"])
+                if path.exists():
+                    return str(path)
+    except CacheError:
+        pass
+
+    # Fall back to the "{prefix}_{lat:.2f}_{lon:.2f}*.tif" naming convention
+    # used by the pre-staged Tehri catchment DEM files under data/dem/.
+    for pattern in (f"mosaic_{lat:.2f}_{lon:.2f}*.tif", f"dem_{lat:.2f}_{lon:.2f}*.tif"):
+        matches = sorted(cache_dir.glob(pattern))
+        if matches:
+            return str(matches[0])
+
+    return None
+
+
 def list_cache(cache_dir: Path) -> None:
     """
     Print cache contents in human-readable format.

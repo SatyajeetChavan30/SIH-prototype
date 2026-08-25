@@ -1,0 +1,15 @@
+# Service-layer dependencies (FastAPI + Celery worker).
+# The jalraksha package itself is installed from the repo root (pip install -e .).
+fastapi>=0.110
+uvicorn[standard]>=0.27
+celery>=5.3
+redis>=5.0
+psycopg2-binary>=2.9
+pydantic>=2.6
+
+# JalRaksha runtime deps reused by the worker (calls into jalraksha.*).
+numpy>=1.26
+rasterio>=1.3
+geopandas>=0.14
+shapely>=2.0
+pillow>=10.0

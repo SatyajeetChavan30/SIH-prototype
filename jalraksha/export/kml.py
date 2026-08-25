@@ -371,3 +371,7 @@ def export_kmz(
         return None
 
     return output_path
+
+
+# Backwards-compatible alias expected by export/__init__.py.
+export_kml = export_inundation_kml

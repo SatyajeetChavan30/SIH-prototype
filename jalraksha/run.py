@@ -107,9 +107,9 @@ def compute_arrival_times_at_gauges(
         gauge_lat = gauge["lat"]
         gauge_lon = gauge["lon"]
 
-        # Convert gauge location to UTM
-        utm_zone = compute_utm_zone(gauge_lat, gauge_lon)
-        x_utm, y_utm = latlon_to_utm(gauge_lat, gauge_lon, utm_zone)
+        # Convert gauge location to UTM (latlon_to_utm computes its own zone
+        # internally and returns it as the first element).
+        _zone, x_utm, y_utm = latlon_to_utm(gauge_lat, gauge_lon)
 
         # Find nearest grid cell to gauge
         dist_to_gauge = np.sqrt((x_centres - x_utm) ** 2 + (y_centres - y_utm) ** 2)
@@ -223,6 +223,8 @@ def run_dam_break_ensemble(
     output_dir: str = "./results",
     solver_duration_s: float = 10800,
     target_resolution: float = 200.0,
+    record_depth_snapshots: bool = False,
+    n_snapshots: int = 30,
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -243,6 +245,14 @@ def run_dam_break_ensemble(
         output_dir: Output directory for rasters
         solver_duration_s: Simulation time (default 3 hours)
         target_resolution: Grid resolution (m)
+        record_depth_snapshots: If True, snapshot the depth grid of the
+            ensemble member closest to the median peak outflow at
+            `n_snapshots` evenly-spaced simulation times, returned as
+            `depth_series` for `jalraksha.export.keyframes.export_keyframes`.
+            Off by default: recording every member's full time series is
+            memory-prohibitive for large ensembles, so only one representative
+            member is snapshotted.
+        n_snapshots: Number of snapshot times when `record_depth_snapshots=True`.
 
     Returns:
         {
@@ -310,6 +320,19 @@ def run_dam_break_ensemble(
     print(f"\n[Step 3] Running solver for {ensemble_size} ensemble members...")
     results_ensemble = []
     h_max_ensemble = []
+    depth_series: List[Dict] = []
+
+    # Pick the member whose peak outflow is closest to the ensemble median as
+    # the "representative" member to snapshot for keyframe export (§5.3 of the
+    # integration brief) — recording every member's depth history is
+    # memory-prohibitive for ensembles of 100-10,000.
+    snapshot_sample_id = None
+    if record_depth_snapshots and hydrographs:
+        q_peaks = [h["metadata"]["q_peak_m3_s"] for h in hydrographs]
+        q_target = breach_stats.get("q_peak_median", np.median(q_peaks))
+        snapshot_sample_id = int(np.argmin(np.abs(np.array(q_peaks) - q_target)))
+        snapshot_times = np.linspace(0, solver_duration_s, n_snapshots)
+        next_snapshot_idx = 0
 
     for sample_id, hydrograph in enumerate(hydrographs):
         print(f"  Member {sample_id + 1}/{ensemble_size}: ", end="", flush=True)
@@ -336,6 +359,13 @@ def run_dam_break_ensemble(
             step_count = 0
             max_steps = int(solver_duration_s / dt_adaptive) + 1
 
+            is_snapshot_member = record_depth_snapshots and sample_id == snapshot_sample_id
+            if is_snapshot_member:
+                next_snapshot_idx = 0
+                if snapshot_times[0] <= 0:
+                    depth_series.append({"time_s": 0.0, "depth": state.h.copy()})
+                    next_snapshot_idx = 1
+
             while t_sim < solver_duration_s and step_count < max_steps:
                 # Inject breach hydrograph
                 inject_breach_hydrograph(
@@ -352,6 +382,14 @@ def run_dam_break_ensemble(
                 t_arrival[newly_wet] = t_sim
 
                 h_max = np.maximum(h_max, state.h)
+
+                if is_snapshot_member:
+                    while (
+                        next_snapshot_idx < len(snapshot_times)
+                        and t_sim >= snapshot_times[next_snapshot_idx]
+                    ):
+                        depth_series.append({"time_s": float(t_sim), "depth": state.h.copy()})
+                        next_snapshot_idx += 1
 
                 step_count += 1
 
@@ -425,7 +463,7 @@ def run_dam_break_ensemble(
     print("PHASE 4 COMPLETE: End-to-End Dam-Break Pipeline")
     print("=" * 70)
 
-    return {
+    result = {
         "dam_name": dam_config["name"],
         "breach_stats": breach_stats,
         "arrival_times": arrival_times_gauges,
@@ -438,5 +476,11 @@ def run_dam_break_ensemble(
         "num_completed": len(results_ensemble),
         "num_ensemble": ensemble_size,
         "gauges": gauges,
-        "grid": {"nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy},
+        "grid": {
+            "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,
+            "x0": grid.x0, "y0": grid.y0, "crs": grid.crs,
+        },
     }
+    if record_depth_snapshots:
+        result["depth_series"] = depth_series
+    return result

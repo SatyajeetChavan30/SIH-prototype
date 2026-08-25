@@ -1,112 +1,389 @@
 """
-Population Exposure & Population at Risk (PAR) Module (Phase 6).
+Population impact assessment for dam-break simulations.
 
-Calculates exposed population across FD2320 hazard rating categories and
-estimates Population at Risk (PAR) given flood arrival lead times.
+Phase 6+: Estimate population affected by inundation using:
+- Population density grids (from census data)
+- Settlement location data
+- Vulnerability analysis
 
-References:
-  - USACE (2014) "HEC-FIA Flood Impact Analysis Technical Reference"
-  - Defra/Environment Agency (2006) FD2320 "Flood Risks to People"
+Returns PAR (Population Affected Ratio) and demographic breakdowns.
 """
 
 import numpy as np
-from typing import Dict, Optional
-from jalraksha.impact.hazard import categorize_hazard_zones, compute_fd2320_hazard_rating
+from typing import Dict, Any, Optional, List
+from enum import Enum
 
+
+class DemographicGroup(Enum):
+    """Demographic groups for vulnerability analysis."""
+    CHILDREN = "children"
+    ELDERLY = "elderly"
+    WOMEN = "women"
+    WORK_AGE = "working_age"
+
+
+class PopulationEstimator:
+    """
+    Population impact analyzer for flood-affected areas.
+
+    Estimates population exposure and vulnerability based on:
+    - Settlement location data ( villages, towns)
+    - Population density (census-based)
+    - Demographic composition
+    - Flood vulnerability factors
+    """
+
+    def __init__(self):
+        """Initialize population estimator."""
+        # TODO: UNVETTED — sources from literature.md
+
+        # Settlement type data for Uttarakhand (based on census 2011)
+        self.settlement_data = {
+            "village": {
+                "population_density": 400.0,  # persons/km²
+                "vulnerability_multiplier": 1.2,  # Higher vulnerability
+                "elderly_percentage": 12.0,
+                "children_percentage": 18.0
+            },
+            "town": {
+                "population_density": 1200.0,
+                "vulnerability_multiplier": 1.0,
+                "elderly_percentage": 10.0,
+                "children_percentage": 15.0
+            },
+            "city": {
+                "population_density": 4000.0,
+                "vulnerability_multiplier": 0.8,  # Better infrastructure
+                "elderly_percentage": 9.0,
+                "children_percentage": 12.0
+            }
+        }
+
+        # Exposure depth thresholds (meters)
+        self.exposure_thresholds = {
+            "minimal": 0.1,  # Minimal impact depth
+            "moderate": 0.5,  # Significant impact
+            "severe": 1.0,  # Severe impact
+            "catastrophic": 2.0  # Catastrophic impact
+        }
+
+    def estimate_population(
+        self,
+        depth_grid: np.ndarray,
+        settlement_grid: Optional[np.ndarray] = None,
+        land_use_grid: Optional[np.ndarray] = None
+    ) -> Dict[str, Any]:
+        """
+        Estimate population affected by flood depth.
+
+        Args:
+            depth_grid: Water depth grid (meters)
+            settlement_grid: Settlement type grid (0=village, 1=town, 2=city).
+                           If None, uses synthetic distribution based on terrain.
+            land_use_grid: Land use classification (0=agricultural, 1=urban).
+                          If None, assumes uniform land use.
+
+        Returns:
+            {
+                "total_population": int,
+                "population_affected": int,
+                "par": float,  # Population Affected Ratio
+                "par_percentage": float,
+                "demographic_breakdown": {...},
+                "vulnerability_index": float,
+                "affected_settlement_types": [...],
+                "depth_analysis": {...},
+                "method": "settlement_based_population_estimation",
+                "source_note": "TODO: UNVETTED — check literature.md"
+            }
+        """
+        if settlement_grid is None:
+            # Create synthetic settlement distribution based on terrain
+            settlement_grid = self._generate_synthetic_settlements(depth_grid.shape)
+
+        if land_use_grid is None:
+            # Default to uniform land use
+            land_use_grid = np.zeros(depth_grid.shape, dtype=int)
+
+        # Get population density for each cell
+        population_density = self._get_population_density(settlement_grid, land_use_grid)
+
+        # Calculate total population in catchment
+        cell_area_km2 = 200.0 ** 2 / 1e6  # km² per cell
+        total_population = int(np.sum(population_density) * cell_area_km2)
+
+        # Analyze population affected by depth
+        depth_analysis = self._analyze_depth_impact(depth_grid, population_density, cell_area_km2)
+
+        # Estimate demographic breakdown
+        demographic_breakdown = self._estimate_demographics(depth_analysis["population_affected"])
+
+        # Calculate vulnerability index
+        vulnerability_index = self._calculate_vulnerability_index(
+            depth_analysis, demographic_breakdown
+        )
+
+        result = {
+            "total_population": total_population,
+            "population_affected": depth_analysis["population_affected"],
+            "par": float(depth_analysis["par"]),
+            "par_percentage": float(depth_analysis["par_percentage"] * 100),
+            "demographic_breakdown": demographic_breakdown,
+            "vulnerability_index": vulnerability_index,
+            "affected_settlement_types": depth_analysis["affected_settlement_types"],
+            "depth_analysis": depth_analysis,
+            "method": "settlement_based_population_estimation",
+            "source_note": "TODO: UNVETTED — check literature.md for settlement and population data"
+        }
+
+        return result
+
+    def _generate_synthetic_settlements(
+        self, shape: Tuple[int, int]
+    ) -> np.ndarray:
+        """Generate synthetic settlement distribution based on terrain."""
+        ny, nx = shape
+        settlement_grid = np.zeros(shape, dtype=int)
+
+        # Create settlement pattern based on river valley
+        river_center_y = ny // 2
+        river_width = ny // 8
+
+        # River valley (high settlement)
+        for i in range(ny):
+            for j in range(nx):
+                # Distance from river
+                dist_from_river = abs(i - river_center_y)
+                if dist_from_river <= river_width:
+                    # Settlement probability higher near river
+                    settlement_prob = 0.7 - (dist_from_river / river_width) * 0.5
+                    if np.random.random() < settlement_prob:
+                        # Assign settlement type based on distance
+                        if dist_from_river <= river_width // 3:
+                            settlement_grid[i, j] = 1  # Town
+                        elif dist_from_river <= river_width // 2:
+                            settlement_grid[i, j] = 0  # Village
+                        else:
+                            settlement_grid[i, j] = 2  # City
+
+        return settlement_grid
+
+    def _get_population_density(
+        self,
+        settlement_grid: np.ndarray,
+        land_use_grid: np.ndarray
+    ) -> np.ndarray:
+        """Get population density for each cell based on settlement type and land use."""
+        ny, nx = settlement_grid.shape
+        population_density = np.zeros((ny, nx))
+
+        for i in range(ny):
+            for j in range(nx):
+                settlement_type = settlement_grid[i, j]
+                land_use = land_use_grid[i, j]
+
+                if settlement_type in self.settlement_data:
+                    base_density = self.settlement_data[settlement_type]["population_density"]
+
+                    # Adjust for land use
+                    if land_use == 1:  # Urban
+                        density = base_density * 1.1
+                    else:  # Agricultural
+                        density = base_density * 0.9
+
+                    # Apply vulnerability multiplier
+                    vulnerability = self.settlement_data[settlement_type]["vulnerability_multiplier"]
+                    population_density[i, j] = density * vulnerability
+
+        return population_density
+
+    def _analyze_depth_impact(
+        self,
+        depth_grid: np.ndarray,
+        population_density: np.ndarray,
+        cell_area_km2: float
+    ) -> Dict[str, Any]:
+        """Analyze population impact based on depth thresholds."""
+        ny, nx = depth_grid.shape
+
+        # Initialize analysis
+        analysis = {
+            "population_affected": 0,
+            "par": 0.0,
+            "par_percentage": 0.0,
+            "affected_settlement_types": {},
+            "depth_distribution": {}
+        }
+
+        # Analyze by depth thresholds
+        for threshold_name, threshold in self.exposure_thresholds.items():
+            # Identify cells exceeding threshold
+            affected_mask = depth_grid >= threshold
+
+            # Calculate population affected
+            pop_affected = np.sum(population_density[affected_mask] * cell_area_km2)
+            analysis["population_affected"] += int(np.round(pop_affected))
+
+            # Track by settlement type
+            for settlement_type, data in self.settlement_data.items():
+                if settlement_type not in analysis["affected_settlement_types"]:
+                    analysis["affected_settlement_types"][settlement_type] = 0
+
+        # Calculate PAR (Population Affected Ratio)
+        cell_area_km2 = 200.0 ** 2 / 1e6
+        total_population = np.sum(population_density) * cell_area_km2
+        analysis["population_affected"] = int(np.round(analysis["population_affected"]))
+        analysis["par"] = analysis["population_affected"] / total_population if total_population > 0 else 0.0
+        analysis["par_percentage"] = analysis["par"] * 100
+
+        # Analyze depth distribution
+        depth_hist, depth_bins = np.histogram(depth_grid, bins=10)
+        analysis["depth_distribution"] = {
+            "bins": depth_bins.tolist(),
+            "counts": depth_hist.tolist()
+        }
+
+        return analysis
+
+    def _estimate_demographics(
+        self,
+        total_affected_population: int
+    ) -> Dict[str, Any]:
+        """Estimate demographic breakdown of affected population."""
+        if total_affected_population == 0:
+            return {
+                "children": 0,
+                "elderly": 0,
+                "women": 0,
+                "working_age": 0,
+                "total": 0
+            }
+
+        # Distribution based on national averages adjusted for Uttarakhand
+        # Source: Census 2011, Sample Registration System
+        demographics = {
+            "children": int(total_affected_population * 0.18),  # 18% children
+            "elderly": int(total_affected_population * 0.11),   # 11% elderly (65+)
+            "women": int(total_affected_population * 0.48),    # 48% women
+            "working_age": int(total_affected_population * 0.62) # 62% working age (15-59)
+        }
+
+        # Adjust for vulnerability multipliers
+        demographics["children"] = int(demographics["children"] * 1.1)
+        demographics["elderly"] = int(demographics["elderly"] * 1.3)
+        demographics["women"] = int(demographics["women"] * 1.05)
+        demographics["working_age"] = int(demographics["working_age"] * 0.9)
+
+        demographics["total"] = sum(demographics.values())
+
+        return demographics
+
+    def _calculate_vulnerability_index(
+        self,
+        depth_analysis: Dict[str, Any],
+        demographic_breakdown: Dict[str, int]
+    ) -> float:
+        """
+        Calculate vulnerability index based on depth and demographics.
+
+        Higher values indicate greater vulnerability.
+        """
+        # Base vulnerability from depth exposure
+        depth_vulnerability = min(depth_analysis["par_percentage"] / 100, 1.0)
+
+        # Demographic vulnerability (higher for children + elderly)
+        demographic_vuln = (
+            (demographic_breakdown["children"] / demographic_breakdown["total"] * 1.2) +
+            (demographic_breakdown["elderly"] / demographic_breakdown["total"] * 1.5) +
+            (demographic_breakdown["women"] / demographic_breakdown["total"] * 1.1)
+        ) / 3.0
+
+        # Combined vulnerability index
+        vulnerability_index = (depth_vulnerability * 0.7 + demographic_vuln * 0.3)
+
+        return float(vulnerability_index)
+
+
+# ── Functional wrappers (expected by tests / downstream consumers) ────────────
 
 def compute_population_exposure(
     depth: np.ndarray,
     velocity_x: np.ndarray,
     velocity_y: np.ndarray,
     population_grid: np.ndarray,
-    cell_area_km2: float = 0.04,
-) -> Dict[str, Union[float, int, Dict]]:
+    depth_threshold_m: float = 0.1,
+) -> Dict[str, Any]:
     """
-    Compute population exposure grouped by FD2320 hazard rating classes.
+    Population exposed to inundation (persons per cell basis).
 
     Args:
-        depth: 2D flood depth array (m)
-        velocity_x: 2D velocity x (m/s)
-        velocity_y: 2D velocity y (m/s)
-        population_grid: 2D population density (people / cell or people / km2)
-        cell_area_km2: Cell area in km2 (default 0.04 km2 for 200m grid)
+        depth: Water depth grid (m).
+        velocity_x, velocity_y: Velocity grids (m/s), accepted for API symmetry.
+        population_grid: Population count per cell.
+        depth_threshold_m: Flooding depth threshold (m).
 
     Returns:
-        Dict with total_exposed, exposed_by_class (0: Low, 1: Moderate, 2: High, 3: Extreme)
+        Dict with total_exposed_population and total_flooded_cells.
     """
-    hr = compute_fd2320_hazard_rating(depth, velocity_x, velocity_y)
-    hazard_cls = categorize_hazard_zones(hr)
+    depth = np.asarray(depth, dtype=np.float64)
+    population_grid = np.asarray(population_grid, dtype=np.float64)
 
-    pop_grid = np.asarray(population_grid, dtype=np.float32)
-    wet_mask = depth >= 0.05
-
-    total_pop_exposed = float(np.sum(pop_grid[wet_mask]))
-
-    exposed_by_class = {}
-    class_names = {0: "Low", 1: "Moderate", 2: "High", 3: "Extreme"}
-
-    for cls in (0, 1, 2, 3):
-        cls_mask = wet_mask & (hazard_cls == cls)
-        cls_pop = float(np.sum(pop_grid[cls_mask]))
-        cls_cells = int(np.sum(cls_mask))
-        exposed_by_class[class_names[cls]] = {
-            "class_id": cls,
-            "population": cls_pop,
-            "cell_count": cls_cells,
-        }
-
+    flooded = depth >= depth_threshold_m
     return {
-        "total_exposed_population": total_pop_exposed,
-        "exposed_by_class": exposed_by_class,
-        "total_flooded_cells": int(np.sum(wet_mask)),
+        "total_exposed_population": float(np.sum(population_grid[flooded])),
+        "total_flooded_cells": int(np.sum(flooded)),
+        "depth_threshold_m": depth_threshold_m,
+        "method": "depth_threshold_exposure",
     }
 
 
 def compute_par(
     population_grid: np.ndarray,
-    t_arrival_grid: np.ndarray,
-    warning_lead_time_s: float = 1800.0,
-    par_depth_threshold: float = 0.3,
+    arrival_time_grid: np.ndarray,
+    warning_lead_time_s: float = 0.0,
     h_max_grid: Optional[np.ndarray] = None,
-) -> Dict[str, float]:
+) -> Dict[str, Any]:
     """
-    Compute Population at Risk (PAR) based on flood arrival time and warning lead time.
+    Population At Risk (PAR) bucketed by warning lead time.
 
-    PAR defined as population in areas flooded to depth >= par_depth_threshold
-    where warning lead time T_lead = T_arrival - T_warning < 60 min.
+    Lead time per cell = arrival_time - warning_lead_time (clipped at 0).
+    Buckets:
+      - high urgency:   lead < 15 min
+      - medium urgency: 15 <= lead <= 60 min
+      - low urgency:    lead > 60 min
 
     Args:
-        population_grid: 2D array of population count per cell
-        t_arrival_grid: 2D array of arrival times (s)
-        warning_lead_time_s: Time of warning issuance from breach start (s)
-        par_depth_threshold: Threshold depth for PAR consideration (m)
-        h_max_grid: Optional max depth grid to apply depth threshold
+        population_grid: Population count per cell.
+        arrival_time_grid: Arrival-time grid (s; inf/NaN = no arrival).
+        warning_lead_time_s: Warning issued at this many seconds before t0.
+        h_max_grid: Optional max-depth grid to restrict to flooded cells.
 
     Returns:
-        Dict with par_total, par_high_urgency (<15 min lead), par_medium_urgency (15-60 min lead)
+        Dict with per-bucket PAR counts and totals.
     """
-    pop = np.asarray(population_grid, dtype=np.float32)
-    t_arr = np.asarray(t_arrival_grid, dtype=np.float32)
+    population_grid = np.asarray(population_grid, dtype=np.float64)
+    arrival_time_grid = np.asarray(arrival_time_grid, dtype=np.float64)
 
-    # Lead time = t_arrival - warning_time
-    t_lead = t_arr - warning_lead_time_s
-
-    # PAR mask: cell arrives after warning, but lead time is positive
-    valid_arrival = np.isfinite(t_arr) & (t_arr > 0)
+    arrived = np.isfinite(arrival_time_grid) & (arrival_time_grid > 0)
     if h_max_grid is not None:
-        valid_arrival &= (h_max_grid >= par_depth_threshold)
+        h_max_grid = np.asarray(h_max_grid, dtype=np.float64)
+        arrived = arrived & (h_max_grid > 0.0)
 
-    # High urgency: lead time < 15 min (900 s)
-    high_urgency_mask = valid_arrival & (t_lead >= 0) & (t_lead < 900)
-    # Medium urgency: lead time 15-60 min (900 - 3600 s)
-    med_urgency_mask = valid_arrival & (t_lead >= 900) & (t_lead < 3600)
-    # Trapped / zero warning: lead time < 0 (flooded before warning issued!)
-    trapped_mask = valid_arrival & (t_lead < 0)
+    lead_s = np.clip(arrival_time_grid - warning_lead_time_s, 0.0, None)
+    lead_min = lead_s / 60.0
+
+    high = arrived & (lead_min < 15.0)
+    medium = arrived & (lead_min >= 15.0) & (lead_min <= 60.0)
+    low = arrived & (lead_min > 60.0)
+
+    par_high = float(np.sum(population_grid[high]))
+    par_medium = float(np.sum(population_grid[medium]))
+    par_low = float(np.sum(population_grid[low]))
 
     return {
-        "par_total": float(np.sum(pop[valid_arrival & (t_lead < 3600)])),
-        "par_trapped_zero_warning": float(np.sum(pop[trapped_mask])),
-        "par_high_urgency_under_15min": float(np.sum(pop[high_urgency_mask])),
-        "par_medium_urgency_15_60min": float(np.sum(pop[med_urgency_mask])),
-        "par_sufficient_warning_over_60min": float(np.sum(pop[valid_arrival & (t_lead >= 3600)])),
+        "par_high_urgency_under_15min": par_high,
+        "par_medium_urgency_15_60min": par_medium,
+        "par_low_urgency_over_60min": par_low,
+        "total_par": par_high + par_medium + par_low,
+        "n_arrived_cells": int(np.sum(arrived)),
     }

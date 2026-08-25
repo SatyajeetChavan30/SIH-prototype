@@ -426,3 +426,7 @@ def export_arrival_time_contours(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     gdf.to_file(output_path, driver="ESRI Shapefile")
     return output_path
+
+
+# Backwards-compatible alias expected by export/__init__.py.
+export_shapefile = export_inundation_polygon
