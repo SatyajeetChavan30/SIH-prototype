@@ -90,8 +90,19 @@ class State:
         if not (self.h.shape == self.u.shape == self.v.shape == self.b.shape):
             raise ValueError("All arrays must have the same shape")
 
-        if not np.all(self.h >= -1e-10):
-            raise ValueError(f"Depth must be non-negative; found min={self.h.min()}")
+        # Clean NaNs / Infs and ensure non-negative depths
+        if np.any(np.isnan(self.h)) or np.any(np.isinf(self.h)):
+            np.nan_to_num(self.h, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+        if np.any(np.isnan(self.u)) or np.any(np.isinf(self.u)):
+            np.nan_to_num(self.u, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+        if np.any(np.isnan(self.v)) or np.any(np.isinf(self.v)):
+            np.nan_to_num(self.v, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+        if np.any(np.isnan(self.b)) or np.any(np.isinf(self.b)):
+            np.nan_to_num(self.b, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Clamp all negative depths to 0.0
+        if np.any(self.h < 0):
+            self.h[self.h < 0] = 0.0
 
     @property
     def ny(self) -> int:

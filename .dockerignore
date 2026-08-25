@@ -1,0 +1,15 @@
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.coverage
+htmlcov
+dist
+build
+*.egg-info
+cache/
+scratch/
+research_papers/
+.env

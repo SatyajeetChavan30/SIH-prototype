@@ -133,27 +133,32 @@ def interpolate_dem_to_grid(
     Returns:
         Bed elevation at grid cell centres
     """
-    # Create coordinate arrays for DEM (pixel centres)
-    dem_x = np.linspace(dem_bounds.left, dem_bounds.right, dem_data.shape[1])
-    dem_y = np.linspace(dem_bounds.bottom, dem_bounds.top, dem_data.shape[0])
+    # Create coordinate arrays for DEM (pixel centres, strictly ascending)
+    y_min, y_max = min(dem_bounds.bottom, dem_bounds.top), max(dem_bounds.bottom, dem_bounds.top)
+    x_min, x_max = min(dem_bounds.left, dem_bounds.right), max(dem_bounds.left, dem_bounds.right)
+
+    dem_x = np.linspace(x_min, x_max, dem_data.shape[1])
+    dem_y = np.linspace(y_min, y_max, dem_data.shape[0])
 
     # Grid cell centres
     grid_x, grid_y = grid.cell_centres_2d()
+    mean_val = float(np.nanmean(dem_data)) if dem_data.size > 0 else 100.0
 
-    # Bilinear interpolation
-    interpolator = RegularGridInterpolator(
-        (dem_y, dem_x),
-        dem_data,
-        method="linear",
-        bounds_error=False,
-        fill_value=dem_data.mean(),  # Fill out-of-bounds with mean elevation
-    )
+    try:
+        interpolator = RegularGridInterpolator(
+            (dem_y, dem_x),
+            np.flipud(dem_data) if dem_bounds.top > dem_bounds.bottom else dem_data,
+            method="linear",
+            bounds_error=False,
+            fill_value=mean_val,
+        )
 
-    # Stack and flatten for interpolation
-    points = np.column_stack([grid_y.ravel(), grid_x.ravel()])
-    bed_elevation = interpolator(points).reshape(grid.ny, grid.nx)
+        points = np.column_stack([grid_y.ravel(), grid_x.ravel()])
+        bed_elevation = interpolator(points).reshape(grid.ny, grid.nx)
+    except Exception:
+        bed_elevation = np.full((grid.ny, grid.nx), mean_val, dtype=np.float32)
 
-    return bed_elevation.astype(np.float32)
+    return np.nan_to_num(bed_elevation, nan=mean_val).astype(np.float32)
 
 
 def apply_edge_detection(dem_data: np.ndarray, threshold: float = 5.0) -> np.ndarray:

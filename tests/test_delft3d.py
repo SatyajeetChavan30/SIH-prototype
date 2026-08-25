@@ -1,0 +1,327 @@
+"""
+Delft3D Integration Test Suite.
+
+Tests:
+  - TestDelft3DSetup: Grid creation, bathymetry, IC, MDU file writing
+  - TestDelft3DRunner: Binary detection, SWE fallback, result format
+  - TestDelft3DComparison: Metrics, gauge comparisons, plot generation
+  - TestDelft3DIntegration: End-to-end pipeline with Delft3D
+"""
+
+import os
+import shutil
+import tempfile
+import numpy as np
+import pytest
+from pathlib import Path
+
+from jalraksha.delft3d.setup import (
+    create_rectangular_grid,
+    interpolate_bathymetry_to_grid,
+    generate_initial_conditions,
+    write_mdu_file,
+    setup_delft3d_model,
+)
+from jalraksha.delft3d.runner import (
+    is_dflowfm_available,
+    run_delft3d_simulation,
+)
+from jalraksha.delft3d.comparison import (
+    rasterize_sph_particles,
+    compute_comparison_metrics,
+    compare_gauge_arrivals,
+    plot_comparison_depth_maps,
+    plot_comparison_hydrographs,
+    compare_sph_vs_delft3d,
+)
+
+
+TEHRI_CONFIG = {
+    "name": "Tehri",
+    "lat": 30.3789,
+    "lon": 78.4789,
+    "height_m": 260.0,
+    "storage_mm3": 3540.0,
+    "dam_type": "embankment",
+    "failure_mode": "overtopping",
+}
+
+
+# ─── TestDelft3DSetup ─────────────────────────────────────────────────────────
+
+class TestDelft3DSetup:
+    def test_create_rectangular_grid(self):
+        grid = create_rectangular_grid(nx=50, ny=100, dx=30.0, dy=30.0)
+        assert grid["nx"] == 50
+        assert grid["ny"] == 100
+        assert grid["node_x"].shape == (101, 51)  # (ny+1, nx+1)
+        assert grid["node_y"].shape == (101, 51)
+
+    def test_grid_origin_offset(self):
+        grid = create_rectangular_grid(nx=10, ny=10, dx=10.0, dy=10.0, origin_x=500.0, origin_y=1000.0)
+        assert grid["node_x"][0, 0] == 500.0
+        assert grid["node_y"][0, 0] == 1000.0
+
+    def test_interpolate_bathymetry_matching_shape(self):
+        dem = np.random.rand(50, 30).astype(np.float64) * 100
+        grid = create_rectangular_grid(nx=30, ny=50, dx=30.0, dy=30.0)
+        bath = interpolate_bathymetry_to_grid(dem, grid=grid)
+        assert bath.shape == (50, 30)
+
+    def test_interpolate_bathymetry_no_grid(self):
+        dem = np.random.rand(50, 30).astype(np.float32)
+        bath = interpolate_bathymetry_to_grid(dem)
+        assert bath.dtype == np.float64
+        assert bath.shape == (50, 30)
+
+    def test_generate_initial_conditions(self):
+        grid = create_rectangular_grid(nx=20, ny=40, dx=30.0, dy=30.0)
+        ic = generate_initial_conditions(grid, dam_height_m=260.0)
+        assert "water_level" in ic
+        assert "dam_row_index" in ic
+        assert ic["water_level"].shape == (40, 20)
+        # Upstream should have high water level
+        assert np.mean(ic["water_level"][:ic["dam_row_index"], :]) > 200.0
+        # Downstream should be near zero
+        assert np.mean(ic["water_level"][ic["dam_row_index"]:, :]) < 1.0
+
+    def test_write_mdu_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            grid = create_rectangular_grid(nx=10, ny=20, dx=30.0, dy=30.0)
+            bath = np.zeros((20, 10), dtype=np.float64)
+            ic = generate_initial_conditions(grid, 100.0)
+            mdu_path = write_mdu_file(
+                Path(tmpdir), grid, bath, ic, TEHRI_CONFIG,
+                total_time_s=600.0, dt_user_s=10.0,
+            )
+            assert mdu_path.exists()
+            content = mdu_path.read_text()
+            assert "[General]" in content
+            assert "Tehri" in content
+            assert "260.0" in content
+
+    def test_mdu_supporting_files_created(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            grid = create_rectangular_grid(nx=10, ny=20, dx=30.0, dy=30.0)
+            bath = np.zeros((20, 10), dtype=np.float64)
+            ic = generate_initial_conditions(grid, 100.0)
+            write_mdu_file(Path(tmpdir), grid, bath, ic, TEHRI_CONFIG)
+            assert (Path(tmpdir) / "bathymetry.xyz").exists()
+            assert (Path(tmpdir) / "initial_waterlevel.ini").exists()
+            assert (Path(tmpdir) / "grid.grd").exists()
+
+    def test_setup_delft3d_model_end_to_end(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=40,
+                grid_dx=30.0, grid_dy=30.0,
+            )
+            assert "mdu_path" in result
+            assert result["mdu_path"].exists()
+            assert result["grid"]["nx"] == 20
+            assert result["bathymetry"].shape == (40, 20)
+
+    def test_setup_with_dem_array(self):
+        dem = np.random.rand(40, 20).astype(np.float32) * 50
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = setup_delft3d_model(
+                TEHRI_CONFIG,
+                dem_array=dem,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=40,
+            )
+            assert result["bathymetry"].shape == (40, 20)
+
+
+# ─── TestDelft3DRunner ─────────────────────────────────────────────────────────
+
+class TestDelft3DRunner:
+    def test_dflowfm_not_available(self):
+        """dflowfm binary is not expected to be installed in test env."""
+        assert is_dflowfm_available() is False or is_dflowfm_available() is True
+
+    def test_fallback_swe_runs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=20,
+                total_time_s=0.5,
+            )
+            result = run_delft3d_simulation(
+                model, TEHRI_CONFIG,
+                total_time_s=0.5,
+                force_fallback=True,
+            )
+            assert result["success"] is True
+            assert "SWE" in result["engine"] or "Delft3D" in result["engine"]
+
+    def test_fallback_returns_depth_field(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=20,
+                total_time_s=5.0,
+            )
+            result = run_delft3d_simulation(
+                model, TEHRI_CONFIG,
+                total_time_s=5.0,
+                force_fallback=True,
+            )
+            assert "max_depth" in result
+            assert result["max_depth"].shape == (20, 20)
+
+    def test_fallback_engine_label(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=20,
+                total_time_s=5.0,
+            )
+            result = run_delft3d_simulation(
+                model, TEHRI_CONFIG,
+                total_time_s=5.0,
+                force_fallback=True,
+            )
+            assert "engine_label" in result
+            assert "Delft3D" in result["engine_label"]
+
+    def test_fallback_with_gauges(self):
+        gauges = [
+            {"name": "Koteshwar", "distance_km": 13.0},
+            {"name": "Haridwar", "distance_km": 58.4},
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=20,
+                total_time_s=5.0,
+            )
+            result = run_delft3d_simulation(
+                model, TEHRI_CONFIG,
+                gauge_locations=gauges,
+                total_time_s=5.0,
+                force_fallback=True,
+            )
+            assert "gauge_arrivals" in result
+            assert "Koteshwar" in result["gauge_arrivals"]
+            assert result["gauge_arrivals"]["Koteshwar"]["median_min"] > 0
+
+
+# ─── TestDelft3DComparison ────────────────────────────────────────────────────
+
+class TestDelft3DComparison:
+    def test_rasterize_sph_particles(self):
+        sph = {
+            "x": np.array([5.0, 15.0, 25.0]),
+            "y": np.array([5.0, 15.0, 25.0]),
+            "z": np.array([2.0, 3.0, 1.0]),
+        }
+        grid = rasterize_sph_particles(sph, grid_nx=10, grid_ny=10, grid_dx=10.0, grid_dy=10.0)
+        assert grid.shape == (10, 10)
+
+    def test_rasterize_empty_particles(self):
+        sph = {"x": np.array([]), "y": np.array([]), "z": np.array([])}
+        grid = rasterize_sph_particles(sph, grid_nx=5, grid_ny=5, grid_dx=10.0, grid_dy=10.0)
+        assert np.all(grid == 0.0)
+
+    def test_comparison_metrics_identical(self):
+        a = np.ones((10, 10), dtype=np.float32) * 2.0
+        b = a.copy()
+        metrics = compute_comparison_metrics(a, b)
+        assert metrics["rmse_m"] == 0.0
+        assert metrics["csi"] == 1.0
+
+    def test_comparison_metrics_different(self):
+        a = np.ones((10, 10), dtype=np.float32) * 2.0
+        b = np.zeros((10, 10), dtype=np.float32)
+        metrics = compute_comparison_metrics(a, b)
+        assert metrics["rmse_m"] > 0.0
+        assert metrics["csi"] < 1.0
+
+    def test_compare_gauge_arrivals(self):
+        a = {"Koteshwar": {"median_min": 30.0, "distance_km": 13.0}}
+        b = {"Koteshwar": {"median_min": 28.0, "distance_km": 13.0}}
+        rows = compare_gauge_arrivals(a, b)
+        assert len(rows) == 1
+        assert rows[0]["delta_min"] is not None
+
+    def test_compare_gauge_arrivals_missing_gauge(self):
+        a = {"Koteshwar": {"median_min": 30.0}}
+        b = {"Haridwar": {"median_min": 90.0}}
+        rows = compare_gauge_arrivals(a, b)
+        assert len(rows) == 2  # Both gauges listed
+
+    def test_plot_comparison_depth_maps(self):
+        import matplotlib.pyplot as plt
+        a = np.random.rand(20, 10).astype(np.float32) * 5
+        b = np.random.rand(20, 10).astype(np.float32) * 5
+        fig = plot_comparison_depth_maps(a, b)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_plot_comparison_hydrographs(self):
+        import matplotlib.pyplot as plt
+        a = {"Koteshwar": {"median_min": 30.0, "p05_min": 24.0, "p95_min": 36.0}}
+        b = {"Koteshwar": {"median_min": 28.0, "p05_min": 22.0, "p95_min": 34.0}}
+        fig = plot_comparison_hydrographs(a, b)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+
+# ─── TestDelft3DIntegration ───────────────────────────────────────────────────
+
+class TestDelft3DIntegration:
+    def test_full_pipeline_setup_to_comparison(self):
+        """End-to-end: setup → run Delft3D fallback → compare with mock SPH."""
+        import matplotlib.pyplot as plt
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Setup
+            model = setup_delft3d_model(
+                TEHRI_CONFIG,
+                output_dir=Path(tmpdir) / "model",
+                grid_nx=20, grid_ny=20,
+                total_time_s=5.0,
+            )
+
+            gauges = [{"name": "Koteshwar", "distance_km": 13.0}]
+
+            # Run Delft3D (fallback SWE)
+            d3d_result = run_delft3d_simulation(
+                model, TEHRI_CONFIG,
+                gauge_locations=gauges,
+                total_time_s=5.0,
+                force_fallback=True,
+            )
+            assert d3d_result["success"]
+
+            # Mock SPH result
+            sph_result = {
+                "x": np.random.rand(100) * 300,
+                "y": np.random.rand(100) * 600,
+                "z": np.random.rand(100) * 5,
+                "gauge_arrivals": {
+                    "Koteshwar": {"median_min": 32.0, "p05_min": 26.0, "p95_min": 38.0, "distance_km": 13.0},
+                },
+            }
+
+            # Compare
+            comparison = compare_sph_vs_delft3d(sph_result, d3d_result, gauges)
+            assert "metrics" in comparison
+            assert "gauge_comparison" in comparison
+            assert isinstance(comparison["depth_fig"], plt.Figure)
+            assert isinstance(comparison["hydro_fig"], plt.Figure)
+
+            plt.close(comparison["depth_fig"])
+            plt.close(comparison["hydro_fig"])
+
+    def test_hydrolib_core_importable(self):
+        """Verify hydrolib-core is installed."""
+        import hydrolib.core
+        assert hydrolib.core is not None

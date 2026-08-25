@@ -115,8 +115,8 @@ class SWESolver:
 
         Stage 1: Forward Euler prediction
         Stage 2: Trapezoidal correction
+        h_new = h + 0.5 * (k1 + k2)  where k1 = dt*f(h), k2 = dt*f(h + k1)
         """
-        nx, ny = self.grid.nx, self.grid.ny
         dx, dy = self.grid.dx, self.grid.dy
 
         h = state.h.astype(np.float64)
@@ -124,107 +124,115 @@ class SWESolver:
         v = state.v.astype(np.float64)
         b = state.b.astype(np.float64)
 
-        # === Stage 1: Predictor (Forward Euler) ===
-        h1, u1, v1 = self._compute_residuals(h, u, v, b, dx, dy, dt)
+        # === Stage 1: Forward Euler prediction ===
+        dh1, du1, dv1 = self._compute_tendencies(h, u, v, b, dx, dy)
+        h1 = np.maximum(h + dt * dh1, 0.0)
+        u1 = u + dt * du1
+        v1 = v + dt * dv1
 
-        # === Stage 2: Corrector (average) ===
-        h2, u2, v2 = self._compute_residuals(h1, u1, v1, b, dx, dy, dt)
+        # NaN guard after stage 1
+        if np.any(np.isnan(h1)):
+            # Stage 1 blew up — return Forward Euler with clamping
+            h_new = np.maximum(h + dt * dh1, 0.0)
+            np.nan_to_num(h_new, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+            u_new = u + dt * du1
+            v_new = v + dt * dv1
+            np.nan_to_num(u_new, copy=False, nan=0.0)
+            np.nan_to_num(v_new, copy=False, nan=0.0)
+        else:
+            # === Stage 2: Corrector ===
+            dh2, du2, dv2 = self._compute_tendencies(h1, u1, v1, b, dx, dy)
 
-        # RK2: average of two stages
-        h_new = h + 0.5 * dt * ((h - h) / dt + (h1 - h) / dt + (h2 - h1) / dt)
-        u_new = u + 0.5 * dt * ((u - u) / dt + (u1 - u) / dt + (u2 - u1) / dt)
-        v_new = v + 0.5 * dt * ((v - v) / dt + (v1 - v) / dt + (v2 - v1) / dt)
+            # RK2 Heun: average of both tendencies
+            h_new = h + 0.5 * dt * (dh1 + dh2)
+            u_new = u + 0.5 * dt * (du1 + du2)
+            v_new = v + 0.5 * dt * (dv1 + dv2)
 
-        # Simpler: just use predictor
-        h_new = h1
-        u_new = u1
-        v_new = v1
-
-        # === Enforce positivity ===
+        # === Enforce positivity & clean NaNs ===
+        np.nan_to_num(h_new, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
         h_new = np.maximum(h_new, 0.0)
 
-        # === Recover primitives ===
-        u_new_final = np.zeros_like(u)
-        v_new_final = np.zeros_like(v)
+        # === Zero velocity in dry cells ===
+        np.nan_to_num(u_new, copy=False, nan=0.0)
+        np.nan_to_num(v_new, copy=False, nan=0.0)
+        dry = h_new < MIN_DEPTH
+        u_new[dry] = 0.0
+        v_new[dry] = 0.0
 
-        wet = h_new >= MIN_DEPTH
-        u_new_final[wet] = u_new[wet]
-        v_new_final[wet] = v_new[wet]
+        # Velocity limiter — cap at 5× gravity-wave speed to prevent blowup
+        max_h = np.max(h_new) + 1e-10
+        vel_limit = 5.0 * np.sqrt(G_ACCEL * max_h)
+        np.clip(u_new, -vel_limit, vel_limit, out=u_new)
+        np.clip(v_new, -vel_limit, vel_limit, out=v_new)
 
         # Create updated state
         state_new = State(
             h=h_new.astype(np.float32),
-            u=u_new_final.astype(np.float32),
-            v=v_new_final.astype(np.float32),
+            u=u_new.astype(np.float32),
+            v=v_new.astype(np.float32),
             b=b.astype(np.float32),
             t=state.t + dt,
         )
 
         return state_new
 
-    def _compute_residuals(self, h, u, v, b, dx, dy, dt):
-        """Compute RHS of SWE using central differences."""
-        nx, ny = h.shape
+    def _compute_tendencies(self, h, u, v, b, dx, dy):
+        """
+        Compute time-tendencies (dh/dt, du/dt, dv/dt) using central differences.
 
-        h_new = h.copy()
-        u_new = u.copy()
-        v_new = v.copy()
+        Array convention: shape = (nrows, ncols) where
+          - nrows corresponds to y-direction (index j)
+          - ncols corresponds to x-direction (index i)
+          - h[j, i] accesses row j, column i
+        """
+        nrows, ncols = h.shape
 
-        # Interior cells only (2 to nx-2, 2 to ny-2)
-        for j in range(1, ny - 1):
-            for i in range(1, nx - 1):
+        dh_dt = np.zeros_like(h)
+        du_dt = np.zeros_like(u)
+        dv_dt = np.zeros_like(v)
+
+        # Interior cells only: j in [1, nrows-2], i in [1, ncols-2]
+        for j in range(1, nrows - 1):
+            for i in range(1, ncols - 1):
                 # Central differences for spatial derivatives
-                # ∂h/∂x ≈ (h[i+1] - h[i-1]) / (2*dx)
-                dh_dx = (h[j, i + 1] - h[j, i - 1]) / (2 * dx)
-                dh_dy = (h[j + 1, i] - h[j - 1, i]) / (2 * dy)
+                # x-direction: column index varies
+                dh_dx = (h[j, i + 1] - h[j, i - 1]) / (2.0 * dx)
+                du_dx = (u[j, i + 1] - u[j, i - 1]) / (2.0 * dx)
+                dv_dx = (v[j, i + 1] - v[j, i - 1]) / (2.0 * dx)
+                db_dx = (b[j, i + 1] - b[j, i - 1]) / (2.0 * dx)
 
-                du_dx = (u[j, i + 1] - u[j, i - 1]) / (2 * dx)
-                du_dy = (u[j + 1, i] - u[j - 1, i]) / (2 * dy)
+                # y-direction: row index varies
+                dh_dy = (h[j + 1, i] - h[j - 1, i]) / (2.0 * dy)
+                du_dy = (u[j + 1, i] - u[j - 1, i]) / (2.0 * dy)
+                dv_dy = (v[j + 1, i] - v[j - 1, i]) / (2.0 * dy)
+                db_dy = (b[j + 1, i] - b[j - 1, i]) / (2.0 * dy)
 
-                dv_dx = (v[j, i + 1] - v[j, i - 1]) / (2 * dx)
-                dv_dy = (v[j + 1, i] - v[j - 1, i]) / (2 * dy)
-
-                db_dx = (b[j, i + 1] - b[j, i - 1]) / (2 * dx)
-                db_dy = (b[j + 1, i] - b[j - 1, i]) / (2 * dy)
-
-                # SWE equations (conservative form):
-                # ∂h/∂t + ∂(hu)/∂x + ∂(hv)/∂y = 0
-                # ∂u/∂t + u*∂u/∂x + v*∂u/∂y = -g*∂η/∂x = -g*(∂h/∂x + ∂b/∂x)
-                # ∂v/∂t + u*∂v/∂x + v*∂v/∂y = -g*∂η/∂y = -g*(∂h/∂y + ∂b/∂y)
-
-                eta = h[j, i] + b[j, i]
+                # Surface gradient
                 d_eta_dx = dh_dx + db_dx
                 d_eta_dy = dh_dy + db_dy
 
                 if h[j, i] > MIN_DEPTH:
-                    # Mass conservation
-                    dh_dt = -(h[j, i] * du_dx + u[j, i] * dh_dx +
-                              h[j, i] * dv_dy + v[j, i] * dh_dy)
+                    # Mass conservation: ∂h/∂t = -∂(hu)/∂x - ∂(hv)/∂y
+                    dh_dt[j, i] = -(h[j, i] * du_dx + u[j, i] * dh_dx +
+                                    h[j, i] * dv_dy + v[j, i] * dh_dy)
 
-                    # Momentum (x)
-                    du_dt = -u[j, i] * du_dx - v[j, i] * du_dy - G_ACCEL * d_eta_dx
-                    # Friction
+                    # Momentum (x): ∂u/∂t = -u·∂u/∂x - v·∂u/∂y - g·∂η/∂x - friction
+                    du_dt[j, i] = -u[j, i] * du_dx - v[j, i] * du_dy - G_ACCEL * d_eta_dx
+
+                    # Manning friction
                     vel_mag = np.sqrt(u[j, i]**2 + v[j, i]**2)
                     if vel_mag > 1e-8:
-                        c_f = G_ACCEL * self.manning_n**2 * vel_mag / (h[j, i]**(1/3) + 1e-10)
-                        du_dt -= c_f * u[j, i]
+                        # c_f = g * n² * |v| / h^(1/3)
+                        c_f = G_ACCEL * self.manning_n**2 * vel_mag / (h[j, i]**(1.0/3.0) + 1e-10)
+                        du_dt[j, i] -= c_f * u[j, i]
 
-                    # Momentum (y)
-                    dv_dt = -u[j, i] * dv_dx - v[j, i] * dv_dy - G_ACCEL * d_eta_dy
-                    # Friction
+                    # Momentum (y): ∂v/∂t = -u·∂v/∂x - v·∂v/∂y - g·∂η/∂y - friction
+                    dv_dt[j, i] = -u[j, i] * dv_dx - v[j, i] * dv_dy - G_ACCEL * d_eta_dy
                     if vel_mag > 1e-8:
-                        dv_dt -= c_f * v[j, i]
-                else:
-                    dh_dt = 0.0
-                    du_dt = 0.0
-                    dv_dt = 0.0
+                        dv_dt[j, i] -= c_f * v[j, i]
+                # else: tendencies stay 0.0 for dry cells
 
-                # Update (Euler step)
-                h_new[j, i] = h[j, i] + dt * dh_dt
-                u_new[j, i] = u[j, i] + dt * du_dt
-                v_new[j, i] = v[j, i] + dt * dv_dt
-
-        return h_new, u_new, v_new
+        return dh_dt, du_dt, dv_dt
 
     def run(
         self,

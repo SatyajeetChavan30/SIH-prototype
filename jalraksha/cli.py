@@ -41,6 +41,9 @@ def main():
     run_parser.add_argument(
         "--output-dir", type=str, default="./data", help="Cache and output directory"
     )
+    run_parser.add_argument(
+        "--ensemble-size", type=int, default=10, help="Number of breach ensemble members"
+    )
 
     # `jalraksha validate` — check config only
     validate_parser = subparsers.add_parser("validate", help="Validate configuration")
@@ -89,21 +92,43 @@ def cmd_run(args):
         cache_dir = setup_cache(args.output_dir)
 
         # Fetch DEM (Phase 0)
-        print(f"\n📍 Preparing simulation for {config.get('dam_name', 'unnamed')} dam...")
+        print(f"\n[INFO] Preparing simulation for {config.get('dam_name', 'unnamed')} dam...")
         print(f"   Location: {config['dam_location']}")
-        print(f"   Height: {config['dam_height']}m, Storage: {config['gross_storage']}Mm³")
+        print(f"   Height: {config['dam_height']}m, Storage: {config['gross_storage']} MCM")
 
-        dem_path = fetch_dem(config["dam_location"], cache_dir)
-        print(f"✓ DEM cached: {dem_path}")
+        dam_lat, dam_lon = config["dam_location"]
+        dem_path = fetch_dem(dam_lat, dam_lon, cache_dir=cache_dir)
+        print(f"[OK] DEM cached: {dem_path}")
 
-        print("\n✓ Phase 0 setup complete. Ready for Phase 1 solver.")
-        print("  Next: Run `/build-phase 1` to implement solver core (HLLC, Audusse)")
+        print("\n[INFO] Executing end-to-end JalRaksha dam-break simulation...")
+        from jalraksha.run import run_dam_break_ensemble
+
+        dam_config = {
+            "name": config.get("dam_name", "tehri"),
+            "lat": config["dam_location"][0],
+            "lon": config["dam_location"][1],
+            "height_m": config["dam_height"],
+            "storage_mm3": config["gross_storage"],
+            "dam_type": config.get("dam_type", "embankment"),
+            "failure_mode": config.get("failure_mode", "overtopping"),
+        }
+
+        results = run_dam_break_ensemble(
+            dam_config=dam_config,
+            dem_path=str(dem_path),
+            ensemble_size=getattr(args, "ensemble_size", 10),
+            output_dir=args.output_dir,
+            solver_duration_s=1800.0,
+            target_resolution=200.0,
+        )
+
+        print("\n[SUCCESS] Simulation completed successfully!")
 
     except ConfigError as e:
-        print(f"❌ Config error: {e}")
+        print(f"[ERROR] Config error: {e}")
         exit(1)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[ERROR] Error: {e}")
         exit(1)
 
 
@@ -111,9 +136,9 @@ def cmd_validate(args):
     """Execute: jalraksha validate"""
     try:
         config = load_config(args.config)
-        print("✓ Config is valid")
+        print("[OK] Config is valid")
     except ConfigError as e:
-        print(f"❌ Config error: {e}")
+        print(f"[ERROR] Config error: {e}")
         exit(1)
 
 

@@ -272,8 +272,8 @@ def run_dam_break_ensemble(
         grid, state_init, manning_field = build_domain(
             dam_config, dem_path, target_resolution=target_resolution
         )
-        print(f"  Grid: {grid.nx} × {grid.ny} cells @ {grid.dx:.0f} m")
-        print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} × {grid.ny * grid.dy / 1000:.1f} km")
+        print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m")
+        print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")
     except Exception as e:
         print(f"  ERROR building domain: {e}")
         return {"error": str(e)}
@@ -297,8 +297,8 @@ def run_dam_break_ensemble(
     try:
         hydrographs = synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)
         breach_stats = ensemble_statistics(hydrographs)
-        print(f"  Q_peak median: {breach_stats['q_peak_median']:.0f} m³/s")
-        print(f"  Q_peak range: {breach_stats['q_peak_p05']:.0f}–{breach_stats['q_peak_p95']:.0f} m³/s (5th–95th)")
+        print(f"  Q_peak median: {breach_stats['q_peak_median']:.0f} m3/s")
+        print(f"  Q_peak range: {breach_stats['q_peak_p05']:.0f}-{breach_stats['q_peak_p95']:.0f} m3/s (5th-95th)")
         print(f"  Regressions used: {breach_stats['regressions_used']}")
     except Exception as e:
         print(f"  ERROR generating ensemble: {e}")
@@ -355,7 +355,7 @@ def run_dam_break_ensemble(
 
                 step_count += 1
 
-            print(f"✓ (Q_peak={metadata['q_peak_m3_s']:.0f}, t_fail={metadata['failure_time_s']/60:.1f} min)")
+            print(f"[OK] (Q_peak={metadata['q_peak_m3_s']:.0f}, t_fail={metadata['failure_time_s']/60:.1f} min)")
 
             results_ensemble.append({
                 "t_arrival": t_arrival,
@@ -366,7 +366,7 @@ def run_dam_break_ensemble(
             h_max_ensemble.append(h_max)
 
         except Exception as e:
-            print(f"✗ Error: {str(e)[:60]}")
+            print(f"[FAIL] Error: {str(e)[:60]}")
             warnings.warn(f"Sample {sample_id} failed: {e}")
 
     print(f"\n  Completed: {len(results_ensemble)}/{ensemble_size} members")
@@ -387,7 +387,7 @@ def run_dam_break_ensemble(
             t_med_min = times["median"] / 60
             t_p05_min = times["p05"] / 60
             t_p95_min = times["p95"] / 60
-            print(f"  {gauge_name:12s}: {t_med_min:6.1f} min (5th–95th: {t_p05_min:6.1f}–{t_p95_min:6.1f} min)")
+            print(f"  {gauge_name:12s}: {t_med_min:6.1f} min (5th-95th: {t_p05_min:6.1f}-{t_p95_min:6.1f} min)")
         else:
             print(f"  {gauge_name:12s}: No arrival detected")
 

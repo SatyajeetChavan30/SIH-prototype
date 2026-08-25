@@ -11,6 +11,10 @@ References:
   - EPSG:32643: UTM Zone 43N (covers India)
 """
 
+import os
+os.environ.pop("PROJ_LIB", None)
+os.environ.pop("PROJ_DATA", None)
+
 import numpy as np
 from pyproj import Transformer
 
@@ -106,7 +110,7 @@ def build_domain(
     )
 
     # Preprocess DEM to grid
-    state, manning_field = preprocess_dem(
+    _, state, manning_field = preprocess_dem(
         dem_path,
         target_resolution=target_resolution,
         manning_table=manning_table,
