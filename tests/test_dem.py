@@ -71,11 +71,18 @@ class TestComputeCopdmTiles:
         assert len(tiles) >= 1
 
     def test_tile_naming(self):
-        """Tile names follow COPDEM_GL30_srtm_utm<zone>N_E<lon>N<lat>.tif format."""
+        """Tile names follow the AWS Copernicus_DSM_COG_10_<lat>_00_<lon>_00_DEM convention.
+
+        This previously asserted the old SDSC "COPDEM_GL30_srtm_utm<zone>N_..."
+        naming. That mirror now answers 401 Unauthorized (see jalraksha/dem.py),
+        so the module moved to the public AWS bucket, whose objects use a
+        different convention. The code is right; the assertion was stale.
+        """
         tiles = compute_copdem_tiles(30.0, 78.0, 31.0, 79.0)
+        assert tiles
         for tile in tiles:
-            assert tile.startswith("COPDEM_GL30_srtm_utm")
-            assert ".tif" in tile
+            assert tile.startswith("Copernicus_DSM_COG_10_")
+            assert tile.endswith("_DEM.tif")
             assert "N" in tile  # Northern hemisphere
             assert "E" in tile  # East of prime meridian
 
@@ -108,13 +115,18 @@ class TestCopdmUrl:
     """Tests for copdem_url function."""
 
     def test_url_format(self):
-        """COG URL follows base + tile name pattern."""
-        tile = "COPDEM_GL30_srtm_utm43N_E078N030.tif"
+        """COG URL points at the public AWS Copernicus bucket.
+
+        Was asserting "cloud.sdsc.edu" — that mirror is dead (401), which is why
+        dem.py switched to copernicus-dem-30m.s3.amazonaws.com. AWS nests each
+        object under a directory of the same name, so the stem appears twice.
+        """
+        tile = "Copernicus_DSM_COG_10_N30_00_E078_00_DEM.tif"
+        stem = tile[:-4]
         url = copdem_url(tile)
-        assert "https://" in url
-        assert "cloud.sdsc.edu" in url
-        assert tile in url
-        assert url.endswith(".tif")
+        assert url == (
+            f"https://copernicus-dem-30m.s3.amazonaws.com/{stem}/{stem}.tif"
+        )
 
     def test_url_consistency(self):
         """Same tile name produces same URL."""

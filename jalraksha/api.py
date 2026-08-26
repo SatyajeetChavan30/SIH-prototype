@@ -74,10 +74,10 @@ def get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) 
     """
     if dam_id == "tehri" or (29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0):
         return [
-            {"name": "Koteshwar",  "distance_km": 13.0,  "lat": 30.34, "lon": 78.53, "river": "Bhagirathi"},
+            {"name": "Koteshwar",  "distance_km": 13.0,  "lat": 30.3167, "lon": 78.4833, "river": "Bhagirathi"},
             {"name": "Devprayag",  "distance_km": 28.0,  "lat": 30.15, "lon": 78.60, "river": "Ganga"},
-            {"name": "Rishikesh",  "distance_km": 34.8,  "lat": 30.10, "lon": 77.10, "river": "Ganga"},
-            {"name": "Haridwar",   "distance_km": 58.4,  "lat": 29.95, "lon": 77.86, "river": "Ganga"},
+            {"name": "Rishikesh",  "distance_km": 34.8,  "lat": 30.0869, "lon": 78.2676, "river": "Ganga"},
+            {"name": "Haridwar",   "distance_km": 58.4,  "lat": 29.9457, "lon": 78.1642, "river": "Ganga"},
         ]
     else:
         # Generic placeholders at 10, 25, 50, 100 km downstream

@@ -142,7 +142,10 @@ class TestDomainBuilder:
         """Convert lat/lon to UTM."""
         # Tehri dam approximate coordinates
         lat, lon = 30.3789, 78.4789
-        x_utm, y_utm = latlon_to_utm(lat, lon, utm_zone=43)
+        # latlon_to_utm returns (zone, easting, northing); this test previously
+        # unpacked only two values and so had never run past this line.
+        zone, x_utm, y_utm = latlon_to_utm(lat, lon, utm_zone=43)
+        assert zone == 43
 
         # Should produce reasonable UTM values (5–10 million meters eastings, 3–4 million northings for India)
         # UTM zone 43 extends from 72°E to 78°E; Tehri (78.4789°E) is slightly east of zone boundary

@@ -47,10 +47,19 @@ class TestArrivalTimeComputation:
 
     def test_arrival_times_mock_results(self):
         """Compute arrival times from mock ensemble results."""
-        grid = Grid(nx=50, ny=50, dx=200.0, dy=200.0, x0=0, y0=0)
+        from pyproj import Transformer
+
+        # Anchor on the real Tehri corridor and place the gauges INSIDE the
+        # domain, so this exercises the actual nearest-cell lookup rather than
+        # the "gauge outside domain" branch.
+        x0, y0 = 207736.0, 3313468.0
+        grid = Grid(nx=50, ny=50, dx=200.0, dy=200.0, x0=x0, y0=y0, crs="EPSG:32644")
+        to_wgs84 = Transformer.from_crs("EPSG:32644", "EPSG:4326", always_xy=True)
+        g1_lon, g1_lat = to_wgs84.transform(x0 + 10 * grid.dx, y0 + 10 * grid.dy)
+        g2_lon, g2_lat = to_wgs84.transform(x0 + 30 * grid.dx, y0 + 30 * grid.dy)
         gauges = [
-            {"name": "G1", "distance_km": 10, "lat": 30.0, "lon": 78.5},
-            {"name": "G2", "distance_km": 20, "lat": 29.95, "lon": 78.6},
+            {"name": "G1", "distance_km": 10, "lat": g1_lat, "lon": g1_lon},
+            {"name": "G2", "distance_km": 20, "lat": g2_lat, "lon": g2_lon},
         ]
 
         # Mock results: arrival time grid
@@ -83,38 +92,52 @@ class TestArrivalTimeComputation:
             assert "median" in arrival_dict[gauge_name]
             assert "p05" in arrival_dict[gauge_name]
             assert "p95" in arrival_dict[gauge_name]
+            # An in-domain gauge must produce a real arrival, not None.
+            assert arrival_dict[gauge_name]["median"] is not None
+            assert arrival_dict[gauge_name]["num_samples"] == 5
+
+        # G2 is further from the wave origin than G1.
+        assert arrival_dict["G2"]["median"] > arrival_dict["G1"]["median"]
 
     def test_arrival_times_monotonic(self):
-        """Arrival times should increase downstream."""
-        grid = Grid(nx=100, ny=100, dx=100.0, dy=100.0, x0=0, y0=0)
+        """Arrival times must increase with distance downstream.
 
-        # Create mock results with consistent propagation
+        The gauges are positioned by projecting real UTM coordinates INSIDE the
+        domain back to lat/lon. Previously they were arbitrary lat/lons that fell
+        far outside a domain anchored at UTM (0, 0), so all three snapped to the
+        same corner cell and reported identical times — the monotonicity
+        assertion held trivially and tested nothing.
+        """
+        from pyproj import Transformer
+
+        # Domain anchored on the real Tehri corridor (UTM 44N).
+        x0, y0 = 207736.0, 3313468.0
+        grid = Grid(nx=100, ny=100, dx=100.0, dy=100.0, x0=x0, y0=y0, crs="EPSG:32644")
+
+        # Mock front spreading from the south-west corner at 50 s per cell.
         results_ensemble = []
+        jj, ii = np.mgrid[0:grid.ny, 0:grid.nx]
+        t_arrival = (np.sqrt(ii**2 + jj**2) * 50).astype(np.float32)
         for sample_id in range(10):
-            t_arrival = np.zeros((grid.ny, grid.nx), dtype=np.float32)
-            # Wave front propagates from top-left corner
-            for j in range(grid.ny):
-                for i in range(grid.nx):
-                    dist_cells = np.sqrt(i**2 + j**2)
-                    t_arrival[j, i] = dist_cells * 50  # 50 s per cell
-            results_ensemble.append({"t_arrival": t_arrival, "sample_id": sample_id})
+            results_ensemble.append({"t_arrival": t_arrival.copy(), "sample_id": sample_id})
 
-        # Gauges along a downstream line
-        gauges = [
-            {"name": "Near", "distance_km": 5, "lat": 30.0, "lon": 78.5},
-            {"name": "Mid", "distance_km": 10, "lat": 30.0, "lon": 78.6},
-            {"name": "Far", "distance_km": 15, "lat": 30.0, "lon": 78.7},
-        ]
+        # Three points on the diagonal, strictly increasing distance from the
+        # corner the front starts at, converted UTM -> lat/lon for the API.
+        to_wgs84 = Transformer.from_crs("EPSG:32644", "EPSG:4326", always_xy=True)
+        gauges = []
+        for name, cells, dist_km in [("Near", 20, 2.8), ("Mid", 50, 7.1), ("Far", 80, 11.3)]:
+            lon, lat = to_wgs84.transform(x0 + cells * grid.dx, y0 + cells * grid.dy)
+            gauges.append({"name": name, "distance_km": dist_km, "lat": lat, "lon": lon})
 
         arrival_dict = compute_arrival_times_at_gauges(
             results_ensemble, grid, gauges, threshold_h=0.1
         )
 
-        # Medians should generally increase downstream
-        times = [arrival_dict[g["name"]]["median"] for g in gauges if arrival_dict[g["name"]].get("median")]
-        if len(times) == 3:
-            assert times[1] >= times[0] * 0.9, "Mid should be >= Near (with tolerance)"
-            assert times[2] >= times[1] * 0.9, "Far should be >= Mid (with tolerance)"
+        times = [arrival_dict[g["name"]]["median"] for g in gauges]
+        assert all(t is not None for t in times), (
+            f"every gauge should be inside the domain, got {arrival_dict}"
+        )
+        assert times[0] < times[1] < times[2], f"not monotonic downstream: {times}"
 
 
 @pytest.mark.blocking

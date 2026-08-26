@@ -273,7 +273,20 @@ def _fetch_tile_window(
     back to synthetic terrain.
     """
     try:
-        with rasterio.open(f"/vsicurl/{tile_url}") as src:
+        # These GDAL settings are load-bearing, not tuning. Without
+        # GDAL_DISABLE_READDIR_ON_OPEN, /vsicurl lists the whole bucket prefix
+        # before opening the object, which against copernicus-dem-30m hangs long
+        # enough to look like a network failure — and would silently trip the
+        # synthetic-terrain fallback below. The timeouts bound that failure mode
+        # instead of letting a run stall indefinitely.
+        with rasterio.Env(
+            GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+            CPL_VSIL_CURL_USE_HEAD="NO",
+            GDAL_HTTP_TIMEOUT="30",
+            GDAL_HTTP_CONNECTTIMEOUT="15",
+            GDAL_HTTP_MAX_RETRY="3",
+            GDAL_HTTP_RETRY_DELAY="2",
+        ), rasterio.open(f"/vsicurl/{tile_url}") as src:
             window = src.window(lon_min, lat_min, lon_max, lat_max)
             # Round outward so the window fully covers the request, and clamp
             # to the tile: a domain straddling tiles asks each for a window

@@ -47,6 +47,13 @@ app.add_middleware(
 # conversion applied when returning them from the endpoints.
 app.mount("/files", StaticFiles(directory=str(settings.DATA_DIR)), name="files")
 
+# Cesium terrain tiles (brief §5.5.1), built by tools/cesium/build_terrain_tiles.py
+# from the same DEM the solver conditions. Docker Compose serves these through the
+# dedicated nginx `tiles` service; mounting them here as well means local dev needs
+# no second process, and inherits this app's CORS headers — Cesium fetches
+# layer.json cross-origin from the Vite dev server and is blocked without them.
+app.mount("/tiles", StaticFiles(directory=str(settings.DATA_DIR / "tiles")), name="tiles")
+
 
 def _to_file_url(path_str: str) -> str:
     """Convert an absolute filesystem path under DATA_DIR into a /files/... URL."""

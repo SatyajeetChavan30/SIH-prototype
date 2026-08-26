@@ -11,7 +11,9 @@ export default defineConfig({
   server: { port: 3000 },
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(process.env.VITE_API_URL || "http://localhost:8000"),
-    "import.meta.env.VITE_TILES_URL": JSON.stringify(process.env.VITE_TILES_URL || "http://localhost:8080"),
+    // Default to the API's own /tiles mount so local dev needs no separate tile
+    // server. Docker Compose overrides this with the nginx `tiles` service.
+    "import.meta.env.VITE_TILES_URL": JSON.stringify(process.env.VITE_TILES_URL || "http://localhost:8000/tiles"),
     "import.meta.env.VITE_CESIUM_ION_TOKEN": JSON.stringify(process.env.VITE_CESIUM_ION_TOKEN || ""),
     "import.meta.env.VITE_CESIUM_ION_ASSET_ID": JSON.stringify(process.env.VITE_CESIUM_ION_ASSET_ID || ""),
   },

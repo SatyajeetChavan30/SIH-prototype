@@ -32,11 +32,18 @@ def _resolve_dem(dam_config: Dict[str, Any]) -> str:
     data = settings.DATA_DIR
     lat = dam_config.get("lat")
     lon = dam_config.get("lon")
-    # Prefer an explicitly staged mosaic keyed by rounded lat/lon.
+    # Prefer fetch_dem's canonical clipped domain product over the raw mosaic:
+    # the mosaic is the untrimmed multi-tile merge, while the clipped file is the
+    # one that has had nodata edges removed (an unnoticed ring of 0 m elevation
+    # around the domain is a boundary-wide sink for the solver).
     if lat is not None and lon is not None:
-        cand = data / f"dem/mosaic_{lat:.2f}_{lon:.2f}.tif"
-        if cand.exists():
-            return str(cand)
+        for name in (
+            f"dem/dem_{lat:.2f}_{lon:.2f}_clipped.tif",
+            f"dem/mosaic_{lat:.2f}_{lon:.2f}.tif",
+        ):
+            cand = data / name
+            if cand.exists():
+                return str(cand)
     # Fall back to the cached DEM used by the offline cache.
     from jalraksha import cache as cache_mod
     try:

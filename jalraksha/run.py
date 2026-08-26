@@ -16,11 +16,12 @@ This is the MANDATORY core deliverable (Spec §4).
 """
 
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import warnings
 
 from jalraksha.solver.types import Grid, create_state
 from jalraksha.solver.core import SWESolver
+from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
 from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
 
@@ -39,13 +40,18 @@ def define_downstream_gauges(dam_lat: float, dam_lon: float) -> List[Dict]:
     """
     utm_zone = compute_utm_zone(dam_lat, dam_lon)
 
-    # Approximate downstream locations (Alaknanda/Bhagirathi corridor)
+    # Real gauge sites along the Bhagirathi/Ganga corridor. These coordinates
+    # were previously approximate to the point of being wrong: Koteshwar sat
+    # ~4 km east of the gorge (so the flood never reached it), and Rishikesh and
+    # Haridwar carried 77.x longitudes placing them ~112 km and ~29 km west of
+    # the real towns. A gauge off the river reports no arrival no matter how
+    # well the solver runs.
     gauges = [
         {
             "name": "Koteshwar",
             "distance_km": 13.0,
-            "lat": 30.34,  # Approx
-            "lon": 78.53,  # Approx
+            "lat": 30.3167,
+            "lon": 78.4833,
         },
         {
             "name": "Devprayag",
@@ -56,14 +62,14 @@ def define_downstream_gauges(dam_lat: float, dam_lon: float) -> List[Dict]:
         {
             "name": "Rishikesh",
             "distance_km": 34.8,
-            "lat": 30.10,
-            "lon": 77.10,
+            "lat": 30.0869,
+            "lon": 78.2676,
         },
         {
             "name": "Haridwar",
             "distance_km": 58.4,
-            "lat": 29.95,
-            "lon": 77.86,
+            "lat": 29.9457,
+            "lon": 78.1642,
         },
     ]
 
@@ -75,6 +81,8 @@ def compute_arrival_times_at_gauges(
     grid: Grid,
     gauges: List[Dict],
     threshold_h: float = 0.1,
+    bed_elevation: np.ndarray = None,
+    channel_search_m: float = 1200.0,
 ) -> Dict:
     """
     Compute arrival times at downstream gauges across ensemble.
@@ -103,17 +111,58 @@ def compute_arrival_times_at_gauges(
     # Get grid cell centres
     x_centres, y_centres = grid.cell_centres_2d()
 
+    # Every gauge must be projected into the DOMAIN's UTM zone, not its own.
+    # Letting latlon_to_utm pick per gauge silently mixed CRSs: Rishikesh sits in
+    # zone 43 while the Tehri domain is zone 44, so its easting was measured from
+    # a different central meridian and the "nearest cell" lookup below landed
+    # hundreds of km away.
+    domain_zone = int(str(grid.crs).split(":")[-1]) % 100
+
+    # A gauge outside the domain has no meaningful nearest cell; argmin would
+    # silently snap it to a boundary cell and report that cell's arrival time.
+    x_min, x_max, y_min, y_max = grid.extent()
+
     for gauge in gauges:
         gauge_lat = gauge["lat"]
         gauge_lon = gauge["lon"]
 
-        # Convert gauge location to UTM (latlon_to_utm computes its own zone
-        # internally and returns it as the first element).
-        _zone, x_utm, y_utm = latlon_to_utm(gauge_lat, gauge_lon)
+        _zone, x_utm, y_utm = latlon_to_utm(gauge_lat, gauge_lon, utm_zone=domain_zone)
+
+        if not (x_min <= x_utm <= x_max and y_min <= y_utm <= y_max):  # noqa: E501
+            arrival_times_dict[gauge["name"]] = {
+                "median": None, "p05": None, "p95": None, "num_samples": 0,
+                "distance_km": gauge["distance_km"],
+                "note": "Gauge lies outside the solver domain; increase domain_radius_km",
+            }
+            warnings.warn(
+                f"Gauge {gauge['name']} ({gauge_lat}, {gauge_lon}) is outside the "
+                f"{grid.nx * grid.dx / 1000:.0f} km domain — no arrival can be computed."
+            )
+            continue
 
         # Find nearest grid cell to gauge
         dist_to_gauge = np.sqrt((x_centres - x_utm) ** 2 + (y_centres - y_utm) ** 2)
         j_gauge, i_gauge = np.unravel_index(np.argmin(dist_to_gauge), dist_to_gauge.shape)
+
+        # Snap onto the river channel: within channel_search_m, take the LOWEST
+        # bed cell rather than the geometrically nearest one.
+        #
+        # A gauge measures river stage, so it belongs on the river. At 200-400 m
+        # cells the Bhagirathi gorge is sub-grid, and the nearest cell to a
+        # gauge's coordinate is often part way up the canyon wall. Koteshwar
+        # snapped to a cell at 853 m with the valley floor at 752 m only three
+        # cells away, and so reported "no arrival" while the flood ran 70 m deep
+        # past it — while Devprayag, 15 km further downstream, happened to land
+        # on the channel and did report an arrival. Reporting the far gauge wet
+        # and the near one dry is the giveaway that this is a sampling artifact,
+        # not physics.
+        if bed_elevation is not None and channel_search_m > 0:
+            radius = max(1, int(round(channel_search_m / min(grid.dx, grid.dy))))
+            j0, j1 = max(0, j_gauge - radius), min(grid.ny, j_gauge + radius + 1)
+            i0, i1 = max(0, i_gauge - radius), min(grid.nx, i_gauge + radius + 1)
+            window = bed_elevation[j0:j1, i0:i1]
+            dj, di = np.unravel_index(np.argmin(window), window.shape)
+            j_gauge, i_gauge = j0 + dj, i0 + di
 
         # Extract arrival times from all ensemble members
         arrival_times_ensemble = []
@@ -146,6 +195,9 @@ def compute_arrival_times_at_gauges(
                 "p05": None,
                 "p95": None,
                 "num_samples": 0,
+                # Callers format this alongside the arrival time; omitting it
+                # here made every no-arrival gauge a TypeError downstream.
+                "distance_km": gauge["distance_km"],
                 "note": "No arrival detected in ensemble",
             }
 
@@ -197,23 +249,23 @@ def inject_breach_hydrograph(
     if q_current <= 0:
         return  # No injection
 
-    # Distribute discharge over breach cell area
+    # Add the discharged VOLUME as depth: Q [m3/s] * dt [s] / cell area [m2].
+    #
+    # This previously imposed a velocity instead (u = Q / (h * width)) and never
+    # added mass. Against a dry bed that is a no-op — there is no water for the
+    # velocity to act on, and the solver zeroes velocities in dry cells anyway —
+    # so no water ever entered the domain. It only appeared to work because the
+    # old build_domain filled h with terrain elevation, leaving the whole domain
+    # pre-flooded to ~1500 m.
+    #
+    # A mass source is also the right primitive now that the bed is real
+    # topography: it makes no assumption about which way "downstream" points,
+    # and the well-balanced solver routes the water downhill on its own. The old
+    # version pushed flow in +x regardless of the actual valley orientation.
     cell_area = grid.dx * grid.dy
-    cell_depth = state.h[j_breach, i_breach]
+    delta_h = q_current * dt_s / cell_area
 
-    if cell_depth <= 0:
-        cell_depth = 0.1  # Minimum depth for outflow
-
-    # Simple approach: set depth and velocity to achieve target discharge
-    # Q = u * h * width, solve for u assuming breach width ≈ grid cell size
-    breach_width = min(grid.dx, grid.dy)  # Simplification
-    u_breach = q_current / (cell_depth * breach_width)
-
-    # Impose discharge (downstream direction, typically negative x or y depending on breach)
-    # For Tehri, breach is at high elevation; flow is generally downhill
-    # Set velocity to achieve desired discharge
-    state.u[j_breach, i_breach] = u_breach  # m/s downstream
-    state.v[j_breach, i_breach] = 0  # No cross-stream flow
+    state.h[j_breach, i_breach] += delta_h
 
 
 def run_dam_break_ensemble(
@@ -225,6 +277,9 @@ def run_dam_break_ensemble(
     target_resolution: float = 200.0,
     record_depth_snapshots: bool = False,
     n_snapshots: int = 30,
+    n_workers: Optional[int] = None,
+    domain_radius_km: float = 60.0,
+    use_synthetic_terrain: bool = False,
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -253,6 +308,12 @@ def run_dam_break_ensemble(
             memory-prohibitive for large ensembles, so only one representative
             member is snapshotted.
         n_snapshots: Number of snapshot times when `record_depth_snapshots=True`.
+        n_workers: Ensemble members to run concurrently. None uses every CPU
+            core; 1 forces in-process execution (needed when the caller is
+            itself inside a worker process, and useful for debugging).
+        domain_radius_km: Half-width of the square solver domain (km).
+        use_synthetic_terrain: Emergency fallback to an analytic valley instead
+            of the real DEM. Results are not real terrain — see build_domain.
 
     Returns:
         {
@@ -280,7 +341,11 @@ def run_dam_break_ensemble(
     print("\n[Step 1] Building terrain domain...")
     try:
         grid, state_init, manning_field = build_domain(
-            dam_config, dem_path, target_resolution=target_resolution
+            dam_config,
+            dem_path,
+            target_resolution=target_resolution,
+            domain_radius_km=domain_radius_km,
+            use_synthetic_terrain=use_synthetic_terrain,
         )
         print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m")
         print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")
@@ -327,85 +392,48 @@ def run_dam_break_ensemble(
     # integration brief) — recording every member's depth history is
     # memory-prohibitive for ensembles of 100-10,000.
     snapshot_sample_id = None
+    snapshot_times = None
     if record_depth_snapshots and hydrographs:
         q_peaks = [h["metadata"]["q_peak_m3_s"] for h in hydrographs]
         q_target = breach_stats.get("q_peak_median", np.median(q_peaks))
         snapshot_sample_id = int(np.argmin(np.abs(np.array(q_peaks) - q_target)))
         snapshot_times = np.linspace(0, solver_duration_s, n_snapshots)
-        next_snapshot_idx = 0
 
-    for sample_id, hydrograph in enumerate(hydrographs):
-        print(f"  Member {sample_id + 1}/{ensemble_size}: ", end="", flush=True)
+    member_results = run_ensemble(
+        hydrographs=hydrographs,
+        grid=grid,
+        state_init=state_init,
+        manning_field=manning_field,
+        i_breach=i_breach,
+        j_breach=j_breach,
+        solver_duration_s=solver_duration_s,
+        snapshot_sample_id=snapshot_sample_id,
+        snapshot_times=snapshot_times,
+        n_workers=n_workers,
+    )
 
-        try:
-            # Get hydrograph for this member
-            t_hydro = hydrograph["t_array"]
-            q_hydro = hydrograph["Q_t"]
-            metadata = hydrograph["metadata"]
+    for member in member_results:
+        sample_id = member["sample_id"]
+        if not member.get("success"):
+            print(f"  Member {sample_id + 1}/{ensemble_size}: [FAIL] {member.get('error', '')[:60]}")
+            warnings.warn(f"Sample {sample_id} failed: {member.get('error')}")
+            continue
 
-            # Initialize solver on this domain
-            solver = SWESolver(grid, manning_n=np.mean(manning_field), cfl=0.9)
-
-            # Time-stepping loop
-            state = state_init.copy()
-            t_sim = 0
-            dt_adaptive = solver.compute_cfl_timestep(state)
-
-            # Tracking arrays
-            t_arrival = np.full((grid.ny, grid.nx), np.inf, dtype=np.float32)
-            h_max = np.zeros((grid.ny, grid.nx), dtype=np.float32)
-            arrival_threshold = 0.1  # meters
-
-            step_count = 0
-            max_steps = int(solver_duration_s / dt_adaptive) + 1
-
-            is_snapshot_member = record_depth_snapshots and sample_id == snapshot_sample_id
-            if is_snapshot_member:
-                next_snapshot_idx = 0
-                if snapshot_times[0] <= 0:
-                    depth_series.append({"time_s": 0.0, "depth": state.h.copy()})
-                    next_snapshot_idx = 1
-
-            while t_sim < solver_duration_s and step_count < max_steps:
-                # Inject breach hydrograph
-                inject_breach_hydrograph(
-                    state, grid, i_breach, j_breach, t_sim, dt_adaptive, q_hydro, t_hydro
-                )
-
-                # Take solver step
-                state = solver.step(state)
-                t_sim += dt_adaptive
-                dt_adaptive = solver.compute_cfl_timestep(state)
-
-                # Track arrival times and max depths
-                newly_wet = (state.h >= arrival_threshold) & (t_arrival == np.inf)
-                t_arrival[newly_wet] = t_sim
-
-                h_max = np.maximum(h_max, state.h)
-
-                if is_snapshot_member:
-                    while (
-                        next_snapshot_idx < len(snapshot_times)
-                        and t_sim >= snapshot_times[next_snapshot_idx]
-                    ):
-                        depth_series.append({"time_s": float(t_sim), "depth": state.h.copy()})
-                        next_snapshot_idx += 1
-
-                step_count += 1
-
-            print(f"[OK] (Q_peak={metadata['q_peak_m3_s']:.0f}, t_fail={metadata['failure_time_s']/60:.1f} min)")
-
-            results_ensemble.append({
-                "t_arrival": t_arrival,
-                "h_max": h_max,
-                "sample_id": sample_id,
-                "metadata": metadata,
-            })
-            h_max_ensemble.append(h_max)
-
-        except Exception as e:
-            print(f"[FAIL] Error: {str(e)[:60]}")
-            warnings.warn(f"Sample {sample_id} failed: {e}")
+        metadata = member["metadata"]
+        print(
+            f"  Member {sample_id + 1}/{ensemble_size}: [OK] "
+            f"(Q_peak={metadata['q_peak_m3_s']:.0f}, "
+            f"t_fail={metadata['failure_time_s'] / 60:.1f} min)"
+        )
+        results_ensemble.append({
+            "t_arrival": member["t_arrival"],
+            "h_max": member["h_max"],
+            "sample_id": sample_id,
+            "metadata": metadata,
+        })
+        h_max_ensemble.append(member["h_max"])
+        if member.get("depth_series"):
+            depth_series = member["depth_series"]
 
     print(f"\n  Completed: {len(results_ensemble)}/{ensemble_size} members")
 
@@ -417,7 +445,8 @@ def run_dam_break_ensemble(
     # =========================================================================
     print("\n[Step 4] Computing arrival times at downstream gauges...")
     arrival_times_gauges = compute_arrival_times_at_gauges(
-        results_ensemble, grid, gauges, threshold_h=0.1
+        results_ensemble, grid, gauges, threshold_h=0.1,
+        bed_elevation=state_init.b,
     )
 
     for gauge_name, times in arrival_times_gauges.items():
@@ -480,6 +509,12 @@ def run_dam_break_ensemble(
             "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,
             "x0": grid.x0, "y0": grid.y0, "crs": grid.crs,
         },
+        # The bed the solver actually ran on. Downstream 3D visualization needs
+        # the terrain to place the water surface (water_z = terrain_z + depth),
+        # and re-deriving it by re-running build_domain risks silently rendering
+        # a different surface from the one the flood was computed over.
+        # Row 0 is the SOUTHERNMOST row (Grid.cell_centres_y increases north).
+        "terrain_elevation": state_init.b,
     }
     if record_depth_snapshots:
         result["depth_series"] = depth_series

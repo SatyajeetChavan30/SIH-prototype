@@ -499,10 +499,10 @@ if st.session_state.results:
 
             # Gauge markers
             gauge_coords = {
-                "Koteshwar":  (30.34, 78.53),
+                "Koteshwar":  (30.3167, 78.4833),
                 "Devprayag":  (30.15, 78.60),
-                "Rishikesh":  (30.10, 77.10),
-                "Haridwar":   (29.95, 77.86),
+                "Rishikesh":  (30.0869, 78.2676),
+                "Haridwar":   (29.9457, 78.1642),
             }
             for gname, (glat, glon) in gauge_coords.items():
                 gdata = at.get(gname, {})
@@ -534,8 +534,8 @@ if st.session_state.results:
             )
             # Fallback: static text
             st.json({g: {"lat": c[0], "lon": c[1], "arrival_min": round(at.get(g, {}).get("median", 0) / 60, 1)}
-                     for g, c in [("Koteshwar",(30.34,78.53)),("Devprayag",(30.15,78.60)),
-                                   ("Rishikesh",(30.10,77.10)),("Haridwar",(29.95,77.86))]})
+                     for g, c in [("Koteshwar",(30.3167,78.4833)),("Devprayag",(30.15,78.60)),
+                                   ("Rishikesh",(30.0869,78.2676)),("Haridwar",(29.9457,78.1642))]})
 
         # ── Disclaimer ────────────────────────────────────────────────────────────
         st.markdown(

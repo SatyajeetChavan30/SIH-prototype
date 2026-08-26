@@ -15,31 +15,45 @@ Outputs:
 """
 
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
+import warnings
+
 import numpy as np
 import rasterio
 from scipy import ndimage
 
 from jalraksha.solver.types import Grid, create_state
+from jalraksha.terrain.conditioning import load_dem_as_grid
 
 
-def latlon_to_utm(lat: float, lon: float) -> Tuple[int, float, float]:
+def latlon_to_utm(
+    lat: float, lon: float, utm_zone: Optional[int] = None
+) -> Tuple[int, float, float]:
     """
     Convert latitude/longitude to UTM coordinates via pyproj.
 
     Args:
         lat: Latitude (degrees)
         lon: Longitude (degrees)
+        utm_zone: Force a specific zone. Needed when a domain straddles a zone
+            boundary — every cell must share one CRS, so points outside the
+            domain's zone have to be projected into it rather than into their
+            own. Defaults to the zone containing (lat, lon).
 
     Returns:
-        (zone, easting, northing) in meters, in the correct UTM zone/hemisphere
+        (zone, easting, northing) in metres, in the correct UTM zone/hemisphere
         (EPSG:326xx north / 327xx south) for (lat, lon).
     """
-    zone = int((lon + 180) / 6) + 1
-    if zone < 1:
-        zone = 60
-    if zone > 60:
-        zone = 1
+    if utm_zone is None:
+        zone = int((lon + 180) / 6) + 1
+        if zone < 1:
+            zone = 60
+        if zone > 60:
+            zone = 1
+    else:
+        zone = int(utm_zone)
+        if not 1 <= zone <= 60:
+            raise ValueError(f"utm_zone must be in 1..60, got {utm_zone}")
 
     epsg = 32600 + zone if lat >= 0 else 32700 + zone
     from pyproj import Transformer
@@ -58,110 +72,122 @@ def compute_utm_zone(lat: float, lon: float) -> int:
 def build_domain(
     dam_config: Dict[str, Any],
     dem_path: str,
-    target_resolution: float = 200.0
+    target_resolution: float = 200.0,
+    domain_radius_km: float = 60.0,
+    use_synthetic_terrain: bool = False,
 ) -> Tuple[Grid, Any, np.ndarray]:
     """
     Build computational domain from DEM for dam-break simulation.
 
+    Bed elevation goes into State.b; State.h (water DEPTH) starts at zero.
+
+    That distinction is the whole point of this function and was previously
+    inverted: the old implementation assigned the elevation field to
+    ``state_init.h``, leaving the bed flat at zero, so every run began with the
+    entire domain under ~1500 m of standing water. Every gauge then "arrived"
+    within a fraction of a second because the domain was already wet at t=0.
+
+    Modelling note — the domain starts DRY rather than with an impounded
+    reservoir. The flood volume enters through the breach hydrograph, which
+    run.py injects at the breach cell each timestep and which is itself derived
+    from the reservoir storage by the Phase 3 breach regressions. Impounding the
+    reservoir here as well would double-count that water.
+
     Args:
-        dam_config: Dam configuration (lat, lon, height, storage, etc.)
-        dem_path: Path to DEM GeoTIFF file
-        target_resolution: Target grid resolution (meters)
+        dam_config: Dam configuration (lat, lon, height_m, storage_mm3, ...)
+        dem_path: Path to DEM GeoTIFF (from Phase 0 cache)
+        target_resolution: Target grid resolution (metres)
+        domain_radius_km: Half-width of the square domain (km)
+        use_synthetic_terrain: Emergency fallback — build an analytic valley
+            instead of reading the DEM. Off by default; results from a synthetic
+            run are not real terrain and must not be presented as such.
 
     Returns:
-        grid: Grid definition
-        state_init: Initial state (dry bed, h=0 everywhere)
+        grid: Grid definition in a metric UTM CRS
+        state_init: Initial state (dry bed, real topography in .b)
         manning_field: Manning's n coefficient field
     """
-    print(f"\n[Terrain] Building domain from DEM: {dem_path}")
-
-    # Load DEM using rasterio
-    with rasterio.open(dem_path) as src:
-        dem_array = src.read(1)  # First band (elevation)
-        transform = src.transform
-        crs = src.crs
-
-        # Check CRS
-        if crs and "EPSG:4326" in str(crs):
-            print("  WARNING: DEM in geographic CRS (degrees), reprojecting to metric...")
-            # Would need proper reprojection in full implementation
-
-    # Compute domain extent (add buffer around dam)
     dam_lat = dam_config["lat"]
     dam_lon = dam_config["lon"]
-    domain_radius_km = 30.0  # 30 km buffer
 
-    # Convert to degrees roughly (1 deg ≈ 111 km)
-    lat_radius = domain_radius_km / 111.0
-    lon_radius = domain_radius_km / (111.0 * np.cos(np.radians(dam_lat)))
+    if use_synthetic_terrain:
+        grid, bed_elevation = _synthetic_domain(
+            dam_lat, dam_lon, target_resolution, domain_radius_km
+        )
+        warnings.warn(
+            "build_domain(use_synthetic_terrain=True): the bed is an analytic "
+            "valley, NOT real topography. Arrival times and depths from this run "
+            "are illustrative only and must not be reported as screening results."
+        )
+    else:
+        print(f"\n[Terrain] Building domain from DEM: {dem_path}")
+        grid, bed_elevation = load_dem_as_grid(
+            dem_path,
+            dam_lat,
+            dam_lon,
+            target_resolution=target_resolution,
+            domain_radius_km=domain_radius_km,
+        )
 
-    lat_min = dam_lat - lat_radius
-    lat_max = dam_lat + lat_radius
-    lon_min = dam_lon - lon_radius
-    lon_max = dam_lon + lon_radius
+    print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m resolution ({grid.crs})")
+    print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")
+    print(
+        f"  Bed elevation: {bed_elevation.min():.1f} to {bed_elevation.max():.1f} m "
+        f"(mean {bed_elevation.mean():.1f} m)"
+    )
 
-    # Load DEM subset within bounding box
-    # In full implementation: extract subset from DEM
-    ny, nx = 500, 500  # Simplified - would compute based on resolution
+    # Dry bed. Elevation belongs in b, NOT h — see the docstring; this was the
+    # inverted assignment that made every previous run meaningless.
+    state_init = create_state(
+        grid,
+        h_init=np.zeros((grid.ny, grid.nx), dtype=np.float64),
+        b_init=bed_elevation,
+    )
 
-    # Georeference the grid on the dam's real location so exported rasters/
-    # keyframes place the flood at the correct spot on the map, even though
-    # the terrain itself is still synthetic (tracked separately from this fix).
+    # Manning's n. TODO: UNVETTED — a uniform 0.03 stands in for the ESA
+    # WorldCover lookup in terrain/roughness.py, which is still a stub returning
+    # this same constant. 0.03 is a conventional natural-channel value
+    # (Chow 1959, Table 5-6); a real land-cover field is Phase 2 work.
+    manning_field = np.full(
+        (grid.ny, grid.nx), dam_config.get("manning_n", 0.03), dtype=np.float64
+    )
+
+    return grid, state_init, manning_field
+
+
+def _synthetic_domain(
+    dam_lat: float,
+    dam_lon: float,
+    target_resolution: float,
+    domain_radius_km: float,
+) -> Tuple[Grid, np.ndarray]:
+    """
+    Analytic valley used only as an emergency fallback (see build_domain).
+
+    Vectorised: the previous version ran a 250,000-iteration Python double loop.
+    """
     zone, dam_easting, dam_northing = latlon_to_utm(dam_lat, dam_lon)
-    epsg = 32600 + zone if dam_lat >= 0 else 32700 + zone
-    x0 = dam_easting - (nx / 2.0) * target_resolution
-    y0 = dam_northing - (ny / 2.0) * target_resolution
+    epsg = (32600 if dam_lat >= 0 else 32700) + zone
+    n_cells = int(round(2.0 * domain_radius_km * 1000.0 / target_resolution))
 
-    # Create grid
     grid = Grid(
-        nx=nx,
-        ny=ny,
-        dx=target_resolution,
-        dy=target_resolution,
-        x0=x0,
-        y0=y0,
+        nx=n_cells, ny=n_cells,
+        dx=target_resolution, dy=target_resolution,
+        x0=dam_easting - domain_radius_km * 1000.0,
+        y0=dam_northing - domain_radius_km * 1000.0,
         crs=f"EPSG:{epsg}",
     )
 
-    print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m resolution")
-    print(f"  Domain extent: {lat_min:.4f}° to {lat_max:.4f}° lat, {lon_min:.4f}° to {lon_max:.4f}° lon")
+    rows = np.arange(n_cells)[:, None]
+    cols = np.arange(n_cells)[None, :]
+    centre = n_cells // 2
 
-    # Create initial state (depth is set below from the synthetic terrain).
-    state_init = create_state(grid, h_init=np.zeros((grid.ny, grid.nx), dtype=np.float64))
+    # A valley that descends toward +y, so released water has somewhere to go.
+    downstream_slope = 0.01 * (rows - centre) * target_resolution
+    valley_floor = 200.0 * (1.0 - np.exp(-((cols - centre) ** 2) / (n_cells / 6.0) ** 2))
+    bed_elevation = 800.0 - downstream_slope + valley_floor
 
-    # Generate synthetic terrain for demonstration
-    # In full implementation: interpolate actual DEM
-    dem_field = np.zeros((grid.ny, grid.nx))
-
-    # Create synthetic terrain profile representing dam valley
-    for i in range(grid.ny):
-        for j in range(grid.nx):
-            # Base elevation
-            base_elev = 800.0  # meters
-
-            # Dam location (center of domain)
-            dam_i, dam_j = grid.ny // 2, grid.nx // 2
-
-            # Dam mountain shape (simplified)
-            dist_from_dam = np.sqrt((i - dam_i) ** 2 + (j - dam_j) ** 2)
-            dam_height = 500.0 * np.exp(-dist_from_dam / (grid.nx / 4))
-
-            # River valley
-            valley = 200.0 * np.exp(-((j - grid.nx // 2) ** 2) / ((grid.nx // 4) ** 2))
-
-            dem_field[i, j] = base_elev + dam_height + valley
-
-    # Set initial water surface to DEM elevation (dry bed)
-    state_init.h = np.maximum(dem_field, 0.0)
-
-    # Generate Manning's n field based on land cover
-    manning_field = np.full((grid.ny, grid.nx), dam_config.get("manning_n", 0.03))
-
-    # Add roughness variations
-    roughness = np.random.normal(1.0, 0.1, (grid.ny, grid.nx))
-    manning_field *= roughness
-
-    return grid, state_init, manning_field
+    return grid, np.ascontiguousarray(bed_elevation, dtype=np.float64)
 
 
 def compute_breach_location(
@@ -181,18 +207,19 @@ def compute_breach_location(
         utm_zone: UTM zone
 
     Returns:
-        i_breach, j_breach: Cell indices of breach location
-        b_breach: Breach elevation (m)
+        i_breach: column index (x), j_breach: row index (y)
+        b_breach: bed elevation at that cell (m above sea level)
     """
-    # In full implementation: use dam geometry and elevation data
-    # For demonstration: place breach at center of domain
+    # load_dem_as_grid centres the domain on the dam, so the dam sits at the
+    # middle cell by construction. i indexes x (columns, nx), j indexes y (rows,
+    # ny) — matching the state.b[j, i] access used by run.py.
+    i_breach = grid.nx // 2
+    j_breach = grid.ny // 2
 
-    i_breach = grid.ny // 2
-    j_breach = grid.nx // 2
+    # Read the real bed elevation instead of the previously hardcoded 1300.0 m,
+    # which bore no relation to the terrain the solver was given.
+    b_breach = float(state.b[j_breach, i_breach])
 
-    # Breach elevation (simplified - top of dam)
-    b_breach = 1300.0  # meters above sea level
-
-    print(f"  Breach location: cell ({i_breach}, {j_breach}), elevation {b_breach:.1f}m")
+    print(f"  Breach location: cell (i={i_breach}, j={j_breach}), bed elevation {b_breach:.1f} m")
 
     return i_breach, j_breach, b_breach
