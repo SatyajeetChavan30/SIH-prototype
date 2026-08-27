@@ -82,7 +82,7 @@
 ## Deployment & Final Status
 
 JalRaksha is fully prepared and packaged for the Smart India Hackathon 2026:
-1.  **Dashboard**: Fully functional Streamlit web GUI running on port 8501.
+1.  **Dashboard**: Streamlit web GUI on port 8501. *(Superseded — the Streamlit dashboard was removed once the React + FastAPI stack landed; see README.md for the current two-process launch.)*
 2.  **API Layer**: Python standard-library REST API on port 8502.
 3.  **Containerization**: Ready for local/cloud deployment via Dockerfile.
 4.  **CI/CD**: GitHub Actions workflow (`.github/workflows/ci.yml`) validates the build on every push.

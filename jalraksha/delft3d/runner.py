@@ -23,29 +23,56 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
-def is_dflowfm_available(custom_path: Optional[str] = None) -> bool:
+def resolve_dflowfm(custom_path: Optional[str] = None) -> Optional[str]:
     """
-    Check if the dflowfm binary is available on PATH or at a custom location.
+    Locate the dflowfm executable, returning the path that should be EXECUTED.
+
+    Returning the path rather than a bare bool is the point. The previous
+    arrangement had `is_dflowfm_available(custom_path)` honour an explicit
+    location while `_run_dflowfm_binary` went on to invoke the literal string
+    "dflowfm" — so an install pointed at by JALRAKSHA_DFLOWFM_EXE would be
+    detected as present and then launched as a bare PATH lookup that fails.
+    Detection and execution now agree by construction, because they use the
+    same value.
 
     Args:
-        custom_path: Optional explicit path to dflowfm executable.
+        custom_path: Explicit path to the executable (JALRAKSHA_DFLOWFM_EXE).
+            An empty string means "not configured" and falls through to PATH.
 
     Returns:
-        True if the binary is found and executable.
+        Absolute path to the executable, or None if there is none to run.
     """
-    if custom_path and os.path.isfile(custom_path):
-        return True
+    if custom_path:
+        # An explicitly configured path that is wrong is a configuration error,
+        # not a reason to quietly search PATH instead and run something else.
+        if os.path.isfile(custom_path):
+            return os.path.abspath(custom_path)
+        print(
+            f"[delft3d] JALRAKSHA_DFLOWFM_EXE points at {custom_path!r}, "
+            f"which is not a file. Not falling back to PATH — fix the setting "
+            f"or unset it."
+        )
+        return None
 
-    # Check PATH
-    return shutil.which("dflowfm") is not None
+    return shutil.which("dflowfm")
 
 
-def _run_dflowfm_binary(mdu_path: Path, timeout_s: int = 3600) -> Dict:
+def is_dflowfm_available(custom_path: Optional[str] = None) -> bool:
+    """Predicate form of resolve_dflowfm(), kept for callers that want a bool."""
+    return resolve_dflowfm(custom_path) is not None
+
+
+def _run_dflowfm_binary(
+    mdu_path: Path,
+    executable: str = "dflowfm",
+    timeout_s: int = 3600,
+) -> Dict:
     """
-    Execute dflowfm binary on the .mdu file.
+    Execute the dflowfm binary on the .mdu file.
 
     Args:
         mdu_path: Path to the .mdu master definition file.
+        executable: The resolved executable to run (see resolve_dflowfm).
         timeout_s: Maximum runtime (seconds).
 
     Returns:
@@ -54,7 +81,7 @@ def _run_dflowfm_binary(mdu_path: Path, timeout_s: int = 3600) -> Dict:
     mdu_path = Path(mdu_path)
     work_dir = mdu_path.parent
 
-    cmd = ["dflowfm", "--autostartstop", str(mdu_path)]
+    cmd = [executable, "--autostartstop", str(mdu_path)]
 
     try:
         result = subprocess.run(
@@ -74,9 +101,57 @@ def _run_dflowfm_binary(mdu_path: Path, timeout_s: int = 3600) -> Dict:
             "engine": "Delft3D_FM",
         }
     except FileNotFoundError:
-        return {"success": False, "error": "dflowfm binary not found", "engine": "none"}
+        return {"success": False, "error": f"{executable!r} could not be executed",
+                "engine": "none", "output_dir": work_dir}
+    except OSError as exc:
+        # e.g. the file exists but is not a valid executable for this platform.
+        return {"success": False, "error": f"{executable!r}: {exc}",
+                "engine": "none", "output_dir": work_dir}
     except subprocess.TimeoutExpired:
-        return {"success": False, "error": f"Timeout after {timeout_s}s", "engine": "none"}
+        return {"success": False, "error": f"Timeout after {timeout_s}s",
+                "engine": "none", "output_dir": work_dir}
+
+
+def _ritter_gauge_arrivals(
+    gauge_locations: Optional[List[Dict]],
+    c_wave: float,
+) -> Dict[str, Dict]:
+    """
+    Arrival times from Ritter wave celerity — a FORMULA, not a simulation result.
+
+    t = distance / c, with c = 0.5*sqrt(g*H) (Ritter 1892, dry-bed dam-break
+    front celerity). The +/-20% band is a nominal spread, not an uncertainty
+    quantification.
+
+    This is tagged `method: "ritter_celerity_estimate"` on every entry, and the
+    tag is carried all the way to the dashboard, because these numbers are
+    routinely produced by a run whose domain CANNOT REACH the gauges they
+    describe: setup_delft3d_model is called at 40x40 cells of 30 m, a 1.2 km
+    box, while the nearest Tehri gauge is 13 km downstream. Presenting a
+    closed-form estimate beside solver output without saying which is which is
+    precisely the overclaiming CLAUDE.md forbids.
+
+    TODO: UNVETTED - the 0.5 coefficient is the classical Ritter dry-bed value
+    and the +/-20% band has no cited source. Spec section 17 verification queue.
+    """
+    gauge_arrivals: Dict[str, Dict] = {}
+    if not gauge_locations:
+        return gauge_arrivals
+
+    for gauge in gauge_locations:
+        dist_km = gauge.get("distance_km", 10.0)
+        name = gauge.get("name", f"Gauge_{dist_km:.0f}km")
+        t_s = (dist_km * 1000.0) / c_wave
+        spread = 0.2 * t_s
+        gauge_arrivals[name] = {
+            "median_s": round(t_s, 1),
+            "median_min": round(t_s / 60.0, 1),
+            "p05_min": round((t_s - spread) / 60.0, 1),
+            "p95_min": round((t_s + spread) / 60.0, 1),
+            "distance_km": dist_km,
+            "method": "ritter_celerity_estimate",
+        }
+    return gauge_arrivals
 
 
 def _analytic_fallback(
@@ -108,24 +183,11 @@ def _analytic_fallback(
             max_velocity[j, :] = c_wave * decay
             arrival_time[j, :] = t_arrival
 
-    gauge_arrivals = {}
-    if gauge_locations:
-        for gauge in gauge_locations:
-            dist_km = gauge.get("distance_km", 10.0)
-            name = gauge.get("name", f"Gauge_{dist_km:.0f}km")
-            t_s = (dist_km * 1000.0) / c_wave
-            spread = 0.2 * t_s
-            gauge_arrivals[name] = {
-                "median_s": round(t_s, 1),
-                "median_min": round(t_s / 60.0, 1),
-                "p05_min": round((t_s - spread) / 60.0, 1),
-                "p95_min": round((t_s + spread) / 60.0, 1),
-                "distance_km": dist_km,
-            }
+    gauge_arrivals = _ritter_gauge_arrivals(gauge_locations, c_wave)
 
     return {
-        "engine": "JalRaksha_SWE_Delft3D_Equivalent",
-        "engine_label": "Delft3D-Class 2D SWE Solver (Analytic Fallback)",
+        "engine": "JalRaksha_Ritter_Analytic",
+        "engine_label": "Ritter analytic estimate - NOT a solver run",
         "success": True,
         "max_depth": max_depth,
         "max_velocity": max_velocity,
@@ -233,32 +295,30 @@ def _run_builtin_swe_fallback(
 
             if t >= next_snapshot:
                 next_snapshot += snapshot_interval
-    except Exception:
-        # If numerical blowup/NaN occurs, fall back to analytic Ritter dam-break model
+    except Exception as exc:
+        # A numerical blowup is a real event with a cause. Dropping to a
+        # closed-form estimate without naming it turns "the solver diverged"
+        # into a plausible-looking table of arrival times.
+        import traceback
+
+        print(f"[delft3d] Built-in SWE solver failed ({type(exc).__name__}: {exc}); "
+              f"falling back to the Ritter analytic estimate.")
+        traceback.print_exc()
         return _analytic_fallback(dam_config, gauge_locations, nx, ny, dx, dy, total_time_s)
 
-    # Compute gauge arrival times
-    gauge_arrivals = {}
-    if gauge_locations:
-        height_m = dam_config.get("height_m", 100.0)
-        c_wave = 0.5 * math.sqrt(9.81 * height_m)
-
-        for gauge in gauge_locations:
-            dist_km = gauge.get("distance_km", 10.0)
-            name = gauge.get("name", f"Gauge_{dist_km:.0f}km")
-            t_s = (dist_km * 1000.0) / c_wave
-            spread = 0.2 * t_s
-            gauge_arrivals[name] = {
-                "median_s": round(t_s, 1),
-                "median_min": round(t_s / 60.0, 1),
-                "p05_min": round((t_s - spread) / 60.0, 1),
-                "p95_min": round((t_s + spread) / 60.0, 1),
-                "distance_km": dist_km,
-            }
+    # Gauge arrivals are a Ritter CELERITY ESTIMATE, not a reading taken from
+    # the simulation above — see _ritter_gauge_arrivals. The domain this
+    # function is called with (40x40 at 30 m from tasks.py) is 1.2 km across
+    # and cannot reach a gauge 13 km downstream, so there is nothing in
+    # `arrival_time` to read at those locations. The `method` tag travels with
+    # the numbers so the dashboard can say so.
+    gauge_arrivals = _ritter_gauge_arrivals(
+        gauge_locations, 0.5 * math.sqrt(9.81 * dam_config.get("height_m", 100.0))
+    )
 
     return {
         "engine": "JalRaksha_SWE_Delft3D_Equivalent",
-        "engine_label": "Delft3D-Class 2D SWE Solver",
+        "engine_label": "JalRaksha built-in 2D SWE - Delft3D-class, NOT Delft3D FM",
         "success": True,
         "max_depth": max_depth,
         "max_velocity": max_velocity,
@@ -312,25 +372,66 @@ def run_delft3d_simulation(
             'arrival_time': 2D array
             'gauge_arrivals': dict per gauge
     """
-    # Tier A: Try real Delft3D FM binary
-    if not force_fallback and is_dflowfm_available(dflowfm_path):
-        mdu_path = model_setup["mdu_path"]
-        binary_result = _run_dflowfm_binary(mdu_path)
+    # Every route to Tier B records WHY it got there. Falling back is a
+    # legitimate outcome; falling back silently is not — the result of this
+    # function is labelled in the dashboard as the engine that produced the
+    # numbers, and a fallback nobody was told about reads as Delft3D FM.
+    fallback_reason: Optional[str] = None
 
-        if binary_result["success"]:
-            # Parse Delft3D output NetCDF (if it exists)
-            output_dir = binary_result["output_dir"]
-            try:
-                parsed = _parse_delft3d_output(output_dir, gauge_locations)
-                parsed["engine"] = "Delft3D_FM"
-                parsed["engine_label"] = "Delft3D Flexible Mesh (Official)"
-                return parsed
-            except Exception as exc:
-                # If parsing fails, fall through to built-in
-                pass
+    # Tier A: Try real Delft3D FM binary
+    if force_fallback:
+        fallback_reason = "force_fallback=True was requested by the caller."
+    else:
+        executable = resolve_dflowfm(dflowfm_path)
+        if executable is None:
+            fallback_reason = (
+                f"JALRAKSHA_DFLOWFM_EXE is set to {dflowfm_path!r}, which is "
+                f"not a file. Fix the setting or unset it to search PATH."
+                if dflowfm_path else
+                "The dflowfm binary is not on PATH and JALRAKSHA_DFLOWFM_EXE is "
+                "not set. Delft3D FM is not installed on this machine."
+            )
+        else:
+            print(f"[delft3d] Running Delft3D FM: {executable}")
+            binary_result = _run_dflowfm_binary(
+                model_setup["mdu_path"], executable=executable
+            )
+
+            if not binary_result["success"]:
+                detail = binary_result.get("error") or (
+                    f"exit code {binary_result.get('returncode')}: "
+                    f"{(binary_result.get('stderr') or '').strip()[-400:]}"
+                )
+                fallback_reason = f"dflowfm ran but did not succeed — {detail}"
+                print(f"[delft3d] {fallback_reason}")
+            else:
+                try:
+                    parsed = _parse_delft3d_output(
+                        binary_result["output_dir"], gauge_locations,
+                        model_setup=model_setup, total_time_s=total_time_s,
+                        dam_config=dam_config,
+                    )
+                    parsed["engine"] = "Delft3D_FM"
+                    parsed["engine_label"] = "Delft3D FM (official dflowfm binary)"
+                    parsed["delft3d_binary_used"] = True
+                    parsed["fallback_reason"] = None
+                    parsed["dflowfm_path"] = executable
+                    print("[delft3d] Delft3D FM output parsed successfully.")
+                    return parsed
+                except Exception as exc:
+                    # Previously `except Exception as exc: pass` — the binary
+                    # had run, its output was unreadable, and the run silently
+                    # became a built-in SWE result wearing a Delft3D label.
+                    fallback_reason = (
+                        f"dflowfm exited 0 but its output could not be parsed "
+                        f"({type(exc).__name__}: {exc})"
+                    )
+                    print(f"[delft3d] {fallback_reason}")
+
+    print(f"[delft3d] Falling back to the built-in solver. Reason: {fallback_reason}")
 
     # Tier B: Built-in SWE fallback
-    return _run_builtin_swe_fallback(
+    result = _run_builtin_swe_fallback(
         grid=model_setup["grid"],
         bathymetry=model_setup["bathymetry"],
         initial_conditions=model_setup["initial_conditions"],
@@ -339,11 +440,17 @@ def run_delft3d_simulation(
         manning_n=manning_n,
         gauge_locations=gauge_locations,
     )
+    result["delft3d_binary_used"] = False
+    result["fallback_reason"] = fallback_reason
+    return result
 
 
 def _parse_delft3d_output(
     output_dir: Path,
     gauge_locations: Optional[List[Dict]] = None,
+    model_setup: Optional[Dict] = None,
+    total_time_s: float = 0.0,
+    dam_config: Optional[Dict] = None,
 ) -> Dict:
     """
     Parse Delft3D FM NetCDF output files.
@@ -354,9 +461,19 @@ def _parse_delft3d_output(
       - Arrival time field
       - Gauge arrival times
 
+    The grid description is carried through from model_setup rather than left
+    out. Downstream, compare_sph_vs_delft3d() reads grid_nx/grid_ny/grid_dx/
+    grid_dy with `.get()` defaults of 100x200 at 30 m — so omitting them, as
+    this function used to, meant a SUCCESSFUL real Delft3D run was rasterised
+    and compared on a grid of entirely the wrong size. That is a wrong answer
+    produced by the code path that is supposed to be the trustworthy one.
+
     Args:
         output_dir: Directory containing Delft3D output files.
         gauge_locations: List of gauge dicts for arrival time extraction.
+        model_setup: The dict from setup_delft3d_model(), for grid metadata.
+        total_time_s: Simulated duration, echoed into the result.
+        dam_config: Dam configuration, for the reported dam name.
 
     Returns:
         Standardised result dict.
@@ -403,10 +520,25 @@ def _parse_delft3d_output(
     finally:
         ds.close()
 
+    grid = (model_setup or {}).get("grid", {})
+
     return {
         "success": True,
         "max_depth": max_depth,
         "max_velocity": max_velocity,
         "arrival_time": arrival_time,
+        # Deliberately empty, not fabricated. Delft3D FM writes gauge output to
+        # its own history file (*_his.nc), which this parser does not yet read;
+        # inventing arrivals from a celerity formula here would defeat the whole
+        # point of running the real engine.
+        # TODO: read *_his.nc observation stations for true gauge arrivals.
         "gauge_arrivals": {},
+        "grid_nx": grid.get("nx"),
+        "grid_ny": grid.get("ny"),
+        "grid_dx": grid.get("dx"),
+        "grid_dy": grid.get("dy"),
+        "total_time_s": total_time_s,
+        "num_steps": int(depth_var.shape[0]),
+        "dam_name": (dam_config or {}).get("name", "Unknown"),
+        "note": "Parsed from Delft3D FM NetCDF map output.",
     }

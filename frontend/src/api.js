@@ -61,3 +61,25 @@ export async function pollUntilDone(runId, onTick, timeoutMs = 600000) {
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
+
+// Ask the API to launch the ParaView desktop GUI for a run (3D terrain + flood).
+//
+// Only meaningful when the API runs on the same machine as this browser — it
+// opens a window on the API's host, not the client's. The endpoint answers with
+// a structured {launched, reason, detail} rather than an HTTP error for its
+// operational failures (no dataset, ParaView missing), because those are
+// expected states a user needs to read, not exceptions. Genuine HTTP errors
+// (404 unknown run) still surface as thrown Errors carrying FastAPI's `detail`.
+export async function openInParaview(runId) {
+  const r = await fetch(`${API}/runs/${runId}/open-paraview`, { method: "POST" });
+  let body = null;
+  try {
+    body = await r.json();
+  } catch {
+    body = null;
+  }
+  if (!r.ok) {
+    throw new Error(body?.detail || `ParaView launch failed (HTTP ${r.status})`);
+  }
+  return body;
+}

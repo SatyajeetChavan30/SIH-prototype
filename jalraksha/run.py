@@ -15,15 +15,203 @@ Output: Results dict with ensemble statistics and raster paths
 This is the MANDATORY core deliverable (Spec §4).
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple
+import os
 import warnings
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 from jalraksha.solver.types import Grid, create_state
 from jalraksha.solver.core import SWESolver
 from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
 from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+
+
+def _attempt(kind: str, writer, *args, **kwargs):
+    """
+    Run one export writer, reporting failure loudly and returning None on it.
+
+    Every writer here is independent — a missing KML is no reason to withhold a
+    valid GeoTIFF — so a failure is contained rather than aborting the batch.
+    But it is never swallowed: the exception type, message and traceback all go
+    to the console, because the alternative (a quiet skip) is indistinguishable
+    from a product that was never requested.
+    """
+    import traceback
+
+    try:
+        return writer(*args, **kwargs)
+    except Exception as exc:
+        print(f"  [FAIL] {kind}: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        return None
+
+
+def _record(paths: Dict[str, str], kind: str, path: Optional[str]) -> Optional[str]:
+    """
+    Add an export to the manifest ONLY if the file is really on disk.
+
+    This is the guard the whole module exists to enforce. A recorded path to a
+    file that was never written is the worst outcome available: the service
+    stores it, the API serves a /files/ URL for it, and the dashboard offers a
+    judge a download that 404s. A writer returning None (its documented
+    "nothing to write" answer — no cells above threshold, say) is a legitimate
+    outcome and contributes no entry, same as an outright failure.
+    """
+    if path is None:
+        print(f"  [SKIP] {kind}: writer reported nothing to write")
+        return None
+    if not os.path.exists(path):
+        print(f"  [FAIL] {kind}: writer returned {path!r} but no such file exists")
+        return None
+    paths[kind] = str(path)
+    print(f"  [OK]   {kind}: {os.path.basename(path)} ({os.path.getsize(path)} bytes)")
+    return str(path)
+
+
+def write_export_products(
+    results_ensemble: List[Dict],
+    h_max_median: np.ndarray,
+    v_max_median: np.ndarray,
+    t_arrival_median: np.ndarray,
+    grid: Grid,
+    dam_config: Dict,
+    output_dir: str,
+    depth_series: Optional[List[Dict]] = None,
+) -> Dict[str, str]:
+    """
+    Write every Phase 5 deliverable the problem statement names: .tif, .shp, .kml.
+
+    PS 26161 requires "Output should be converted to .shp or .Kml file". Until
+    this function existed, jalraksha.run fabricated four .tif path strings that
+    nothing ever wrote, and the service recorded them in its exports table — so
+    the API advertised downloads that 404'd for every run ever made.
+
+    LAYERING. This makes jalraksha.run (Phase 4) import jalraksha.export
+    (Phase 5), which CLAUDE.md's dependency-direction rule forbids read
+    literally. Taken deliberately: run.py is the top-level pipeline
+    orchestrator — its own module docstring already lists "5. Raster export"
+    among its steps — rather than a Phase-4 layer module, and jalraksha.export
+    does not import jalraksha.run, so the import graph stays acyclic and
+    Phase 5 remains independently testable.
+
+    Args:
+        results_ensemble: Per-member {h_max, v_max, t_arrival} arrays.
+        h_max_median, v_max_median, t_arrival_median: Ensemble aggregates.
+        grid: The Grid the solver ran on (supplies the metric CRS).
+        dam_config: Dam configuration (supplies the name for metadata).
+        output_dir: Directory to write into.
+        depth_series: Recorded snapshots, used for the time-animated KML. The
+            animation is omitted when the run recorded none.
+
+    Returns:
+        {export_kind: path} containing ONLY files verified to exist on disk.
+        Kinds are prefixed (cog_ / shp_ / kml_ / kmz_) so the service and the
+        dashboard can tell a raster from a vector from an Earth overlay.
+    """
+    from jalraksha.export.geotiff import export_ensemble_to_cogs
+    from jalraksha.export.georef import epsg_from_crs, zip_shapefile
+    from jalraksha.export.shapefile import (
+        export_arrival_time_contours,
+        export_hazard_classification_polygons,
+        export_inundation_polygon,
+    )
+    from jalraksha.export.kml import (
+        export_depth_ground_overlay,
+        export_inundation_kml,
+        export_kmz,
+        export_time_animated_kml,
+    )
+
+    paths: Dict[str, str] = {}
+    dam_name = dam_config.get("name", "Dam")
+
+    # A metric CRS is mandatory (CLAUDE.md). epsg_from_crs raises rather than
+    # defaulting, because guessing a zone silently relocates every product.
+    crs_epsg = epsg_from_crs(grid.crs)
+    grid_dict = {
+        "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,
+        "x0": grid.x0, "y0": grid.y0,
+    }
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    print(f"  Target: {output_dir} (EPSG:{crs_epsg})")
+
+    # ---- Rasters: 9 COGs (h_max / v_max / t_arrival x median / p05 / p95) ----
+    cogs = _attempt(
+        "cogs", export_ensemble_to_cogs,
+        results_ensemble, grid_dict, output_dir,
+        dam_name=dam_name, crs_epsg=crs_epsg,
+    )
+    for variable, cog_path in (cogs or {}).items():
+        _record(paths, f"cog_{variable}", cog_path)
+
+    # ---- Vectors. Each shapefile is published as a .zip: a bare .shp carries
+    # neither attributes (.dbf) nor CRS (.prj), so a link to one alone is
+    # useless to whoever downloads it. ----
+    inundation_shp = os.path.join(output_dir, "inundation_envelope.shp")
+    if _attempt("shp_inundation", export_inundation_polygon,
+                h_max_median, grid_dict, inundation_shp,
+                depth_threshold=0.1, crs_epsg=crs_epsg, dam_name=dam_name):
+        _record(paths, "shp_inundation_zip",
+                _attempt("shp_inundation_zip", zip_shapefile, inundation_shp))
+
+    hazard_classes = _attempt(
+        "shp_hazard", export_hazard_classification_polygons,
+        h_max_median, v_max_median, grid_dict,
+        os.path.join(output_dir, "hazard_classes.shp"),
+        crs_epsg=crs_epsg, dam_name=dam_name,
+    )
+    for cls_name, cls_path in (hazard_classes or {}).items():
+        _record(paths, f"shp_hazard_{cls_name}_zip",
+                _attempt(f"shp_hazard_{cls_name}_zip", zip_shapefile, cls_path))
+
+    contours_shp = os.path.join(output_dir, "arrival_contours.shp")
+    if _attempt("shp_arrival_contours", export_arrival_time_contours,
+                t_arrival_median, grid_dict, contours_shp, crs_epsg=crs_epsg):
+        _record(paths, "shp_arrival_contours_zip",
+                _attempt("shp_arrival_contours_zip", zip_shapefile, contours_shp))
+
+    # ---- KML / KMZ. Reprojected to WGS84 by export/kml.py, which raises rather
+    # than writing UTM metres into a <coordinates> element. ----
+    _record(paths, "kml_inundation", _attempt(
+        "kml_inundation", export_inundation_kml,
+        h_max_median, grid_dict, os.path.join(output_dir, "inundation.kml"),
+        depth_threshold=0.1, dam_name=dam_name, crs_epsg=crs_epsg,
+    ))
+
+    if depth_series:
+        # Built from the representative member's recorded snapshots. Runs that
+        # recorded none get no animation, rather than a single-frame file
+        # presented as one.
+        _record(paths, "kml_animation", _attempt(
+            "kml_animation", export_time_animated_kml,
+            [float(f["time_s"]) for f in depth_series],
+            [np.asarray(f["depth"]) for f in depth_series],
+            grid_dict, os.path.join(output_dir, "flood_animation.kml"),
+            depth_threshold=0.1, dam_name=dam_name, crs_epsg=crs_epsg,
+        ))
+    else:
+        print("  [SKIP] kml_animation: run recorded no depth snapshots")
+
+    # export_depth_ground_overlay returns (kml_path, png_path); the KMZ has to
+    # carry both or the overlay renders as an empty box in Google Earth.
+    overlay = _attempt(
+        "kmz_depth_overlay", export_depth_ground_overlay,
+        h_max_median, grid_dict, os.path.join(output_dir, "depth_overlay.kml"),
+        dam_name=dam_name, crs_epsg=crs_epsg,
+    )
+    if overlay:
+        overlay_kml, overlay_png = overlay
+        _record(paths, "kmz_depth_overlay", _attempt(
+            "kmz_depth_overlay", export_kmz, overlay_kml,
+            asset_paths=[overlay_png],
+            output_path=os.path.join(output_dir, "depth_overlay.kmz"),
+        ))
+
+    print(f"  Wrote {len(paths)} export products.")
+    return paths
 
 
 def define_downstream_gauges(dam_lat: float, dam_lon: float) -> List[Dict]:
@@ -385,6 +573,7 @@ def run_dam_break_ensemble(
     print(f"\n[Step 3] Running solver for {ensemble_size} ensemble members...")
     results_ensemble = []
     h_max_ensemble = []
+    v_max_ensemble = []
     depth_series: List[Dict] = []
 
     # Pick the member whose peak outflow is closest to the ensemble median as
@@ -428,10 +617,15 @@ def run_dam_break_ensemble(
         results_ensemble.append({
             "t_arrival": member["t_arrival"],
             "h_max": member["h_max"],
+            # Captured by run_ensemble_member so the velocity COGs and the
+            # depth-velocity hazard classes are computed rather than defaulted
+            # to zeros by the export layer (solver/parallel.py).
+            "v_max": member["v_max"],
             "sample_id": sample_id,
             "metadata": metadata,
         })
         h_max_ensemble.append(member["h_max"])
+        v_max_ensemble.append(member["v_max"])
         if member.get("depth_series"):
             depth_series = member["depth_series"]
 
@@ -468,22 +662,38 @@ def run_dam_break_ensemble(
     h_max_p05 = np.percentile(h_max_ensemble_array, 5, axis=0)
     h_max_p95 = np.percentile(h_max_ensemble_array, 95, axis=0)
 
+    v_max_ensemble_array = np.array(v_max_ensemble)
+    v_max_median = np.median(v_max_ensemble_array, axis=0)
+
+    # Arrival time is stored as +inf where a cell never wetted. Taking a median
+    # over that directly propagates inf into the exported raster; NaN is the
+    # nodata value the COG profile declares, so convert here once.
+    t_arrival_ensemble_array = np.array([r["t_arrival"] for r in results_ensemble])
+    t_arrival_ensemble_array[np.isinf(t_arrival_ensemble_array)] = np.nan
+    with warnings.catch_warnings():
+        # A cell dry in EVERY member is an all-NaN slice; nanmedian warns and
+        # returns NaN, which is exactly the wanted answer.
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        t_arrival_median = np.nanmedian(t_arrival_ensemble_array, axis=0)
+
     print(f"  Max depth (median): {np.nanmax(h_max_median):.2f} m")
     print(f"  Max depth (p95):    {np.nanmax(h_max_p95):.2f} m")
+    print(f"  Max speed (median): {np.nanmax(v_max_median):.2f} m/s")
 
     # =========================================================================
-    # Step 6: Export rasters (COG format — Phase 5 scope, pulled forward)
+    # Step 6: Export deliverables (COG / Shapefile / KML - Phase 5)
     # =========================================================================
-    print("\n[Step 6] Exporting rasters to COG format...")
-    # TODO: Implement COG export (Phase 5)
-    # For now, just note the output structure
-    raster_paths = {
-        "h_max_median": f"{output_dir}/h_max_median_cog.tif",
-        "h_max_p05": f"{output_dir}/h_max_p05_cog.tif",
-        "h_max_p95": f"{output_dir}/h_max_p95_cog.tif",
-        "t_arrival_median": f"{output_dir}/t_arrival_median_cog.tif",
-    }
-    print("  (COG export marked for Phase 5)")
+    print("\n[Step 6] Writing export products...")
+    raster_paths = write_export_products(
+        results_ensemble=results_ensemble,
+        h_max_median=h_max_median,
+        v_max_median=v_max_median,
+        t_arrival_median=t_arrival_median,
+        grid=grid,
+        dam_config=dam_config,
+        output_dir=output_dir,
+        depth_series=depth_series,
+    )
 
     # =========================================================================
     # Final report
@@ -515,6 +725,12 @@ def run_dam_break_ensemble(
         # a different surface from the one the flood was computed over.
         # Row 0 is the SOUTHERNMOST row (Grid.cell_centres_y increases north).
         "terrain_elevation": state_init.b,
+        # The aggregated fields themselves, not just their scalar maxima.
+        # Population-at-risk needs per-cell depth and arrival time to intersect
+        # against a population grid, and h_max_stats collapses both to a single
+        # number. Same footprint as terrain_elevation, which is already returned.
+        "h_max_median": h_max_median,
+        "t_arrival_median": t_arrival_median,
     }
     if record_depth_snapshots:
         result["depth_series"] = depth_series

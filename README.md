@@ -15,7 +15,7 @@ JalRaksha is a high-performance Python package for dam-break inundation modellin
     *   FD2320 Flood Hazard Classification (Low, Moderate, High, Extreme).
     *   Jonkman (2008), Graham (1999), and DeKay-McClelland (1993) fatality models.
     *   India-specific JRC depth-damage economic loss curves.
-*   **Premium Interactive Dashboard**: Streamlit-based web interface featuring Folium interactive maps, peak discharge histograms, gauge arrival time envelopes, and automated export tools.
+*   **Interactive Web Dashboard**: React + Vite frontend (Leaflet 2D map, Cesium 3D globe, playback timeline) served by a FastAPI backend, with peak discharge histograms, gauge arrival time envelopes, and export tools.
 *   **REST API Layer**: Standard-library HTTP server with endpoints (`/health`, `/api/v1/dams`, `/api/v1/gauges`, `/api/v1/simulate`) to integrate with external systems.
 
 ---
@@ -34,7 +34,7 @@ graph TD
     G --> H
     H --> I[Impact Analysis / FD2320 / Fatality Estimation]
     I --> J[GeoSpatial Export: COG / KML / Shapefile]
-    J --> K[Interactive Streamlit Dashboard / API Client]
+    J --> K[React + Cesium Dashboard / FastAPI Client]
 ```
 
 ---
@@ -51,7 +51,7 @@ sudo apt-get update
 sudo apt-get install -y gdal-bin libgdal-dev
 git clone https://github.com/sih2026/jalraksha.git
 cd jalraksha
-pip install -e .[dev,viz,dashboard]
+pip install -e .[dev,viz]
 ```
 
 ### Windows Installation
@@ -59,7 +59,7 @@ pip install -e .[dev,viz,dashboard]
     ```bash
     conda create -n jalraksha python=3.11 conda-forge::gdal conda-forge::libgdal -y
     conda activate jalraksha
-    pip install -e .[dev,viz,dashboard]
+    pip install -e .[dev,viz]
     ```
 
 ---
@@ -67,10 +67,16 @@ pip install -e .[dev,viz,dashboard]
 ## ⚙️ How to Run
 
 ### 1. Launch the Interactive Dashboard
-Launch the premium web dashboard on port `8501`:
+Two processes — the FastAPI backend on `8000` and the React frontend on `3000`:
 ```bash
-python -m streamlit run jalraksha/dashboard/app.py
+python scripts/run_api.py
 ```
+```bash
+npm run dev --prefix frontend
+```
+Then open http://localhost:3000. `scripts/run_api.py` sets the eager-task and
+data-dir environment and pins the working directory to the repo root; see
+`paraview/README.md` for why that matters.
 
 ### 2. Run the CLI Simulation (Tehri Dam Demo)
 Execute a 3-member ensemble run for Tehri Dam:
@@ -89,6 +95,54 @@ curl -X POST http://127.0.0.1:8502/api/v1/simulate \
   -H "Content-Type: application/json" \
   -d '{"name": "Tehri", "lat": 30.3789, "lon": 78.4789, "height_m": 260.0, "storage_mm3": 3540.0, "ensemble_size": 3}'
 ```
+
+### 4. Optional external engines (environment variables)
+
+JalRaksha runs fully without any of these. Each one is *attempted* when
+configured and *reported as absent* when not — nothing is silently substituted.
+
+| Variable | Purpose | When unset |
+| :--- | :--- | :--- |
+| `JALRAKSHA_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** `dflowfm` executable, for `solver="both"` runs. | `dflowfm` is looked up on `PATH`. If it is not there either, the comparison runs JalRaksha's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
+| `JALRAKSHA_PARAVIEW_EXE` | Full path to `paraview.exe` (the GUI) for the "View in ParaView (3D)" button. | Defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`; the endpoint answers `paraview_not_found` if it is not there. |
+| `JALRAKSHA_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
+| `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent and the GHSL population-at-risk figure. | `GET /gee/latest` answers `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. |
+| `JALRAKSHA_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
+
+```bash
+export JALRAKSHA_DFLOWFM_EXE="C:/Program Files/Deltares/D-Flow FM/bin/dflowfm.exe"
+```
+
+#### Enabling Earth Engine
+
+Three steps, all required:
+
+```bash
+pip install earthengine-api
+```
+
+```bash
+earthengine authenticate
+```
+
+Then create or pick a Google Cloud project, **enable the Earth Engine API on
+it** (`console.cloud.google.com` → APIs & Services → enable "Google Earth
+Engine API"; free for non-commercial use via
+<https://code.earthengine.google.com/register>), and point JalRaksha at it:
+
+```bash
+export JALRAKSHA_GEE_PROJECT=your-project-id
+```
+
+Every fetched scene is cached under `data/gee/`, so once a reach has been
+fetched the dashboard keeps working offline and labels the layer as a cached
+scene, with its real acquisition date.
+
+**On naming.** When `dflowfm` is unavailable, the built-in solver takes over. It
+integrates the same depth-averaged 2D Saint-Venant equations that D-Flow FM
+solves, so it is described throughout as **Delft3D-class**. It is *not* Delft3D
+and is never labelled as such — the Comparison tab states which engine produced
+the numbers, in a banner, before showing any of them.
 
 ---
 

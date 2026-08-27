@@ -78,14 +78,17 @@ flood keyframes as geo-registered imagery layers driven by the shared
   every click on the control panel. The viewer is now contained in its pane.
 
 ### M7 (partial) — Comparison tab (§5.7)
-`frontend/src/panels/ComparisonPanel.jsx` ports the Streamlit "SPH vs
-Delft3D-Class" tab. Verified with a real `solver="both"` run: RMSE/bias/CSI/
+`frontend/src/panels/ComparisonPanel.jsx` provides the "SPH vs
+Delft3D-Class" comparison tab (originally ported from the since-removed
+Streamlit dashboard). Verified with a real `solver="both"` run: RMSE/bias/CSI/
 overlap metric cards, both matplotlib figures, and the gauge arrival table all
 render. Handles the no-comparison-data case (`solver="swe"` runs) gracefully.
 
 Note: the SPH side of this comparison is synthesized (particle positions from
-`np.random`, arrivals from a wave-celerity approximation) — that is inherited
-from the existing Streamlit implementation this ports, not introduced here.
+`np.random`, arrivals from a wave-celerity approximation). This is a
+pre-existing limitation of `jalraksha/delft3d/comparison.py`, reached via
+`services/api/jalraksha_service/tasks.py::_run_comparison` — not introduced by
+the frontend, and not a real PySPH run.
 
 ### Real terrain end to end ✅ (this pass)
 

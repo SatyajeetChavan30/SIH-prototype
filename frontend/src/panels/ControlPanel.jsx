@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { listDams, submitRun, pollUntilDone, getResult } from "../api.js";
+import { listDams, submitRun, pollUntilDone, getResult , openInParaview } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
 
 /**
- * Control panel — ports the Streamlit sidebar 1:1 (brief §5.4).
+ * Control panel (brief §5.4).
  * Dam selector, height/storage sliders, breach mode, ensemble size, solver
  * toggle, export buttons. On submit it enqueues a run and, once done, loads the
  * keyframe manifest into the shared SimulationClock so both panels animate.
  */
-export default function ControlPanel({ onRunLoaded }) {
+export default function ControlPanel({ onRunLoaded, result }) {
   const clock = useSimulationClock();
   const [dams, setDams] = useState([]);
   const [damId, setDamId] = useState("tehri");
@@ -21,6 +21,11 @@ export default function ControlPanel({ onRunLoaded }) {
   const [durationMin, setDurationMin] = useState(30);
   const [status, setStatus] = useState("idle");
   const [loadId, setLoadId] = useState("");
+  // The run id was previously only a local const inside submit(), so nothing
+  // downstream of a completed run could refer to it. The ParaView button needs
+  // it, so both submit() and loadExisting() record it here.
+  const [currentRunId, setCurrentRunId] = useState(null);
+  const [pvStatus, setPvStatus] = useState("");
 
   React.useEffect(() => {
     listDams().then(setDams).catch(() => setDams([]));
@@ -38,6 +43,8 @@ export default function ControlPanel({ onRunLoaded }) {
       solver_duration_s: durationMin * 60,
     })).run_id;
     setStatus(`queued ${runId.slice(0, 8)}`);
+    setCurrentRunId(runId);
+    setPvStatus("");
     await pollUntilDone(runId, (s) => setStatus(`${s.status} ${s.progress_pct?.toFixed(0)}%`));
     onRunLoaded?.(await getResult(runId));
     setStatus(`done ${runId.slice(0, 8)}`);
@@ -49,9 +56,24 @@ export default function ControlPanel({ onRunLoaded }) {
     setStatus("loading…");
     try {
       onRunLoaded?.(await getResult(id));
+      setCurrentRunId(id);
+      setPvStatus("");
       setStatus(`loaded ${id.slice(0, 8)}`);
     } catch (e) {
       setStatus(`load failed: ${e.message}`);
+    }
+  };
+
+  const openParaview = async () => {
+    if (!currentRunId) return;
+    setPvStatus("launching ParaView…");
+    try {
+      const res = await openInParaview(currentRunId);
+      // The endpoint reports its operational failures in the body rather than
+      // as HTTP errors, so a 200 does not mean it launched.
+      setPvStatus(res?.launched ? "ParaView opening…" : res?.detail || "could not launch");
+    } catch (e) {
+      setPvStatus(e.message);
     }
   };
 
@@ -99,6 +121,20 @@ export default function ControlPanel({ onRunLoaded }) {
       <button onClick={submit} style={{ marginTop: 10 }}>Run simulation</button>
       <div style={{ marginTop: 8, fontSize: 12 }}>{status}</div>
 
+      {currentRunId && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee" }}>
+          <button onClick={openParaview} disabled={pvStatus === "launching ParaView…"}>
+            View in ParaView (3D)
+          </button>
+          <div style={{ marginTop: 4, fontSize: 11, color: "#666" }}>
+            Opens the ParaView desktop app on the machine running the API.
+          </div>
+          {pvStatus && (
+            <div style={{ marginTop: 4, fontSize: 11 }}>{pvStatus}</div>
+          )}
+        </div>
+      )}
+
       {/* Load a previously-completed run without re-simulating — survives a
           page refresh and lets a demo start from a pre-baked run. */}
       <div style={{ marginTop: 8 }}>
@@ -111,6 +147,8 @@ export default function ControlPanel({ onRunLoaded }) {
         <button onClick={loadExisting} style={{ fontSize: 12 }}>Load</button>
       </div>
 
+      <PopulationAtRisk data={result?.population_at_risk} />
+
       <h4>Gauges</h4>
       <ul style={{ fontSize: 12, paddingLeft: 16 }}>
         {GAUGES.map((g) => (
@@ -119,6 +157,54 @@ export default function ControlPanel({ onRunLoaded }) {
       </ul>
 
       <PlaybackControls />
+    </div>
+  );
+}
+
+/**
+ * Population at risk, from real GHSL census counts over the run's own grid.
+ *
+ * This field was null for every run since the table was created — nothing ever
+ * computed a population figure. It is shown only when a real population grid
+ * was obtained; when Earth Engine is unavailable it says so and shows NO
+ * number, because a headcount behind a "people at risk" headline is the worst
+ * thing in this project to invent.
+ */
+export function PopulationAtRisk({ data }) {
+  if (!data) return null;
+
+  if (!data.available) {
+    return (
+      <div style={{ marginTop: 12, padding: "8px 10px", fontSize: 11,
+                    border: "2px solid #e65100", background: "#fff4e5",
+                    borderRadius: 4, color: "#7a3e00" }}>
+        <div style={{ fontWeight: 700 }}>No population-at-risk figure</div>
+        <div style={{ marginTop: 4 }}>{data.reason}</div>
+        <div style={{ marginTop: 4 }}>No estimate is substituted.</div>
+      </div>
+    );
+  }
+
+  const par = data.par || {};
+  const n = (v) => (typeof v === "number" ? Math.round(v).toLocaleString() : "-");
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <h4 style={{ marginBottom: 4 }}>Population at risk</h4>
+      <div style={{ fontSize: 22, fontWeight: 700 }}>{n(par.total_par)}</div>
+      <div style={{ fontSize: 11, color: "#555" }}>
+        of {n(data.total_population_in_domain)} in the domain
+      </div>
+      <ul style={{ fontSize: 11, paddingLeft: 16, marginTop: 6 }}>
+        <li>&lt; 15 min warning: <strong>{n(par.par_high_urgency_under_15min)}</strong></li>
+        <li>15-60 min: <strong>{n(par.par_medium_urgency_15_60min)}</strong></li>
+        <li>&gt; 60 min: <strong>{n(par.par_low_urgency_over_60min)}</strong></li>
+      </ul>
+      <div style={{ fontSize: 10, color: "#777" }}>
+        {data.population_source}
+        {data.population_epoch ? ` epoch ${data.population_epoch}` : ""} · assumes{" "}
+        {Math.round((data.warning_lead_time_s || 0) / 60)} min warning lead time
+      </div>
     </div>
   );
 }

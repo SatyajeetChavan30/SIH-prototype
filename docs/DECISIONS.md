@@ -33,6 +33,11 @@ This document records key architectural decisions for JalRaksha, with rationale.
 
 ## 2. Dashboard Technology (Deferred)
 
+> **Superseded.** The React path was taken. The Streamlit + leafmap fallback was
+> built, served as the reference implementation the React panels were ported
+> from, and has since been deleted along with its `dashboard` extra. The ADR
+> below is retained as the record of the decision as it stood.
+
 **Decision:** Streamlit + leafmap fallback; React + deck.gl if time permits.
 
 **Rationale:**
@@ -281,7 +286,7 @@ if not config.allow_unvetted:
 - Phase 8: Comparison metrics (simplified)
 - Phase 9: Validation benchmarks (Malpasset/Chamoli skipped, focus on Tehri accuracy assessment)
 - Phase 10: GEE integration (defer to Phase 9)
-- Phase 11: Dashboard (use Streamlit fallback, minimal features)
+- Phase 11: Dashboard (planned as Streamlit fallback; delivered as React + FastAPI)
 - Phase 12: Hardening (basic offline mode, no prefetch optimization)
 
 **Messaging:** "Phases 0–5 core + Phase 7 demo deliver a working open-source dam-break screening tool. Phases 6–12 are planned future enhancements."

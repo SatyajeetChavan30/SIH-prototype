@@ -73,11 +73,6 @@ viz = [
     "cartopy>=0.21.0",
 ]
 
-dashboard = [
-    "streamlit>=1.27.0",
-    "leafmap>=0.23.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/sih2026/jalraksha"
 Documentation = "https://github.com/sih2026/jalraksha/wiki"

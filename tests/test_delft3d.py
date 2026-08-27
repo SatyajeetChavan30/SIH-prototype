@@ -217,13 +217,28 @@ class TestDelft3DRunner:
 
 class TestDelft3DComparison:
     def test_rasterize_sph_particles(self):
+        # particle_volume_m3 is REQUIRED. Depth is (particles in the cell) x
+        # (volume each carries) / (cell area), and rasterize_sph_particles used
+        # to substitute a hardcoded 1.0 m3 when it was absent, which rescaled
+        # every depth in the comparison by an arbitrary factor. A real result
+        # from jalraksha.sph.pysph_runner always carries it.
         sph = {
             "x": np.array([5.0, 15.0, 25.0]),
             "y": np.array([5.0, 15.0, 25.0]),
             "z": np.array([2.0, 3.0, 1.0]),
+            "particle_volume_m3": 8.0,   # 2 m particle spacing
         }
         grid = rasterize_sph_particles(sph, grid_nx=10, grid_ny=10, grid_dx=10.0, grid_dy=10.0)
         assert grid.shape == (10, 10)
+        # One particle per cell, 8 m3 each, over a 100 m2 cell => 0.08 m.
+        assert grid[0, 0] == pytest.approx(0.08)
+
+    def test_rasterize_refuses_without_particle_volume(self):
+        sph = {
+            "x": np.array([5.0]), "y": np.array([5.0]), "z": np.array([2.0]),
+        }
+        with pytest.raises(ValueError, match="particle_volume_m3"):
+            rasterize_sph_particles(sph, grid_nx=10, grid_ny=10, grid_dx=10.0, grid_dy=10.0)
 
     def test_rasterize_empty_particles(self):
         sph = {"x": np.array([]), "y": np.array([]), "z": np.array([])}
@@ -306,6 +321,8 @@ class TestDelft3DIntegration:
                 "x": np.random.rand(100) * 300,
                 "y": np.random.rand(100) * 600,
                 "z": np.random.rand(100) * 5,
+                "particle_volume_m3": 1.0,
+                "engine_label": "synthetic fixture (not a PySPH run)",
                 "gauge_arrivals": {
                     "Koteshwar": {"median_min": 32.0, "p05_min": 26.0, "p95_min": 38.0, "distance_km": 13.0},
                 },

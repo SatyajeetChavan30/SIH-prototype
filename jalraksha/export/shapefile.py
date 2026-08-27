@@ -23,6 +23,8 @@ from datetime import datetime
 from typing import Dict, Optional, List, Tuple
 import warnings
 
+from jalraksha.export.georef import grid_affine, to_north_up, zip_shapefile
+
 
 def raster_to_inundation_polygon(
     h_max: np.ndarray,
@@ -31,6 +33,15 @@ def raster_to_inundation_polygon(
 ) -> Optional[Dict]:
     """
     Convert maximum-depth raster to a single inundation polygon (maximum envelope).
+
+    SUPERSEDED by wet_mask_polygons(), which traces the actual wet-cell boundary
+    with rasterio.features.shapes. This function walks rows and joins the
+    leftmost to the rightmost wet cell in each, so a flood that splits around a
+    ridge or braids across a floodplain comes back as one filled ribbon covering
+    ground that never wetted — and the area_m2 it reports (a true wet-cell count)
+    then disagrees with the geometry it is attached to. Retained because it is
+    the documented contract of raster_to_inundation_polygon and is covered by
+    tests/test_export.py; new callers should use wet_mask_polygons().
 
     Returns a polygon dict in Shapefile-compatible format:
         {
@@ -140,6 +151,49 @@ def raster_to_inundation_polygon(
     }
 
 
+def wet_mask_polygons(
+    mask: np.ndarray,
+    grid_dict: Dict,
+):
+    """
+    Trace the boundary of a boolean cell mask into real polygons.
+
+    Uses rasterio.features.shapes, so the result follows the actual wet cells:
+    disjoint pockets stay disjoint, holes stay holes, and branching valleys are
+    not filled in. Coordinates come out in the grid's own metric CRS via the
+    shared grid_affine()/to_north_up() pairing, so the vector output overlays
+    the COGs cell-for-cell.
+
+    Args:
+        mask: 2D boolean (or 0/1) array [ny, nx] in solver row order.
+        grid_dict: Grid definition (nx, ny, dx, dy, x0, y0).
+
+    Returns:
+        A shapely (Multi)Polygon of the masked region, or None if nothing is set.
+    """
+    from rasterio.features import shapes as rio_shapes
+    from shapely.geometry import shape as shapely_shape
+    from shapely.ops import unary_union
+
+    binary = to_north_up(np.asarray(mask)).astype(np.uint8)
+    if not binary.any():
+        return None
+
+    transform = grid_affine(grid_dict)
+    geometries = [
+        shapely_shape(geom)
+        for geom, value in rio_shapes(binary, mask=binary.astype(bool), transform=transform)
+        if value == 1
+    ]
+    if not geometries:
+        return None
+
+    merged = unary_union(geometries)
+    if not merged.is_valid:
+        merged = merged.buffer(0)
+    return merged if not merged.is_empty else None
+
+
 def export_inundation_polygon(
     h_max: np.ndarray,
     grid_dict: Dict,
@@ -163,54 +217,39 @@ def export_inundation_polygon(
         Path to output shapefile, or None if no inundation.
     """
     output_path = str(output_path)
-    polygon = raster_to_inundation_polygon(h_max, grid_dict, depth_threshold)
 
-    if polygon is None:
-        warnings.warn(f"No inundation cells above threshold {depth_threshold} m; "
-                      f"no shapefile written")
-        return None
-
-    try:
-        from shapely.geometry import Polygon, mapping
-        from shapely.ops import transform as shapely_transform
-    except ImportError:
-        warnings.warn("shapely not installed; cannot write Shapefile. "
-                      "Install with: pip install shapely")
-        return None
-
-    # Build Shapely polygon
-    coords = polygon["coordinates"][0]
-    poly = Polygon(coords)
-
-    if not poly.is_valid:
-        poly = poly.buffer(0)  # attempt fix
-
-    # Build GeoDataFrame
     try:
         import geopandas as gpd
-
-        gdf = gpd.GeoDataFrame(
-            {
-                "dam": [dam_name],
-                "area_m2": [polygon["properties"]["area_m2"]],
-                "max_d_m": [polygon["properties"]["max_depth_m"]],
-                "depth_th": [depth_threshold],
-                "created": [polygon["properties"]["creation_date"]],
-            },
-            geometry=[poly],
-            crs=f"EPSG:{crs_epsg}",
-        )
-
-        # Ensure output directory exists
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-        gdf.to_file(output_path, driver="ESRI Shapefile")
-        return output_path
-
     except ImportError:
         warnings.warn("geopandas not installed; cannot write Shapefile. "
                       "Install with: pip install geopandas")
         return None
+
+    geometry = wet_mask_polygons(np.asarray(h_max) >= depth_threshold, grid_dict)
+    if geometry is None:
+        warnings.warn(f"No inundation cells above threshold {depth_threshold} m; "
+                      f"no shapefile written")
+        return None
+
+    wet = np.asarray(h_max)[np.asarray(h_max) >= depth_threshold]
+
+    gdf = gpd.GeoDataFrame(
+        {
+            "dam": [dam_name],
+            # Area from the geometry itself, so the attribute and the shape can
+            # never disagree — the failure the legacy ribbon polygon had.
+            "area_m2": [float(geometry.area)],
+            "max_d_m": [float(np.max(wet))],
+            "depth_th": [depth_threshold],
+            "created": [datetime.utcnow().isoformat()],
+        },
+        geometry=[geometry],
+        crs=f"EPSG:{crs_epsg}",
+    )
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    gdf.to_file(output_path, driver="ESRI Shapefile")
+    return output_path
 
 
 def export_hazard_classification_polygons(
@@ -290,31 +329,17 @@ def export_hazard_classification_polygons(
         if not np.any(mask):
             continue
 
-        # Build polygon for this class
-        polygon = raster_to_inundation_polygon(
-            mask.astype(np.float32),  # treat mask as binary depth
-            grid_dict,
-            depth_threshold=0.5,  # any cell with mask == 1 counts
-        )
-
-        if polygon is None:
+        geometry = wet_mask_polygons(mask, grid_dict)
+        if geometry is None:
             continue
-
-        coords = polygon["coordinates"][0]
-        poly = Polygon(coords)
-
-        if not poly.is_valid:
-            poly = poly.buffer(0)
-
-        area = float(np.sum(mask) * dx * dy)
 
         gdf = gpd.GeoDataFrame(
             {
                 "dam": [dam_name],
                 "hazard": [cls_name],
-                "area_m2": [area],
+                "area_m2": [float(geometry.area)],
             },
-            geometry=[poly],
+            geometry=[geometry],
             crs=f"EPSG:{crs_epsg}",
         )
 
@@ -365,9 +390,13 @@ def export_arrival_time_contours(
     x0 = grid_dict["x0"]
     y0 = grid_dict["y0"]
 
-    # Build cell-centre coordinate arrays
-    xs = x0 + np.arange(nx) * dx
-    ys = y0 + np.arange(ny) * dy
+    # Cell centres. x0/y0 are the domain's lower-left CORNER (see
+    # export/georef.grid_affine), so the half-cell offset is required —
+    # without it every contour sits half a cell south-west of the flood that
+    # produced it. Rows stay in solver order (row 0 = south) because these
+    # explicit coordinate arrays carry the orientation themselves.
+    xs = x0 + (np.arange(nx) + 0.5) * dx
+    ys = y0 + (np.arange(ny) + 0.5) * dy
     XX, YY = np.meshgrid(xs, ys)
 
     # Replace inf with NaN for contour computation

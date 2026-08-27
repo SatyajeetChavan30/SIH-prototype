@@ -97,7 +97,8 @@ def run_ensemble_member(
             simulation times (for keyframe export). None for most members.
 
     Returns:
-        On success: {sample_id, t_arrival, h_max, metadata, depth_series, success=True}
+        On success: {sample_id, t_arrival, h_max, v_max, metadata, depth_series,
+        success=True}
         On failure: {sample_id, error, success=False} — failures are reported,
         never silently dropped.
     """
@@ -122,6 +123,13 @@ def run_ensemble_member(
 
         t_arrival = np.full((grid.ny, grid.nx), np.inf, dtype=np.float64)
         h_max = np.zeros((grid.ny, grid.nx), dtype=np.float64)
+        # Running maximum of depth-averaged speed |(u, v)|. Needed by the Phase 5
+        # exports: the velocity COGs and the FD2320 hazard classes are functions
+        # of speed as well as depth, and without capturing it here the export
+        # layer's `r.get("v_max", zeros)` default silently writes an all-zero
+        # velocity field — a plausible-looking wrong answer, which is the one
+        # outcome CLAUDE.md's no-silent-fallback rule exists to prevent.
+        v_max = np.zeros((grid.ny, grid.nx), dtype=np.float64)
 
         step_count = 0
         # Safety cap only — it must not silently truncate the run. Sizing it from
@@ -152,14 +160,30 @@ def run_ensemble_member(
             t_arrival[newly_wet] = t_sim
 
             np.maximum(h_max, state.h, out=h_max)
+            np.maximum(v_max, np.hypot(state.u, state.v), out=v_max)
 
             if snapshot_times is not None:
-                while (
+                # A single step can cross SEVERAL scheduled times — early steps
+                # are large relative to the requested spacing (30 s steps against
+                # ~20 s spacing, say). Advance past all the times crossed, but
+                # record only ONE snapshot.
+                #
+                # Appending one per crossed time (the previous behaviour) stamped
+                # every one of them with the same t_sim, producing duplicate
+                # frames: a 30-snapshot request came back with 0, 30, 60, 90,
+                # 90, 120, ... That is redundant for keyframes and outright
+                # rejected by xdmf_export.write_xdmf_series, which requires
+                # strictly increasing frame times.
+                if (
                     next_snapshot_idx < len(snapshot_times)
                     and t_sim >= snapshot_times[next_snapshot_idx]
                 ):
                     depth_series.append(_snapshot(state, t_sim))
-                    next_snapshot_idx += 1
+                    while (
+                        next_snapshot_idx < len(snapshot_times)
+                        and t_sim >= snapshot_times[next_snapshot_idx]
+                    ):
+                        next_snapshot_idx += 1
 
             step_count += 1
 
@@ -174,6 +198,7 @@ def run_ensemble_member(
             "sample_id": sample_id,
             "t_arrival": t_arrival,
             "h_max": h_max,
+            "v_max": v_max,
             "metadata": metadata,
             "depth_series": depth_series,
             "n_steps": step_count,

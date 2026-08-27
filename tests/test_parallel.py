@@ -116,3 +116,26 @@ class TestParallelExecution:
             assert a["success"] and b["success"]
             np.testing.assert_array_equal(a["h_max"], b["h_max"])
             np.testing.assert_array_equal(a["t_arrival"], b["t_arrival"])
+
+    def test_snapshot_times_are_strictly_increasing(self):
+        """
+        One solver step can span several requested snapshot times. It must then
+        record ONE frame, not one per time crossed — the latter stamps every
+        frame with the same t_sim, and jalraksha.export.xdmf_export rejects a
+        series whose times are not strictly increasing.
+
+        Requesting many closely-spaced snapshots over a short run forces the
+        overlap this guards.
+        """
+        grid, state, manning = _domain()
+        results = run_ensemble(
+            _hydrographs(1), grid, state, manning,
+            i_breach=6, j_breach=6, solver_duration_s=60.0,
+            snapshot_sample_id=0, snapshot_times=np.linspace(0, 60, 40),
+            n_workers=1,
+        )
+        times = [snap["time_s"] for snap in results[0]["depth_series"]]
+        assert times, "no snapshots recorded"
+        assert all(b > a for a, b in zip(times, times[1:])), (
+            f"snapshot times not strictly increasing: {times}"
+        )

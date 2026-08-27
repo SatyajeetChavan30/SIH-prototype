@@ -30,7 +30,7 @@ The build is organized into 18 phases. **Phases 0, 1, and 4 are marked critical 
 3. **Phase 2**: Terrain conditioning — DEM interpolation, smoothing, breach location
 4. **Phase 3**: Breach regressions — peak outflow, failure time, width/depth regressions (Wahl method, with uncertainty bands)
 5. **Phase 4★**: End-to-end dam-break — breach → solver → arrival-time rasters, inundation polygons. *The mandatory core deliverable.*
-6. Phases 5–12: Export formats (.shp, .kml, .tif), impact analysis, SPH coupling, GEE integration, validation, dashboard (React + deck.gl or fallback Streamlit + leafmap), hardening.
+6. Phases 5–12: Export formats (.shp, .kml, .tif), impact analysis, SPH coupling, GEE integration, validation, dashboard (React + Vite + Leaflet/Cesium, served by FastAPI — the Streamlit + leafmap fallback was built and has since been removed), hardening.
 7. **Minimum defensible slice** (if schedule collapses): Phases 0–5 + Phase 7 (reduced) — working simulation with shapefile/KML export and small SPH near-field run.
 
 ## Testing Strategy
@@ -244,3 +244,33 @@ Presentation, solver, and export are in separate trees:
 - **CI gate**: Import graph must be acyclic (no Phase 5 importing Phase 0 for a solver thing)
 - **Code review**: `/code-quality-deep-dive` checks for layer violations
 - **Architecture audit**: `/improve-architecture` surfaces shallow modules before they grow
+
+## ParaView Visualization Pipeline — Model/Effort Routing
+
+The ParaView sub-project (`paraview/`, `tools/paraview/`) builds a DEM →
+XDMF+HDF5 → ParaView pipeline visualizing dam-break floods for two presets
+(`jalraksha/presets.py`): **Khadakwasla** (Mutha Basin, Pune — default) and
+**Tehri** (Bhagirathi Basin, Uttarakhand). Its own phase numbering follows
+`paraview/*.md`'s spec Section 17, not the table below — the **Phase**
+column here is a work-routing label from planning, not a phase number; the
+**Maps to** column gives the actual Section 17 phase so the two schemes
+don't get confused.
+
+| Phase (table label) | Maps to (spec Section 17) | Task / Objective | Model | Effort | Token Strategy |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Phase 3 Finish | Phase 3 (static water) | Visual sign-off on `phase3_reservoir.png` & update `paraview/IMPLEMENTATION_PLAN.md` | Haiku 4.5 | Low | Use Haiku for plain text markdown check-offs to conserve credits. |
+| Phase 2 Planning | Phase 4 (time-varying data) | Design XDMF+HDF5 schema, wave equations, and solver contract | Opus 5 | High | Front-load reasoning in 1 comprehensive prompt to avoid back-and-forth loops. |
+| Phase 2 Execution | Phase 4 (time-varying data) | Write `demo_synthetic.py` & `xdmf_export.py` HDF5 serialization code | Sonnet 5 | Medium–High | Pass the exact specification from Opus directly to Sonnet 5 for clean single-pass code output. |
+| Phase 5 | Phase 6 (scientific overlays) | Scientific overlays (`Annotate Time`, synthetic flag warning, fixed depth legends, velocity glyphs) | Sonnet 5 | Medium | Combine all filter node logic into a single script request to minimize context window overhead. |
+| Phase 6 | Phase 7 (static export) | Set up `camera_presets.py` and fix `render_static.py` pre-render auto-reset issue | Sonnet 5 | Medium | Use Sonnet 5 for routine API script bug fixes and parameter matrix definitions. |
+| Phase 7 Planning | Phase 8 (video export) | Frame interpolation sequence design & FFmpeg H.264 pipe strategy | Opus 5 | Medium–High | Map out execution steps and error-handling constraints before requesting code. |
+| Phase 7 Execution | Phase 8 (video export) | Implement `render_animation.py` (`SaveAnimation()`) & FFmpeg wrapper script | Sonnet 5 | High | Delegate heavy Python file generation to Sonnet 5. |
+| Phase 8 | Phase 9 (optimization) | Grid resolution decimation (30m/60m/120m) & ParaView interactive LOD tuning | Sonnet 5 | Low–Medium | Simple array resampling and property setting updates. |
+| Phase 9 | — (new, not in Section 17) | Create unified CLI orchestrator `main.py` (`argparse` setup) | Haiku 4.5 | Low | Haiku handles standard CLI boilerplate with minimal token cost. |
+
+As of this writing: Phase 3 (static water) sign-off is done for both dams —
+`paraview/artifacts/phase3_reservoir.png` (Tehri) and
+`paraview/artifacts/phase3_khadakwasla_reservoir.png` (Khadakwasla) are both
+rendered and confirmed correct. Phase 7 (static export, `render_static.py`)
+is also done and dam-agnostic. Phases 6, 8, and 9 remain unbuilt — see
+`paraview/IMPLEMENTATION_PLAN.md` for the authoritative, per-phase checklist.

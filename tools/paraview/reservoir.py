@@ -36,12 +36,13 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 
-# Tehri Dam levels, metres above sea level.
-# TODO: UNVETTED — confirm against a primary THDC / CWC source before these are
-# used for anything beyond visualization. Both are exposed as CLI flags so a
-# corrected value needs no code change.
-TEHRI_FRL_M = 830.0      # full reservoir level
-TEHRI_CREST_M = 839.5    # dam crest
+# NOTE: Tehri's FRL/crest constants (previously TEHRI_FRL_M / TEHRI_CREST_M
+# module constants here, 830.0 / 839.5 m, UNVETTED) now live on
+# jalraksha.presets.TEHRI, alongside the same dam's other configuration. See
+# that module for the citation TODO. A second dam (Khadakwasla) has no
+# published FRL at all, which is why frl_m/crest_m below are required
+# arguments rather than defaulting to one specific dam's water level —
+# estimate_pool_surface_m() is the fallback when a preset has neither.
 
 
 class ReservoirError(Exception):
@@ -99,14 +100,21 @@ def build_reservoir(
     i_dam: int,
     j_dam: int,
     *,
-    frl_m: float = TEHRI_FRL_M,
-    crest_m: float = TEHRI_CREST_M,
+    frl_m: float,
+    crest_m: float,
     barrier_halfwidth_cells: int = 25,
     barrier_thickness_cells: int = 4,
     seed_offset_cells: int = 3,
+    direction_search_radius_cells: Tuple[int, int] = (5, 12),
 ) -> Dict[str, Any]:
     """
     Fill the pool upstream of the dam to `frl_m`.
+
+    frl_m and crest_m are required, not defaulted to one dam's water level:
+    a generic reservoir builder silently defaulting to (say) Tehri's 830 m
+    would fill any OTHER dam's pool to the wrong level with no error. Callers
+    resolve these per-dam — see jalraksha.presets and, for a dam with no
+    published FRL, estimate_pool_surface_m() below.
 
     Args:
         terrain: (ny, nx) elevation, metres. Row 0 is the southernmost row.
@@ -120,6 +128,20 @@ def build_reservoir(
             valley, or the pool leaks around its ends.
         barrier_thickness_cells: Barrier depth along the flow direction.
         seed_offset_cells: How far upstream of the dam to seed the fill.
+        direction_search_radius_cells: (min, max) radius, in cells, of the
+            annulus _downhill_direction scans. The default (5, 12) — 500 m to
+            1.2 km at 100 m resolution — is right for a dam in a narrow gorge
+            (Tehri), where the true valley direction shows up at that scale.
+            It is WRONG for a dam on broader, more complex terrain
+            (Khadakwasla): at that scale it picks up local micro-relief
+            noise rather than the real valley trend. Measured on Khadakwasla:
+            radius (5, 12) gave a spurious bearing of 11 deg (N) that put the
+            seed on a 580 m rise; radius (20, 40) and beyond stably agreed on
+            53 deg (NE) — matching an independent connected-component check
+            of the DEM's own low-elevation region — and placed the seed
+            directly on a genuine, 2.8 km-wide, dead-flat 580.0 m plateau.
+            Widen this for any dam where the default radius doesn't land the
+            seed on a real pool.
 
     Returns:
         Dict with `depth` (ny, nx float32), `mask`, and diagnostics.
@@ -135,7 +157,8 @@ def build_reservoir(
     ny, nx = terrain.shape
     dx, dy = float(grid["dx"]), float(grid["dy"])
 
-    di, dj = _downhill_direction(terrain, i_dam, j_dam)
+    min_r, max_r = direction_search_radius_cells
+    di, dj = _downhill_direction(terrain, i_dam, j_dam, min_radius=min_r, max_radius=max_r)
     # Perpendicular to the flow — the line the dam wall runs along.
     pi, pj = -dj, di
 
@@ -205,6 +228,88 @@ def build_reservoir(
         "flow_direction": (di, dj),
         "seed": (i_seed, j_seed),
         "seed_offset_cells": effective_offset,
+    }
+
+
+def estimate_pool_surface_m(
+    terrain: np.ndarray,
+    i_dam: int,
+    j_dam: int,
+    *,
+    upstream_dir: Tuple[float, float],
+    radius_cells: int = 60,
+    skip_cells: int = 4,
+    bin_size_m: float = 0.5,
+    min_plateau_cells: int = 20,
+) -> Tuple[float, Dict[str, Any]]:
+    """
+    Elevation of the DEM's own impounded pool surface at the dam, for a dam
+    with no published full-reservoir-level figure available.
+
+    GLO-30 is a SURFACE model: it samples the water surface of a dam already
+    in place, not the drowned valley floor beneath it (see the module
+    docstring — Tehri's DEM reads ~814 m near the dam against a nominal 830 m
+    FRL). Sampling that plateau gives a defensible starting fill level derived
+    from data actually in hand, instead of a published number nobody can
+    supply a citation for.
+
+    Method: take cells in the upstream half-disc of `radius_cells`, excluding
+    a `skip_cells`-cell buffer right around the dam (the discharge channel
+    between the dam and the pool is often well below the pool itself — at
+    Khadakwasla, ~21 m lower over the first ~400 m — so including it pulls
+    the estimate down), then find the STATISTICAL MODE of the remaining
+    elevations at `bin_size_m` resolution. A genuine flat reservoir shows up
+    as a strong spike (GLO-30 repeats the exact same value across a pool —
+    measured at Khadakwasla: 580.0 m across a 2.8 km-wide stretch); this is
+    far more robust than "closest to the disc's minimum", which was measured
+    latching onto a handful of unrelated low cells in the channel instead of
+    the actual, much larger, pool plateau.
+
+    THIS IS NOT A FULL RESERVOIR LEVEL and must never be labelled as one in
+    any output — it is the height of whatever pool already exists in the
+    surface model, which for a real dam is close to normal operating level
+    but is not a substitute for a primary hydrological source.
+
+    Returns:
+        (pool_surface_m, diagnostics) — diagnostics reports how many cells
+        contributed, so a weak/absent mode can be caught by the caller.
+    """
+    ny, nx = terrain.shape
+    di, dj = upstream_dir  # points downstream; the sampling disc is upstream
+
+    jj_idx, ii_idx = np.mgrid[0:ny, 0:nx]
+    dist = np.sqrt((ii_idx - i_dam) ** 2 + (jj_idx - j_dam) ** 2)
+    along_flow = (ii_idx - i_dam) * di + (jj_idx - j_dam) * dj
+
+    upstream_disc = (dist <= radius_cells) & (along_flow < -skip_cells)
+    if not upstream_disc.any():
+        raise ReservoirError(
+            f"No cells found in the upstream half-disc (radius "
+            f"{radius_cells} cells, {skip_cells}-cell channel buffer excluded) "
+            f"around the dam at (i={i_dam}, j={j_dam})."
+        )
+
+    disc_elev = terrain[upstream_disc]
+    bins = np.round(disc_elev / bin_size_m).astype(np.int64)
+    mode_bin, counts = np.unique(bins, return_counts=True)
+    best = np.argmax(counts)
+    plateau_cells = int(counts[best])
+    pool_surface_m = float(mode_bin[best] * bin_size_m)
+
+    if plateau_cells < min_plateau_cells:
+        raise ReservoirError(
+            f"The largest flat cluster found upstream is only {plateau_cells} "
+            f"cell(s) (need >= {min_plateau_cells}) — this does not look like "
+            f"an impounded pool. The dam location is likely wrong, or this "
+            f"dam has no visible pool in the DEM at this resolution."
+        )
+
+    return pool_surface_m, {
+        "upstream_disc_cells": int(upstream_disc.sum()),
+        "plateau_cells": plateau_cells,
+        "plateau_min_m": float(disc_elev.min()),
+        "plateau_max_m": float(disc_elev.max()),
+        "pool_surface_m": pool_surface_m,
     }
 
 

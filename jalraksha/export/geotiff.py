@@ -17,18 +17,21 @@ References:
   GeoTIFF Cloud Optimized spec: https://www.cogeo.org/
 """
 
-import os
 import numpy as np
 import rasterio
-from rasterio.transform import Affine
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, List
 import warnings
-# Remove conflicting PROJ environment variables from system/other packages (e.g. PostGIS/pyproj)
-os.environ.pop("PROJ_LIB", None)
-os.environ.pop("PROJ_DATA", None)
-os.environ.setdefault("PYTHONWARNINGS", "ignore::UserWarning")
+
+from jalraksha.export.georef import grid_affine, to_north_up
+
+# PROJ's data path is repaired once, in jalraksha/__init__.py, BEFORE rasterio
+# is imported — which is the only point at which it can be repaired, since PROJ
+# resolves its search path when the native library loads and ignores later
+# changes to os.environ. This module used to pop PROJ_LIB/PROJ_DATA here
+# instead. That ran far too late to help, and worse, it discarded the corrected
+# path the package init had just installed.
 
 
 def export_raster_to_cog(
@@ -79,16 +82,14 @@ def export_raster_to_cog(
             f"({ny_expected}, {nx_expected})"
         )
 
-    # Build geotransform
-    # Grid cell centres: (x, y) = (x0 + i*dx, y0 + j*dy)
-    # GeoTIFF convention: top-left corner of top-left cell
-    x0 = grid_dict["x0"] - grid_dict["dx"] / 2.0
-    y0 = grid_dict["y0"] + grid_dict["dy"] / 2.0  # y increases downward in raster
-
-    # Affine transform for raster (note: dy negative for top-down convention)
-    transform = Affine.translation(x0, y0) * Affine.scale(
-        grid_dict["dx"], -grid_dict["dy"]
-    )
+    # Georeferencing comes from export/georef.py, which is the single definition
+    # of how a solver grid maps to the world. Two things it fixes that were wrong
+    # when this transform was built inline here: Grid.x0/y0 are the domain's
+    # lower-left CORNER (not the centre of cell 0), and solver arrays are
+    # SOUTH-UP while rasters are north-up. Together those errors placed the
+    # exported raster a full domain-height south of its own terrain, upside-down
+    # — invisible to any check short of opening the file over a basemap.
+    transform = grid_affine(grid_dict)
 
     # Prepare metadata
     if metadata_tags is None:
@@ -124,8 +125,9 @@ def export_raster_to_cog(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     with rasterio.open(output_path, "w", **profile) as dst:
-        # Write raster
-        dst.write(raster_data.astype(np.float32), 1)
+        # Flip south-up solver rows into north-up raster rows; grid_affine()
+        # above assumes exactly this pairing.
+        dst.write(to_north_up(raster_data).astype(np.float32), 1)
 
         # Write metadata tags
         for key, val in metadata_tags.items():

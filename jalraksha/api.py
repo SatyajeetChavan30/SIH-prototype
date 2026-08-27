@@ -2,7 +2,7 @@
 Phase 14: REST API Layer for JalRaksha.
 
 Provides a lightweight HTTP REST API (using Python stdlib http.server) so the
-Streamlit dashboard or external tools can trigger simulations and retrieve
+The web dashboard or external tools can trigger simulations and retrieve
 results programmatically.
 
 Endpoints:
@@ -264,7 +264,7 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8502) -> HTTPServer:
 
     Args:
         host: Bind address (default: localhost only).
-        port: TCP port (default: 8502 — separate from Streamlit on 8501).
+        port: TCP port (default: 8502 — distinct from the FastAPI service on 8000).
 
     Returns:
         HTTPServer instance (call .shutdown() to stop).

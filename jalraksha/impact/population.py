@@ -71,17 +71,38 @@ class PopulationEstimator:
         self,
         depth_grid: np.ndarray,
         settlement_grid: Optional[np.ndarray] = None,
-        land_use_grid: Optional[np.ndarray] = None
+        land_use_grid: Optional[np.ndarray] = None,
+        cell_size_m: float = 200.0,
+        allow_synthetic_settlements: bool = False,
     ) -> Dict[str, Any]:
         """
         Estimate population affected by flood depth.
 
+        PREFER compute_population_exposure() / compute_par() BELOW when a real
+        per-cell population count is available (jalraksha.gee.population fetches
+        GHSL onto the solver grid). Those take census-derived counts directly.
+        This method instead infers density from settlement TYPE using the
+        hardcoded per-type figures in __init__, every one of which is flagged
+        UNVETTED — so it is a fallback for when no gridded population exists,
+        not the preferred route to a population-at-risk number.
+
         Args:
             depth_grid: Water depth grid (meters)
             settlement_grid: Settlement type grid (0=village, 1=town, 2=city).
-                           If None, uses synthetic distribution based on terrain.
             land_use_grid: Land use classification (0=agricultural, 1=urban).
                           If None, assumes uniform land use.
+            cell_size_m: Grid cell size (m). Used to convert density to counts.
+                Previously hardcoded to 200 m, which silently scaled every
+                population figure by (cell_size/200)^2 whenever a run used any
+                other resolution.
+            allow_synthetic_settlements: Permit fabricating a settlement layout
+                when settlement_grid is None. Off by default: the synthesis is
+                np.random over terrain and produces a population figure with no
+                relationship to who actually lives there.
+
+        Raises:
+            ValueError: if settlement_grid is None and synthesis was not
+                explicitly permitted.
 
         Returns:
             {
@@ -97,8 +118,18 @@ class PopulationEstimator:
                 "source_note": "TODO: UNVETTED — check literature.md"
             }
         """
-        if settlement_grid is None:
-            # Create synthetic settlement distribution based on terrain
+        synthetic_settlements = settlement_grid is None
+        if synthetic_settlements:
+            if not allow_synthetic_settlements:
+                raise ValueError(
+                    "No settlement_grid supplied. Generating one places "
+                    "villages and towns at random over the terrain, and the "
+                    "population figure that follows describes nobody. Supply a "
+                    "real grid (see jalraksha.gee.population for GHSL), or use "
+                    "compute_population_exposure()/compute_par() with census "
+                    "counts, or pass allow_synthetic_settlements=True if a "
+                    "fabricated layout is genuinely what you want."
+                )
             settlement_grid = self._generate_synthetic_settlements(depth_grid.shape)
 
         if land_use_grid is None:
@@ -109,7 +140,7 @@ class PopulationEstimator:
         population_density = self._get_population_density(settlement_grid, land_use_grid)
 
         # Calculate total population in catchment
-        cell_area_km2 = 200.0 ** 2 / 1e6  # km² per cell
+        cell_area_km2 = float(cell_size_m) ** 2 / 1e6  # km² per cell
         total_population = int(np.sum(population_density) * cell_area_km2)
 
         # Analyze population affected by depth
@@ -133,7 +164,18 @@ class PopulationEstimator:
             "affected_settlement_types": depth_analysis["affected_settlement_types"],
             "depth_analysis": depth_analysis,
             "method": "settlement_based_population_estimation",
-            "source_note": "TODO: UNVETTED — check literature.md for settlement and population data"
+            "cell_size_m": float(cell_size_m),
+            # Says which layout produced the number, rather than leaving a
+            # reader to assume it came from data.
+            "settlement_source": (
+                "SYNTHETIC_random_layout" if synthetic_settlements
+                else "caller_supplied_settlement_grid"),
+            "source_note": (
+                "TODO: UNVETTED — per-settlement-type densities and demographic "
+                "splits in PopulationEstimator.__init__ have no primary source; "
+                "see literature.md. For a census-derived figure use "
+                "compute_par() with a GHSL population grid."
+            ),
         }
 
         return result
@@ -291,12 +333,20 @@ class PopulationEstimator:
         # Base vulnerability from depth exposure
         depth_vulnerability = min(depth_analysis["par_percentage"] / 100, 1.0)
 
-        # Demographic vulnerability (higher for children + elderly)
-        demographic_vuln = (
-            (demographic_breakdown["children"] / demographic_breakdown["total"] * 1.2) +
-            (demographic_breakdown["elderly"] / demographic_breakdown["total"] * 1.5) +
-            (demographic_breakdown["women"] / demographic_breakdown["total"] * 1.1)
-        ) / 3.0
+        # A flood that reaches nobody is a real and important result — an
+        # inundation envelope over empty ground — not an error. Dividing by the
+        # affected total unguarded raised ZeroDivisionError for exactly that
+        # case; with no one exposed there is no demographic vulnerability to
+        # weight, so it is zero.
+        affected_total = demographic_breakdown.get("total", 0)
+        if affected_total <= 0:
+            demographic_vuln = 0.0
+        else:
+            demographic_vuln = (
+                (demographic_breakdown["children"] / affected_total * 1.2) +
+                (demographic_breakdown["elderly"] / affected_total * 1.5) +
+                (demographic_breakdown["women"] / affected_total * 1.1)
+            ) / 3.0
 
         # Combined vulnerability index
         vulnerability_index = (depth_vulnerability * 0.7 + demographic_vuln * 0.3)

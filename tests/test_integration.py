@@ -6,8 +6,7 @@ End-to-end system tests that verify the full JalRaksha stack works together:
   2. Hardening guards → API endpoint → rapid estimate → gauge list
   3. Validation metrics → sensitivity analysis → benchmark comparison
   4. Export pipeline → COG / KML / Shapefile stubs
-  5. Dashboard imports → plot generation → map config
-  6. Full package import test (all modules importable)
+  5. Full package import test (all modules importable)
 
 These are the definitive "it all works" tests before SIH submission.
 """
@@ -58,8 +57,6 @@ class TestFullPackageImports:
         "jalraksha.gee.auth",
         "jalraksha.gee.sar",
         "jalraksha.gee.population",
-        "jalraksha.dashboard.plots",
-        "jalraksha.dashboard.maps",
     ]
 
     @pytest.mark.parametrize("module_name", MODULES)
@@ -172,27 +169,6 @@ class TestValidationIntegration:
         )
         assert result["sensitivity_index"] >= 0.0
         assert len(result["output_values"]) == 3
-
-
-# ─── TestDashboardIntegration ─────────────────────────────────────────────────
-
-class TestDashboardIntegration:
-    def test_plots_module_creates_figure(self):
-        from jalraksha.dashboard.plots import plot_arrival_hydrographs
-        import matplotlib.pyplot as plt
-        arrival_data = {
-            "Koteshwar": {"median": 1800.0, "p05": 1440.0, "p95": 2160.0},
-            "Rishikesh":  {"median": 4320.0, "p05": 3600.0, "p95": 5040.0},
-        }
-        fig = plot_arrival_hydrographs(arrival_data)
-        assert isinstance(fig, plt.Figure)
-        plt.close(fig)
-
-    def test_maps_module_importable(self):
-        from jalraksha.dashboard import maps
-        assert hasattr(maps, "create_inundation_folium_map")
-
-
 # ─── TestImpactIntegration ────────────────────────────────────────────────────
 
 class TestImpactIntegration:
