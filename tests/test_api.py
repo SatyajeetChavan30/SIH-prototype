@@ -30,13 +30,48 @@ from jalraksha.api import (
 @pytest.fixture(scope="module")
 def api_server():
     """Start API server on port 18502 for tests (avoids conflict with production)."""
+    _warm_numba_kernels()
     server = start_api_server(host="127.0.0.1", port=18502)
     yield server
     stop_api_server(server)
 
 
+def _warm_numba_kernels() -> None:
+    """
+    Compile the breach kernels BEFORE the server starts.
+
+    /api/v1/simulate calls synthesize_breach_ensemble, whose Numba kernels take
+    ~22 s to compile on first use and ~0.5 s thereafter. The request timeouts
+    below are 5 s, so whichever test happened to hit that endpoint first raced
+    the compiler and failed — but only sometimes, because any earlier test that
+    touched the solver warmed it incidentally. That makes it an order-dependent
+    flake that passes in isolation and fails in a full run, which is the worst
+    kind to debug.
+
+    Warming here moves the compile out of the timed request, so the timeouts
+    measure the endpoint rather than the JIT.
+    """
+    try:
+        from jalraksha.terrain.breach import synthesize_breach_ensemble
+
+        synthesize_breach_ensemble(
+            {"name": "warmup", "height_m": 100.0, "storage_mm3": 1000.0},
+            num_samples=1, random_seed=0,
+        )
+    except Exception:
+        # A warm-up failure is not a test failure; the tests below will report
+        # the real problem with a real assertion.
+        pass
+
+
+#: Request timeout. Generous on purpose: these run alongside whatever else is
+#: on the machine, and the endpoints they hit do real work. Too tight a value
+#: turns load into a test failure, which teaches the team to ignore red CI.
+REQUEST_TIMEOUT_S = 30
+
+
 def get_json(url: str) -> dict:
-    with urllib.request.urlopen(url, timeout=5) as resp:
+    with urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT_S) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -45,7 +80,7 @@ def post_json(url: str, data: dict) -> tuple:
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT_S) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         return exc.code, json.loads(exc.read().decode("utf-8"))

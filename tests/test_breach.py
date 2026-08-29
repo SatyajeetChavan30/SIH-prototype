@@ -837,3 +837,78 @@ class TestEnsembleStatistics:
 
     def test_empty_ensemble_returns_empty_dict(self):
         assert ensemble_statistics([]) == {}
+
+
+# ─── Dam-class extrapolation ───────────────────────────────────────────────
+# Every regression in the ensemble is an embankment fit. A masonry gravity dam
+# fails by monolith sliding, not erosion, so the peak is a screening figure —
+# and the existing height-based extrapolation_ratio cannot detect that.
+
+
+class TestDamClassOutsideFittedPopulation:
+    KHADAKWASLA = {
+        "name": "Khadakwasla Dam", "height_m": 51.3, "storage_mm3": 33.5,
+        "dam_type": "gravity", "failure_mode": "overtopping",
+    }
+
+    def test_gravity_dam_is_flagged(self):
+        from jalraksha.terrain.breach import (
+            ensemble_statistics, synthesize_breach_ensemble,
+        )
+
+        stats = ensemble_statistics(
+            synthesize_breach_ensemble(self.KHADAKWASLA, num_samples=4, random_seed=1)
+        )
+        assert stats["dam_class_outside_fitted_population"] is True
+        assert "EMBANKMENT" in stats["dam_class_note"]
+
+    def test_embankment_dam_is_not_flagged(self):
+        from jalraksha.terrain.breach import (
+            ensemble_statistics, synthesize_breach_ensemble,
+        )
+
+        stats = ensemble_statistics(
+            synthesize_breach_ensemble(
+                {**self.KHADAKWASLA, "dam_type": "embankment"},
+                num_samples=4, random_seed=1,
+            )
+        )
+        assert stats["dam_class_outside_fitted_population"] is False
+        assert stats["dam_class_note"] is None
+
+    def test_flag_does_not_shift_the_central_estimate(self):
+        """
+        The flag must REPORT the problem, not silently correct for it. There is
+        no published dam-type coefficient in Froehlich/MacDonald/Costa/Von Thun,
+        so adjusting the peak here would be fabricating one. Same seed, same
+        dam, different class => identical peak.
+        """
+        from jalraksha.terrain.breach import (
+            ensemble_statistics, synthesize_breach_ensemble,
+        )
+
+        peaks = [
+            ensemble_statistics(
+                synthesize_breach_ensemble(
+                    {**self.KHADAKWASLA, "dam_type": dam_type},
+                    num_samples=4, random_seed=1,
+                )
+            )["q_peak_median"]
+            for dam_type in ("gravity", "embankment")
+        ]
+        assert peaks[0] == pytest.approx(peaks[1])
+
+    def test_height_extrapolation_alone_would_have_read_green(self):
+        """
+        The reason this flag exists at all. Khadakwasla is comfortably inside
+        the regressions' fitted HEIGHT range, so extrapolation_ratio reports no
+        problem while the dam is the wrong class entirely.
+        """
+        from jalraksha.terrain.breach import (
+            dam_class_outside_fitted_population, extrapolation_ratio,
+        )
+
+        assert extrapolation_ratio(51.3) < 1.0
+        assert dam_class_outside_fitted_population("gravity") is True
+        assert dam_class_outside_fitted_population("masonry") is True
+        assert dam_class_outside_fitted_population("embankment") is False

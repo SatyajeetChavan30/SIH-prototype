@@ -54,7 +54,72 @@ def resolve_dflowfm(custom_path: Optional[str] = None) -> Optional[str]:
         )
         return None
 
-    return shutil.which("dflowfm")
+    # The FM Suite ships the executable as dflowfm-cli.exe, not "dflowfm".
+    # Looking only for the latter is why a perfectly good local install went
+    # undetected.
+    for candidate in ("dflowfm-cli", "dflowfm"):
+        found = shutil.which(candidate)
+        if found:
+            return found
+
+    return _discover_installed_kernel()
+
+
+#: Where the Deltares installers put the DIMR kernel set. The FM Suite nests it
+#: under the DeltaShell plugin rather than in a top-level bin, so PATH lookups
+#: never find it — every install needs either this search or an explicit
+#: JALRAKSHA_DFLOWFM_EXE.
+#:
+#: Note that not every edition ships kernels at all: the "Open" editions
+#: (e.g. 2026.02 OpenHMWQ) install the DeltaShell framework WITHOUT
+#: plugins/DeltaShell.Dimr/kernels, so only the editions that have them match.
+_KERNEL_GLOBS = (
+    r"C:\Program Files\Deltares\*\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe",
+    r"C:\Program Files (x86)\Deltares\*\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe",
+    r"C:\Program Files\Deltares\*\x64\dflowfm\bin\dflowfm-cli.exe",
+    # Some editions place the kernel directly under bin/ rather than under the
+    # Dimr plugin tree. Added for completeness; on the machine this was written
+    # for, the 2026.01 HM install matches the first pattern and 2026.02 OpenHMWQ
+    # ships no kernel at all (see the note above), so this one currently matches
+    # nothing. It costs one glob and covers an edition layout that does exist.
+    r"C:\Program Files\Deltares\*\bin\dflowfm-cli.exe",
+)
+
+
+def _discover_installed_kernel() -> Optional[str]:
+    """Find a Deltares kernel in the usual install locations."""
+    import glob
+
+    for pattern in _KERNEL_GLOBS:
+        matches = sorted(glob.glob(pattern))
+        if matches:
+            # Newest suite version last after a lexical sort of the install
+            # names, which carry the year.version.
+            chosen = matches[-1]
+            print(f"[delft3d] Discovered Delft3D FM kernel: {chosen}")
+            return chosen
+    return None
+
+
+def kernel_environment(executable: str) -> Dict[str, str]:
+    r"""
+    Environment the kernel needs to find its own libraries.
+
+    `run_dflowfm.bat` sets `PATH = <root>\share;<root>\lib` before invoking
+    the exe. Without it the process dies on missing DLLs, which surfaces as an
+    opaque non-zero exit and no output at all.
+    """
+    env = dict(os.environ)
+    bin_dir = Path(executable).parent
+    root = bin_dir.parent
+    share, lib = root / "share", root / "lib"
+    if share.is_dir() and lib.is_dir():
+        env["PATH"] = f"{share};{lib}"
+    else:
+        # Not the FM Suite layout; leave PATH alone and let the loader try.
+        env["PATH"] = f"{bin_dir};{env.get('PATH', '')}"
+    env.setdefault("OMP_NUM_THREADS", "1")
+    return env
 
 
 def is_dflowfm_available(custom_path: Optional[str] = None) -> bool:
@@ -81,7 +146,7 @@ def _run_dflowfm_binary(
     mdu_path = Path(mdu_path)
     work_dir = mdu_path.parent
 
-    cmd = [executable, "--autostartstop", str(mdu_path)]
+    cmd = [executable, "--autostartstop", mdu_path.name]
 
     try:
         result = subprocess.run(
@@ -90,6 +155,7 @@ def _run_dflowfm_binary(
             capture_output=True,
             text=True,
             timeout=timeout_s,
+            env=kernel_environment(executable),
         )
 
         return {
@@ -97,7 +163,7 @@ def _run_dflowfm_binary(
             "stdout": result.stdout,
             "stderr": result.stderr,
             "returncode": result.returncode,
-            "output_dir": work_dir,
+            "output_dir": _resolve_output_dir(work_dir),
             "engine": "Delft3D_FM",
         }
     except FileNotFoundError:
@@ -445,6 +511,140 @@ def run_delft3d_simulation(
     return result
 
 
+def _resolve_output_dir(work_dir: Path) -> Path:
+    """
+    Where D-Flow FM actually put its results.
+
+    The kernel does not write next to the .mdu. It creates a
+    `DFM_OUTPUT_<model name>/` subdirectory and writes `*_map.nc`, `*_his.nc`
+    and the .dia log there. Returning the model directory instead meant a run
+    that had genuinely SUCCEEDED - kernel found, exit code 0, both NetCDF files
+    on disk - was reported as "output could not be parsed" and silently
+    downgraded to the built-in solver.
+
+    Falls back to work_dir when there is no such subdirectory, so a layout that
+    does write in place still parses.
+    """
+    work_dir = Path(work_dir)
+    candidates = sorted(work_dir.glob("DFM_OUTPUT_*"))
+    for candidate in candidates:
+        if candidate.is_dir():
+            print(f"[delft3d] Output directory: {candidate}")
+            return candidate
+    return work_dir
+
+
+def _parse_his_gauge_arrivals(
+    output_dir: Path,
+    gauge_locations: Optional[List[Dict]] = None,
+    threshold_m: float = 0.1,
+) -> Dict[str, Dict]:
+    """
+    True gauge arrival times from Delft3D FM's history file.
+
+    D-Flow FM writes observation-point time series to `*_his.nc`, separately
+    from the gridded `*_map.nc` this module otherwise reads. The history file
+    gives depth AT each station directly, so no nearest-cell search is needed.
+
+    One subtlety, and the reason this is not a two-line function: the history
+    file records water LEVEL and bed level, not depth. Depth is the difference,
+    which also keeps dry stations at exactly zero rather than at a negative
+    level-minus-bed. `jalraksha/validation/delft3d_benchmark.py::_read_his_gauges`
+    established that; this is the same computation applied to arrival times.
+
+    Returns {} - never a fabricated arrival - when there is no history file, no
+    stations, or no variables to read. An empty table is a truthful "the model
+    did not report this"; a celerity estimate wearing a Delft3D label would not
+    be, and defeats the point of running the real engine.
+    """
+    output_dir = Path(output_dir)
+    his_files = sorted(output_dir.glob("*_his.nc"))
+    if not his_files:
+        print(f"[delft3d] No *_his.nc under {output_dir}; no gauge arrivals "
+              f"from the kernel. (Were observation points written?)")
+        return {}
+
+    distances = {str(g.get("name")): g.get("distance_km")
+                 for g in (gauge_locations or [])}
+
+    try:
+        import netCDF4 as nc
+        import numpy as np
+    except ImportError as exc:  # pragma: no cover - netCDF4 is a hard dep here
+        print(f"[delft3d] Cannot read {his_files[0].name}: {exc}")
+        return {}
+
+    dataset = nc.Dataset(his_files[0])
+    try:
+        variables = dataset.variables
+        names_var = next((v for v in ("station_name", "station_id")
+                          if v in variables), None)
+        if names_var is None or "waterlevel" not in variables:
+            print(f"[delft3d] {his_files[0].name} has no station names or "
+                  f"waterlevel (present: {sorted(variables)}).")
+            return {}
+
+        times = np.asarray(variables["time"][:], dtype=float)
+        levels = np.asarray(variables["waterlevel"][:], dtype=float)
+        if "bedlevel" in variables:
+            beds = np.asarray(variables["bedlevel"][:], dtype=float)
+        else:
+            # Without a bed level the best available floor is the initial
+            # water level at each station, which for a dry downstream station
+            # is the bed. Stated rather than silently assumed.
+            beds = levels[0, :]
+            print("[delft3d] No bedlevel in the history file; using the "
+                  "initial water level as the reference for depth.")
+
+        raw_names = np.asarray(variables[names_var][:])
+        station_names = []
+        for row in raw_names:
+            if isinstance(row, (bytes, str)):
+                station_names.append(str(row).strip())
+            else:
+                station_names.append(
+                    b"".join(bytes(c) for c in row if c not in (b"", None))
+                    .decode("utf-8", "ignore").strip())
+
+        arrivals: Dict[str, Dict] = {}
+        for index, name in enumerate(station_names):
+            if not name:
+                continue
+            depth = levels[:, index] - np.atleast_1d(beds)[
+                index if np.ndim(beds) else 0]
+            wet = np.nonzero(depth >= threshold_m)[0]
+            if wet.size == 0:
+                arrivals[name] = {
+                    "median_s": None, "median_min": None,
+                    "distance_km": distances.get(name),
+                    "method": "delft3d_fm_his",
+                    "note": (f"Water never reached {threshold_m} m at this "
+                             f"station within the simulated period."),
+                }
+                continue
+            arrival_s = float(times[wet[0]])
+            arrivals[name] = {
+                "median_s": arrival_s,
+                "median_min": arrival_s / 60.0,
+                "max_depth_m": float(np.nanmax(depth)),
+                "distance_km": distances.get(name),
+                # No p05/p95: a single deterministic Delft3D run has no
+                # ensemble spread, and inventing a +/-20% band here (as the
+                # analytic fallback does) would misrepresent one model run as
+                # an uncertainty quantification.
+                "method": "delft3d_fm_his",
+            }
+        print(f"[delft3d] Read {len(arrivals)} gauge series from "
+              f"{his_files[0].name}.")
+        return arrivals
+    except Exception as exc:
+        print(f"[delft3d] Could not read gauge arrivals from "
+              f"{his_files[0].name}: {type(exc).__name__}: {exc}")
+        return {}
+    finally:
+        dataset.close()
+
+
 def _parse_delft3d_output(
     output_dir: Path,
     gauge_locations: Optional[List[Dict]] = None,
@@ -527,12 +727,11 @@ def _parse_delft3d_output(
         "max_depth": max_depth,
         "max_velocity": max_velocity,
         "arrival_time": arrival_time,
-        # Deliberately empty, not fabricated. Delft3D FM writes gauge output to
-        # its own history file (*_his.nc), which this parser does not yet read;
-        # inventing arrivals from a celerity formula here would defeat the whole
-        # point of running the real engine.
-        # TODO: read *_his.nc observation stations for true gauge arrivals.
-        "gauge_arrivals": {},
+        # Read from the model's own history output. This was `{}` with a
+        # standing TODO, which meant a SUCCESSFUL Delft3D FM run reported no
+        # gauge arrivals at all while the built-in fallback reported a full
+        # table - the better engine looked like the emptier one.
+        "gauge_arrivals": _parse_his_gauge_arrivals(output_dir, gauge_locations),
         "grid_nx": grid.get("nx"),
         "grid_ny": grid.get("ny"),
         "grid_dx": grid.get("dx"),

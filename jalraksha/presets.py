@@ -113,6 +113,18 @@ class DamPreset:
     river: Optional[str] = None
     state: Optional[str] = None
 
+    # Reservoir surface area at FRL. Optional because it is genuinely unknown for
+    # both presets, and this is one of the places where a guess does real damage:
+    # reservoir_storage_curve() (terrain/breach.py) falls back to
+    # storage_exponent=3.0 — a cone — when this is None. That is defensible for
+    # Tehri's Himalayan gorge. For a broad shallow Deccan pool like Khadakwasla
+    # the exact exponent b = A0*d0/S0 is nearer 9, and getting b wrong distorts
+    # the drawdown rate, and therefore the routed peak and the whole recession
+    # limb. Supplying a real area here removes that assumption; inventing one
+    # would only hide it. Declared last, with a default, so with_location()'s
+    # dataclasses.replace() and every existing construction site are unaffected.
+    surface_area_km2: Optional[float] = None
+
     def to_dam_config(self) -> Dict[str, Any]:
         """
         The plain dict ``build_domain()`` / ``run_dam_break_ensemble()``
@@ -138,7 +150,13 @@ class DamPreset:
                 f"primary CWC / dam-authority source before running the "
                 f"solver for this preset."
             )
-        return {
+        config: Dict[str, Any] = {
+            # dam_id travels with the config so downstream code can look up this
+            # dam's own gauge corridor (get_gauges) instead of falling back to a
+            # hardcoded one. Before this key existed, define_downstream_gauges()
+            # had no way to tell which dam it was being called for and returned
+            # the Tehri corridor unconditionally.
+            "dam_id": self.dam_id,
             "name": self.name,
             "lat": self.lat,
             "lon": self.lon,
@@ -146,7 +164,20 @@ class DamPreset:
             "storage_mm3": self.storage_mm3,
             "dam_type": self.dam_type,
             "failure_mode": self.failure_mode,
+            # The DEM-backed extent for this dam. Emitted here so every caller
+            # gets it, not just the HTTP layer: the service used to bolt it on
+            # in RunRequest.to_dam_config, so a library-side caller (the Delft3D
+            # comparison builder, scripts, tests) silently ran with no domain
+            # cap. For Khadakwasla that meant a 70 km domain against a DEM that
+            # covers 27 km — 83.7% of the grid filled with interpolated NoData,
+            # which in turn made the reservoir undetectable.
+            "domain_radius_km": self.domain_radius_km,
         }
+        # Emitted only when known, so breach.py's own `surface_area_km2=None`
+        # default path stays exactly as it is for a preset that lacks it.
+        if self.surface_area_km2 is not None:
+            config["surface_area_km2"] = self.surface_area_km2
+        return config
 
     def dem_filename(self) -> str:
         """Must mirror jalraksha/dem.py::fetch_dem's clipped-cache filename."""
@@ -227,15 +258,66 @@ KHADAKWASLA = DamPreset(
     # plateau; direction_search_radius_cells below overrides that.
     lat=18.4436,
     lon=73.7686,
-    # UNVETTED — no primary CWC / Maharashtra WRD source available for these.
-    # Not required for --terrain-only or --reservoir; to_dam_config() raises
-    # if a solver mode is requested until a real source is supplied.
-    height_m=None,
-    storage_mm3=None,
-    dam_type=None,
+    # PARTIALLY VETTED — revised 2026-08-28 from a sourced dam-parameter review
+    # that supersedes the first pass (51.3 m / 33.5 MCM), both of which it
+    # identifies as wrong for this purpose:
+    #   * 51.3 m traces to a 1961 failure report describing a PLANNED dam stage
+    #     that was never attained — not a current structural height.
+    #   * 33.5 MCM is a partial live-storage figure. The regressions need GROSS.
+    #
+    # HEIGHT, 39.6 m — above deepest foundation, the NRLD convention the breach
+    # regressions expect: 31.25 m above riverbed plus 8.37 m of foundation.
+    # Attributed to CWPRS / civil dam records.
+    #
+    # STORAGE, 85.31 MCM — GROSS (live 55.91 MCM + dead). The live figure is
+    # independently corroborated: 1.97 TMC = 55.9 MCM, matching NDMA.
+    #
+    # TODO: STILL UNVETTED as primary sources. The review's citations are
+    # secondary — press reporting, an FAO 1989 fisheries survey, and
+    # Wikipedia-derived compilations — not a National Register of Large Dams
+    # entry read directly. It also flags a spurious "341 MCM" capacity in one
+    # wiki table, which is a fair warning about the provenance chain generally.
+    # Replace with an NRLD row when one is in hand.
+    height_m=39.6,
+    storage_mm3=85.31,
+    # The same review describes the structure as "earth/gravity", while the
+    # brief that requested this dam said "masonry gravity" (1879). Kept as
+    # "gravity" deliberately: it is what was originally specified, and it is
+    # the conservative reading. Reclassifying to an embankment on an ambiguous
+    # secondary phrase would silently switch OFF breach.py's
+    # dam_class_outside_fitted_population caveat, and a caveat wrongly removed
+    # is a worse failure than one wrongly kept.
+    dam_type="gravity",
     failure_mode="overtopping",
     region="Mutha River Basin, Pune, Maharashtra",
-    domain_radius_km=30.0,
+    # BOUNDED BY THE DEM, not by the gauge list. This was briefly widened to
+    # 100.0 to bring Baramati (91.7 km) inside the domain, which was a mistake:
+    # the cached Copernicus clip covers 73.513-74.054 E, 18.209-18.714 N — about
+    # 57 x 56 km, a usable radius of ~28 km. A 100 km radius asks for a
+    # 200 x 200 km grid from a DEM covering 8% of it, and build_domain duly
+    # reported "Filling 920237 nodata cell(s) (92.02%)". Water then propagates
+    # over interpolated fill rather than terrain, which is not a slower answer
+    # but a meaningless one.
+    #
+    # 27.0 km, not the 30.0 this preset originally carried: the cached clip's
+    # usable radius is 27.9 km, so even 30.0 was over — which is exactly where
+    # its documented 11.6% NoData came from. 27.0 holds all SIX
+    # Mula-Mutha corridor gauges
+    # (furthest: Loni Kalbhor at 26.8 km) on real terrain. Baramati falls
+    # outside and is reported as such by compute_arrival_times_at_gauges — which
+    # is correct: it sits on the Karha, not this dam's river, so it was never on
+    # the flood path. Raising this again REQUIRES fetching more GLO-30 tiles
+    # first (N17-N19 x E072-E074), and CLAUDE.md's offline-first rule means that
+    # cache must be warm before demo day.
+    #
+    # Margin is thin on BOTH sides and this is the real constraint on this dam:
+    # the six gauges need a square half-width of 26.5 km (Loni Kalbhor is 26.5
+    # km due east), and the DEM supplies 27.9 km. 27.0 fits between them with
+    # ~0.5 km to spare. If Loni Kalbhor's arrival time ever matters precisely,
+    # re-fetch the DEM with an eastward margin rather than nudging this up.
+    # test_domain_radius_does_not_exceed_the_cached_dem pins the DEM side so
+    # this cannot silently drift again.
+    domain_radius_km=27.0,
     epsg=32643,
     # None => derive the fill level from the DEM's own impounded pool surface
     # at runtime (tools/paraview/reservoir.py::estimate_pool_surface_m).
@@ -243,6 +325,15 @@ KHADAKWASLA = DamPreset(
     frl_m=None,
     crest_m=None,
     frl_source="DEM-derived pool surface (UNVETTED — not a published FRL)",
+    # frl_m stays None above rather than becoming a literal. No published FRL
+    # was found. The sourced review offers ~585 m MSL, but that is its OWN DEM
+    # estimate, not a citation — and it contradicts itself, also quoting local
+    # gauge readings of ~1666-1680 ft (~508-512 m), a ~73 m disagreement it
+    # does not resolve. The two independent DEM reads DO agree (this repository
+    # measured the pool plateau at exactly 580.0 m; the review got ~585 m),
+    # which is what estimate_pool_surface_m already computes at runtime.
+    # Hardcoding an estimate the code derives better trades a measurement for
+    # a guess.
     render_freeboard_m=2.0,
     barrier_freeboard_m=10.0,
     # Wider than Tehri's: the Mutha corridor downstream opens onto the Pune
@@ -255,6 +346,16 @@ KHADAKWASLA = DamPreset(
     nominal_depth_m=18.5,
     river="Mutha",
     state="Maharashtra",
+    # 1,472 ha at full pool (FAO 1989 fisheries survey, via the same review).
+    # Numerically the most consequential figure here: reservoir_storage_curve
+    # derives b = A0*d0/S0 = 6.83 from it, against the cone default of 3.0 it
+    # fell back on while this was unknown. A mean depth of only 5.8 m over
+    # 14.72 km2 is a broad shallow pool, nothing like a cone, and b sets the
+    # drawdown rate and therefore the routed peak and the recession limb.
+    #
+    # TODO: UNVETTED — a 1989 survey, not a current CWC/NRLD area-capacity
+    # table. Better than assuming a cone; not a substitute for the real curve.
+    surface_area_km2=14.72,
 )
 # REJECTED CANDIDATE: the visualization spec's Khadakwasla dam-crest UTM
 # (EPSG:32643, X=373100, Y=2043600) inverse-projects to 18.478968 N,
@@ -267,6 +368,107 @@ KHADAKWASLA = DamPreset(
 
 PRESETS: Dict[str, DamPreset] = {p.dam_id: p for p in (KHADAKWASLA, TEHRI)}
 DEFAULT_PRESET_ID = "khadakwasla"
+
+
+# ---------------------------------------------------------------------------
+# Downstream gauge corridors
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class GaugePoint:
+    """
+    One downstream location where arrival time is reported.
+
+    distance_km is DISPLAY metadata (and the only input to the Delft3D-Ritter
+    analytic fallback in delft3d/runner.py). Arrival times from the SWE solver
+    are computed from lat/lon: compute_arrival_times_at_gauges() projects the
+    gauge into the domain's UTM zone and snaps it onto the channel. So a
+    distance that is approximate degrades a label, not a result.
+
+    That matters because the two corridors below do not measure distance the
+    same way — see GAUGES.
+    """
+
+    name: str
+    distance_km: float
+    lat: float
+    lon: float
+    river: Optional[str] = None
+    note: Optional[str] = None  # surfaced in the API and the dashboard
+
+
+# Which downstream towns a dam's flood is reported at, keyed by dam_id.
+#
+# WHY THIS EXISTS: this list was previously duplicated in six places
+# (jalraksha/run.py, jalraksha/api.py twice, services/api/.../config.py,
+# services/api/.../tasks.py, frontend/src/data/entities.js) and every copy was
+# the Tehri corridor, unconditionally. A Khadakwasla run therefore reported
+# arrival times at Himalayan towns ~1,500 km outside its own domain. Gauges
+# belong to a dam, so they live next to the dams.
+#
+# DISTANCE CONVENTIONS DIFFER BETWEEN CORRIDORS AND ARE NOT COMPARABLE:
+#   tehri        — river distances along the Bhagirathi/Ganga, from the brief.
+#   khadakwasla  — straight-line (great-circle) from the dam. No channel trace
+#                  was available to derive river distance, and inventing a
+#                  meander factor would be a fabricated number. River distance
+#                  along the Mutha is longer than every value listed here.
+GAUGES: Dict[str, Tuple[GaugePoint, ...]] = {
+    # Moved verbatim from jalraksha/run.py::define_downstream_gauges. Do NOT
+    # re-derive these: run.py's own comment records that they were previously
+    # approximate to the point of being wrong (Koteshwar sat ~4 km east of the
+    # gorge, so the flood never reached it; Rishikesh and Haridwar carried 77.x
+    # longitudes placing them ~112 km and ~29 km west of the real towns).
+    "tehri": (
+        GaugePoint("Koteshwar", 13.0, 30.3167, 78.4833, river="Bhagirathi"),
+        GaugePoint("Devprayag", 28.0, 30.15, 78.60, river="Ganga"),
+        GaugePoint("Rishikesh", 34.8, 30.0869, 78.2676, river="Ganga"),
+        GaugePoint("Haridwar", 58.4, 29.9457, 78.1642, river="Ganga"),
+    ),
+    # The Pune corridor: the Mutha runs east from the dam through the city,
+    # joins the Mula near Sangam, and continues as the Mula-Mutha toward the
+    # Bhima. Ordered by distance ascending so the dashboard table reads down
+    # the corridor. Coordinates are as supplied (approximate town centres).
+    "khadakwasla": (
+        GaugePoint("Deccan Gymkhana", 10.5, 18.51, 73.84, river="Mutha"),
+        GaugePoint("Swargate", 11.5, 18.50, 73.86, river="Mutha"),
+        GaugePoint("Shivajinagar", 12.1, 18.52, 73.85, river="Mutha"),
+        GaugePoint("Hadapsar", 18.6, 18.51, 73.93, river="Mula-Mutha"),
+        GaugePoint("Magarpatta City", 19.0, 18.52, 73.93, river="Mula-Mutha"),
+        GaugePoint("Loni Kalbhor", 26.8, 18.48, 74.02, river="Mula-Mutha"),
+        GaugePoint(
+            "Baramati",
+            91.7,
+            18.15,
+            74.58,
+            river="Karha",
+            note=(
+                "OFF-CORRIDOR AND OUTSIDE THE DOMAIN. Baramati sits on the "
+                "Karha/Nira, not the Mula-Mutha that carries this dam's "
+                "flood, and at 91.7 km it lies beyond the 30 km solver "
+                "domain, so no arrival is computed for it. Listed because it "
+                "was requested as a downstream reference point; extending "
+                "the domain to reach it would require fetching more GLO-30 "
+                "tiles first, and would still be routing water down a river "
+                "this town is not on."
+            ),
+        ),
+    ),
+}
+
+
+def get_gauges(dam_id: Optional[str]) -> Tuple[GaugePoint, ...]:
+    """
+    The downstream corridor for a dam, or () if this dam has no defined one.
+
+    Returns empty rather than raising, and empty rather than substituting
+    another dam's towns: a dam with no surveyed corridor should report no
+    gauges. Callers that need a fallback (jalraksha/api.py's generic
+    Gauge_Nkm placeholders) apply it themselves, visibly.
+    """
+    if not dam_id:
+        return ()
+    return GAUGES.get(dam_id, ())
 
 
 def get_preset(dam_id: str) -> DamPreset:

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import math
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
 import threading
@@ -61,32 +61,56 @@ def get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) 
     """
     Return downstream gauge definitions for a given dam location.
 
-    Currently hard-coded for the Tehri corridor (Koteshwar → Haridwar).
-    For custom dams, returns generic distance-based placeholders.
+    Resolution order:
+      1. jalraksha.presets.GAUGES[dam_id] — the real corridor for this dam.
+      2. The Tehri bounding box, for a caller that passes coordinates but no
+         dam_id. Kept because it is the only thing that made a lat/lon-only
+         Tehri call work, and tests depend on it.
+      3. Generic distance-based placeholders, clearly named as such.
 
     Args:
         lat: Dam latitude (degrees).
         lon: Dam longitude (degrees).
-        dam_id: Optional dam ID for lookup.
+        dam_id: Preset dam id for the registry lookup.
 
     Returns:
         List of gauge dicts with: name, distance_km, lat, lon, river.
     """
-    if dam_id == "tehri" or (29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0):
+    from jalraksha.presets import get_gauges
+
+    gauges = get_gauges(dam_id)
+    if gauges:
         return [
-            {"name": "Koteshwar",  "distance_km": 13.0,  "lat": 30.3167, "lon": 78.4833, "river": "Bhagirathi"},
-            {"name": "Devprayag",  "distance_km": 28.0,  "lat": 30.15, "lon": 78.60, "river": "Ganga"},
-            {"name": "Rishikesh",  "distance_km": 34.8,  "lat": 30.0869, "lon": 78.2676, "river": "Ganga"},
-            {"name": "Haridwar",   "distance_km": 58.4,  "lat": 29.9457, "lon": 78.1642, "river": "Ganga"},
+            {
+                "name": g.name,
+                "distance_km": g.distance_km,
+                "lat": g.lat,
+                "lon": g.lon,
+                "river": g.river,
+                **({"note": g.note} if g.note else {}),
+            }
+            for g in gauges
         ]
-    else:
-        # Generic placeholders at 10, 25, 50, 100 km downstream
+
+    if 29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0:
+        # Inside the Tehri bounding box with no dam_id — resolve through the
+        # registry rather than a second literal copy of the corridor.
         return [
-            {"name": "Gauge_10km",  "distance_km": 10.0,  "lat": lat - 0.09, "lon": lon},
-            {"name": "Gauge_25km",  "distance_km": 25.0,  "lat": lat - 0.22, "lon": lon},
-            {"name": "Gauge_50km",  "distance_km": 50.0,  "lat": lat - 0.45, "lon": lon},
-            {"name": "Gauge_100km", "distance_km": 100.0, "lat": lat - 0.90, "lon": lon},
+            {
+                "name": g.name, "distance_km": g.distance_km,
+                "lat": g.lat, "lon": g.lon, "river": g.river,
+            }
+            for g in get_gauges("tehri")
         ]
+
+    # Generic placeholders at 10, 25, 50, 100 km downstream. Named Gauge_Nkm so
+    # nothing downstream can mistake them for surveyed locations.
+    return [
+        {"name": "Gauge_10km",  "distance_km": 10.0,  "lat": lat - 0.09, "lon": lon},
+        {"name": "Gauge_25km",  "distance_km": 25.0,  "lat": lat - 0.22, "lon": lon},
+        {"name": "Gauge_50km",  "distance_km": 50.0,  "lat": lat - 0.45, "lon": lon},
+        {"name": "Gauge_100km", "distance_km": 100.0, "lat": lat - 0.90, "lon": lon},
+    ]
 
 
 # ── Analytic rapid estimate (no solver required) ──────────────────────────────
@@ -121,11 +145,17 @@ def rapid_estimate(dam_config: Dict, ensemble_size: int = 10) -> Dict:
     height = dam_config.get("height_m", 100.0)
     c_wave = 0.5 * math.sqrt(9.81 * height)  # Shallow-water celerity (m/s)
 
-    # Arrival times at standard distances
-    distances_km = [13.0, 28.0, 34.8, 58.4]
-    gauge_names = ["Koteshwar", "Devprayag", "Rishikesh", "Haridwar"]
+    # Arrival times at THIS dam's downstream gauges. These were previously the
+    # Tehri corridor as two parallel literals, applied to whatever dam was
+    # passed in — and this is the live path for solver="delft3d" and "both".
+    gauges = get_downstream_gauges(
+        dam_config.get("lat", 0.0),
+        dam_config.get("lon", 0.0),
+        dam_config.get("dam_id"),
+    )
     arrival_times = {}
-    for name, dist_km in zip(gauge_names, distances_km):
+    for gauge in gauges:
+        name, dist_km = gauge["name"], gauge["distance_km"]
         t_s = (dist_km * 1000.0) / c_wave
         spread = 0.2 * t_s
         arrival_times[name] = {
@@ -269,7 +299,19 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8502) -> HTTPServer:
     Returns:
         HTTPServer instance (call .shutdown() to stop).
     """
-    server = HTTPServer((host, port), JalRakshaAPIHandler)
+    # ThreadingHTTPServer, not HTTPServer. The plain one handles requests
+    # strictly one at a time on a single serve_forever thread, so any slow
+    # handler blocks every request behind it — and /api/v1/simulate is slow by
+    # nature: it runs the breach ensemble, which is ~22 s on the first call
+    # while Numba compiles and ~0.5 s afterwards. Under load that queueing
+    # produced intermittent client timeouts that looked like the endpoint was
+    # broken (tests/test_api.py failed in a full run and passed in isolation,
+    # the classic signature of a server that cannot overlap requests).
+    #
+    # daemon_threads so a hung handler cannot keep the process alive after
+    # shutdown() — the tests stop this server between modules.
+    server = ThreadingHTTPServer((host, port), JalRakshaAPIHandler)
+    server.daemon_threads = True
 
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

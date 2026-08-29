@@ -1,0 +1,4 @@
+* 1.2.184.057d2f7ceeafda462a1b4e598efa4ce4f0c97cc5
+* Source: all/release/2026.01
+* File creation date: 18:11:42, 28-08-2026
+** INFO   : Command: "C:\Program Files\Deltares\Delft3D FM Suite 2026.01 HM\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe" --autostartstop FlowFM.mdu

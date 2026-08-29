@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 #
 # Direction matters — service depends on library, never the reverse. That is
 # jalraksha/presets.py's own stated rule for this exact situation.
-from jalraksha.presets import KHADAKWASLA
+from jalraksha.presets import KHADAKWASLA, get_gauges
 
 
 def _env(key: str, default: str) -> str:
@@ -45,6 +45,30 @@ def _demo_dam_from_preset(preset: Any) -> Dict[str, Any]:
         "dam_type": preset.dam_type,
         "river": preset.river,
         "state": preset.state,
+        "domain_radius_km": preset.domain_radius_km,
+        # Carried because the solver genuinely uses it: reservoir_storage_curve
+        # derives the storage exponent b from it, and without it falls back to
+        # assuming a cone. Omitting it here would have left the API path on the
+        # cone default while the CLI path used the real curve — the same dam
+        # routing two different reservoirs depending on how it was launched.
+        "surface_area_km2": preset.surface_area_km2,
+        # Visualization settings, published because POST /runs/{id}/open-paraview
+        # needs them. The note above about the API not publishing exaggeration
+        # predates ParaView being wired to the service: without these, every dam
+        # rendered at render_static.py's generic defaults instead of its own.
+        "vertical_exaggeration": preset.vertical_exaggeration,
+        "nominal_depth_m": preset.nominal_depth_m,
+        # The dam's own downstream corridor, published so the dashboard can
+        # draw the right towns on selection instead of falling back to a
+        # hardcoded Tehri list. Same reasoning as the rest of this adapter:
+        # copied from the library, never retyped here.
+        "gauges": [
+            {
+                "name": g.name, "distance_km": g.distance_km,
+                "lat": g.lat, "lon": g.lon, "river": g.river, "note": g.note,
+            }
+            for g in get_gauges(preset.dam_id)
+        ],
     }
 
 
@@ -73,6 +97,19 @@ class Settings:
             "dam_type": "embankment",
             "river": "Bhagirathi",
             "state": "Uttarakhand",
+            "domain_radius_km": 60.0,
+            # Tehri's entry is hand-written rather than built from its preset,
+            # so these have to be repeated here. Kept in sync with
+            # jalraksha/presets.py::TEHRI, which test_presets.py pins.
+            "vertical_exaggeration": 1.2,
+            "nominal_depth_m": 120.0,
+            "gauges": [
+                {
+                    "name": g.name, "distance_km": g.distance_km,
+                    "lat": g.lat, "lon": g.lon, "river": g.river, "note": g.note,
+                }
+                for g in get_gauges("tehri")
+            ],
         },
         {
             "id": "bhakra",
@@ -84,6 +121,12 @@ class Settings:
             "dam_type": "gravity",
             "river": "Sutlej",
             "state": "Himachal Pradesh",
+            "domain_radius_km": 60.0,
+            # No preset, no surveyed corridor, and no staged DEM (see
+            # tasks.py::_resolve_dem). Publishing an empty list is the honest
+            # answer; publishing Tehri's towns here is what the old duplicated
+            # gauge lists effectively did.
+            "gauges": [],
         },
         {
             "id": "idukki",
@@ -95,6 +138,12 @@ class Settings:
             "dam_type": "arch",
             "river": "Periyar",
             "state": "Kerala",
+            "domain_radius_km": 60.0,
+            # No preset, no surveyed corridor, and no staged DEM (see
+            # tasks.py::_resolve_dem). Publishing an empty list is the honest
+            # answer; publishing Tehri's towns here is what the old duplicated
+            # gauge lists effectively did.
+            "gauges": [],
         },
         {
             "id": "hirakud",
@@ -106,21 +155,28 @@ class Settings:
             "dam_type": "gravity",
             "river": "Mahanadi",
             "state": "Odisha",
+            "domain_radius_km": 60.0,
+            # No preset, no surveyed corridor, and no staged DEM (see
+            # tasks.py::_resolve_dem). Publishing an empty list is the honest
+            # answer; publishing Tehri's towns here is what the old duplicated
+            # gauge lists effectively did.
+            "gauges": [],
         },
         # Sourced from jalraksha/presets.py rather than retyped, so the preset
         # and the API cannot disagree about where this dam is.
         #
-        # EXPECTED, NOT A BUG: height_m, storage_mm3 and dam_type come back None.
-        # The preset marks them UNVETTED — there is no primary CWC / Maharashtra
-        # WRD source — and CLAUDE.md forbids guessing them. Consequences:
-        #   * GET /dams publishes nulls for those three (DamPreset allows it).
-        #   * Selecting this dam and pressing Run returns a 422 naming them,
-        #     raised by RunRequest.to_dam_config. That is the correct stopping
-        #     point: the breach regressions cannot run without them.
-        #   * If they are ever filled in, the next failure is _resolve_dem's
-        #     "no DEM staged" — no Khadakwasla DEM is cached. Also correct.
-        # Terrain and reservoir visualization need none of the three, which is
-        # why the dam is worth listing at all.
+        # UPDATED 2026-08-28: height_m / storage_mm3 / dam_type are no longer
+        # None. They are user-supplied figures (51.3 m, 33.5 MCM, masonry
+        # gravity) and the preset still carries a TODO: UNVETTED tag on each,
+        # because no primary CWC / NRLD / Maharashtra WRD citation was
+        # obtained. Consequences of that change:
+        #   * GET /dams now publishes real numbers, and Run no longer 422s.
+        #   * The dam is a MASONRY GRAVITY structure while every breach
+        #     regression in the ensemble is an embankment fit. That is flagged
+        #     separately, per run, as dam_class_outside_fitted_population in
+        #     hazard_summary — not silently absorbed into the peak.
+        #   * Its DEM (dem_18.44_73.77_clipped.tif) IS staged, so _resolve_dem
+        #     succeeds. bhakra/idukki/hirakud still have none.
         _demo_dam_from_preset(KHADAKWASLA),
     ]
 
@@ -165,16 +221,16 @@ class Settings:
     # import this module, since service depends on library and never the reverse.
     GEE_PROJECT: str = _env("JALRAKSHA_GEE_PROJECT", "")
 
-    # Real downstream gauges for the Tehri corridor (brief §2.1, do not invent).
-    TEHRI_GAUGES: List[dict] = [
-        {"name": "Koteshwar", "distance_km": 13.0, "lat": 30.3167, "lon": 78.4833, "river": "Bhagirathi"},
-        {"name": "Devprayag", "distance_km": 28.0, "lat": 30.15, "lon": 78.60, "river": "Ganga"},
-        {"name": "Rishikesh", "distance_km": 34.8, "lat": 30.0869, "lon": 78.2676, "river": "Ganga"},
-        {"name": "Haridwar", "distance_km": 58.4, "lat": 29.9457, "lon": 78.1642, "river": "Ganga"},
-    ]
+    # (TEHRI_GAUGES was removed here: it was a fifth copy of the Tehri corridor
+    # with zero consumers. The corridors now live in jalraksha.presets.GAUGES,
+    # keyed by dam, and reach this module through _demo_dam_from_preset.)
 
     # Solver backends selectable from the control panel.
-    SOLVERS: List[str] = ["swe", "delft3d", "both"]
+    # "sph" runs the near-field PySPH handoff in addition to the SWE pipeline.
+    # It is deliberately last: the near-field window is 600 m over 15 s and can
+    # never reach a downstream gauge, so it answers a different question from
+    # the other three and must not read as a drop-in alternative to them.
+    SOLVERS: List[str] = ["swe", "delft3d", "both", "sph"]
 
     def ensure_dirs(self) -> None:
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)

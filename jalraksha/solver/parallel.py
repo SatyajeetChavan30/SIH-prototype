@@ -25,7 +25,7 @@ import os
 import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -273,6 +273,7 @@ def run_ensemble(
     snapshot_sample_id: Optional[int] = None,
     snapshot_times: Optional[Sequence[float]] = None,
     n_workers: Optional[int] = None,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Run every ensemble member, in-process or across a process pool.
@@ -324,9 +325,36 @@ def run_ensemble(
     # depends on the ENSEMBLE SIZE, not on any per-member threshold: time one
     # member, then compare the two estimates directly. The probe result is kept,
     # not thrown away.
+    total_members = len(tasks)
+    completed = 0
+
+    def _tick(result):
+        """
+        Count one finished member and report it.
+
+        run_ensemble has four distinct completion paths - the probe, the
+        sequential cost-model branch, the process pool, and the pool-failure
+        fallback - and progress has to work on all of them, so every path routes
+        through here rather than each growing its own counter.
+
+        Reporting failures are swallowed: this is telemetry attached to a
+        long-running simulation, and a broken status write must not lose the run.
+        """
+        nonlocal completed
+        completed += 1
+        if progress_cb is not None:
+            try:
+                progress_cb(completed, total_members)
+            except Exception:  # pragma: no cover - telemetry only
+                pass
+        return result
+
+    def _tick_all(results):
+        return [_tick(r) for r in results]
+
     if n_workers > 1 and len(tasks) > 1:
         probe_start = time.perf_counter()
-        probe = _member_task(tasks[0])
+        probe = _tick(_member_task(tasks[0]))
         probe_seconds = time.perf_counter() - probe_start
 
         remaining = tasks[1:]
@@ -343,7 +371,7 @@ def run_ensemble(
                 f"cost ~{parallel_estimate:.0f}s across {pool_size} workers vs "
                 f"~{sequential_estimate:.0f}s in-process — staying sequential."
             )
-            return _finish([probe] + [_member_task(t) for t in remaining])
+            return _finish([probe] + _tick_all(_member_task(t) for t in remaining))
 
         print(
             f"  Member takes {probe_seconds:.1f}s; running the remaining "
@@ -356,13 +384,17 @@ def run_ensemble(
             with ProcessPoolExecutor(
                 max_workers=pool_size, initializer=_init_worker
             ) as executor:
-                return _finish([probe] + list(executor.map(_member_task, remaining)))
+                # executor.map yields in submission order as workers finish, so
+                # counting as we consume gives real progress rather than a jump
+                # from 0 to 100 when the pool drains.
+                return _finish(
+                    [probe] + _tick_all(executor.map(_member_task, remaining)))
         except Exception as e:
             warnings.warn(
                 f"Parallel ensemble failed to start ({type(e).__name__}: {e}); "
                 f"falling back to sequential execution."
             )
-            return _finish([probe] + [_member_task(t) for t in remaining])
+            return _finish([probe] + _tick_all(_member_task(t) for t in remaining))
         finally:
             # Leave the caller's environment as we found it — these vars are for
             # the children, and a library must not permanently reconfigure the
@@ -373,7 +405,7 @@ def run_ensemble(
                 else:
                     os.environ[key] = value
 
-    return _finish([_member_task(t) for t in tasks])
+    return _finish(_tick_all(_member_task(t) for t in tasks))
 
 
 def _finish(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

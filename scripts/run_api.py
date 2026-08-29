@@ -44,6 +44,13 @@ def main() -> None:
 
     os.chdir(REPO_ROOT)
     os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")
+    # Earth Engine. `earthengine authenticate` writes credentials to
+    # ~/.config/earthengine, but EE also needs a Cloud project with the EE API
+    # enabled, and that is what this variable names. Without it gee_status()
+    # reports "not set" and BOTH the Sentinel-1 overlay and the GHSL
+    # population-at-risk panel go dark, even though the credentials are valid.
+    # setdefault, so a real environment variable still wins.
+    os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")
     if not args.broker:
         os.environ["CELERY_EAGER"] = "1"
 
@@ -57,6 +64,7 @@ def main() -> None:
     print(f"[run_api] repo root      : {REPO_ROOT}")
     print(f"[run_api] data dir       : {os.environ['JALRAKSHA_DATA_DIR']}")
     print(f"[run_api] eager tasks    : {os.environ.get('CELERY_EAGER') == '1'}")
+    print(f"[run_api] gee project    : {os.environ.get('JALRAKSHA_GEE_PROJECT') or '<unset>'}")
     print(f"[run_api] listening on   : http://{args.host}:{args.port}")
     uvicorn.run("jalraksha_service.main:app", host=args.host, port=args.port,
                 reload=args.reload, app_dir=str(api_dir))

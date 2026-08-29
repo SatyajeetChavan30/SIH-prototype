@@ -103,14 +103,14 @@ configured and *reported as absent* when not — nothing is silently substituted
 
 | Variable | Purpose | When unset |
 | :--- | :--- | :--- |
-| `JALRAKSHA_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** `dflowfm` executable, for `solver="both"` runs. | `dflowfm` is looked up on `PATH`. If it is not there either, the comparison runs JalRaksha's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
+| `JALRAKSHA_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** kernel (`dflowfm-cli.exe`), for `solver="both"` runs and for validation. | `dflowfm-cli` then `dflowfm` are looked up on `PATH`, then the usual Deltares install locations are searched automatically. If nothing is found, the comparison runs JalRaksha's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
 | `JALRAKSHA_PARAVIEW_EXE` | Full path to `paraview.exe` (the GUI) for the "View in ParaView (3D)" button. | Defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`; the endpoint answers `paraview_not_found` if it is not there. |
 | `JALRAKSHA_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
 | `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent and the GHSL population-at-risk figure. | `GET /gee/latest` answers `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. |
 | `JALRAKSHA_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
 
 ```bash
-export JALRAKSHA_DFLOWFM_EXE="C:/Program Files/Deltares/D-Flow FM/bin/dflowfm.exe"
+export JALRAKSHA_DFLOWFM_EXE="C:/Program Files/Deltares/Delft3D FM Suite 2026.01 HM/plugins/DeltaShell.Dimr/kernels/x64/bin/dflowfm-cli.exe"
 ```
 
 #### Enabling Earth Engine
@@ -137,6 +137,42 @@ export JALRAKSHA_GEE_PROJECT=your-project-id
 Every fetched scene is cached under `data/gee/`, so once a reach has been
 fetched the dashboard keeps working offline and labels the layer as a cached
 scene, with its real acquisition date.
+
+#### Validating against Delft3D FM
+
+With a Delft3D FM Suite installed, JalRaksha can be scored against the real
+Deltares kernel and against analytical theory in one command:
+
+```bash
+python scripts/validate_against_delft3d.py --case ritter
+```
+
+This writes `data/validation/ritter_validation.png` and
+`validation_metrics.json`. Measured on this machine (dimrset 2026.01,
+`dflowfm-cli` 1.2.184), on a 10 m dam-break at t = 40 s, Δx = 10 m:
+
+| | RMSE vs exact | depth at dam |
+| :--- | ---: | ---: |
+| JalRaksha 2D SWE | 0.0317 m | 4.532 m |
+| Delft3D FM | 0.0349 m | 4.515 m |
+| Ritter (1892) exact | — | 4.444 m |
+
+Both engines land within ~0.3% of theory and within 3 cm of each other. Full
+detail, including what did **not** work, is in
+[`docs/validation_findings.md`](docs/validation_findings.md).
+
+**Finding the kernel.** Not every Delft3D FM Suite edition ships one. The
+"Open" editions (e.g. `2026.02 OpenHMWQ`) install the DeltaShell framework
+*without* `plugins\DeltaShell.Dimr\kernels`, so the GUI launches and the licence
+works but there is nothing to compute with — `DeltaShell.Console.exe` is a
+scripting host, not a solver. Editions that do ship kernels put them at:
+
+```
+<install>\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe
+```
+
+That path is searched automatically, so `JALRAKSHA_DFLOWFM_EXE` is only needed
+for installs in unusual locations.
 
 **On naming.** When `dflowfm` is unavailable, the built-in solver takes over. It
 integrates the same depth-averaged 2D Saint-Venant equations that D-Flow FM

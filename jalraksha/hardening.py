@@ -99,7 +99,15 @@ def validate_dam_config(config: Dict[str, Any]) -> None:
             f"Valid modes: {sorted(valid_failure_modes)}"
         )
 
-    valid_dam_types = {"embankment", "concrete", "arch", "rockfill", "gravity", "other"}
+    valid_dam_types = {
+        "embankment", "concrete", "arch", "rockfill", "gravity", "other",
+        # A masonry gravity dam is a gravity dam; "masonry" is the natural word
+        # for one and rejecting it was a vocabulary failure, not a validation.
+        # Accepted as an alias rather than a new class, because nothing
+        # downstream distinguishes it from "gravity" — see breach.py's
+        # FITTED_DAM_CLASSES, where both sit outside the fitted population.
+        "masonry",
+    }
     dam_type = config.get("dam_type", "embankment")
     if dam_type not in valid_dam_types:
         raise HardeningError(

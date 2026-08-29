@@ -1,0 +1,13 @@
+* 1.2.184.057d2f7ceeafda462a1b4e598efa4ce4f0c97cc5
+* Source: all/release/2026.01
+* File creation date: 18:11:42, 28-08-2026
+** INFO   : Command: "C:\Program Files\Deltares\Delft3D FM Suite 2026.01 HM\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe" --autostartstop FlowFM.mdu
+ Until here copy of previous diagnostic file
+** ERROR  : While reading 'FlowFM.mdu': keyword [geometry] bathymetryfile is obsolete.
+** WARNING: While reading 'FlowFM.mdu': keyword [output] Wrihis_zcor=1 was in file, but not used. Check possible typo.
+** WARNING: While reading 'FlowFM.mdu': keyword [dambreak] damname=Khadakwasla Dam was in file, but not used. Check possible typo.
+** WARNING: While reading 'FlowFM.mdu': keyword [dambreak] damheight_m=39.6 was in file, but not used. Check possible typo.
+** WARNING: While reading 'FlowFM.mdu': keyword [dambreak] breachrow=6 was in file, but not used. Check possible typo.
+** WARNING: While reading 'FlowFM.mdu': keyword [dambreak] breachwidth_m=1200.0 was in file, but not used. Check possible typo.
+** WARNING: While reading 'FlowFM.mdu': keyword [dambreak] failuretime_s=0.0 was in file, but not used. Check possible typo.
+** ERROR  : While reading 'FlowFM.mdu': Old unsupported keywords used: Check the User Manual appendix about the Master Definition file for information on how to update this input file.

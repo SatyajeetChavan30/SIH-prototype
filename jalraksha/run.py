@@ -18,7 +18,7 @@ This is the MANDATORY core deliverable (Spec §4).
 import os
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -27,6 +27,7 @@ from jalraksha.solver.core import SWESolver
 from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
 from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+from jalraksha.presets import get_gauges
 
 
 def _attempt(kind: str, writer, *args, **kwargs):
@@ -214,54 +215,62 @@ def write_export_products(
     return paths
 
 
-def define_downstream_gauges(dam_lat: float, dam_lon: float) -> List[Dict]:
+def define_downstream_gauges(
+    dam_lat: float, dam_lon: float, dam_id: Optional[str] = None
+) -> List[Dict]:
     """
-    Define 4 downstream gauge locations for Tehri dam.
+    Downstream gauge locations for a dam, as plain dicts for the solver.
 
-    Spec §4.2: Koteshwar (13 km), Devprayag (28 km), Rishikesh (34.8 km), Haridwar (58.4 km).
+    Reads jalraksha.presets.GAUGES, which is the single source of truth for
+    which towns a dam's flood is reported at. This function used to hold the
+    Tehri corridor as a literal and return it for every dam it was called with,
+    including its own dam_lat/dam_lon arguments, which it ignored — so a
+    Khadakwasla or Hirakud run computed arrival times at Himalayan gauges
+    1,500+ km outside its own domain.
 
     Args:
-        dam_lat, dam_lon: Dam location (degrees)
+        dam_lat, dam_lon: Dam location (degrees). Used only for the fallback.
+        dam_id: Preset dam id. When it names a dam with a defined corridor,
+            that corridor is returned.
 
     Returns:
-        List of gauge dicts with name, distance_km, lat, lon
+        List of gauge dicts with name, distance_km, lat, lon (plus river/note
+        where defined). Empty when the dam has no defined corridor — an empty
+        gauge table is the honest answer for a dam whose downstream towns have
+        not been surveyed, and is far better than another dam's towns.
     """
-    utm_zone = compute_utm_zone(dam_lat, dam_lon)
+    gauges = get_gauges(dam_id)
 
-    # Real gauge sites along the Bhagirathi/Ganga corridor. These coordinates
-    # were previously approximate to the point of being wrong: Koteshwar sat
-    # ~4 km east of the gorge (so the flood never reached it), and Rishikesh and
-    # Haridwar carried 77.x longitudes placing them ~112 km and ~29 km west of
-    # the real towns. A gauge off the river reports no arrival no matter how
-    # well the solver runs.
-    gauges = [
+    if not gauges and 29.0 <= dam_lat <= 31.5 and 77.0 <= dam_lon <= 80.0:
+        # Coordinates inside the Tehri corridor but no dam_id — the shape of
+        # every call site that predates dam_id existing. Resolve through the
+        # registry rather than reintroducing a literal copy of the corridor.
+        # Mirrors the same fallback in jalraksha/api.py::get_downstream_gauges.
+        gauges = get_gauges("tehri")
+
+    if not gauges:
+        # No corridor, and no placeholder invented. jalraksha/api.py's generic
+        # Gauge_Nkm placeholders are a display convenience for the legacy HTTP
+        # layer; putting made-up coordinates into the solver's arrival-time
+        # table would be presenting invented locations as results.
+        warnings.warn(
+            f"No downstream gauge corridor is defined for dam_id={dam_id!r} "
+            f"at ({dam_lat}, {dam_lon}). Arrival times will be reported at no "
+            f"gauges. Add one to jalraksha.presets.GAUGES."
+        )
+        return []
+
+    return [
         {
-            "name": "Koteshwar",
-            "distance_km": 13.0,
-            "lat": 30.3167,
-            "lon": 78.4833,
-        },
-        {
-            "name": "Devprayag",
-            "distance_km": 28.0,
-            "lat": 30.15,
-            "lon": 78.60,
-        },
-        {
-            "name": "Rishikesh",
-            "distance_km": 34.8,
-            "lat": 30.0869,
-            "lon": 78.2676,
-        },
-        {
-            "name": "Haridwar",
-            "distance_km": 58.4,
-            "lat": 29.9457,
-            "lon": 78.1642,
-        },
+            "name": g.name,
+            "distance_km": g.distance_km,
+            "lat": g.lat,
+            "lon": g.lon,
+            **({"river": g.river} if g.river else {}),
+            **({"note": g.note} if g.note else {}),
+        }
+        for g in gauges
     ]
-
-    return gauges
 
 
 def compute_arrival_times_at_gauges(
@@ -468,6 +477,7 @@ def run_dam_break_ensemble(
     n_workers: Optional[int] = None,
     domain_radius_km: float = 60.0,
     use_synthetic_terrain: bool = False,
+    progress_cb: Optional[Callable[[float, str], None]] = None,
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -524,8 +534,30 @@ def run_dam_break_ensemble(
     print(f"  Solver duration: {solver_duration_s/3600:.1f} hours")
 
     # =========================================================================
+    def _report(pct: float, label: str) -> None:
+        """
+        Publish coarse progress.
+
+        The six Step boundaries below are the natural reporting points and were
+        already printed to stdout; they simply had no way to reach a caller. A
+        run therefore sat at a frozen 5% in the dashboard from submission to
+        completion, which is indistinguishable from a hang — and the solver step
+        alone can run for tens of minutes.
+
+        Failure here is swallowed on purpose: progress is telemetry, and a
+        broken status write must never take down a simulation that is otherwise
+        succeeding.
+        """
+        if progress_cb is None:
+            return
+        try:
+            progress_cb(float(pct), label)
+        except Exception as exc:  # pragma: no cover - telemetry only
+            print(f"  [progress] callback failed ({type(exc).__name__}: {exc})")
+
     # Step 1: Build terrain (Phase 2)
     # =========================================================================
+    _report(8.0, "Building terrain domain")
     print("\n[Step 1] Building terrain domain...")
     try:
         grid, state_init, manning_field = build_domain(
@@ -550,12 +582,13 @@ def run_dam_break_ensemble(
     )
 
     # Define downstream gauges
-    gauges = define_downstream_gauges(dam_lat, dam_lon)
+    gauges = define_downstream_gauges(dam_lat, dam_lon, dam_config.get("dam_id"))
     print(f"  Downstream gauges: {[g['name'] for g in gauges]}")
 
     # =========================================================================
     # Step 2: Generate breach ensemble (Phase 3)
     # =========================================================================
+    _report(18.0, "Generating breach ensemble")
     print("\n[Step 2] Generating breach hydrograph ensemble...")
     try:
         hydrographs = synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)
@@ -570,6 +603,7 @@ def run_dam_break_ensemble(
     # =========================================================================
     # Step 3: Run solver for each ensemble member (Phase 1)
     # =========================================================================
+    _report(25.0, f"Solving {ensemble_size} ensemble members")
     print(f"\n[Step 3] Running solver for {ensemble_size} ensemble members...")
     results_ensemble = []
     h_max_ensemble = []
@@ -588,6 +622,11 @@ def run_dam_break_ensemble(
         snapshot_sample_id = int(np.argmin(np.abs(np.array(q_peaks) - q_target)))
         snapshot_times = np.linspace(0, solver_duration_s, n_snapshots)
 
+    def _member_progress(done: int, total: int) -> None:
+        # Step 3 owns 25-75% of the bar because it owns most of the runtime.
+        _report(25.0 + 50.0 * (done / max(total, 1)),
+                f"Solving member {done}/{total}")
+
     member_results = run_ensemble(
         hydrographs=hydrographs,
         grid=grid,
@@ -599,6 +638,7 @@ def run_dam_break_ensemble(
         snapshot_sample_id=snapshot_sample_id,
         snapshot_times=snapshot_times,
         n_workers=n_workers,
+        progress_cb=_member_progress,
     )
 
     for member in member_results:
@@ -637,6 +677,7 @@ def run_dam_break_ensemble(
     # =========================================================================
     # Step 4: Compute arrival times at gauges
     # =========================================================================
+    _report(75.0, "Computing arrival times")
     print("\n[Step 4] Computing arrival times at downstream gauges...")
     arrival_times_gauges = compute_arrival_times_at_gauges(
         results_ensemble, grid, gauges, threshold_h=0.1,
@@ -655,6 +696,7 @@ def run_dam_break_ensemble(
     # =========================================================================
     # Step 5: Aggregate ensemble statistics
     # =========================================================================
+    _report(85.0, "Aggregating ensemble statistics")
     print("\n[Step 5] Aggregating ensemble statistics...")
     h_max_ensemble_array = np.array(h_max_ensemble)
 
@@ -683,6 +725,7 @@ def run_dam_break_ensemble(
     # =========================================================================
     # Step 6: Export deliverables (COG / Shapefile / KML - Phase 5)
     # =========================================================================
+    _report(92.0, "Writing export products")
     print("\n[Step 6] Writing export products...")
     raster_paths = write_export_products(
         results_ensemble=results_ensemble,

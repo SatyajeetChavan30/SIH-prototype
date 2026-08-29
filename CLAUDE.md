@@ -9,11 +9,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Critical Constraints
 
 **Hard Rules:**
-- **No India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM** — these are geo-fenced, broken, or login-gated. All data must come from open sources.
+
 - **18 unvetted coefficients** in the verification queue (breach regressions, Wahl uncertainty bands, fatality-rate tables, depth-damage curves). Flag any coefficient before use with a TODO and a source citation from the literature.md file.
 - **Tehri dam** is the demo case (260 m height, 3,540 MCM). **Mullaperiyar is explicitly forbidden** (active Supreme Court litigation).
 - **Metric CRS for all solver operations** — never degrees. Cell-centred finite volume on uniform Cartesian grids.
-- **No overclaiming**: Never claim to be Delft3D (say "Delft3D-class" instead). Never claim rigorous two-way SPH↔SWE coupling (one-way handoff only).
+- **No overclaiming — but the Delft3D rule is now CONDITIONAL.** A real Deltares kernel is installed and running (`dflowfm-cli.exe`, dimrset 2026.01, build 1.2.184), so the naming follows the evidence:
+  - `delft3d_binary_used == True` → it IS Delft3D FM. Name it, and name the build: **"Delft3D FM (dflowfm-cli, dimrset 2026.01)"**.
+  - `delft3d_binary_used == False` → unchanged: **"JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
+  The old blanket "never claim to be Delft3D" existed because the project had never run it. Continuing to hedge once it demonstrably runs would be its own inaccuracy. `run_delft3d_simulation` returns the boolean, so the label is always checkable.
+- **No overclaiming (unchanged elsewhere)**: never claim rigorous two-way SPH↔SWE coupling — the handoff is one-way only.
 - **DEM resolution is 30 m Copernicus GLO-30** — adequate for Tier-1 screening, but point depths are indicative only. Lead with arrival times and inundation envelopes, not absolute flood depths.
 - **Offline-first design**: Everything must run from cache after first fetch. Demo-day network reliability is assumed low.
 
@@ -50,6 +54,15 @@ Multi-tier validation framework:
 **Benchmarks:**
 - Malpasset (1959) real-terrain dam-break (France) — comparison vs published arrival-time field measurements
 - Chamoli 2021 (India) — the only Indian dam-break with pre- and post-event 2 m DEMs publicly available; published <5% travel-time benchmark (Shugar et al., Science)
+- **Delft3D FM cross-check (implemented and passing).** The same Ritter dam-break is run through JalRaksha's solver and through the real Deltares kernel, and both are scored against the exact solution:
+
+  | | RMSE vs exact | depth at dam |
+  | :--- | ---: | ---: |
+  | JalRaksha 2D SWE | 0.0317 m | 4.532 m |
+  | Delft3D FM | 0.0349 m | 4.515 m |
+  | exact (4h₀/9) | — | 4.444 m |
+
+  h₀ = 10 m, t = 40 s, Δx = 10 m, frictionless flat bed, scored over the interior (3 boundary cells trimmed each end). Engines agree to 0.0294 m RMSE. Reproduce with `python scripts/validate_against_delft3d.py --case ritter`.
 
 **CI integration:** Lake-at-rest and mass-conservation tests must pass before any PR merge.
 
@@ -244,6 +257,61 @@ Presentation, solver, and export are in separate trees:
 - **CI gate**: Import graph must be acyclic (no Phase 5 importing Phase 0 for a solver thing)
 - **Code review**: `/code-quality-deep-dive` checks for layer violations
 - **Architecture audit**: `/improve-architecture` surfaces shallow modules before they grow
+
+## Dashboard — every module reaches the browser
+
+Full record: `docs/dashboard_integration.md`. The demo-critical facts:
+
+- **Tabs**: 2D+3D · Gauges · Ensemble · Impact · SPH · Comparison · Validation ·
+  Downloads. Panels stay MOUNTED and are hidden with CSS — switching tabs used
+  to tear down and rebuild the Cesium viewer and Leaflet map every time.
+- **Run picker** (`GET /runs`) loads any completed run instantly. This is the
+  offline demo path; it replaced typing a 32-character hex id by hand.
+- **Earth Engine is live.** `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
+  `scripts/run_api.py` because `.claude/launch.json` has no env field. Both the
+  Sentinel-1 overlay and GHSL population-at-risk depend on it.
+  - For Khadakwasla the SAR fetch retrieves a real scene and then REFUSES it
+    (precision 0.486 vs JRC, below the 0.5 gate). That is the quality guard
+    working, not a bug — say so if it comes up in the demo.
+  - No synthetic overlay is ever produced. An earlier spec asked for one; it was
+    not built, and `GeoSarResponse`'s "there is no fourth state" rule stands.
+- **Validation tab** runs the blocking gates against the live build, mirroring
+  the CI tests exactly: lake-at-rest 5.98e-14 m/s, mass conservation 0.000000%,
+  Ritter RMSE 0.0317 m (JalRaksha) vs 0.0349 m (Delft3D FM).
+- **Delft3D now genuinely runs.** `setup.py`'s NetFile was unreadable by D-Flow
+  FM, so the kernel failed at mesh load every time and silently fell back;
+  `dfm_model.py` is used instead, and `*_his.nc` is read for real gauge
+  arrivals. `solver="delft3d"` used to call `rapid_estimate` and never touch
+  the kernel at all.
+- **`solver="sph"`** runs the full SWE pipeline AND the near-field handoff. It
+  is not an alternative solver: ~600 m over 15 s, and it can never reach a
+  downstream gauge.
+- **Cesium terrain is configured.** The Ion token lives in
+  `frontend/.env.local` (git-ignored — a fresh clone must re-create it, or the
+  globe falls back to Cesium's default token with no terrain).
+  `vite.config.js` must use `loadEnv`, NOT `process.env` inside `define`: the
+  latter reads only the shell environment and, being a text substitution,
+  silently overwrites whatever Vite loaded from `.env.local` with empty strings.
+- **Runs execute in a SUBPROCESS**, not a thread
+  (`services/api/jalraksha_service/run_worker.py`). A dam-break run is CPU-bound
+  and holds the GIL — the flux kernels are `@njit` without `nogil=True` — so an
+  in-process thread starved uvicorn and `GET /validation` returned nothing after
+  120 s. With the subprocess, every endpoint answers in ~0.21 s while a run is
+  actively solving. `--broker` still switches to a real Celery worker.
+- **Progress is real.** `run_dam_break_ensemble` and `run_ensemble` take a
+  `progress_cb`, and a `phase` string travels with the percentage, so the
+  dashboard shows "Solving member 12/30" instead of a frozen "running 5%".
+- **SPH runs only for `solver="both"`.** It used to run for `delft3d` too, via
+  `_run_comparison`, which is what made a Delft3D run take ~20 minutes. It now
+  takes **47 seconds**.
+- **ParaView uses each dam's own preset** (`vertical_exaggeration`,
+  `nominal_depth_m`). These were hardcoded to 1.5 / 25.0 for every dam, which
+  rendered Khadakwasla — 1,170 m of relief across 54 km — as a near-flat plate.
+  `main.py` is in the `.pvsm` staleness check, so changing those arguments
+  invalidates cached states.
+- **Runs predating this work** have no ensemble statistics, no p05/p95 arrival
+  band and no per-gauge peak depth — those fields did not exist when they were
+  written, and they render as blanks. New runs are complete.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

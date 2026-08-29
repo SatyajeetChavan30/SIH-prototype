@@ -198,6 +198,7 @@ def _generate_single_hydrograph(
     # Extract dam parameters
     height = dam_config["height_m"]
     storage = dam_config["storage_mm3"]
+    dam_type = dam_config.get("dam_type", "embankment")
 
     total_time = 10800.0
     # The sampled fraction sets the breach FORMATION time, not the time of the
@@ -219,7 +220,7 @@ def _generate_single_hydrograph(
         regression = "von_thun_gillette_1990"
     elif regression in ("macdonald", "macdonald_langridge_1984"):
         q_peak, _, _ = macdonald_langridge_1984_peak_outflow(
-            height, storage, dam_config.get("dam_type", "embankment"), "central"
+            height, storage, dam_type, "central"
         )
         regression = "macdonald_langridge_1984"
     elif regression in ("costa", "costa_1985"):
@@ -232,7 +233,7 @@ def _generate_single_hydrograph(
         q_peak, _, _ = xu_zhang_2009_peak_outflow(
             height,
             storage,
-            dam_config.get("dam_type", "embankment"),
+            dam_type,
             dam_config.get("failure_mode", "overtopping"),
             "central",
         )
@@ -281,6 +282,17 @@ def _generate_single_hydrograph(
         "regression": regression,
         "regressions_used": [regression],
         "extrapolation_ratio": extrapolation_ratio(height),
+        "dam_type": dam_type,
+        # Height-based extrapolation and dam-CLASS extrapolation are reported
+        # separately on purpose — see dam_class_outside_fitted_population().
+        "dam_class_outside_fitted_population": dam_class_outside_fitted_population(
+            dam_type
+        ),
+        "dam_class_note": (
+            DAM_CLASS_EXTRAPOLATION_NOTE
+            if dam_class_outside_fitted_population(dam_type)
+            else None
+        ),
         "unverified_regression": regression == "xu_zhang_2009"
         and not XU_ZHANG_2009_VERIFIED,
         "source_note": (
@@ -423,8 +435,19 @@ def ensemble_statistics(hydrographs: List[Dict]) -> Dict:
         "t_fail_p95": float(np.percentile(failure_times, 95)),
         "regressions_used": sorted(methods),
         "num_samples": len(hydrographs),
-        "manning_n_uncertainty": "sampled_with_normal_distribution"
+        "manning_n_uncertainty": "sampled_with_normal_distribution",
     }
+
+    # Surface the dam-class caveat at ensemble level so it reaches
+    # hazard_summary and the dashboard rather than dying in per-member
+    # metadata that nothing reads.
+    dam_types = {hg["metadata"].get("dam_type") for hg in hydrographs}
+    outside = any(
+        hg["metadata"].get("dam_class_outside_fitted_population") for hg in hydrographs
+    )
+    stats["dam_type"] = sorted(t for t in dam_types if t)[0] if any(dam_types) else None
+    stats["dam_class_outside_fitted_population"] = outside
+    stats["dam_class_note"] = DAM_CLASS_EXTRAPOLATION_NOTE if outside else None
 
     return stats
 
@@ -883,6 +906,46 @@ def xu_zhang_2009_peak_outflow(
 
 # Families drawn on by synthesize_breach_ensemble when the caller does not
 # name any. Xu & Zhang is deliberately absent (see XU_ZHANG_2009_VERIFIED).
+# The dam classes the ensemble's regressions were actually fitted on. Froehlich
+# (1995b, 22 embankment breaches), MacDonald & Langridge-Monopolis (1984, 42
+# earthfill case studies), Costa (1985) and Von Thun & Gillette (1990) are all
+# embankment fits, and all of them model a breach that ERODES: a trapezoidal
+# notch widening over a failure time of minutes to hours.
+#
+# A masonry or concrete gravity dam does not fail that way. It fails by monolith
+# sliding or overturning — a near-instantaneous removal of one or more blocks.
+# There is no published dam-type coefficient in any of these equations, so this
+# module does not shift the central estimate for such a dam (that would mean
+# inventing a coefficient). It flags the condition instead, so the caller knows
+# the number is a screening figure from an out-of-population fit.
+FITTED_DAM_CLASSES = ("embankment", "earthfill")
+
+DAM_CLASS_EXTRAPOLATION_NOTE = (
+    "Froehlich (1995b), MacDonald & Langridge-Monopolis (1984), Costa (1985) "
+    "and Von Thun & Gillette (1990) are all fits to EMBANKMENT breaches, and "
+    "all model a breach that erodes progressively. A masonry/concrete gravity "
+    "dam fails by monolith sliding or overturning, which the trapezoidal "
+    "breach-growth model does not describe. No dam-type coefficient is "
+    "published for these equations, so the central estimate is NOT adjusted "
+    "here. Treat the peak as an order-of-magnitude screening figure only."
+)
+
+
+def dam_class_outside_fitted_population(dam_type: Optional[str]) -> bool:
+    """
+    True when this dam class sits outside the regressions' fitted population.
+
+    Deliberately separate from extrapolation_ratio(), which measures HEIGHT
+    only. The two can disagree in the dangerous direction: a 51 m masonry
+    gravity dam scores extrapolation_ratio = 0.55, comfortably inside the
+    fitted height range, while being the wrong kind of dam entirely. Reporting
+    only the height ratio for such a dam would read green when it should not.
+    """
+    if not dam_type:
+        return False
+    return dam_type.strip().lower() not in FITTED_DAM_CLASSES
+
+
 DEFAULT_REGRESSION_FAMILIES = (
     "froehlich",
     "macdonald",

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Viewer, Entity } from "resium";
 import * as Cesium from "cesium";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
-import { DAM, GAUGES, CAMERA_PRESETS } from "../data/entities.js";
+import { DAM, GAUGES, camerasFor } from "../data/entities.js";
 
 const TILES = import.meta.env.VITE_TILES_URL || "http://localhost:8080";
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "";
@@ -75,7 +75,7 @@ function useTerrainProvider() {
  * The shared SimulationClock (§5.5.5) drives viewer.clock.currentTime so the
  * 2D and 3D views are one tool.
  */
-export default function Scene3D() {
+export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
   const { keyframes, index, currentTimeS } = useSimulationClock();
   const viewerRef = useRef(null);
   const [selected, setSelected] = React.useState("dam");
@@ -129,7 +129,9 @@ export default function Scene3D() {
     viewer.clock.currentTime = jd;
   }, [currentTimeS]);
 
-  const preset = CAMERA_PRESETS.find((p) => p.id === selected) || CAMERA_PRESETS[0];
+  // Derived per dam, so the fly-to list names the towns actually on screen.
+  const cameras = React.useMemo(() => camerasFor(dam, gauges), [dam, gauges]);
+  const preset = cameras.find((p) => p.id === selected) || cameras[0];
 
   // Camera fly-to on preset change (brief §5.5.5).
   useEffect(() => {
@@ -148,7 +150,7 @@ export default function Scene3D() {
     // swallows its clicks.
     <div style={{ height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", zIndex: 10, top: 8, left: 8 }}>
-        {CAMERA_PRESETS.map((p) => (
+        {cameras.map((p) => (
           <button key={p.id} onClick={() => setSelected(p.id)} style={{ marginRight: 4 }}>
             {p.label}
           </button>
@@ -172,11 +174,14 @@ export default function Scene3D() {
         style={{ height: "100%", width: "100%" }}
       >
         <Entity
-          position={Cesium.Cartesian3.fromDegrees(DAM.lon, DAM.lat, 0)}
+          position={Cesium.Cartesian3.fromDegrees(dam.lon, dam.lat, 0)}
           point={{ pixelSize: 12, color: Cesium.Color.RED }}
-          label={{ text: `${DAM.name} (${DAM.height_m} m)`, font: "14px sans-serif" }}
+          label={{
+            text: dam.height_m ? `${dam.name} (${dam.height_m} m)` : dam.name,
+            font: "14px sans-serif",
+          }}
         />
-        {GAUGES.map((g) => (
+        {gauges.map((g) => (
           <Entity
             key={g.name}
             position={Cesium.Cartesian3.fromDegrees(g.lon, g.lat, 0)}

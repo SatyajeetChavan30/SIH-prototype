@@ -44,6 +44,32 @@ export async function getComparison(runId) {
   return r.json();
 }
 
+// All runs, newest first — backs the run picker. Before this endpoint existed
+// the only way to load a previous run was to type a 32-character hex id.
+export async function listRuns(limit = 50) {
+  const r = await fetch(`${API}/runs?limit=${limit}`);
+  if (!r.ok) throw new Error(`Could not list runs (${r.status})`);
+  return r.json();
+}
+
+// Whether Earth Engine is usable. Separate from getSar(): the badge has to be
+// honest before any reach is chosen, and /gee/latest conflates "not configured"
+// with "no scene for this reach".
+export async function getGeeStatus() {
+  const r = await fetch(`${API}/gee/status`);
+  if (!r.ok) throw new Error(`GEE status unavailable (${r.status})`);
+  return r.json();
+}
+
+// The analytical correctness gates. Cached server-side after the first call;
+// pass refresh=true to re-run. Slow on a cold call (the Ritter cross-check
+// launches the real Delft3D kernel), so never call this on mount.
+export async function getValidation(refresh = false) {
+  const r = await fetch(`${API}/validation${refresh ? "?refresh=true" : ""}`);
+  if (!r.ok) throw new Error(`Validation failed (${r.status})`);
+  return r.json();
+}
+
 export async function getSar(reach = "bhagirathi") {
   const r = await fetch(`${API}/gee/latest?reach=${reach}`);
   return r.json();

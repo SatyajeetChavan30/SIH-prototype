@@ -15,7 +15,11 @@ import { getSar, resolveApiUrl } from "../api.js";
  * appears when a real scene was fetched or cached; when Earth Engine is
  * unavailable the panel says so and draws nothing.
  */
-export default function Map2D({ reach = "tehri" }) {
+export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
+  // `reach` defaulted to "tehri" and App.jsx never passed it, so the SAR
+  // layer showed the Tehri reach whichever dam was selected. It follows the
+  // selected dam now, falling back only until /dams resolves.
+  const sarReach = reach || dam.id || "tehri";
   const { current } = useSimulationClock();
   const bounds = current?.bounds; // [west, south, east, north] WGS84
 
@@ -24,18 +28,21 @@ export default function Map2D({ reach = "tehri" }) {
 
   useEffect(() => {
     let cancelled = false;
-    getSar(reach)
+    getSar(sarReach)
       .then((d) => { if (!cancelled) setSar(d); })
       .catch((e) => { if (!cancelled) setSar({ source: "unavailable", reason: String(e) }); });
     return () => { cancelled = true; };
-  }, [reach]);
+  }, [sarReach]);
 
   const sarObserved = sar && sar.source !== "unavailable" && sar.bbox && sar.observed_extent_url;
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       <MapContainer
-        center={[DAM.lat, DAM.lon]}
+        // key= forces a remount when the dam changes: MapContainer treats
+        // `center` as an initial value only and will not recentre on its own.
+        key={`${dam.lat},${dam.lon}`}
+        center={[dam.lat, dam.lon]}
         zoom={11}
         style={{ height: "100%", width: "100%" }}
       >
@@ -66,19 +73,75 @@ export default function Map2D({ reach = "tehri" }) {
           />
         )}
 
-        <CircleMarker center={[DAM.lat, DAM.lon]} radius={8} pathOptions={{ color: "red" }}>
-          <Tooltip>{DAM.name} ({DAM.height_m} m)</Tooltip>
+        <CircleMarker center={[dam.lat, dam.lon]} radius={8} pathOptions={{ color: "red" }}>
+          <Tooltip>{dam.name}{dam.height_m ? ` (${dam.height_m} m)` : ""}</Tooltip>
         </CircleMarker>
 
-        {GAUGES.map((g) => (
+        {gauges.map((g) => (
+          // A gauge carrying a `note` is flagged amber, not hidden. Baramati is
+          // inside Khadakwasla's domain but off its river, and a viewer reading
+          // "no arrival" there deserves to see why.
           <CircleMarker key={g.name} center={[g.lat, g.lon]} radius={6}
-                        pathOptions={{ color: "blue" }}>
-            <Tooltip>{g.name} — {g.distance_km} km</Tooltip>
+                        pathOptions={{ color: g.note ? "#e65100" : "blue" }}>
+            <Tooltip>
+              {g.name} — {g.distance_km} km{g.river ? ` (${g.river})` : ""}
+              {g.note ? <div style={{ maxWidth: 260 }}>⚠ {g.note}</div> : null}
+            </Tooltip>
           </CircleMarker>
         ))}
       </MapContainer>
 
       <SarStatus sar={sar} show={showSar} onToggle={() => setShowSar((v) => !v)} />
+      <HazardLegend hazard={current?.hazard_summary || result?.hazard_summary} />
+    </div>
+  );
+}
+
+/**
+ * Depth-hazard colour key for the flood overlay.
+ *
+ * The keyframe PNGs are coloured by jalraksha.impact.hazard.HazardClassifier,
+ * and every keyframe already carries a `hazard_summary` with each level's
+ * colour, cell count and share of the domain. None of it was rendered, so the
+ * map showed a coloured flood with no way to read what the colours meant.
+ *
+ * Colours are taken from the payload rather than hardcoded here, so the legend
+ * cannot drift from the classifier that actually painted the pixels.
+ */
+function HazardLegend({ hazard }) {
+  if (!hazard) return null;
+  const levels = ["low", "moderate", "significant", "severe", "extreme"];
+  const rows = levels
+    .filter((l) => hazard[l] && hazard[l].percentage > 0)
+    .map((l) => ({
+      name: l,
+      pct: hazard[l].percentage,
+      color: `rgb(${(hazard[l].color || [128, 128, 128]).join(",")})`,
+    }));
+  if (rows.length === 0) return null;
+
+  return (
+    <div style={{
+      position: "absolute", bottom: 20, left: 8, zIndex: 1000,
+      background: "rgba(255,255,255,0.94)", border: "1px solid #bbb",
+      borderRadius: 4, padding: "7px 9px", fontSize: 10, lineHeight: 1.5,
+      minWidth: 132,
+    }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>Flood hazard (FD2320)</div>
+      {rows.map((r) => (
+        <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 12, height: 12, background: r.color,
+                         border: "1px solid #999", flexShrink: 0 }} />
+          <span style={{ flex: 1, textTransform: "capitalize" }}>{r.name}</span>
+          <span style={{ color: "#666" }}>{r.pct.toFixed(1)}%</span>
+        </div>
+      ))}
+      {hazard.weighted_hazard_index != null && (
+        <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid #eee",
+                      color: "#555" }}>
+          Index <strong>{hazard.weighted_hazard_index.toFixed(3)}</strong>
+        </div>
+      )}
     </div>
   );
 }
@@ -92,10 +155,35 @@ export default function Map2D({ reach = "tehri" }) {
  * would turn a correct measurement into a false claim.
  */
 export function SarStatus({ sar, show, onToggle }) {
+  const [expanded, setExpanded] = React.useState(false);
   if (!sar) return null;
 
   const unavailable = sar.source === "unavailable";
   const cached = sar.source === "cached";
+
+  // A refusal is a STATUS, not an error, and it was rendering as a large orange
+  // block covering a quarter of the map. Earth Engine fetched a real Sentinel-1
+  // scene, scored its mask at 0.486 precision against JRC permanent water,
+  // and declined to show it — the quality guard working exactly as intended.
+  // Collapsed to one line, expandable, because the full reason is worth reading
+  // but not worth dominating the view.
+  if (unavailable && !expanded) {
+    return (
+      <div
+        role="status"
+        onClick={() => setExpanded(true)}
+        title="Click for the full reason"
+        style={{
+          position: "absolute", top: 8, right: 8, zIndex: 1000,
+          padding: "4px 9px", borderRadius: 4, cursor: "pointer",
+          background: "rgba(255,255,255,0.94)", border: "1px solid #b0863a",
+          fontSize: 11, color: "#7a3e00", maxWidth: 260,
+        }}
+      >
+        Sentinel-1: no usable mask for this reach ⓘ
+      </div>
+    );
+  }
 
   return (
     <div
