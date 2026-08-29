@@ -180,19 +180,55 @@ def _select_keyframe_times(
     return [t_min + (t_max - t_min) * i / (n_keyframes - 1) for i in range(n_keyframes)]
 
 
-def _render_png(rgb: np.ndarray, path: Path) -> None:
-    """Write an (ny, nx, 3) uint8 RGB array to a PNG file."""
+def _render_png(rgba: np.ndarray, path: Path) -> None:
+    """
+    Write an (ny, nx, 4) uint8 RGBA array to a PNG file.
+
+    RGBA, not RGB. These PNGs are drawn OVER a basemap — Leaflet's ImageOverlay
+    in the 2D panel and Cesium's SingleTileImageryProvider in the 3D one — and
+    an opaque image covers the map wherever the flood is not.
+
+    That is what happened: HazardClassifier paints dry cells [128, 128, 128],
+    and a 3-channel PNG has no way to say "nothing here". Every keyframe was a
+    solid grey rectangle the size of the whole domain, with a thin coloured
+    flood line on it, hiding the terrain and roads the flood is supposed to be
+    read against. Both panels set a layer opacity (0.7 / 0.75), which made the
+    grey translucent rather than absent — the map looked washed out and nobody
+    could tell it was a bug rather than a style.
+    """
     try:
         from PIL import Image
-        Image.fromarray(rgb.astype(np.uint8)).save(path, format="PNG")
+        Image.fromarray(rgba.astype(np.uint8), mode="RGBA").save(path, format="PNG")
         return
     except Exception:
         pass
-    # Fallback: matplotlib (always available in the Scientific Python stack)
+    # Fallback: matplotlib (always available in the Scientific Python stack).
+    # imsave handles a 4-channel array as RGBA, so transparency survives here
+    # too.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.imsave(path, rgb.astype(np.uint8))
+    plt.imsave(path, rgba.astype(np.uint8))
+
+
+#: Depth below which a cell is drawn as nothing at all. Matches
+#: HazardClassifier's own LOW band minimum (hazard.py's thresholds table), so
+#: the transparent area is exactly the area the classifier calls DRY — the
+#: overlay can never disagree with the legend beside it.
+DRY_DEPTH_M = 0.1
+
+
+def _to_rgba(rgb: np.ndarray, depth: np.ndarray) -> np.ndarray:
+    """
+    Add an alpha channel: opaque where there is water, transparent where dry.
+
+    Derived from DEPTH rather than from the rendered colour. Testing the pixel
+    against the dry grey would also erase any genuinely grey-coloured hazard
+    class if the palette ever changed, and would couple this to the palette
+    rather than to the physics.
+    """
+    alpha = np.where(np.asarray(depth) >= DRY_DEPTH_M, 255, 0).astype(np.uint8)
+    return np.dstack([rgb.astype(np.uint8), alpha])
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -261,11 +297,14 @@ def export_keyframes(
         # row 0 is conventionally the TOP; Leaflet's ImageOverlay and Cesium's
         # SingleTileImageryProvider both place image row 0 at the NORTH edge of
         # the given bounds. Flip vertically or the flood renders upside-down.
-        rgb = np.flipud(rgb)
+        # Alpha comes from the SAME depth array, so it is flipped with the
+        # image rather than after it — a mismatch here would punch the
+        # transparent holes in upside down.
+        rgba = np.flipud(_to_rgba(rgb, depth))
 
         png_name = f"keyframe_{idx:04d}_{int(round(t_k)):06d}s.png"
         png_path = out_dir / png_name
-        _render_png(rgb, png_path)
+        _render_png(rgba, png_path)
 
         # png_url is a bare filename, not a filesystem path: manifest.json and
         # its PNGs are always siblings in out_dir, and whatever serves the

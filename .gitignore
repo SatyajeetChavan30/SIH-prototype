@@ -55,3 +55,11 @@ Thumbs.db
 # committed and a fresh clone could not build the frontend.
 /data/
 *.cache
+
+# Node dependencies. tools/sih-presentation/ pulls in simple-icons + sharp only
+# to regenerate the deck's technology-stack marks; the generated PNGs under
+# assets/logos/ ARE committed, so building the deck never needs node.
+node_modules/
+
+# Deck render output — regenerate with tools/sih-presentation/export_pdf.ps1
+tools/sih-presentation/render/

@@ -68,17 +68,44 @@ def test_keyframe_structure_and_bounds(tmp_path):
 def test_pngs_written_and_valid(tmp_path):
     result = _make_result()
     manifest = export_keyframes(result, None, n_keyframes=5, out_dir=tmp_path)
+    saw_transparency = False
     for kf in manifest.keyframes:
         # png_url is a bare filename (resolved against the manifest's own URL
         # by whatever serves it over HTTP) — join with out_dir to find it on disk.
         p = tmp_path / kf.png_url
         assert p.exists()
         assert p.stat().st_size > 0
-        # Re-open and confirm it is a non-trivial RGB image.
+        # RGBA, and genuinely transparent where the flood is not.
+        #
+        # This used to accept ("RGB", "P"). A 3-channel keyframe has no way to
+        # say "no water here", so HazardClassifier's dry colour [128,128,128]
+        # was painted as opaque grey — and because these PNGs are drawn OVER a
+        # basemap in both the Leaflet and Cesium panels, every frame was a solid
+        # grey rectangle the size of the domain covering the terrain beneath it.
+        # Asserting the mode alone would not have caught that; asserting that
+        # dry cells are actually transparent does.
+        import numpy as np
         from PIL import Image
+
         img = Image.open(p)
-        assert img.mode in ("RGB", "P")
+        assert img.mode == "RGBA", f"keyframes must carry alpha, got {img.mode}"
         assert img.size[0] > 1 and img.size[1] > 1
+
+        alpha = np.array(img)[:, :, 3]
+        assert set(np.unique(alpha)) <= {0, 255}, (
+            "alpha must be binary: a cell is either flooded or it is not"
+        )
+        saw_transparency = saw_transparency or bool((alpha == 0).any())
+
+    # Checked across the sequence, not per frame. This fixture's wave expands
+    # until it covers the whole grid, so the LAST keyframes are legitimately
+    # all-wet and have nothing to make transparent; the early ones are almost
+    # entirely dry. Requiring transparency in every frame would be asserting
+    # something untrue about a valid flood.
+    assert saw_transparency, (
+        "no keyframe had a transparent pixel — dry cells are being painted "
+        "opaque, which covers the basemap the overlay is drawn on"
+    )
 
 
 def test_fd2320_color_consistency(tmp_path):

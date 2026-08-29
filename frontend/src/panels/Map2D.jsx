@@ -92,7 +92,10 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
       </MapContainer>
 
       <SarStatus sar={sar} show={showSar} onToggle={() => setShowSar((v) => !v)} />
-      <HazardLegend hazard={current?.hazard_summary || result?.hazard_summary} />
+      <HazardLegend
+        hazard={current?.hazard_summary || result?.hazard_summary}
+        grid={result?.grid}
+      />
     </div>
   );
 }
@@ -108,40 +111,79 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
  * Colours are taken from the payload rather than hardcoded here, so the legend
  * cannot drift from the classifier that actually painted the pixels.
  */
-function HazardLegend({ hazard }) {
+function HazardLegend({ hazard, grid }) {
   if (!hazard) return null;
   const levels = ["low", "moderate", "significant", "severe", "extreme"];
+
+  // Share of the FLOODED area, not of the whole domain.
+  //
+  // HazardClassifier.summarize() divides every class count by
+  // classification.size — every cell in the domain, dry included. On a real
+  // run that is overwhelmingly dry: the drain run floods 349 of 72,900 cells,
+  // so a class holding 41% of the water displays as 0.2%, and the shallower
+  // classes round away to nothing. The legend then reads as though the flood
+  // is one uniform severity that stops dead at its edge, which is both wrong
+  // and the opposite of what the data says — that flood has a full gradient
+  // from 10% low through 29% severe.
+  //
+  // Recomputed here from the per-level `count`, which every keyframe manifest
+  // already stores. That deliberately avoids changing summarize()'s persisted
+  // `percentage` field, and it means runs exported before this fix display
+  // correctly too, with no backfill.
+  const wetCells = levels.reduce((sum, l) => sum + (hazard[l]?.count || 0), 0);
+  if (!wetCells) return null;
+
   const rows = levels
-    .filter((l) => hazard[l] && hazard[l].percentage > 0)
+    .filter((l) => (hazard[l]?.count || 0) > 0)
     .map((l) => ({
       name: l,
-      pct: hazard[l].percentage,
+      share: (hazard[l].count / wetCells) * 100,
       color: `rgb(${(hazard[l].color || [128, 128, 128]).join(",")})`,
     }));
   if (rows.length === 0) return null;
+
+  // Severity over the water only. The stored weighted_hazard_index divides by
+  // the whole domain too, so it reads 0.002 for a genuinely dangerous flood.
+  const weighted =
+    levels.reduce((sum, l) => sum + (hazard[l]?.weight || 0) * (hazard[l]?.count || 0), 0) /
+    wetCells;
+
+  // Absolute extent, so the domain share it used to show is still available —
+  // just labelled as what it is rather than standing in for composition.
+  const cellKm2 = grid?.dx && grid?.dy ? (grid.dx * grid.dy) / 1e6 : null;
+  const floodedKm2 = cellKm2 ? wetCells * cellKm2 : null;
+  const domainShare = hazard.total_cells
+    ? (wetCells / hazard.total_cells) * 100
+    : null;
 
   return (
     <div style={{
       position: "absolute", bottom: 20, left: 8, zIndex: 1000,
       background: "rgba(255,255,255,0.94)", border: "1px solid #bbb",
       borderRadius: 4, padding: "7px 9px", fontSize: 10, lineHeight: 1.5,
-      minWidth: 132,
+      minWidth: 150,
     }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>Flood hazard (FD2320)</div>
+      <div style={{ fontWeight: 700 }}>Flood hazard (FD2320)</div>
+      <div style={{ color: "#777", marginBottom: 4 }}>share of flooded area</div>
       {rows.map((r) => (
         <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, background: r.color,
                          border: "1px solid #999", flexShrink: 0 }} />
           <span style={{ flex: 1, textTransform: "capitalize" }}>{r.name}</span>
-          <span style={{ color: "#666" }}>{r.pct.toFixed(1)}%</span>
+          <span style={{ color: "#666" }}>
+            {r.share < 0.5 ? "<1%" : `${Math.round(r.share)}%`}
+          </span>
         </div>
       ))}
-      {hazard.weighted_hazard_index != null && (
-        <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid #eee",
-                      color: "#555" }}>
-          Index <strong>{hazard.weighted_hazard_index.toFixed(3)}</strong>
-        </div>
-      )}
+      <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid #eee",
+                    color: "#555" }}>
+        {floodedKm2 != null && (
+          <div>Flooded <strong>{floodedKm2.toFixed(2)} km²</strong>
+            {domainShare != null ? ` — ${domainShare.toFixed(1)}% of domain` : ""}
+          </div>
+        )}
+        <div>Severity index <strong>{weighted.toFixed(2)}</strong> (over water)</div>
+      </div>
     </div>
   );
 }

@@ -912,3 +912,107 @@ class TestDamClassOutsideFittedPopulation:
         assert dam_class_outside_fitted_population("gravity") is True
         assert dam_class_outside_fitted_population("masonry") is True
         assert dam_class_outside_fitted_population("embankment") is False
+
+
+class TestHydrographWindow:
+    """
+    The routing window must follow the run, not a module literal.
+
+    `_generate_single_hydrograph` pinned it at 10800 s with no override, and
+    the solver injects from the array it returns — so a large reservoir could
+    never be drained however long the caller asked the solver to run. Tehri
+    released 51% of its 3,540 MCM at every duration on offer.
+    """
+
+    CFG = {
+        "name": "Tehri Dam",
+        "height_m": TEHRI_HEIGHT_M,
+        "storage_mm3": TEHRI_STORAGE_MCM,
+        "dam_type": "embankment",
+        "failure_mode": "overtopping",
+        # As services/api/jalraksha_service/schemas.py builds them.
+        "breach_bottom_elev_m": TEHRI_HEIGHT_M * 0.1,
+        "initial_surface_elev_m": TEHRI_HEIGHT_M,
+    }
+
+    @staticmethod
+    def _released_mcm(hydrograph) -> float:
+        return float(
+            np.trapezoid(hydrograph["Q_t"], hydrograph["t_array"]) / 1.0e6
+        )
+
+    def test_default_window_is_unchanged_at_three_hours(self):
+        """A run that asks for nothing must behave exactly as it did before."""
+        member = synthesize_breach_ensemble(
+            dict(self.CFG), num_samples=1, random_seed=7
+        )[0]
+        assert member["t_array"][-1] == pytest.approx(10800.0)
+
+    def test_a_longer_window_actually_releases_more_water(self):
+        """
+        The defect in one assertion: same dam, same seed, longer window, and
+        the volume that leaves the reservoir must increase. It did not before,
+        because the window was a literal.
+        """
+        short = synthesize_breach_ensemble(
+            dict(self.CFG), num_samples=4, random_seed=7
+        )
+        long = synthesize_breach_ensemble(
+            {**self.CFG, "hydrograph_duration_s": 86400.0},
+            num_samples=4, random_seed=7,
+        )
+        assert sum(map(self._released_mcm, long)) > sum(
+            map(self._released_mcm, short)
+        )
+
+    def test_a_full_day_drains_the_reservoir(self):
+        """
+        Every ensemble member empties Tehri given 24 h.
+
+        The window has to be this long because the four regression families
+        disagree by ~4.8x on peak outflow: Von Thun's 452,000 m3/s empties the
+        reservoir in about 6 h, while Costa's 95,000 m3/s needs the better part
+        of a day. Both are in the published ensemble, so "time to empty" is
+        itself a range and the slowest member sets this bound.
+        """
+        members = synthesize_breach_ensemble(
+            {**self.CFG, "hydrograph_duration_s": 86400.0},
+            num_samples=4, random_seed=7,
+        )
+        for member in members:
+            released = self._released_mcm(member)
+            assert released >= 0.99 * TEHRI_STORAGE_MCM, (
+                f"{member['metadata']['method']} released only "
+                f"{released:.0f} of {TEHRI_STORAGE_MCM} MCM"
+            )
+
+    def test_routed_volume_never_exceeds_the_storage(self):
+        """
+        A longer window must not invent water. The reservoir is the state
+        variable in level_pool_routing, so the routed volume is bounded by it
+        no matter how long the routing continues.
+        """
+        for member in synthesize_breach_ensemble(
+            {**self.CFG, "hydrograph_duration_s": 172800.0},
+            num_samples=4, random_seed=7,
+        ):
+            assert self._released_mcm(member) <= 1.01 * TEHRI_STORAGE_MCM
+
+    def test_formation_time_does_not_stretch_with_the_window(self):
+        """
+        Breach FORMATION time is a property of the dam, not of how long we
+        watch. It was `failure_time_frac * total_time`; had total_time become
+        the window, an 8 h run would have eroded the embankment more slowly
+        than a 3 h one and moved the peak, making the two different events.
+        """
+        short = synthesize_breach_ensemble(
+            dict(self.CFG), num_samples=4, random_seed=7
+        )
+        long = synthesize_breach_ensemble(
+            {**self.CFG, "hydrograph_duration_s": 28800.0},
+            num_samples=4, random_seed=7,
+        )
+        for a, b in zip(short, long):
+            assert a["metadata"]["failure_time_s"] == pytest.approx(
+                b["metadata"]["failure_time_s"]
+            )

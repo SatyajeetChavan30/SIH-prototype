@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "cesium": "^1.118.0",
+    "cesium": "1.144.0",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
     "recharts": "^3.10.1",
-    "resium": "^1.18.2"
+    "resium": "1.25.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

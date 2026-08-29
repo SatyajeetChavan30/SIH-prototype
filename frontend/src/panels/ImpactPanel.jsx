@@ -176,36 +176,55 @@ function HazardSection({ hazard }) {
   }
 
   const levels = ["low", "moderate", "significant", "severe", "extreme"];
+
+  // Share of the FLOODED area, not the whole domain — the same correction the
+  // map legend needed. hazard[l].percentage divides by every cell including
+  // dry, so on a domain that is 99.5% dry every bar collapses to near zero and
+  // the chart implies the flood has no gradient. Recomputed from `count`,
+  // which is present in every stored manifest, so older runs render correctly
+  // too without changing what summarize() persists.
+  const wetCells = levels.reduce((sum, l) => sum + (hazard[l]?.count || 0), 0);
   const rows = levels
-    .filter((l) => hazard[l])
+    .filter((l) => hazard[l] && hazard[l].count > 0)
     .map((l) => ({
       name: l,
-      pct: hazard[l].percentage,
+      pct: wetCells ? (hazard[l].count / wetCells) * 100 : 0,
       cells: hazard[l].count,
       color: `rgb(${(hazard[l].color || [128, 128, 128]).join(",")})`,
     }));
 
+  // Severity over the water only. The stored weighted_hazard_index is diluted
+  // by the dry majority and reads ~0.002 for a genuinely dangerous flood.
+  const weightedWet = wetCells
+    ? levels.reduce((sum, l) => sum + (hazard[l]?.weight || 0) * (hazard[l]?.count || 0), 0) / wetCells
+    : null;
+
   return (
     <section style={S.section}>
       <h4 style={S.h4}>Hazard classification (FD2320)</h4>
-      {hazard.weighted_hazard_index != null && (
-        <div style={S.row}>
+      <div style={S.row}>
+        {weightedWet != null && (
           <Tile
-            label="Weighted hazard index"
-            value={hazard.weighted_hazard_index.toFixed(3)}
-            sub="0 = dry, 1 = every cell extreme"
+            label="Severity index (over water)"
+            value={weightedWet.toFixed(2)}
+            sub="0 = shallow, 1 = every flooded cell extreme"
             emphasis
           />
-        </div>
-      )}
+        )}
+        <Tile
+          label="Flooded cells"
+          value={num(wetCells)}
+          sub={hazard.total_cells ? `of ${num(hazard.total_cells)} in the domain` : null}
+        />
+      </div>
       <div style={{ height: 180, marginTop: 10 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }}
-                   label={{ value: "% of domain", angle: -90, position: "insideLeft", fontSize: 11 }} />
-            <Tooltip formatter={(v, _n, p) => [`${Number(v).toFixed(2)}% (${num(p.payload.cells)} cells)`, "area"]} />
+                   label={{ value: "% of flooded area", angle: -90, position: "insideLeft", fontSize: 11 }} />
+            <Tooltip formatter={(v, _n, p) => [`${Number(v).toFixed(1)}% of the flood (${num(p.payload.cells)} cells)`, "area"]} />
             <Bar dataKey="pct">
               {rows.map((r) => (
                 <Cell key={r.name} fill={r.color} />

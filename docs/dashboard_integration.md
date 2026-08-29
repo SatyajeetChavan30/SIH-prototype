@@ -345,6 +345,102 @@ and the result survives a restart because the gates are deterministic.
   one-line badge that expands on click. The wording is unchanged; only the
   prominence.
 
+## Demo walkthrough — driven end to end (2026-08-29)
+
+Every module had been verified individually. Running the thirteen-step judge
+script as a SEQUENCE found four bugs that per-piece checks could not, which is
+the whole argument for doing it.
+
+### Found and fixed
+
+1. **The 3D globe never flew to the dam.** It showed the whole Earth centred on
+   North America for the entire demo. The `flyTo` effect returned early when
+   resium had not yet attached `viewerRef.current.cesiumElement`, and never
+   retried — and clicking "Dam site" could not rescue it, because that preset
+   was already `selected` so the effect did not re-fire. Now waits for the
+   viewer with a bounded retry, and re-flies when the same preset is clicked.
+2. **The Gauges panel read "Downstream gauges — Tehri Dam" above seven Pune
+   towns.** Loading a run did not touch the dam selector, so the map stayed on
+   the Bhagirathi and the camera presets stayed Tehri's. Loading a run now
+   adopts that run's dam.
+3. **The Ensemble empty state blamed the wrong cause.** It said "a delft3d-only
+   run has no breach ensemble" for a SWE run whose actual problem was that it
+   predates `run_summary.json`. That sends the user to change the solver when
+   the fix is to re-run.
+4. **The hazard legend printed "0.0%"** for classes it only lists when they are
+   above zero — a working legend looking broken. Now `<0.1%`.
+
+### Confirmed working
+
+| Step | Evidence |
+| :--- | :--- |
+| Dam list + run picker | 6 dams, 29 runs |
+| Load precomputed | instant, no compute |
+| 2D map + scrub | 9 tiles, overlay changes with the clock, FD2320 legend |
+| 3D terrain | textured, four gauge entities labelled with distances |
+| Gauges | Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, *severe* |
+| Ensemble | dam-class caveat surfaced for the gravity dam |
+| Validation | 3 PASS / 0 FAIL, three-curve Ritter chart |
+| Impact | 322 PAR of 295,025, GHSL, Graham range |
+| Downloads | `.zip` 200 `application/x-zip-compressed`, `.kml` 200, `.tif` 200 `image/tiff` |
+| Comparison | "Delft3D FM (official dflowfm binary)"; SPH correctly "not requested" |
+| SPH tab | appears only for SPH runs; 14,149 particles |
+
+### Demo-day risks this surfaced
+
+- **The Sentinel-1 overlay is not guaranteed to appear.** Both dams currently
+  refuse their latest scene on the JRC 0.5-precision gate (Tehri 0.486);
+  earlier in the same session Tehri's scene passed. The guard is working as
+  designed, but which scene is latest changes day to day. Have the explanation
+  ready rather than meeting it live.
+- **Runs predating this work show an empty Ensemble tab.** The long-standing
+  Tehri demo run (`fe41411e`, 21 exports) is one of them. Use a freshly baked
+  run for the demo.
+
+## Khadakwasla gauge reach — settled with three independent runs
+
+The dashboard reported "The flood did not reach any gauge within the simulated
+time" for every Khadakwasla run. Three hypotheses were tested and only the third
+survived.
+
+| Run | Config | Gauges reached |
+| :--- | :--- | ---: |
+| 6 h, 200 m, 3 members | longer duration | **2 of 7** |
+| 8 h, 200 m, 5 members | full drain to empty + 5 h routing | **2 of 7** |
+| 6 h, 100 m, 2 members | double the resolution | **2 of 7** |
+
+Doubling the resolution changed nothing. Running until the reservoir was
+completely empty and then following the wave for five more hours changed
+nothing. The number is not duration-limited or grid-limited.
+
+**The cause is elevation.** Five of the seven coordinates are town CENTRES, not
+riverside gauging stations, and they sit above the Mula-Mutha:
+
+| Town | Ground | River | Above river | To channel |
+| :--- | ---: | ---: | ---: | ---: |
+| Swargate | 582.7 m | 536.5 m | **+46 m** | 3.0 km |
+| Hadapsar | 568.7 m | 530.4 m | +38 m | 2.9 km |
+| Magarpatta City | 562.2 m | 530.1 m | +32 m | 3.6 km |
+| Loni Kalbhor | 544.6 m | 526.5 m | +18 m | 1.7 km |
+| Shivajinagar | 549.6 m | 533.6 m | +16 m | 3.8 km |
+| Deccan Gymkhana | 543.6 m | 534.6 m | +9 m | 3.6 km |
+
+Swargate's town centre is **higher than the reservoir surface was** (580.0 m).
+A channel-confined dam break cannot reach it, and the two that do report
+arrivals are the two lowest above the river.
+
+Two fixes were available and one was deliberately NOT taken:
+
+- **Not taken**: widening `channel_search_m` from 1,200 m to ~3,000 m, or
+  lowering the 0.1 m arrival threshold. Either fills the table in one line, by
+  sampling floodplain sheet flow up to 3 km from the town and reporting it as
+  that town's arrival. That is the same category of error as tuning a threshold
+  until the answer looks right.
+- **Taken**: the coordinates stay as town centres, and each blank row now
+  explains itself — "This point sits 46 m above the nearest river channel
+  (583 m vs 536 m)... Not a modelling gap." A dry row with a reason is a real
+  screening result; a wet row sampled from 3 km away is not.
+
 ## Known gaps
 
 - **Cesium 3D terrain needs an Ion access token** (`VITE_CESIUM_ION_TOKEN`).

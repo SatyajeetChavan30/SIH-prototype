@@ -22,10 +22,30 @@ export default function EnsemblePanel({ result }) {
   const ensemble = result?.ensemble;
 
   if (!ensemble) {
+    // Distinguish the two reasons this is empty. The old message blamed the
+    // solver unconditionally, which was wrong and misleading for the far more
+    // common case: a run created BEFORE these fields existed. The Tehri demo
+    // run is exactly that — a complete 21-export SWE run whose ensemble
+    // statistics were computed and then discarded, because run_summary.json
+    // did not exist yet. Telling the user their solver choice was wrong when
+    // the real answer is "this run is old" sends them to fix the wrong thing.
+    const isSwe = result?.solver === "swe" || result?.solver === "sph";
     return (
       <Empty>
-        No ensemble statistics for this run. They are produced by the SWE
-        pipeline; a <code>delft3d</code>-only run has no breach ensemble.
+        {isSwe ? (
+          <>
+            This run has no ensemble statistics because it predates them being
+            recorded — they were computed and discarded before{" "}
+            <code>run_summary.json</code> existed. Re-run the same dam to get
+            the percentile bands; nothing about the solver has changed.
+          </>
+        ) : (
+          <>
+            No ensemble statistics for this run. They come from the SWE breach
+            ensemble, and a <code>delft3d</code>-only run does not generate one
+            — choose <strong>SWE</strong> or <strong>Both</strong>.
+          </>
+        )}
       </Empty>
     );
   }

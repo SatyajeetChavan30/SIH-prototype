@@ -395,10 +395,63 @@ def compute_arrival_times_at_gauges(
                 # Callers format this alongside the arrival time; omitting it
                 # here made every no-arrival gauge a TypeError downstream.
                 "distance_km": gauge["distance_km"],
-                "note": "No arrival detected in ensemble",
+                "note": _no_arrival_reason(
+                    gauge, bed_elevation, grid, j_gauge, i_gauge),
             }
 
     return arrival_times_dict
+
+
+def _no_arrival_reason(gauge: Dict, bed_elevation, grid: Grid,
+                       j_gauge: int, i_gauge: int) -> str:
+    """
+    Say WHY a gauge reports no arrival, in terms a reader can act on.
+
+    "No arrival detected in ensemble" is true and useless: it cannot
+    distinguish a town the flood has not reached YET from one it can never
+    reach. Both matter, and they mean opposite things for a warning plan.
+
+    The distinction that decides it is elevation. Several of the Pune corridor's
+    coordinates are town CENTRES rather than riverside gauging stations, and
+    they sit well above the Mula-Mutha — Swargate's is 46 m above the channel
+    and 3 km from it, higher than the reservoir surface itself. A
+    channel-confined dam break genuinely never reaches such a point, and saying
+    so is a real screening result, not a gap in the model.
+
+    Falls back to the plain message when there is no bed data to reason from,
+    rather than inventing a cause.
+    """
+    import numpy as np
+
+    if bed_elevation is None:
+        return "No arrival detected within the simulated time."
+
+    try:
+        gauge_bed = float(bed_elevation[j_gauge, i_gauge])
+        # The channel near this gauge: lowest bed within ~3 km, which is far
+        # enough to find the river even where a town spreads away from it.
+        radius = max(1, int(round(3000.0 / min(grid.dx, grid.dy))))
+        j0, j1 = max(0, j_gauge - radius), min(grid.ny, j_gauge + radius + 1)
+        i0, i1 = max(0, i_gauge - radius), min(grid.nx, i_gauge + radius + 1)
+        window = np.asarray(bed_elevation[j0:j1, i0:i1])
+        thalweg = float(np.nanmin(window))
+        above = gauge_bed - thalweg
+    except Exception:
+        return "No arrival detected within the simulated time."
+
+    if above >= 15.0:
+        return (
+            f"This point sits {above:.0f} m above the nearest river channel "
+            f"({gauge_bed:.0f} m vs {thalweg:.0f} m). It is a town centre, not "
+            f"a riverside gauge, so a channel-confined dam-break flood does not "
+            f"reach it. Not a modelling gap — the flood would have to rise "
+            f"{above:.0f} m above the river to inundate this location."
+        )
+    return (
+        f"No arrival within the simulated time. This point is {above:.0f} m "
+        f"above the nearest channel; extend the simulated duration to test "
+        f"whether the flood reaches it later."
+    )
 
 
 def inject_breach_hydrograph(

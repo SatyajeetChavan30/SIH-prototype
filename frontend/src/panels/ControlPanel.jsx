@@ -24,7 +24,12 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   const [breachMode, setBreachMode] = useState("central");
   const [ensemble, setEnsemble] = useState(100);
   const [solver, setSolver] = useState("swe");
-  const [durationMin, setDurationMin] = useState(30);
+  // 180 min, not 30. At 30 minutes the flood covers ~3.7 km and Khadakwasla's
+  // nearest gauge is 10.5 km away, so the default guaranteed an empty arrival
+  // table and the message "The flood did not reach any gauge within the
+  // simulated time" on every single run. A default that cannot produce a
+  // result is a bad default.
+  const [durationMin, setDurationMin] = useState(180);
   const [status, setStatus] = useState("idle");
   const [loadId, setLoadId] = useState("");
   // The run id was previously only a local const inside submit(), so nothing
@@ -83,6 +88,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   };
 
   const selectedDam = dams.find((d) => d.id === damId) || null;
+  // loadExisting closes over damId; a ref keeps its comparison current without
+  // adding damId to every dependency list that touches it.
+  const damIdRef = React.useRef(damId);
+  React.useEffect(() => { damIdRef.current = damId; }, [damId]);
   // A run can open in ParaView only if it wrote an XDMF, which only the SWE
   // path does. Read it off the loaded result rather than guessing from solver.
   const hasXdmf = Boolean(result?.exports?.some((e) => e.kind === "xdmf"));
@@ -140,7 +149,19 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
     if (!id) return;
     setStatus("loading…");
     try {
-      onRunLoaded?.(await getResult(id));
+      const loaded = await getResult(id);
+      onRunLoaded?.(loaded);
+
+      // Adopt the run's dam. Loading a run used to leave the dam selector on
+      // whatever was previously chosen, so opening a Khadakwasla run while
+      // Tehri was selected gave a Gauges panel headed "Downstream gauges —
+      // Tehri Dam" above seven Pune towns, a map still centred on the
+      // Bhagirathi, and Tehri's camera presets. Every one of those is wrong for
+      // the run on screen.
+      const row = runs.find((r) => r.run_id === id);
+      const damId = row?.dam_id;
+      if (damId && damId !== damIdRef.current) selectDam(damId);
+
       setCurrentRunId(id);
       setPvStatus("");
       setStatus(`loaded ${id.slice(0, 8)}`);
@@ -193,7 +214,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
              onChange={(e) => setEnsemble(+e.target.value)} />
 
       <label>Simulated time: {durationMin} min</label>
-      <input type="range" min="5" max="180" step="5" value={durationMin}
+      <input type="range" min="5" max="480" step="5" value={durationMin}
              onChange={(e) => setDurationMin(+e.target.value)} />
 
       <label>Solver</label>

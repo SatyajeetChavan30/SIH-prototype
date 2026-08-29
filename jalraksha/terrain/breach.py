@@ -200,14 +200,38 @@ def _generate_single_hydrograph(
     storage = dam_config["storage_mm3"]
     dam_type = dam_config.get("dam_type", "embankment")
 
-    total_time = 10800.0
+    # How long the hydrograph is ROUTED for. This was a hard 10800 s literal
+    # with no way to override it, which silently capped every dam at three
+    # hours of outflow no matter how long the caller asked the solver to run —
+    # the solver injects from this array, so the reservoir simply stopped
+    # draining at t = 3 h.
+    #
+    # It went unnoticed because Khadakwasla empties in 2.88 h, inside the
+    # window. Tehri does not: routed with the Froehlich peak it releases only
+    # 77.0% of its 3,540 MCM in 3 h, reaching 99.9% at 6 h and 100.0% at 8 h.
+    # A "full drain" run of a large reservoir was therefore unreachable.
+    #
+    # Floored at the old value so every existing short run is unchanged: a
+    # 30-minute demo run must not shrink the hydrograph to 30 minutes.
+    total_time = max(
+        float(dam_config.get("hydrograph_duration_s", HYDROGRAPH_MIN_DURATION_S)),
+        HYDROGRAPH_MIN_DURATION_S,
+    )
+
     # The sampled fraction sets the breach FORMATION time, not the time of the
     # hydrograph peak: with real routing the peak emerges from the interaction
     # of breach growth and reservoir drawdown and is reported, not imposed.
-    # (Von Thun & Gillette's own t_f for a 260 m dam is 5.4 h, longer than this
-    # 3 h output window; the ensemble's sampled formation time is used instead
+    # (Von Thun & Gillette's own t_f for a 260 m dam is 5.4 h, longer than the
+    # 3 h basis below; the ensemble's sampled formation time is used instead
     # so the peak lands inside the window the downstream solver expects.)
-    t_fail = failure_time_frac * total_time
+    #
+    # Deliberately scaled by HYDROGRAPH_MIN_DURATION_S and NOT by total_time.
+    # Formation time is a property of the dam and its failure mode; tying it to
+    # the output window would mean that asking to watch for longer also made
+    # the embankment erode more slowly, which is not a thing that happens. It
+    # would also move the peak, so an 8 h run would not be the same event as
+    # the 3 h one with a longer tail.
+    t_fail = failure_time_frac * HYDROGRAPH_MIN_DURATION_S
 
     # Peak outflow from the chosen regression family
     if regression in ("froehlich", "froehlich_1995"):
@@ -944,6 +968,13 @@ def dam_class_outside_fitted_population(dam_type: Optional[str]) -> bool:
     if not dam_type:
         return False
     return dam_type.strip().lower() not in FITTED_DAM_CLASSES
+
+
+#: Shortest hydrograph the routing is run for, and the basis the breach
+#: FORMATION time is scaled against. 3 h was the module's original hardcoded
+#: window; keeping it as the floor means a run that does not ask for a longer
+#: one behaves exactly as before.
+HYDROGRAPH_MIN_DURATION_S = 10800.0
 
 
 DEFAULT_REGRESSION_FAMILIES = (

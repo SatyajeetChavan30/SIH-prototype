@@ -302,6 +302,21 @@ DELFT3D_MAX_RADIUS_KM = 70.0
 DELFT3D_DURATION_S = 10800.0
 
 
+def _delft3d_duration(dam_config: Dict[str, Any]) -> float:
+    """
+    How long to run the Delft3D FM comparison for, in seconds.
+
+    Follows the run's own duration rather than the 3 h constant above, because
+    a comparison between two engines over two different windows is not a
+    comparison. A full-drain run simulates 8-24 h; leaving Delft3D at 3 h would
+    truncate it mid-flood and then report the difference as a model discrepancy.
+
+    Floored at the constant so a short demo run is unaffected.
+    """
+    requested = float(dam_config.get("hydrograph_duration_s", DELFT3D_DURATION_S))
+    return max(requested, DELFT3D_DURATION_S)
+
+
 def _delft3d_domain(gauges_list: List[Dict[str, Any]],
                     dam_radius_km: float | None = None) -> tuple:
     """
@@ -420,7 +435,7 @@ def _build_delft3d_model(dam_config: Dict[str, Any],
 
     model = build_dfm_model(
         out_dir, grid, bed, water_level,
-        duration_s=DELFT3D_DURATION_S,
+        duration_s=_delft3d_duration(dam_config),
         name=(dam_config.get("dam_id") or "dambreak"),
         crs_epsg=int(str(grid["crs"]).split(":")[-1]),
         observation_points=observation_points or None,
@@ -756,6 +771,11 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
     from jalraksha.delft3d.runner import run_delft3d_simulation
     from jalraksha.delft3d.comparison import compare_sph_vs_delft3d
 
+    # Bound before the try so the failure artifact below can report what the
+    # KERNEL did, independently of what happened afterwards. See the comment
+    # there for why that distinction is not cosmetic.
+    d3d_res: Dict[str, Any] | None = None
+
     try:
         # This dam's own corridor. Was a hardcoded Tehri list applied to every
         # dam, so a Pune run produced a Delft3D comparison against Himalayan
@@ -775,7 +795,7 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
         # described the output as a Delft3D comparison.
         d3d_res = run_delft3d_simulation(
             d3d_setup, dam_config, gauge_locations=gauges_list,
-            total_time_s=DELFT3D_DURATION_S,
+            total_time_s=_delft3d_duration(dam_config),
             dflowfm_path=settings.DFLOWFM_EXE or None,
         )
 
@@ -846,13 +866,36 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
             reason_dir = settings.DATA_DIR / "exports" / run_id
             reason_dir.mkdir(parents=True, exist_ok=True)
             reason_path = reason_dir / "comparison_metrics.json"
+            # Report what the KERNEL actually did, not what this handler
+            # happens to know.
+            #
+            # These two fields were hardcoded to False and to the crash message
+            # — so ANY failure after the Delft3D call, including one in the
+            # matplotlib plotting several steps later, was written to disk as
+            # "the Delft3D binary was not used". CLAUDE.md makes this exact
+            # boolean the thing that decides whether the kernel may be named,
+            # and it was reading false for runs where dflowfm-cli had genuinely
+            # run and left 31 timesteps of output on disk. Overclaiming is the
+            # failure mode that rule exists to prevent; silently UNDER-claiming
+            # a real result is the same error pointed the other way, and it is
+            # just as wrong to publish.
+            binary_used = bool((d3d_res or {}).get("delft3d_binary_used", False))
+            kernel_reason = (d3d_res or {}).get("delft3d_fallback_reason")
             reason_path.write_text(_json.dumps({
                 "unavailable": True,
                 "reason": f"{type(exc).__name__}: {exc}",
                 "metrics": {},
                 "gauge_comparison": [],
-                "delft3d_binary_used": False,
-                "delft3d_fallback_reason": f"{type(exc).__name__}: {exc}",
+                "delft3d_binary_used": binary_used,
+                # Only a genuine kernel fallback belongs here. When the kernel
+                # succeeded and something later failed, `reason` above already
+                # carries that, and repeating it as a fallback reason would
+                # assert a fallback that did not happen.
+                "delft3d_fallback_reason": (
+                    kernel_reason if not binary_used
+                    else None
+                ),
+                "failed_after_kernel": binary_used,
             }, indent=2), encoding="utf-8")
             return {"kind": "comparison_metrics", "path_or_url": str(reason_path)}
         except Exception:
@@ -1124,6 +1167,17 @@ def run_dam_break_task(
 ) -> Dict[str, Any]:
     db.update_run_status(run_id, "running", 5.0, phase="Queued")
 
+    # The breach hydrograph is ROUTED for as long as this run simulates.
+    #
+    # jalraksha.terrain.breach used to pin that window at a hardcoded 3 h, and
+    # the solver injects from the resulting array — so asking for a longer run
+    # bought more simulated time with no more water behind it. Tehri released
+    # only 51% of its 3,540 MCM however long the solver ran. Setting it here
+    # keeps the window a property of the request, and _delft3d_duration reads
+    # the same key so both engines see the same event.
+    dam_config = dict(dam_config)
+    dam_config["hydrograph_duration_s"] = float(solver_duration_s)
+
     def report(pct: float, label: str) -> None:
         """
         Publish progress for this run.
@@ -1150,7 +1204,18 @@ def run_dam_break_task(
         # or exports. Treating it as a drop-in replacement for the SWE run would
         # give a judge a dam-break screening tool that reports nothing about
         # anywhere downstream.
-        if solver in ("swe", "sph"):
+        # "both" is here too, and that is the point of this branch's condition.
+        #
+        # It used to fall through to the `else` below, which runs only the
+        # analytic rapid_estimate and returns {"rapid_estimate": ...} — no
+        # depth_series and no raster_paths. Every downstream product is guarded
+        # on those two keys, so the mode whose name promises the most produced
+        # the LEAST: no keyframes, no hazard summary, no map overlay, no
+        # shapefiles, no KML, no COGs, no population-at-risk and no XDMF. A
+        # judge picking "Both (compare)" got a Comparison tab and seven empty
+        # ones. Now it runs the full SWE pipeline first and adds Delft3D FM and
+        # near-field SPH afterwards, which is what "both" was always meant to be.
+        if solver in ("swe", "sph", "both"):
             from jalraksha.run import run_dam_break_ensemble
             dem_path = _resolve_dem(dam_config)
             result = run_dam_break_ensemble(
@@ -1225,9 +1290,22 @@ def run_dam_break_task(
                 exports.append({"kind": "sph_near_field",
                                 "path_or_url": str(sph_path)})
 
+            if solver == "both":
+                # Delft3D FM and near-field SPH, on top of the full SWE run
+                # above. _run_comparison takes only (run_id, dam_config,
+                # with_sph) and reads this dam's gauges from
+                # jalraksha.presets.GAUGES, so it needs nothing from the
+                # rapid_estimate result it used to sit beside.
+                report(88.0, "Running Delft3D FM and near-field SPH")
+                comp_export = _run_comparison(run_id, dict(dam_config),
+                                              with_sph=True)
+                if comp_export:
+                    exports.append(comp_export)
+
         else:
-            # delft3d / both / sph: analytic rapid estimate keeps the demo
-            # responsive while the engine-specific work happens below.
+            # delft3d only: the analytic rapid estimate keeps this path fast,
+            # which is the whole reason it exists — the Comparison tab is what
+            # it feeds. "both" no longer arrives here (see the branch above).
             #
             # cfg IS dam_config, not a hand-picked subset of it. It used to be a
             # 5-key copy that dropped dam_id, dam_type and failure_mode — and
@@ -1254,10 +1332,9 @@ def run_dam_break_task(
                 })
             result = {"rapid_estimate": est}
 
-            if solver in ("both", "delft3d"):
-                report(35.0, "Running Delft3D FM"
-                       + (" and near-field SPH" if solver == "both" else ""))
-                comp_export = _run_comparison(run_id, cfg, with_sph=(solver == "both"))
+            if solver == "delft3d":
+                report(35.0, "Running Delft3D FM")
+                comp_export = _run_comparison(run_id, cfg, with_sph=False)
                 if comp_export:
                     exports.append(comp_export)
 
