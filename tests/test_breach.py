@@ -1016,3 +1016,99 @@ class TestHydrographWindow:
             assert a["metadata"]["failure_time_s"] == pytest.approx(
                 b["metadata"]["failure_time_s"]
             )
+
+
+class TestBreachFormationTime:
+    """
+    Breach formation time controls how ABRUPT the release is, and it was not
+    settable: fixed at CRITICAL_FAILURE_FRAC of a hardcoded 3 h, ~27 min for
+    every dam. That mattered because `failure_mode` — the field the API and the
+    dashboard both present as the scenario selector — reaches only
+    xu_zhang_2009_peak_outflow, which is not in DEFAULT_REGRESSION_FAMILIES. So
+    "piping" and "overtopping" produced identical hydrographs.
+    """
+
+    CFG = {
+        "name": "Tehri Dam",
+        "height_m": TEHRI_HEIGHT_M,
+        "storage_mm3": TEHRI_STORAGE_MCM,
+        "dam_type": "embankment",
+        "breach_bottom_elev_m": TEHRI_HEIGHT_M * 0.1,
+        "initial_surface_elev_m": TEHRI_HEIGHT_M,
+    }
+
+    @staticmethod
+    def _rise_time_s(hydrograph) -> float:
+        """When the release reaches 90% of its peak — i.e. how sudden it is."""
+        discharge = np.asarray(hydrograph["Q_t"])
+        times = np.asarray(hydrograph["t_array"])
+        return float(times[np.argmax(discharge >= 0.9 * discharge.max())])
+
+    def test_failure_mode_alone_still_changes_nothing(self):
+        """
+        Documents the limitation rather than papering over it. If xu_zhang is
+        ever verified and added to the defaults, this test fails and whoever
+        does that will know the scenario selector has become live.
+        """
+        overtopping = synthesize_breach_ensemble(
+            {**self.CFG, "failure_mode": "overtopping"}, num_samples=4, random_seed=7
+        )
+        piping = synthesize_breach_ensemble(
+            {**self.CFG, "failure_mode": "piping"}, num_samples=4, random_seed=7
+        )
+        for a, b in zip(overtopping, piping):
+            assert np.array_equal(a["Q_t"], b["Q_t"])
+
+    def test_a_shorter_formation_time_gives_a_more_sudden_release(self):
+        rapid = synthesize_breach_ensemble(
+            {**self.CFG, "breach_formation_time_s": 600.0},
+            num_samples=4, random_seed=7,
+        )
+        default = synthesize_breach_ensemble(
+            dict(self.CFG), num_samples=4, random_seed=7
+        )
+        rapid_rise = np.mean([self._rise_time_s(h) for h in rapid])
+        default_rise = np.mean([self._rise_time_s(h) for h in default])
+        assert rapid_rise < 0.5 * default_rise
+
+    def test_formation_time_is_honoured_as_the_ensemble_median(self):
+        """The requested value is the median, with the lognormal spread kept."""
+        members = synthesize_breach_ensemble(
+            {**self.CFG, "breach_formation_time_s": 600.0},
+            num_samples=24, random_seed=7,
+        )
+        median = float(np.median([m["metadata"]["failure_time_s"] for m in members]))
+        assert median == pytest.approx(600.0, rel=0.25)
+
+    def test_a_rapid_breach_is_flagged_as_an_assumption(self):
+        """
+        A pinned formation time is a stated scenario, not a derived result, and
+        the exports have to be able to say which they are looking at.
+        """
+        assumed = synthesize_breach_ensemble(
+            {**self.CFG, "breach_formation_time_s": 600.0},
+            num_samples=2, random_seed=7,
+        )
+        derived = synthesize_breach_ensemble(
+            dict(self.CFG), num_samples=2, random_seed=7
+        )
+        assert all(m["metadata"]["failure_time_assumed"] for m in assumed)
+        assert not any(m["metadata"]["failure_time_assumed"] for m in derived)
+
+    def test_the_released_volume_is_unchanged_by_how_fast_it_leaves(self):
+        """
+        A faster breach empties the same reservoir sooner; it must not empty a
+        LARGER one. The storage is the state variable, so this is a check that
+        the formation-time knob did not become a volume knob.
+        """
+        for formation_s in (600.0, 1620.0, 12636.0):
+            members = synthesize_breach_ensemble(
+                {**self.CFG, "breach_formation_time_s": formation_s,
+                 "hydrograph_duration_s": 86400.0},
+                num_samples=4, random_seed=7,
+            )
+            for member in members:
+                released = float(
+                    np.trapezoid(member["Q_t"], member["t_array"]) / 1.0e6
+                )
+                assert released <= 1.01 * TEHRI_STORAGE_MCM

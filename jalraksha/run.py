@@ -384,6 +384,15 @@ def compute_arrival_times_at_gauges(
                 "num_samples": len(arrival_times_ensemble),
                 "unit": "s",
                 "distance_km": gauge["distance_km"],
+                # The cell the arrival was actually READ FROM, after the channel
+                # snap above. Recorded so peak depth is sampled at the same
+                # place: _gauge_max_depths re-derived the cell from lat/lon with
+                # no snap, so for a town perched above a sub-grid gorge the two
+                # columns described different ground. Koteshwar, Devprayag and
+                # Rishikesh each reported a real arrival time beside a peak
+                # depth of exactly 0.0 m, which reads as a contradiction and is
+                # really two answers about two cells.
+                "cell": [int(j_gauge), int(i_gauge)],
             }
         else:
             # No arrival detected at this gauge
@@ -397,6 +406,7 @@ def compute_arrival_times_at_gauges(
                 "distance_km": gauge["distance_km"],
                 "note": _no_arrival_reason(
                     gauge, bed_elevation, grid, j_gauge, i_gauge),
+                "cell": [int(j_gauge), int(i_gauge)],
             }
 
     return arrival_times_dict

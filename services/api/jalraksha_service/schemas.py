@@ -25,6 +25,14 @@ class RunRequest(BaseModel):
                     "default of 10800 s is a ~35 min compute per member at 200 m.",
     )
     target_resolution: float = Field(200.0, gt=0, description="Grid resolution (m)")
+    breach_formation_time_s: Optional[float] = Field(
+        None, gt=0,
+        description="Breach formation time (s). Controls how ABRUPT the release "
+                    "is — a short value is the flash-flood / rapid-failure "
+                    "scenario. None uses the module default (~27 min). This is "
+                    "an assumption, not a derived value, and travels into every "
+                    "member's metadata as failure_time_assumed.",
+    )
 
     def to_dam_config(self) -> Dict[str, Any]:
         if self.dam_id:
@@ -80,7 +88,15 @@ class RunRequest(BaseModel):
                 "height_m": self.height_m, "storage_mm3": self.storage_mm3,
             }
         cfg["dam_type"] = self.dam_type
+        # NOTE ON failure_mode: it reaches ONE function,
+        # xu_zhang_2009_peak_outflow, and xu_zhang is not in
+        # DEFAULT_REGRESSION_FAMILIES while its coefficients are unverified. So
+        # this field currently changes nothing in a default ensemble. The
+        # parameter that does change the character of the release is
+        # breach_formation_time_s below.
         cfg["failure_mode"] = self.failure_mode
+        if self.breach_formation_time_s is not None:
+            cfg["breach_formation_time_s"] = float(self.breach_formation_time_s)
         cfg["breach_bottom_elev_m"] = max(0.0, float(cfg.get("height_m", 100)) * 0.1)
         cfg["initial_surface_elev_m"] = float(cfg.get("height_m", 100))
         return cfg

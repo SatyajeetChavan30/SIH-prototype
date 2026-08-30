@@ -73,6 +73,21 @@ def main(argv: list[str] | None = None) -> int:
     from jalraksha_service.worker import celery_app
 
     run_id = payload["run_id"]
+
+    # Claim this run by stamping our own pid, BEFORE any solving starts.
+    #
+    # Done here rather than at the Popen call site so it holds however the
+    # worker was launched — including a direct
+    # `python run_worker.py <payload>`, which is how a run gets restarted
+    # after the API has gone away. mark_stale_runs_failed reads this to tell a
+    # genuinely orphaned run from one that is still solving; without it, simply
+    # starting the API marks every live run failed.
+    try:
+        db.record_worker_pid(run_id, os.getpid())
+    except Exception as exc:  # pragma: no cover - bookkeeping, never fatal
+        print(f"[run_worker] could not record pid for {run_id}: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+
     try:
         # .apply(), not a direct call. The task is declared bind=True, so its
         # underlying function takes `self` first; invoking it directly would

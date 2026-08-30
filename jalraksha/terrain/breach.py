@@ -134,12 +134,47 @@ def synthesize_breach_ensemble(
         # other by 3-4x, and that inter-method spread is the dominant term.
         families = list(DEFAULT_REGRESSION_FAMILIES)
 
+    # Breach FORMATION time, in seconds, as the median of the ensemble's spread.
+    #
+    # This is the only parameter that controls how ABRUPT the release is, and
+    # until now it could not be set: it was fixed at CRITICAL_FAILURE_FRAC of a
+    # hardcoded 3 h, about 27 minutes for every dam ever run. That matters
+    # because `failure_mode` — the field the API and the dashboard both offer as
+    # "overtopping / piping" — reaches exactly one function,
+    # xu_zhang_2009_peak_outflow, and xu_zhang is deliberately NOT in
+    # DEFAULT_REGRESSION_FAMILIES while its coefficients are unverified. So
+    # selecting "piping" produced a hydrograph identical to "overtopping" in
+    # every value, differing only in a label. A scenario-generation tool whose
+    # scenario selector changes nothing is worse than one that offers no
+    # selector at all.
+    #
+    # Exposed in SECONDS rather than as a fraction because it is a physical
+    # quantity with published values to compare against — Von Thun & Gillette
+    # (1990) give t_f = 0.020*h_w + 0.25 h for an erosion-resistant embankment
+    # and 0.015*h_w for an easily erodible one, which for Tehri's 234 m head is
+    # 4.9 h and 3.5 h respectively. The 27-minute default is far faster than
+    # either; see the note in _generate_single_hydrograph for why it was chosen.
+    #
+    # A caller that sets this is stating an assumption, and it should be
+    # reported as one — the value is carried into every member's metadata as
+    # `failure_time_assumed` so the dashboard and the exports can say so.
+    formation_time_s = dam_config.get("breach_formation_time_s")
+    if formation_time_s is not None and float(formation_time_s) > 0.0:
+        frac_median = float(formation_time_s) / HYDROGRAPH_MIN_DURATION_S
+    else:
+        frac_median = CRITICAL_FAILURE_FRAC
+
     hydrographs = []
 
     for i in range(num_samples):
         # Per-member failure-time fraction (lognormal spread) -> t_fail percentiles
-        failure_time_frac = float(CRITICAL_FAILURE_FRAC * rng.lognormal(0, 0.2))
-        failure_time_frac = min(max(failure_time_frac, 0.02), 0.6)
+        failure_time_frac = float(frac_median * rng.lognormal(0, 0.2))
+        # Clamped against the median rather than the old fixed 0.02-0.6 band, so
+        # a deliberately rapid breach is not silently widened back out to the
+        # default's range. The factor keeps the lognormal tail bounded.
+        failure_time_frac = min(max(failure_time_frac, 0.25 * frac_median),
+                                4.0 * frac_median)
+        failure_time_frac = min(max(failure_time_frac, 0.002), 0.6)
 
         family = families[i % len(families)]
         try:
@@ -300,6 +335,10 @@ def _generate_single_hydrograph(
         "q_peak_m3_s": routed_peak,
         "q_peak_regression_m3_s": float(q_peak),
         "failure_time_s": float(t_fail),
+        # True when the caller pinned the formation time rather than taking the
+        # module default, so a rapid-failure scenario is never mistaken for a
+        # derived result. See synthesize_breach_ensemble.
+        "failure_time_assumed": bool(dam_config.get("breach_formation_time_s")),
         "height_m": height,
         "storage_mm3": storage,
         "method": regression,

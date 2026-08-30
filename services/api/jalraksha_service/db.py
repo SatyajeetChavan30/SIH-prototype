@@ -17,6 +17,7 @@ for the Postgres URL used in Docker. The schema is intentionally portable.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -126,6 +127,72 @@ def create_run(dam_id: Optional[str], params: Dict[str, Any], solver: str) -> st
     return run_id
 
 
+def _process_is_alive(pid: int) -> bool:
+    """
+    Whether `pid` names a live process, without taking a psutil dependency.
+
+    PID REUSE is the known weakness: a recycled pid reads as alive and would
+    leave a genuinely dead run marked "running". That is the SAFE direction of
+    the two — a stuck row is visible and correctable, whereas the failure this
+    guards against silently discards a run that is still computing.
+    """
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        # PROCESS_QUERY_LIMITED_INFORMATION: enough to ask whether it exists,
+        # and permitted for processes this one did not create.
+        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, int(pid))
+        if not handle:
+            return False
+        try:
+            exit_code = ctypes.c_ulong()
+            ok = ctypes.windll.kernel32.GetExitCodeProcess(
+                handle, ctypes.byref(exit_code))
+            # 259 == STILL_ACTIVE. A handle can outlive the process, so the
+            # handle opening is not on its own proof of life.
+            return bool(ok) and exit_code.value == 259
+        finally:
+            ctypes.windll.kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except (ProcessLookupError, ValueError):
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def record_worker_pid(run_id: str, pid: int) -> None:
+    """
+    Stamp the OS pid of the process actually solving this run.
+
+    mark_stale_runs_failed reads it to tell a genuinely orphaned run from one
+    whose worker is still running. Stored in params_json for the same reason
+    progress_pct and phase are: it keeps the table schema minimal.
+    """
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT params_json FROM runs WHERE run_id = %s"
+                    % ("?" if not settings.DATABASE_URL.startswith("postgres") else "%s"),
+                    (run_id,))
+        row = cur.fetchone()
+        if not row:
+            return
+        params = json.loads(row[0])
+        params["worker_pid"] = int(pid)
+        cur.execute(
+            f"UPDATE runs SET params_json = {_placeholder(1)} "
+            f"WHERE run_id = {_placeholder(1)}",
+            (json.dumps(params), run_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def update_run_status(run_id: str, status: str, progress_pct: float = 0.0,
                       error: Optional[str] = None,
                       phase: Optional[str] = None) -> None:
@@ -193,24 +260,52 @@ def list_runs(limit: int = 50) -> List[Dict[str, Any]]:
 
 def mark_stale_runs_failed() -> int:
     """
-    Any run still 'running' or 'queued' at startup was orphaned by a restart.
+    Mark as failed only those running/queued rows whose worker is really gone.
 
-    Tasks run in-process (CELERY_EAGER), so a process exit kills them with no
-    chance to update their own row. Without this the run picker fills with rows
-    that claim to be running and never will be. Returns how many were corrected.
+    This used to fail EVERY running or queued row unconditionally, justified by
+    a docstring that said "tasks run in-process (CELERY_EAGER), so a process
+    exit kills them". That stopped being true when run_worker.py moved solving
+    into a subprocess: the worker is spawned with Popen and OUTLIVES the API.
+    So restarting the API — or merely starting a second one — reached into the
+    database and marked a healthy, actively-solving run as failed, while the
+    worker carried on writing exports nobody would look at. It cost a Tehri run
+    at member 1/4 and reported the cause as an orphaning that had not happened.
+
+    A run is now failed here only when its recorded worker pid is absent or
+    names no live process. Rows with no pid (written before this existed, or
+    queued before dispatch) keep the old behaviour, because for those there is
+    genuinely nothing to check.
+
+    Returns how many were corrected.
     """
     conn = _connect()
     try:
         cur = conn.cursor()
-        cur.execute(
-            f"UPDATE runs SET status = {_placeholder(1)}, error = {_placeholder(1)} "
-            f"WHERE status IN ('running', 'queued')",
-            ("failed", "Orphaned by an API restart; the worker process was "
-                       "terminated before the run finished."),
-        )
-        changed = cur.rowcount
+        cur.execute("SELECT run_id, params_json FROM runs "
+                    "WHERE status IN ('running', 'queued')")
+        rows = cur.fetchall()
+
+        orphaned = []
+        for run_id, params_json in rows:
+            try:
+                pid = int(json.loads(params_json or "{}").get("worker_pid") or 0)
+            except (ValueError, TypeError):
+                pid = 0
+            if pid and _process_is_alive(pid):
+                continue
+            orphaned.append(run_id)
+
+        for run_id in orphaned:
+            cur.execute(
+                f"UPDATE runs SET status = {_placeholder(1)}, "
+                f"error = {_placeholder(1)} WHERE run_id = {_placeholder(1)}",
+                ("failed",
+                 "Orphaned: no live worker process for this run when the API "
+                 "started, and it was still marked running.",
+                 run_id),
+            )
         conn.commit()
-        return int(changed or 0)
+        return len(orphaned)
     finally:
         conn.close()
 

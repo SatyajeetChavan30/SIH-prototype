@@ -27,6 +27,7 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
@@ -253,6 +254,16 @@ def arrow_right(slide, x, cy, w=0.22, *, color=NAVY):
     sp.shadow.inherit = False
 
 
+def arrow_up(slide, cx, y, h=0.18, *, color=NAVY):
+    sp = slide.shapes.add_shape(
+        MSO_SHAPE.ISOSCELES_TRIANGLE, Inches(cx - 0.09), Inches(y), Inches(0.18), Inches(h)
+    )
+    sp.fill.solid()
+    sp.fill.fore_color.rgb = color
+    sp.line.fill.background()
+    sp.shadow.inherit = False
+
+
 def arrow_left(slide, x, cy, w=0.22, *, color=NAVY):
     sp = slide.shapes.add_shape(
         MSO_SHAPE.ISOSCELES_TRIANGLE, Inches(x), Inches(cy - 0.09), Inches(w), Inches(0.18)
@@ -279,6 +290,59 @@ def line_v(slide, x, y, h, *, color=NAVY, t=0.022):
     sp.fill.fore_color.rgb = color
     sp.line.fill.background()
     sp.shadow.inherit = False
+
+
+def swimlane(slide, x, y, w, h, title, *, accent=NAVY, fill=TINT, edge=EDGE):
+    """A grouped container with a title strip — the Fig 4.1 architecture idiom."""
+    box(slide, x, y, w, h, fill=fill, line=edge)
+    tb = textbox(slide, x + 0.10, y + 0.06, w - 0.20, 0.22, anchor=MSO_ANCHOR.MIDDLE)
+    write(
+        tb.text_frame,
+        [title],
+        size=8.2,
+        color=accent,
+        align=PP_ALIGN.CENTER,
+        space_after=0,
+        bold=True,
+    )
+    return y + 0.32
+
+
+def unit(slide, x, y, w, h, head, sub, *, accent=NAVY, shape=MSO_SHAPE.RECTANGLE, dashed=False):
+    """A component box: bold name over a parenthetical qualifier."""
+    sp = box(slide, x, y, w, h, fill=WHITE, line=accent, shape=shape, lw=0.85)
+    if dashed:
+        sp.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+    inner = 0.16 if shape == MSO_SHAPE.HEXAGON else 0.06
+    tb = textbox(slide, x + inner, y + 0.05, w - 2 * inner, h - 0.10, anchor=MSO_ANCHOR.MIDDLE)
+    lines = [f"**{head}**"] + ([sub] if sub else [])
+    write(
+        tb.text_frame,
+        lines,
+        size=7.4,
+        color=INK,
+        align=PP_ALIGN.CENTER,
+        space_after=0.6,
+        line_spacing=0.94,
+    )
+    return sp
+
+
+def edge(slide, x, y, w, text, *, color=NAVY):
+    """A labelled connector between two architecture groups."""
+    cy = y
+    line_h(slide, x, cy, w - 0.13, color=color, t=0.018)
+    arrow_right(slide, x + w - 0.15, cy + 0.009, w=0.15, color=color)
+    lb = textbox(slide, x - 0.06, cy - 0.36, w + 0.12, 0.32)
+    write(
+        lb.text_frame,
+        [text],
+        size=6.3,
+        color=MUTED,
+        align=PP_ALIGN.CENTER,
+        space_after=0,
+        line_spacing=0.92,
+    )
 
 
 def logo_grid(slide, x, y, w, marks, *, cols=4, cell_h=0.62, icon=0.30):
@@ -393,22 +457,80 @@ def delete_slide(prs, index):
 # --------------------------------------------------------------------------- #
 
 
-def slide1(s):
-    # The template's subtitle sits directly under the banner title and reads as
-    # cramped once it holds a real word rather than "TITLE PAGE".
-    for sh in s.shapes:
-        if sh.name == "Subtitle 3":
-            sh.top = Inches(1.18)
-    set_shape_text(
-        s,
-        "Subtitle 3",
-        ["JALRAKSHA"],
-        size=30,
-        color=NAVY,
-        space_after=0,
-        bold=True,
-        font=TITLE_FONT,
+def logo_mark(slide, x, y, d, *, ring=NAVY, water=TEAL):
+    """The JalRaksha mark: a dam wall holding water, inside a navy disc."""
+    disc = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y), Inches(d), Inches(d))
+    disc.fill.solid()
+    disc.fill.fore_color.rgb = ring
+    disc.line.fill.background()
+    disc.shadow.inherit = False
+
+    # Impounded water: a wave band across the lower half of the disc.
+    wave = slide.shapes.add_shape(
+        MSO_SHAPE.DOUBLE_WAVE,
+        Inches(x + d * 0.13),
+        Inches(y + d * 0.50),
+        Inches(d * 0.74),
+        Inches(d * 0.30),
     )
+    wave.fill.solid()
+    wave.fill.fore_color.rgb = water
+    wave.line.fill.background()
+    wave.shadow.inherit = False
+
+    # The dam wall it is held behind.
+    wall = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(x + d * 0.45),
+        Inches(y + d * 0.20),
+        Inches(d * 0.10),
+        Inches(d * 0.46),
+    )
+    wall.fill.solid()
+    wall.fill.fore_color.rgb = WHITE
+    wall.line.fill.background()
+    wall.shadow.inherit = False
+    return disc
+
+
+def wordmark(slide, x, y, w, *, size=32):
+    """Two-tone JalRaksha wordmark: 'Jal' navy, 'Raksha' teal."""
+    tb = textbox(slide, x, y, w, size / 60.0 + 0.16, anchor=MSO_ANCHOR.MIDDLE)
+    para = tb.text_frame.paragraphs[0]
+    para.space_after = Pt(0)
+    para.line_spacing = 0.95
+    for text, colour in (("Jal", NAVY), ("Raksha", TEAL)):
+        run = para.add_run()
+        run.text = text
+        run.font.size, run.font.name, run.font.bold = Pt(size), BODY, True
+        run.font.color.rgb = colour
+    return tb
+
+
+def swatches(slide, x, y, pairs, *, sq=0.22, gap=0.92):
+    """Accent-colour chips with their hex, the way a brand sheet shows them."""
+    for i, (colour, hexname) in enumerate(pairs):
+        cx = x + i * gap
+        box(slide, cx, y, sq, sq, fill=colour, adj=0.2)
+        lb = textbox(slide, cx + sq + 0.05, y, gap - sq - 0.10, sq, anchor=MSO_ANCHOR.MIDDLE)
+        write(lb.text_frame, [hexname], size=7.4, color=MUTED, space_after=0)
+
+
+def slide1(s):
+    # The template's plain subtitle is replaced by a proper brand lockup —
+    # mark, two-tone wordmark and tagline — so the product reads as a product.
+    drop_shape(s, "Subtitle 3")
+    logo_mark(s, 0.40, 1.16, 0.82)
+    wordmark(s, 1.34, 1.18, 4.60, size=32)
+    tb = textbox(s, 1.38, 1.74, 5.60, 0.24)
+    write(
+        tb.text_frame,
+        ["*Dam-break screening you can check.*"],
+        size=10.5,
+        color=TEAL,
+        space_after=0,
+    )
+
     fields = [
         ("Problem Statement ID", "26161"),
         (
@@ -429,7 +551,16 @@ def slide1(s):
         space_after=10,
         line_spacing=0.98,
     )
-    tb = textbox(s, 0.36, 6.25, 6.40, 0.95)
+    lb = textbox(s, 0.40, 5.30, 3.00, 0.22)
+    write(lb.text_frame, ["**THEME**"], size=8.0, color=NAVY, space_after=0)
+    swatches(
+        s,
+        0.40,
+        5.56,
+        [(NAVY, "#0F2B46"), (TEAL, "#0E7C7B"), (HAZARD, "#B02E2A")],
+    )
+
+    tb = textbox(s, 0.36, 6.15, 6.40, 0.95)
     write(
         tb.text_frame,
         [
@@ -516,21 +647,43 @@ def slide2(s):
 
     y2 = label(s, rx, y + 2.40, rw, "Innovation and uniqueness of the solution")
     box(s, rx, y2, rw, 2.62, fill=WARM, line=WARM_EDGE)
-    tb = textbox(s, rx + 0.12, y2 + 0.10, rw - 0.24, 2.42)
+    lead = textbox(s, rx + 0.12, y2 + 0.08, rw - 0.24, 0.20)
     write(
-        tb.text_frame,
+        lead.text_frame,
+        ["Against how Tier-1 screening is done today:"],
+        size=8.4,
+        color=INK,
+        space_after=0,
+    )
+    table(
+        s,
+        rx + 0.12,
+        y2 + 0.30,
+        rw - 0.24,
+        [
+            ["Current practice", "JalRaksha"],
+            ["Weeks of specialist setup", "Minutes, 4 inputs"],
+            ["Licence + field survey", "Free data, no survey"],
+            ["No independent check", "Scored vs Delft3D FM"],
+            ["One number for peak flow", "p05–p95 band"],
+            ["Bad SAR scenes drawn", "Refused at a 0.50 gate"],
+        ],
+        [1.55, 1.64],
+        head_fill=HAZARD,
+        size=7.7,
+        row_h=0.225,
+    )
+    foot = textbox(s, rx + 0.12, y2 + 1.72, rw - 0.24, 0.80)
+    write(
+        foot.text_frame,
         [
             "**The cross-check is the product.** The same Ritter dam-break runs through our "
-            "solver and through a real Deltares kernel — *Delft3D FM Suite 2026.01 HM, "
-            "dflowfm-cli* — and both are scored against the exact solution.",
-            "**Uncertainty is shown, not hidden.** The four published breach regressions "
-            "disagree by a factor of 3–4, so we quote a p05–p95 band, never one number.",
-            "**The tool refuses bad data.** A Sentinel-1 scene scoring 0.486 precision against "
-            "JRC water is rejected at the 0.50 gate rather than drawn on the map.",
+            "solver and through a real Deltares kernel, and both are scored against the exact "
+            "solution. Most entries have no independent check at all.",
         ],
-        size=9.0,
-        bullet="▪",
-        space_after=6,
+        size=8.4,
+        space_after=0,
+        line_spacing=0.96,
     )
 
 
@@ -538,48 +691,44 @@ def slide3(s):
     drop_shape(s, "TextBox 8")
     stamp_team(s)
 
-    # ---- left: technologies, grouped into scannable categories ------------
-    x, w = 0.35, 3.95
-    y = label(s, x, 1.32, w, "Technologies to be used")
-    box(s, x, y, w, 5.08, fill=TINT, line=EDGE)
+    # ======================================================================
+    # Top band — technologies. Three groups across, then the stack as marks.
+    # ======================================================================
+    label(s, 0.35, 1.28, 12.60, "Technologies to be used")
+    box(s, 0.35, 1.62, 12.60, 1.52, fill=TINT, line=EDGE)
 
-    # Three groups carry what is distinctive; the mark grid below carries the
-    # stack itself, so neither repeats the other.
-    gy = y + 0.13
-    for cat, accent, height, items in [
-        (
-            "SOLVERS",
-            NAVY,
-            0.62,
-            "In-house **2D shallow-water finite volume** — HLLC flux · Audusse hydrostatic "
-            "reconstruction · MUSCL/minmod on η = b + h · wetting and drying. **SPH** for the "
-            "near field. **Delft3D FM** (dflowfm-cli, Suite 2026.01 HM) as the reference kernel.",
-        ),
-        (
-            "OPEN DATA",
-            TEAL,
-            0.50,
-            "Copernicus **GLO-30** from public AWS COGs · **GHSL P2023A** · **Sentinel-1 GRD** · "
-            "JRC Global Surface Water · ESA WorldCover · CWC NRLD 2019 / NRSD 2025. "
-            "None login-gated.",
-        ),
-        (
-            "PROOF",
-            HAZARD,
-            0.62,
-            "Monte-Carlo over four breach regressions with Wahl uncertainty bands. **pytest "
-            "gates** — analytical solutions, lake-at-rest, mass conservation and the Delft3D FM "
-            "cross-check — all runnable from the dashboard, all currently passing.",
-        ),
-    ]:
-        gy = tech_group(s, x + 0.14, gy, w - 0.28, cat, items, accent=accent, h=height) + 0.09
+    gw = 4.05
+    for i, (cat, accent, items) in enumerate(
+        [
+            (
+                "SOLVERS",
+                NAVY,
+                "In-house **2D shallow-water finite volume** \u2014 HLLC flux \u00b7 Audusse hydrostatic "
+                "reconstruction \u00b7 MUSCL/minmod on \u03b7 = b + h. **SPH** near field. **Delft3D FM** "
+                "(dflowfm-cli) as reference kernel.",
+            ),
+            (
+                "OPEN DATA",
+                TEAL,
+                "Copernicus **GLO-30** from public AWS COGs \u00b7 **GHSL P2023A** \u00b7 **Sentinel-1 GRD** "
+                "\u00b7 JRC Global Surface Water \u00b7 ESA WorldCover \u00b7 CWC NRLD/NRSD. None login-gated.",
+            ),
+            (
+                "PROOF",
+                HAZARD,
+                "Monte-Carlo over four breach regressions with Wahl bands. **pytest gates** \u2014 "
+                "analytical, lake-at-rest, mass conservation and the Delft3D FM cross-check, all "
+                "currently passing.",
+            ),
+        ]
+    ):
+        tech_group(s, 0.50 + i * (gw + 0.15), 1.72, gw, cat, items, accent=accent, h=0.52, size=8.0)
 
-    ly = label(s, x + 0.14, gy + 0.02, w - 0.28, "TECHNOLOGY STACK", size=9.2, color=NAVY)
     logo_grid(
         s,
-        x + 0.14,
-        ly + 0.04,
-        w - 0.28,
+        0.50,
+        2.56,
+        12.30,
         [
             ("python", "Python"),
             ("numpy", "NumPy"),
@@ -588,155 +737,113 @@ def slide3(s):
             ("fastapi", "FastAPI"),
             ("sqlite", "SQLite"),
             ("react", "React"),
-            ("vite", "Vite"),
             ("leaflet", "Leaflet"),
             ("cesium", "Cesium"),
             ("googleearthengine", "Earth Engine"),
             ("pytest", "pytest"),
         ],
+        cols=11,
+        cell_h=0.52,
+        icon=0.26,
     )
 
-    # ---- right: the pipeline ----------------------------------------------
-    # Content runs px..px+pw; the strip to its right is left free as the gutter
-    # the GEE feedback loop returns through.
-    px, pw = 4.55, 7.95
-    gutter = px + pw + 0.20
-    label(s, px, 1.32, pw + 0.45, "Methodology and process for implementation")
+    # ======================================================================
+    # Bottom band — the architecture, read left to right.
+    # ======================================================================
+    label(s, 0.35, 3.24, 12.60, "Methodology and process for implementation")
 
-    # Row 1 — intake.
-    top = 1.70
-    cw1 = (pw - 0.60) / 3
-    for i, (num, head, body) in enumerate(
+    top, ch = 3.62, 2.82
+    ax, aw = 0.35, 3.15
+    hx, hw_ = 4.25, 1.45
+    bx, bw = 6.45, 3.05
+    cx, cw = 10.25, 2.70
+
+    # ---- INGEST ----------------------------------------------------------
+    iy = swimlane(s, ax, top, aw, ch, "INGEST  \u2014  open data, no login", accent=TEAL)
+    uh, ug = 0.55, 0.06
+    for j, (head, sub) in enumerate(
         [
-            (1, "INPUT", ["lat/lon · height · storage", "breach mode · ensemble size"]),
-            (2, "AUTO-INGEST", ["GLO-30 COGs · GHSL · WorldCover", "Sentinel-1 · CWC registers"]),
-            (3, "BREACH HYDROGRAPH", ["4 regressions, Monte-Carlo", "p05–p95 117,061–353,612 m³/s"]),
+            ("Operator input", "lat/lon \u00b7 height \u00b7 storage \u00b7 breach mode"),
+            ("Copernicus GLO-30", "30 m DEM, public AWS COGs"),
+            ("Google Earth Engine", "Sentinel-1 \u00b7 GHSL P2023A \u00b7 WorldCover"),
         ]
     ):
-        nx = px + i * (cw1 + 0.30)
-        flow_node(s, nx, top, cw1, 0.78, num, head, body)
-        if i < 2:
-            arrow_right(s, nx + cw1 + 0.04, top + 0.39)
-
-    # The fork: drawn as an actual branch, because the near-field/far-field
-    # split is the architectural decision the whole system rests on.
-    r2 = 2.82
-    hw = (pw - 0.34) / 2
-    cx_a, cx_b = px + hw / 2, px + hw + 0.34 + hw / 2
-    # The branch leaves node 3 — the breach hydrograph is what feeds both
-    # solvers — so the stub drops from node 3's centre, not the row's.
-    cx_3 = px + 2 * (cw1 + 0.30) + cw1 / 2
-    line_v(s, cx_3, top + 0.78, 0.16)
-    line_h(s, cx_a, 2.62, cx_3 - cx_a)
-    arrow_down(s, cx_a, 2.64, h=0.16)
-    arrow_down(s, cx_b, 2.64, h=0.16)
-
-    flow_node(
+        unit(s, ax + 0.14, iy + j * (uh + ug), aw - 0.28, uh, head, sub, accent=TEAL)
+    unit(
         s,
-        px,
-        r2,
-        hw,
-        0.94,
-        "4a",
-        "NEAR FIELD — SPH",
-        [
-            "Lagrangian, mesh-free. The violent,",
-            "non-hydrostatic breach jet, where",
-            "depth-averaging is invalid. ~600 m, 15 s.",
-        ],
-        accent=TEAL,
+        ax + 0.60,
+        iy + 3 * (uh + ug),
+        aw - 1.20,
+        0.50,
+        "Offline cache",
+        "COG + SQLite \u2014 runs from disk",
+        accent=MUTED,
+        shape=MSO_SHAPE.FLOWCHART_MAGNETIC_DISK,
     )
-    flow_node(
-        s,
-        px + hw + 0.34,
-        r2,
-        hw,
-        0.94,
-        "4b",
-        "FAR FIELD — 2D SWE",
-        [
-            "Eulerian finite volume, HLLC + Audusse",
-            "+ MUSCL. 600×600 cells at 200 m,",
-            "60 km radius, 3 h simulated.",
-        ],
-        accent=NAVY,
-    )
-    caption(
-        s,
-        px,
-        3.78,
-        pw,
-        "One-way handoff only (SWE → SPH at breach time). No two-way feedback is claimed.",
-        size=7.6,
-    )
-    arrow_down(s, px + pw / 2, 3.98, h=0.16)
 
-    # Row 3 — the differentiator, and the visual centre of gravity.
-    r3 = 4.16
-    flow_node(
+    edge(s, ax + aw + 0.06, top + 1.30, hx - (ax + aw) - 0.12, "conditioned DEM\n+ Manning's n")
+
+    # ---- the transform everything downstream depends on -------------------
+    unit(
         s,
-        px,
-        r3,
-        pw,
-        0.62,
-        5,
-        "CROSS-CHECK  —  the step most entries skip",
-        [
-            "Ritter vs the exact solution: **0.0317 m** (JalRaksha) against **0.0349 m** "
-            "(Delft3D FM) · lake-at-rest 5.98e-14 m/s · mass conservation 0.000000%",
-        ],
+        hx,
+        top + 0.72,
+        hw_,
+        1.30,
+        "BREACH HYDROGRAPH",
+        "Monte-Carlo over 4 published\nregressions \u2014 Q(t) with a\np05\u2013p95 band, never one number",
         accent=HAZARD,
-        fill=WARM,
-        edge=WARM_EDGE,
+        shape=MSO_SHAPE.HEXAGON,
+        dashed=True,
     )
-    arrow_down(s, px + pw / 2, r3 + 0.64, h=0.16)
 
-    r4 = 4.98
-    flow_node(
-        s,
-        px,
-        r4,
-        hw,
-        0.80,
-        6,
-        "IMPACT",
-        ["GHSL population by warning lead time", "1,760 at risk — 193 under 15 min"],
-        accent=TEAL,
-    )
-    flow_node(
-        s,
-        px + hw + 0.34,
-        r4,
-        hw,
-        0.80,
-        7,
-        "OUTPUT",
-        ["dashboard · arrival-time map", "GeoTIFF · .SHP · .KML/KMZ"],
-        accent=NAVY,
-    )
-    arrow_down(s, px + pw / 2, r4 + 0.82, h=0.16)
+    edge(s, hx + hw_ + 0.06, top + 1.30, bx - (hx + hw_) - 0.12, "Q(t) at the breach\n229,952 m\u00b3/s median")
 
-    r5 = 5.98
-    flow_node(
-        s,
-        px,
-        r5,
-        pw,
-        0.74,
-        8,
-        "GEE VALIDATION LOOP",
+    # ---- SOLVE -----------------------------------------------------------
+    sy = swimlane(s, bx, top, bw, ch, "SOLVE  \u2014  near field + far field", accent=NAVY)
+    sh_, sg = 0.72, 0.08
+    for j, (head, sub, acc) in enumerate(
         [
-            "Sentinel-1 observed extent scored against the simulation. Scenes below 0.50 "
-            "precision against JRC water are refused, not drawn.",
+            ("Far field \u2014 2D SWE", "HLLC \u00b7 Audusse \u00b7 MUSCL\n600\u00d7600 cells at 200 m, 3 h", NAVY),
+            ("Near field \u2014 SPH", "Lagrangian, non-hydrostatic\n~600 m over 15 s, one-way", TEAL),
+            ("Delft3D FM", "dflowfm-cli \u2014 0.0349 m RMSE\nagainst our 0.0317 m", HAZARD),
+        ]
+    ):
+        unit(s, bx + 0.14, sy + j * (sh_ + sg), bw - 0.28, sh_, head, sub, accent=acc)
+
+    edge(s, bx + bw + 0.06, top + 1.30, cx - (bx + bw) - 0.12, "depth \u00b7 velocity\n\u00b7 arrival time")
+
+    # ---- DELIVER ---------------------------------------------------------
+    dy = swimlane(s, cx, top, cw, ch, "DELIVER  \u2014  decision products", accent=TEAL)
+    for j, (head, sub) in enumerate(
+        [
+            ("Impact", "GHSL population at risk,\nbucketed by warning lead time"),
+            ("Export", "Cloud-Optimized GeoTIFF\n\u00b7 .SHP \u00b7 .KML / KMZ"),
+            ("Dashboard", "Leaflet 2D + Cesium 3D,\nrun picker works offline"),
+        ]
+    ):
+        unit(s, cx + 0.14, dy + j * (sh_ + sg), cw - 0.28, sh_, head, sub, accent=TEAL)
+
+    # ---- the validation loop, drawn as a return path ---------------------
+    ly = top + ch + 0.16
+    line_v(s, cx + cw / 2, top + ch, ly - (top + ch), color=TEAL)
+    line_h(s, bx + bw / 2, ly, (cx + cw / 2) - (bx + bw / 2), color=TEAL)
+    line_v(s, bx + bw / 2, top + ch, ly - (top + ch), color=TEAL)
+    arrow_up(s, bx + bw / 2, top + ch - 0.13, h=0.14, color=TEAL)
+    # The label sits to the left of the return path, pointing into it.
+    lb = textbox(s, 0.40, ly - 0.11, (bx + bw / 2) - 0.55, 0.22, anchor=MSO_ANCHOR.MIDDLE)
+    write(
+        lb.text_frame,
+        [
+            "GEE VALIDATION LOOP \u21bb  Sentinel-1 observed extent scored against the simulation; "
+            "scenes below 0.50 precision against JRC water are refused, not drawn.",
         ],
-        accent=TEAL,
+        size=6.8,
+        color=TEAL,
+        align=PP_ALIGN.RIGHT,
+        space_after=0,
     )
 
-    # Close the loop: out of node 8, up the gutter, back into node 5.
-    line_h(s, px + pw, r5 + 0.37, gutter - (px + pw))
-    line_v(s, gutter, r3 + 0.31, (r5 + 0.37) - (r3 + 0.31))
-    line_h(s, px + pw + 0.14, r3 + 0.31, gutter - (px + pw) - 0.14)
-    arrow_left(s, px + pw - 0.06, r3 + 0.32, w=0.20)
 
 
 def slide4(s):
@@ -881,12 +988,14 @@ def slide5(s):
         "One real run, not an illustration: Tehri Dam (260 m, 3,540 MCM), central breach, "
         "600×600 cells at 200 m over a 60 km radius, 3 h simulated. Peak breach outflow "
         "229,952 m³/s (p05–p95 117,061–353,612); breach formation 29.3 min; maximum depth "
-        "anywhere 99.9 m (75.1–120.6 m). Depth on a 30 m DEM is indicative — lead with arrival time.",
+        "anywhere 99.9 m (75.1–120.6 m). Depth on a 30 m DEM is indicative — lead with arrival time.   "
+        "**Target —** at ~1 min per dam measured, screening all ~6,000 NRLD large dams at "
+        "Tier-1 is under a week of compute; a state's worth in an afternoon.",
     )
 
     # ---- left: who it reaches, then what they get -------------------------
     x, w = 0.35, 6.30
-    y = label(s, x, 2.54, w, "Potential impact on the target audience", size=13.5)
+    y = label(s, x, 2.60, w, "Potential impact on the target audience", size=13.5)
     box(s, x, y, w, 1.64, fill=WHITE, line=NAVY, lw=1.4)
     tb = textbox(s, x + 0.14, y + 0.10, w - 0.28, 1.44)
     write(
@@ -950,26 +1059,56 @@ def slide5(s):
         bb = textbox(s, cx + 0.12, by + 0.38, cw - 0.24, 1.34)
         write(bb.text_frame, [body], size=8.2, space_after=0, line_spacing=0.97)
 
-    # ---- right: the terrain it all runs over ------------------------------
+    # ---- right: the terrain, then where this goes next --------------------
     rx, rw = 6.95, 6.00
-    label(s, rx, 2.54, rw, "Real terrain, real reach")
-    iw = 5.60
-    _, ph = picture(s, IMG / "terrain3d.png", rx + (rw - iw) / 2, 2.92, iw)
-    box(s, rx, 2.94 + ph + 0.06, rw, 0.74, fill=WARM, line=WARM_EDGE)
-    tb = textbox(s, rx + 0.14, 3.02 + ph + 0.06, rw - 0.28, 0.58)
-    write(
-        tb.text_frame,
-        [
-            "Bhagirathi valley below Tehri on Copernicus GLO-30, rendered in ParaView with the "
-            "computed depth draped over it. Rishikesh and Haridwar report **no arrival** — "
-            "Rishikesh sits 18 m above the nearest channel. Reported as a null, not dropped.",
-        ],
-        size=8.0,
-        color=INK,
-        space_after=0,
-        line_spacing=0.97,
+    label(s, rx, 2.60, rw, "Real terrain, real reach")
+    iw = 3.90
+    _, ph = picture(s, IMG / "terrain3d.png", rx + (rw - iw) / 2, 2.94, iw)
+    caption(
+        s,
+        rx,
+        2.96 + ph + 0.04,
+        rw,
+        "Bhagirathi valley below Tehri on Copernicus GLO-30, rendered in ParaView with the "
+        "computed depth draped over it. Rishikesh and Haridwar report no arrival — Rishikesh "
+        "sits 18 m above the nearest channel — reported as a null, not dropped.",
+        size=7.2,
     )
 
+    ry = label(s, rx, 5.44, rw, "Roadmap — done, now, next", size=11.5)
+    line_h(s, rx + 0.30, ry + 0.10, rw - 0.60, color=EDGE, t=0.02)
+    colw = rw / 3
+    for i, (phase, accent, when, items) in enumerate(
+        [
+            (
+                "DONE",
+                TEAL,
+                "Jan – Aug 2026",
+                ["Solver + blocking gates", "Delft3D FM cross-check", "Dashboard, exports, SPH"],
+            ),
+            (
+                "NOW",
+                NAVY,
+                "Sep 2026",
+                ["Tehri + Khadakwasla runs", "Sentinel-1 validation loop", "SIH prototype review"],
+            ),
+            (
+                "NEXT",
+                HAZARD,
+                "Oct 2026 →",
+                ["All CWC NRLD dams", "EAP-format map packs", "SDMA field pilot"],
+            ),
+        ]
+    ):
+        cx = rx + i * colw
+        node = box(s, cx + 0.16, ry + 0.02, 0.16, 0.16, fill=accent, shape=MSO_SHAPE.OVAL)
+        node  # the dot on the timeline
+        hb = textbox(s, cx + 0.38, ry + 0.01, colw - 0.44, 0.18, anchor=MSO_ANCHOR.MIDDLE)
+        write(hb.text_frame, [phase], size=8.6, color=accent, space_after=0, bold=True)
+        wb = textbox(s, cx + 0.16, ry + 0.21, colw - 0.24, 0.16)
+        write(wb.text_frame, [when], size=7.0, color=MUTED, space_after=0)
+        ib = textbox(s, cx + 0.16, ry + 0.40, colw - 0.24, 0.62)
+        write(ib.text_frame, items, size=7.4, color=INK, bullet="▪", space_after=1.2)
 
 
 def slide6(s):

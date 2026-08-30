@@ -1017,11 +1017,38 @@ def _gauge_max_depths(result: Dict[str, Any]) -> Dict[str, float]:
         x0, y0 = float(grid["x0"]), float(grid["y0"])
         dx, dy = float(grid["dx"]), float(grid["dy"])
 
+        # Prefer the cell the ARRIVAL was read from.
+        #
+        # compute_arrival_times_at_gauges snaps each gauge onto the river
+        # channel — within channel_search_m it takes the lowest bed cell, because
+        # at 200 m the Bhagirathi gorge is sub-grid and a town's own cell is
+        # often part way up the canyon wall. Sampling depth at the unsnapped
+        # cell therefore answered a different question from the arrival time
+        # beside it: on the 8 h Tehri run, Koteshwar, Devprayag and Rishikesh
+        # each showed a real arrival time next to a peak depth of exactly
+        # 0.0 m, while Haridwar — out on the plain, where the flood is wider
+        # than a cell — showed 4.0 m. A table that says the flood arrived and
+        # was zero deep is not a small inconsistency; it invites the reader to
+        # disbelieve the arrival time, which is the number the tool exists to
+        # produce.
+        arrival_cells = {
+            name: entry.get("cell")
+            for name, entry in (result.get("arrival_times") or {}).items()
+        }
+
         depths: Dict[str, float] = {}
         for gauge in gauge_defs:
-            _z, x_utm, y_utm = latlon_to_utm(gauge["lat"], gauge["lon"], utm_zone=zone)
-            i = int(round((x_utm - x0) / dx))
-            j = int(round((y_utm - y0) / dy))
+            cell = arrival_cells.get(gauge["name"])
+            if cell:
+                j, i = int(cell[0]), int(cell[1])
+            else:
+                # Runs written before the cell was recorded, and any gauge the
+                # arrival pass skipped. The unsnapped cell is the honest
+                # fallback: it is where the gauge is.
+                _z, x_utm, y_utm = latlon_to_utm(
+                    gauge["lat"], gauge["lon"], utm_zone=zone)
+                i = int(round((x_utm - x0) / dx))
+                j = int(round((y_utm - y0) / dy))
             if 0 <= i < nx and 0 <= j < ny:
                 value = float(np.asarray(h_max)[j, i])
                 if np.isfinite(value):
