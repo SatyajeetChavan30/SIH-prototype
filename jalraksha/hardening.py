@@ -138,12 +138,9 @@ def validate_ensemble_params(
             f"[{ENSEMBLE_SIZE_MIN}, {ENSEMBLE_SIZE_MAX}]."
         )
 
-    if not isinstance(solver_duration_s, (int, float)) or not (
-        SOLVER_DURATION_MIN_S <= solver_duration_s <= SOLVER_DURATION_MAX_S
-    ):
+    if not isinstance(solver_duration_s, (int, float)) or solver_duration_s < SOLVER_DURATION_MIN_S:
         raise HardeningError(
-            f"solver_duration_s={solver_duration_s!r} s out of range "
-            f"[{SOLVER_DURATION_MIN_S}, {SOLVER_DURATION_MAX_S}] s."
+            f"solver_duration_s={solver_duration_s!r} s must be >= {SOLVER_DURATION_MIN_S} s."
         )
 
     if not isinstance(target_resolution, (int, float)) or target_resolution <= 0 or target_resolution > 5000:

@@ -121,7 +121,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       breach_mode: breachMode,
       ensemble_size: ensemble,
       solver,
-      solver_duration_s: durationMin * 60,
+      solver_duration_s: (durationMin || 30) * 60,
     })).run_id;
     setStatus(`queued ${runId.slice(0, 8)}`);
     setCurrentRunId(runId);
@@ -213,9 +213,9 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       <input type="range" min="1" max="10000" value={ensemble}
              onChange={(e) => setEnsemble(+e.target.value)} />
 
-      <label>Simulated time: {durationMin} min</label>
-      <input type="range" min="5" max="480" step="5" value={durationMin}
-             onChange={(e) => setDurationMin(+e.target.value)} />
+      <label>Simulated time (min):</label>
+      <input type="number" min="1" step="1" value={durationMin}
+             onChange={(e) => setDurationMin(e.target.value === '' ? '' : +e.target.value)} />
 
       <label>Solver</label>
       <select value={solver} onChange={(e) => setSolver(e.target.value)}>

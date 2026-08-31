@@ -47,6 +47,9 @@ dependencies = [
     # SPH solver (BSD licence, approved for redistribution)
     "pysph>=0.9b0",
 
+    # Visualization
+    "matplotlib>=3.7.0",
+
     # Misc
     "tqdm>=4.65.0",
     "requests>=2.31.0",
