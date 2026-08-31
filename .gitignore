@@ -63,3 +63,14 @@ node_modules/
 
 # Deck render output — regenerate with tools/sih-presentation/export_pdf.ps1
 tools/sih-presentation/render/
+
+# Binaries and Installers
+*.exe
+*.msi
+*.dll
+*.dylib
+
+# Large raster/DEM caches
+*.tif
+*.tiff
+frontend/data/
