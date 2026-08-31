@@ -1,0 +1,115 @@
+{
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E077_00_DEM/Copernicus_DSM_COG_10_N29_00_E077_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N29_00_E077_00_DEM.tif",
+    "timestamp": "2026-08-26T20:19:59.616415",
+    "hash": "a57f3a89ffe70ad254246da0663436f0",
+    "size_bytes": 975193,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E077_00_DEM/Copernicus_DSM_COG_10_N29_00_E077_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E077_00_DEM/Copernicus_DSM_COG_10_N30_00_E077_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N30_00_E077_00_DEM.tif",
+    "timestamp": "2026-08-26T20:20:08.127439",
+    "hash": "6601cdfec5ae0e990ea6318e510f937b",
+    "size_bytes": 5999596,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E077_00_DEM/Copernicus_DSM_COG_10_N30_00_E077_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E078_00_DEM/Copernicus_DSM_COG_10_N29_00_E078_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N29_00_E078_00_DEM.tif",
+    "timestamp": "2026-08-26T20:20:14.761462",
+    "hash": "79d914b59aa410f30e91147a148fc550",
+    "size_bytes": 7078745,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E078_00_DEM/Copernicus_DSM_COG_10_N29_00_E078_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E078_00_DEM/Copernicus_DSM_COG_10_N30_00_E078_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N30_00_E078_00_DEM.tif",
+    "timestamp": "2026-08-26T20:20:25.260008",
+    "hash": "49f0f315252c4d49ff53a400beb509a2",
+    "size_bytes": 40756977,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E078_00_DEM/Copernicus_DSM_COG_10_N30_00_E078_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E079_00_DEM/Copernicus_DSM_COG_10_N29_00_E079_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N29_00_E079_00_DEM.tif",
+    "timestamp": "2026-08-26T20:20:27.111499",
+    "hash": "001e6fd6d2a1f8670464105c9516bb74",
+    "size_bytes": 762692,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N29_00_E079_00_DEM/Copernicus_DSM_COG_10_N29_00_E079_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E079_00_DEM/Copernicus_DSM_COG_10_N30_00_E079_00_DEM.tif": {
+    "path": "data\\dem\\Copernicus_DSM_COG_10_N30_00_E079_00_DEM.tif",
+    "timestamp": "2026-08-26T20:20:31.338255",
+    "hash": "60a66212a66c4d7d9395b7170b20d0e4",
+    "size_bytes": 4311426,
+    "source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N30_00_E079_00_DEM/Copernicus_DSM_COG_10_N30_00_E079_00_DEM.tif",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30",
+    "synthetic": false,
+    "window_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ]
+  },
+  "jalraksha://dem/clipped/30.3789_78.4789/r60km": {
+    "path": "data\\dem\\dem_30.38_78.48_clipped.tif",
+    "timestamp": "2026-08-26T20:20:36.964427",
+    "hash": "3092cb452d1e67a17b0c920ef2d3ec26",
+    "size_bytes": 59825631,
+    "source_url": "jalraksha://dem/clipped/30.3789_78.4789/r60km",
+    "format": "GeoTIFF",
+    "product": "Copernicus DEM GLO-30 (clipped domain)",
+    "synthetic": false,
+    "domain_bbox": [
+      77.85233159558713,
+      29.83835945945946,
+      79.10546840441286,
+      30.919440540540542
+    ],
+    "domain_radius_km": 60.0
+  }
+}

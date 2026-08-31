@@ -38,7 +38,7 @@ The `/build-phase` skill stages the execution of a single phase from the 18-phas
 | **8** | Google Earth Engine | | Phase 6 | Land use, population, dynamic data streams |
 | **9** | Validation framework | | Phase 7 | Malpasset, Chamoli 2021 benchmarks |
 | **10** | Dashboard (React) | | Phase 8 | deck.gl map, time series plots, impact tables |
-| **11** | Fallback dashboard | | Phase 8 | Streamlit + leafmap if React not feasible |
+| **11** | Dashboard | | Phase 8 | React + Vite + Leaflet/Cesium on FastAPI (the Streamlit fallback was built, then removed) |
 | **12** | Hardening & docs | | Phase 11 | Error handling, logging, user documentation |
 | **13–17** | (Reserved) | | | Future enhancements |
 

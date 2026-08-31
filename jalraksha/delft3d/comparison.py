@@ -43,29 +43,40 @@ def rasterize_sph_particles(
     Returns:
         2D depth array (grid_ny × grid_nx).
     """
-    x = sph_result.get("x", np.array([]))
-    y = sph_result.get("y", np.array([]))
-    z = sph_result.get("z", np.array([]))
+    x = np.asarray(sph_result.get("x", np.array([])))
+    y = np.asarray(sph_result.get("y", np.array([])))
 
     depth_grid = np.zeros((grid_ny, grid_nx), dtype=np.float32)
 
     if len(x) == 0:
         return depth_grid
 
-    # Map particles to grid cells
+    # Depth = (water volume in the cell) / (cell area), and the water volume is
+    # the particle COUNT times the volume each particle carries.
+    #
+    # That per-particle volume must come from the run. It used to be the literal
+    # `particle_volume = 1.0  # m³ (approximate)` — a number with no relationship
+    # to the simulation, which scaled every depth in this comparison by an
+    # arbitrary factor and made the RMSE and CSI against Delft3D meaningless.
+    # pysph_runner reports the real value (spacing³); refuse rather than guess
+    # if a caller passes a result that does not carry it.
+    particle_volume = sph_result.get("particle_volume_m3")
+    if particle_volume is None:
+        raise ValueError(
+            "sph_result has no 'particle_volume_m3'. Depth cannot be derived "
+            "from particle positions without knowing the volume each particle "
+            "represents, and assuming one would silently rescale every depth "
+            "in this comparison. jalraksha.sph.pysph_runner reports it."
+        )
+
     cell_i = np.clip((x / grid_dx).astype(int), 0, grid_nx - 1)
     cell_j = np.clip((y / grid_dy).astype(int), 0, grid_ny - 1)
 
-    # Accumulate particle heights per cell
-    for k in range(len(x)):
-        i, j = int(cell_i[k]), int(cell_j[k])
-        depth_grid[j, i] += max(0.0, float(z[k]))
+    counts = np.zeros((grid_ny, grid_nx), dtype=np.float64)
+    np.add.at(counts, (cell_j, cell_i), 1.0)
 
-    # Normalize by cell area to get approximate depth
     cell_area = grid_dx * grid_dy
-    # Assume each particle represents a volume element
-    particle_volume = 1.0  # m³ (approximate)
-    depth_grid *= particle_volume / cell_area
+    depth_grid = (counts * float(particle_volume) / cell_area).astype(np.float32)
 
     return depth_grid
 
@@ -362,7 +373,39 @@ def compare_sph_vs_delft3d(
         "gauge_comparison": gauge_comparison,
         "depth_fig": depth_fig,
         "hydro_fig": hydro_fig,
-        "sph_engine": "SPH_WCSPH",
+        # Named from the run, not hardcoded. The bare literal "SPH_WCSPH" that
+        # used to sit here described a result that was np.random output.
+        "sph_engine": sph_result.get("engine_label") or sph_result.get("engine"),
+        "sph_error": None,
+        # What the near-field run actually measured. These are the honest SPH
+        # deliverables — the arrival-time column is not one of them, because a
+        # few-hundred-metre domain cannot reach a gauge at 13 km.
+        "sph_near_field": {
+            "n_fluid": sph_result.get("n_fluid"),
+            "particle_spacing_m": sph_result.get("particle_spacing_m"),
+            "max_depth_m": sph_result.get("max_depth_m"),
+            "max_speed_m_s": sph_result.get("max_speed_m_s"),
+            "front_speed_m_s": sph_result.get("front_speed_m_s"),
+            "front_advance_m": (
+                sph_result["front_position_m"][-1] - sph_result["front_position_m"][0]
+                if sph_result.get("front_position_m") else None),
+            "duration_s": sph_result.get("duration_s"),
+            "domain_length_m": sph_result.get("domain_length_m"),
+            "wall_clock_s": sph_result.get("wall_clock_s"),
+            "coupling": sph_result.get("coupling"),
+            "reaches_downstream_gauges": sph_result.get("reaches_downstream_gauges", False),
+        },
         "delft3d_engine": delft3d_result.get("engine", "unknown"),
         "delft3d_engine_label": delft3d_result.get("engine_label", "Unknown"),
+        # Whether the OFFICIAL Delft3D FM binary produced these numbers, and if
+        # not, why. Carried explicitly rather than inferred from the label
+        # string, so the dashboard can render an unambiguous banner instead of
+        # asking a reader to notice the wording (runner.run_delft3d_simulation).
+        "delft3d_binary_used": bool(delft3d_result.get("delft3d_binary_used", False)),
+        "delft3d_fallback_reason": delft3d_result.get("fallback_reason"),
+        # How the Delft3D-side gauge arrivals were obtained. "ritter_celerity_estimate"
+        # means a closed-form formula, not a reading from the simulation.
+        "gauge_arrival_method": next(
+            (v.get("method") for v in d3d_arrivals.values() if v.get("method")), None
+        ),
     }

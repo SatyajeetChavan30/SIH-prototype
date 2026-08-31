@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "python",
+    "label": "Python",
+    "hex": "3776AB",
+    "title": "Python"
+  },
+  {
+    "slug": "numpy",
+    "label": "NumPy",
+    "hex": "013243",
+    "title": "NumPy"
+  },
+  {
+    "slug": "numba",
+    "label": "Numba",
+    "hex": "00A3E0",
+    "title": "Numba"
+  },
+  {
+    "slug": "gdal",
+    "label": "GDAL",
+    "hex": "5CAE58",
+    "title": "GDAL"
+  },
+  {
+    "slug": "fastapi",
+    "label": "FastAPI",
+    "hex": "009688",
+    "title": "FastAPI"
+  },
+  {
+    "slug": "sqlite",
+    "label": "SQLite",
+    "hex": "003B57",
+    "title": "SQLite"
+  },
+  {
+    "slug": "react",
+    "label": "React",
+    "hex": "61DAFB",
+    "title": "React"
+  },
+  {
+    "slug": "vite",
+    "label": "Vite",
+    "hex": "9135FF",
+    "title": "Vite"
+  },
+  {
+    "slug": "leaflet",
+    "label": "Leaflet",
+    "hex": "199900",
+    "title": "Leaflet"
+  },
+  {
+    "slug": "cesium",
+    "label": "Cesium",
+    "hex": "6CADDF",
+    "title": "Cesium"
+  },
+  {
+    "slug": "googleearthengine",
+    "label": "Earth Engine",
+    "hex": "4285F4",
+    "title": "Google Earth Engine"
+  },
+  {
+    "slug": "pytest",
+    "label": "pytest",
+    "hex": "0A9EDC",
+    "title": "Pytest"
+  }
+]

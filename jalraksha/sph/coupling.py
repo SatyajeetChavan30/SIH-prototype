@@ -14,7 +14,6 @@ References:
 import numpy as np
 from typing import Dict, Tuple, Optional
 from jalraksha.sph.domain import NearFieldDomain
-from jalraksha.sph.core import SPHNearFieldSolver
 
 
 def handoff_swe_to_sph(

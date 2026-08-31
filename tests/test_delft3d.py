@@ -217,13 +217,28 @@ class TestDelft3DRunner:
 
 class TestDelft3DComparison:
     def test_rasterize_sph_particles(self):
+        # particle_volume_m3 is REQUIRED. Depth is (particles in the cell) x
+        # (volume each carries) / (cell area), and rasterize_sph_particles used
+        # to substitute a hardcoded 1.0 m3 when it was absent, which rescaled
+        # every depth in the comparison by an arbitrary factor. A real result
+        # from jalraksha.sph.pysph_runner always carries it.
         sph = {
             "x": np.array([5.0, 15.0, 25.0]),
             "y": np.array([5.0, 15.0, 25.0]),
             "z": np.array([2.0, 3.0, 1.0]),
+            "particle_volume_m3": 8.0,   # 2 m particle spacing
         }
         grid = rasterize_sph_particles(sph, grid_nx=10, grid_ny=10, grid_dx=10.0, grid_dy=10.0)
         assert grid.shape == (10, 10)
+        # One particle per cell, 8 m3 each, over a 100 m2 cell => 0.08 m.
+        assert grid[0, 0] == pytest.approx(0.08)
+
+    def test_rasterize_refuses_without_particle_volume(self):
+        sph = {
+            "x": np.array([5.0]), "y": np.array([5.0]), "z": np.array([2.0]),
+        }
+        with pytest.raises(ValueError, match="particle_volume_m3"):
+            rasterize_sph_particles(sph, grid_nx=10, grid_ny=10, grid_dx=10.0, grid_dy=10.0)
 
     def test_rasterize_empty_particles(self):
         sph = {"x": np.array([]), "y": np.array([]), "z": np.array([])}
@@ -306,6 +321,8 @@ class TestDelft3DIntegration:
                 "x": np.random.rand(100) * 300,
                 "y": np.random.rand(100) * 600,
                 "z": np.random.rand(100) * 5,
+                "particle_volume_m3": 1.0,
+                "engine_label": "synthetic fixture (not a PySPH run)",
                 "gauge_arrivals": {
                     "Koteshwar": {"median_min": 32.0, "p05_min": 26.0, "p95_min": 38.0, "distance_km": 13.0},
                 },
@@ -325,3 +342,87 @@ class TestDelft3DIntegration:
         """Verify hydrolib-core is installed."""
         import hydrolib.core
         assert hydrolib.core is not None
+
+
+class TestUgridFacesToGrid:
+    """
+    D-Flow FM writes mesh2d_waterdepth as (time, nFaces) — a flat list of face
+    values, not a raster. Everything downstream treats max_depth as 2D, so the
+    unconverted array reached imshow and raised "Invalid shape (160000,) for
+    image data". The comparison's outer handler then wrote that TypeError to
+    disk as `delft3d_binary_used: false`, reporting a Delft3D FM run that had
+    genuinely succeeded as never having happened.
+    """
+
+    @staticmethod
+    def _regular_mesh(nx: int, ny: int, dx: float = 10.0):
+        """
+        Face centres in FM's ordering, not row-major.
+
+        FM numbers faces in its own internal sweep — the real Khadakwasla mesh
+        starts x = [343030, 343030, 343165, 343030, ...] against
+        y = [2012774, 2012909, 2012774, 2013044, ...]. This shuffles
+        deterministically to stand in for that, which is the whole point: a
+        `.reshape(ny, nx)` passes on row-major input and silently scrambles the
+        field on real input.
+        """
+        from jalraksha.delft3d.runner import _faces_to_grid  # noqa: F401
+
+        gy, gx = np.meshgrid(np.arange(ny) * dx, np.arange(nx) * dx,
+                             indexing="ij")
+        face_x = gx.ravel().astype(float)
+        face_y = gy.ravel().astype(float)
+        order = np.random.default_rng(3).permutation(face_x.size)
+        return face_x[order], face_y[order], order
+
+    def test_places_every_value_at_its_own_coordinate(self):
+        from jalraksha.delft3d.runner import _faces_to_grid
+
+        nx, ny, dx = 12, 9, 10.0
+        face_x, face_y, order = self._regular_mesh(nx, ny, dx)
+
+        # A field that is a pure function of position, so a misplaced value is
+        # detectable rather than plausible.
+        values = (face_x + 1000.0 * face_y).astype(np.float32)
+        grid = _faces_to_grid(values, face_x, face_y)
+
+        assert grid.shape == (ny, nx)
+        assert not np.isnan(grid).any(), "every cell must receive exactly one face"
+        for j in range(ny):
+            for i in range(nx):
+                assert grid[j, i] == pytest.approx(i * dx + 1000.0 * j * dx)
+
+    def test_a_naive_reshape_would_have_been_wrong(self):
+        """
+        Guards the reason this is a scatter and not a reshape. On FM's ordering
+        the two disagree, so a future 'simplification' to .reshape() fails here
+        instead of silently producing a scrambled flood map.
+        """
+        from jalraksha.delft3d.runner import _faces_to_grid
+
+        nx, ny = 12, 9
+        face_x, face_y, _ = self._regular_mesh(nx, ny)
+        values = np.arange(nx * ny, dtype=np.float32)
+
+        placed = _faces_to_grid(values, face_x, face_y)
+        assert not np.array_equal(placed, values.reshape(ny, nx))
+
+    def test_unstructured_mesh_is_left_alone(self):
+        """
+        An irregular FM mesh is legitimate output. This function's job is to
+        undo a known flattening, not to invent a raster from a mesh that never
+        was one.
+        """
+        from jalraksha.delft3d.runner import _faces_to_grid
+
+        face_x = np.array([0.0, 1.0, 2.5, 4.0, 7.0])
+        face_y = np.array([0.0, 1.0, 0.5, 3.0, 2.0])
+        values = np.arange(5, dtype=np.float32)
+        assert _faces_to_grid(values, face_x, face_y).shape == (5,)
+
+    def test_already_gridded_input_is_untouched(self):
+        """The built-in fallback solver already returns 2D; it must pass through."""
+        from jalraksha.delft3d.runner import _faces_to_grid
+
+        grid = np.zeros((7, 5), dtype=np.float32)
+        assert _faces_to_grid(grid, None, None).shape == (7, 5)

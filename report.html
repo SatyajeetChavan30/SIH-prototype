@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>report.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> or <div class="page"></div> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="jalraksha--technical-reference-document">JalRaksha — Technical Reference Document</h1>
+<p><strong>Version:</strong> 1.0<br>
+<strong>Date:</strong> 2026-08-30<br>
+<strong>Project:</strong> JalRaksha — Dam-Break Flood Screening System<br>
+<strong>Purpose:</strong> Smart India Hackathon 2026, Problem Statement 26161 (NTRO)</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li>Executive Summary &amp; Core Purpose</li>
+<li>Architecture &amp; Data Flow</li>
+<li>Data Ingestion &amp; Input Pipeline</li>
+<li>Core Processing Logic &amp; Algorithms</li>
+<li>Current Gaps, Bugs &amp; Known Vulnerabilities</li>
+<li>Remediation &amp; Action Plan</li>
+</ol>
+<hr>
+<h1 id="1-executive-summary--core-purpose">1. Executive Summary &amp; Core Purpose</h1>
+<h2 id="what-is-jalraksha">What is JalRaksha?</h2>
+<p>JalRaksha is an open-data dam-break flood screening system designed for rapid emergency response. Given a dam's location, height, and storage capacity, it predicts:</p>
+<ul>
+<li><strong>When</strong> floodwater arrives at downstream towns</li>
+<li><strong>How far</strong> the flood spreads (inundation footprint)</li>
+<li><strong>How bad</strong> it is (hazard classification, population at risk, damage estimates)</li>
+</ul>
+<p>It is built for <strong>Smart India Hackathon 2026, Problem Statement 26161 (NTRO)</strong> — a tool for Humanitarian Assistance and Disaster Relief (HADR) planning.</p>
+<h2 id="core-business-logic">Core Business Logic</h2>
+<p>A dam break is two physics problems:</p>
+<ol>
+<li><strong>Near-field</strong> (hundreds of metres, tens of seconds): Violent, 3D, turbulent flow → SPH (particle method)</li>
+<li><strong>Far-field</strong> (tens of km, hours): Thin sheet flow down the valley → 2D Shallow Water Equations (SWE)</li>
+</ol>
+<p>JalRaksha's main engine is the <strong>2D SWE solver</strong>. This produces the maps that matter for evacuation planning.</p>
+<p><strong>Why an ensemble?</strong> Nobody knows the exact hole size or how fast a dam fails. Historical formulas (Froehlich, MacDonald, Wahl) disagree by a factor of 2-3, and Tehri is taller than the dams those formulas were fitted on. So the code runs many possible hydrographs (10-100) and reports median / 5th / 95th percentile — not one magic number.</p>
+<h2 id="key-features--capability-matrix">Key Features &amp; Capability Matrix</h2>
+<h3 id="primary-features-working-demonstrable">Primary Features (Working, Demonstrable)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Module</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2D SWE solver (HLLC + Audusse + MUSCL + Manning)</td>
+<td><code>jalraksha/solver/</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Ensemble breach hydrographs (Froehlich, MacDonald, Wahl)</td>
+<td><code>jalraksha/terrain/breach.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>DEM fetch &amp; processing (Copernicus GLO-30 via AWS S3)</td>
+<td><code>jalraksha/dem.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Terrain domain construction (UTM grid, breach location)</td>
+<td><code>jalraksha/terrain/domain.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Manning friction from land cover</td>
+<td><code>jalraksha/terrain/roughness.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Downstream gauge arrival time computation</td>
+<td><code>jalraksha/run.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Export to GeoTIFF (COG)</td>
+<td><code>jalraksha/export/geotiff.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Export to Shapefile</td>
+<td><code>jalraksha/export/shapefile.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Export to KML</td>
+<td><code>jalraksha/export/kml.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Export to XDMF (ParaView)</td>
+<td><code>jalraksha/export/xdmf_export.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Export keyframes (PNG)</td>
+<td><code>jalraksha/export/keyframes.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>React dashboard (2D Leaflet + 3D Cesium)</td>
+<td><code>frontend/src/</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>FastAPI REST API</td>
+<td><code>services/api/jalraksha_service/</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Celery background jobs</td>
+<td><code>services/api/jalraksha_service/worker.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Dam presets (Tehri, Khadakwasla)</td>
+<td><code>jalraksha/presets.py</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Impact assessment (population, damage, fatalities)</td>
+<td><code>jalraksha/impact/</code></td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Hazard classification (depth × velocity)</td>
+<td><code>jalraksha/impact/hazard.py</code></td>
+<td>✅ Working</td>
+</tr>
+</tbody>
+</table>
+<h3 id="secondary-features-built-not-connected-to-dashboard">Secondary Features (Built, Not Connected to Dashboard)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Module</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Delft3D FM Suite adapter</td>
+<td><code>jalraksha/delft3d/</code></td>
+<td>⚠️ Built, not wired</td>
+</tr>
+<tr>
+<td>SPH near-field solver</td>
+<td><code>jalraksha/sph/</code></td>
+<td>⚠️ Built, not wired</td>
+</tr>
+<tr>
+<td>Google Earth Engine SAR water detection</td>
+<td><code>jalraksha/gee/</code></td>
+<td>⚠️ Built, needs auth</td>
+</tr>
+<tr>
+<td>GEE population exposure</td>
+<td><code>jalraksha/gee/population.py</code></td>
+<td>⚠️ Built, needs auth</td>
+</tr>
+<tr>
+<td>Validation benchmarks (Ritter, Malpasset, Chamoli)</td>
+<td><code>jalraksha/validation/</code></td>
+<td>⚠️ Standalone only</td>
+</tr>
+<tr>
+<td>ParaView 3D visualization tools</td>
+<td><code>tools/paraview/</code></td>
+<td>⚠️ Standalone only</td>
+</tr>
+<tr>
+<td>Cesium terrain tile builder</td>
+<td><code>tools/cesium/</code></td>
+<td>⚠️ Standalone only</td>
+</tr>
+<tr>
+<td>MATLAB export</td>
+<td><code>tools/matlab/</code></td>
+<td>⚠️ Standalone only</td>
+</tr>
+</tbody>
+</table>
+<h2 id="intended-end-users--target-environment">Intended End Users &amp; Target Environment</h2>
+<p><strong>Primary Users:</strong></p>
+<ul>
+<li>Emergency response agencies (NDMA, SDRF, district administration)</li>
+<li>Dam operators requiring rapid breach assessment</li>
+<li>SIH/NTRO judges evaluating the tool</li>
+</ul>
+<p><strong>Target Environment:</strong></p>
+<ul>
+<li><strong>OS:</strong> Windows 10/11, Linux</li>
+<li><strong>Runtime:</strong> Python 3.10+ with NumPy, SciPy, Numba, Rasterio</li>
+<li><strong>Deployment:</strong> Docker Compose (API + Worker + Redis + Postgres + Frontend)</li>
+<li><strong>Minimum Hardware:</strong> Multi-core CPU, 8 GB RAM (no GPU required)</li>
+<li><strong>Browser:</strong> Modern browser for React dashboard (Chrome, Firefox, Edge)</li>
+</ul>
+<hr>
+<h1 id="2-architecture--data-flow">2. Architecture &amp; Data Flow</h1>
+<h2 id="high-level-system-architecture">High-Level System Architecture</h2>
+<pre><code class="language-mermaid"><div class="mermaid">graph TB
+    subgraph User Interface
+        A[React Dashboard<br/>Leaflet 2D + Cesium 3D]
+    end
+    
+    subgraph API Layer
+        B[FastAPI REST API<br/>POST /runs, GET /runs/{id}]
+        C[Celery Worker<br/>Background Jobs]
+    end
+    
+    subgraph Core Engine
+        D[SWE Solver<br/>HLLC + Audusse + MUSCL]
+        E[Breach Ensemble<br/>Froehlich/MacDonald/Wahl]
+        F[Terrain Pipeline<br/>DEM → UTM Grid]
+        G[Impact Assessment<br/>Population/Damage/Fatalities]
+    end
+    
+    subgraph Data Sources
+        H[Copernicus GLO-30<br/>AWS S3]
+        I[ESA WorldCover<br/>Land Cover]
+        J[GHSL<br/>Population]
+    end
+    
+    subgraph External Models
+        K[Delft3D FM Suite<br/>2026.02]
+        L[SPH<br/>PySPH]
+        M[Google Earth Engine<br/>Sentinel-1 SAR]
+    end
+    
+    subgraph Exports
+        N[GeoTIFF COG]
+        O[Shapefile .shp]
+        P[KML .kml]
+        Q[XDMF + HDF5]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+    C --> G
+    D --> N
+    D --> O
+    D --> P
+    D --> Q
+    F --> H
+    F --> I
+    G --> J
+    C -.->|Optional| K
+    C -.->|Optional| L
+    C -.->|Optional| M
+</div></code></pre>
+<h2 id="component-by-component-analysis">Component-by-Component Analysis</h2>
+<h3 id="21-core-library-jalraksha">2.1 Core Library (<code>jalraksha/</code>)</h3>
+<h4 id="jalraksha__init__py"><code>jalraksha/__init__.py</code></h4>
+<p>Package initializer. Exports version and top-level API.</p>
+<h4 id="jalrakshaconfigpy"><code>jalraksha/config.py</code></h4>
+<p>Configuration management. Loads YAML config files, sets up cache directories. Defines <code>ConfigError</code> exception.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>load_config(path)</code> — loads YAML configuration</li>
+<li><code>setup_cache(dir)</code> — creates cache directory structure</li>
+</ul>
+<h4 id="jalrakshaclipy"><code>jalraksha/cli.py</code></h4>
+<p>Command-line interface entry point. Provides <code>jalraksha run</code>, <code>jalraksha validate</code>, <code>jalraksha cache</code> subcommands.</p>
+<p><strong>Usage:</strong></p>
+<pre class="hljs"><code><div>jalraksha run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
+jalraksha run --config jalraksha.yaml
+jalraksha validate --config jalraksha.yaml
+jalraksha cache --list
+jalraksha cache --clear
+</div></code></pre>
+<h4 id="jalrakshadempy"><code>jalraksha/dem.py</code></h4>
+<p>DEM fetching from Copernicus GLO-30 via AWS S3.</p>
+<p><strong>Data Source:</strong> <code>https://copernicus-dem-30m.s3.amazonaws.com/</code></p>
+<ul>
+<li>Tile layout: <code>Copernicus_DSM_COG_10_N&lt;lat&gt;_00_E&lt;lon&gt;_00_DEM/&lt;same&gt;.tif</code></li>
+<li>Each tile: 1° × 1°, 3600 × 3600 pixels, float32, EPSG:4326</li>
+<li>Uses GDAL <code>/vsicurl</code> for partial tile reads (range requests, not full download)</li>
+</ul>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>fetch_dem(lat, lon, domain_radius_km, cache_dir, offline_mode)</code> → returns GeoTIFF path</li>
+<li><code>latlon_to_utm_zone(lat, lon)</code> → UTM zone number</li>
+</ul>
+<h4 id="jalrakshapresetspy"><code>jalraksha/presets.py</code></h4>
+<p>Dam preset definitions. Single source of truth for dam parameters.</p>
+<p><strong>Defined Presets:</strong></p>
+<ul>
+<li><strong>Tehri</strong> — Uttarakhand, 260 m, 3540 MCM, Bhagirathi River</li>
+<li><strong>Khadakwasla</strong> — Maharashtra, 51.3 m, 33.5 MCM, Mutha River</li>
+</ul>
+<p><strong>Key Data Structures:</strong></p>
+<ul>
+<li><code>DamPreset</code> dataclass — all dam parameters</li>
+<li><code>GaugePoint</code> dataclass — downstream gauge locations</li>
+<li><code>GAUGES</code> dict — gauge corridors per dam</li>
+</ul>
+<h4 id="jalraksharunpy"><code>jalraksha/run.py</code></h4>
+<p>End-to-end pipeline orchestrator. The &quot;main simulation&quot; function.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>run_dam_break_ensemble(dam_config, dem_path, ensemble_size, ...)</code> → results dict</li>
+<li><code>write_export_products(results_ensemble, h_max_median, ...)</code> → export paths dict</li>
+</ul>
+<p><strong>Pipeline Steps:</strong></p>
+<ol>
+<li>Build domain from DEM</li>
+<li>Compute breach location</li>
+<li>Generate ensemble of breach hydrographs</li>
+<li>Run SWE solver for each member</li>
+<li>Compute ensemble statistics (median, p05, p95)</li>
+<li>Compute arrival times at gauges</li>
+<li>Write export products (GeoTIFF, SHP, KML, XDMF)</li>
+</ol>
+<h4 id="jalrakshasolvercorepy"><code>jalraksha/solver/core.py</code></h4>
+<p>2D Shallow Water Equations solver.</p>
+<p><strong>Numerics:</strong></p>
+<ul>
+<li><strong>Grid:</strong> Uniform Cartesian, cell-centred finite volume</li>
+<li><strong>Flux:</strong> HLLC (Harten-Lax-van Leer-Contact) Riemann solver</li>
+<li><strong>Well-balancing:</strong> Audusse hydrostatic reconstruction (keeps still lakes still)</li>
+<li><strong>Reconstruction:</strong> MUSCL (Monotonic Upstream-Centred Scheme for Conservation Laws)</li>
+<li><strong>Friction:</strong> Manning's n source term</li>
+<li><strong>Dry bed:</strong> Threshold-based wetting/drying (h &lt; 1e-6 = dry)</li>
+</ul>
+<p><strong>State Variables per Cell:</strong></p>
+<ul>
+<li><code>h</code> — water depth (m)</li>
+<li><code>hu</code> — east momentum (m²/s)</li>
+<li><code>hv</code> — north momentum (m²/s)</li>
+<li><code>b</code> — bed elevation (m)</li>
+</ul>
+<h4 id="jalrakshasolverfluxpy"><code>jalraksha/solver/flux.py</code></h4>
+<p>HLLC Riemann solver implementation.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>hllc_flux(ql, qr, ...)</code> — computes inter-cell flux</li>
+<li>Handles subcritical, supercritical, and transcritical flows</li>
+</ul>
+<h4 id="jalrakshasolverparallelpy"><code>jalraksha/solver/parallel.py</code></h4>
+<p>Ensemble parallelization using multiprocessing.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>run_ensemble(members, ...)</code> — runs members in parallel</li>
+</ul>
+<h4 id="jalrakshaterraindomainpy"><code>jalraksha/terrain/domain.py</code></h4>
+<p>Terrain domain construction from DEM.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>build_domain(dam_config, dem_path, target_resolution)</code> → <code>Grid</code> object</li>
+<li><code>compute_breach_location(grid, dam_config)</code> → breach cell indices</li>
+</ul>
+<h4 id="jalrakshaterrainbreachpy"><code>jalraksha/terrain/breach.py</code></h4>
+<p>Breach hydrograph generation from published regressions.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>synthesize_breach_ensemble(dam_config, ensemble_size)</code> → list of hydrographs</li>
+<li><code>ensemble_statistics(members)</code> → median, p05, p95 hydrographs</li>
+</ul>
+<p><strong>Regressions Used:</strong></p>
+<ul>
+<li>Froehlich (1995, 2008)</li>
+<li>MacDonald &amp; Langridge-Monopolis (1984)</li>
+<li>Wahl (2004) uncertainty bounds</li>
+</ul>
+<h4 id="jalrakshaterrainroughnesspy"><code>jalraksha/terrain/roughness.py</code></h4>
+<p>Manning's n friction from land cover classification.</p>
+<p><strong>Source:</strong> ESA WorldCover (when available)</p>
+<h4 id="jalrakshaterrainconditioningpy"><code>jalraksha/terrain/conditioning.py</code></h4>
+<p>Terrain conditioning: burn streams, fix pits, ensure drainage.</p>
+<h4 id="jalrakshaimpacthazardpy"><code>jalraksha/impact/hazard.py</code></h4>
+<p>Hazard classification from depth × velocity.</p>
+<p><strong>Classification (FD2320-style):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Depth × Velocity</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 0.5</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>0.5 – 1.0</td>
+<td>Moderate</td>
+</tr>
+<tr>
+<td>1.0 – 2.0</td>
+<td>Significant</td>
+</tr>
+<tr>
+<td>&gt; 2.0</td>
+<td>Extreme</td>
+</tr>
+</tbody>
+</table>
+<h4 id="jalrakshaimpactpopulationpy"><code>jalraksha/impact/population.py</code></h4>
+<p>Population at risk from GHSL data over the flood extent.</p>
+<h4 id="jalrakshaimpactdamagepy"><code>jalraksha/impact/damage.py</code></h4>
+<p>Damage estimates using depth-damage curves.</p>
+<p><strong>References:</strong> Graham (1999), DeKay &amp; McClelland</p>
+<h4 id="jalrakshaimpactfatalitypy"><code>jalraksha/impact/fatality.py</code></h4>
+<p>Fatality estimates using Jonkman (2007) / Graham (2009) methods.</p>
+<h4 id="jalrakshaexportgeotiffpy"><code>jalraksha/export/geotiff.py</code></h4>
+<p>Cloud-Optimized GeoTIFF export.</p>
+<h4 id="jalrakshaexportshapefilepy"><code>jalraksha/export/shapefile.py</code></h4>
+<p>ESRI Shapefile export (zipped: .shp/.shx/.dbf/.prj).</p>
+<h4 id="jalrakshaexportkmlpy"><code>jalraksha/export/kml.py</code></h4>
+<p>KML export for Google Earth.</p>
+<h4 id="jalrakshaexportxdmf_exportpy"><code>jalraksha/export/xdmf_export.py</code></h4>
+<p>XDMF + HDF5 time series export for ParaView.</p>
+<h4 id="jalrakshaexportkeyframespy"><code>jalraksha/export/keyframes.py</code></h4>
+<p>PNG keyframe generation for 2D animation.</p>
+<h4 id="jalrakshadelft3drunnerpy"><code>jalraksha/delft3d/runner.py</code></h4>
+<p>Delft3D FM Suite binary execution adapter.</p>
+<p><strong>Key Functions:</strong></p>
+<ul>
+<li><code>resolve_dflowfm(custom_path)</code> → executable path or None</li>
+<li><code>is_dflowfm_available()</code> → bool</li>
+</ul>
+<p><strong>Current Issue:</strong> Looks for <code>dflowfm</code> on PATH, but Delft3D FM Suite 2026.02 uses <code>DeltaShell.Console.exe</code>.</p>
+<h4 id="jalrakshadelft3dsetuppy"><code>jalraksha/delft3d/setup.py</code></h4>
+<p>DIMR config XML generation for Delft3D.</p>
+<h4 id="jalrakshadelft3ddfm_modelpy"><code>jalraksha/delft3d/dfm_model.py</code></h4>
+<p>D-Flow FM model input file (.mdf) generation.</p>
+<h4 id="jalrakshadelft3dcomparisonpy"><code>jalraksha/delft3d/comparison.py</code></h4>
+<p>SPH vs Delft3D comparison metrics.</p>
+<h4 id="jalrakshadelft3dugridpy"><code>jalraksha/delft3d/ugrid.py</code></h4>
+<p>Unstructured grid handling.</p>
+<h4 id="jalrakshasphcorepy"><code>jalraksha/sph/core.py</code></h4>
+<p>SPH (Smoothed Particle Hydrodynamics) particle solver core.</p>
+<h4 id="jalrakshasphdomainpy"><code>jalraksha/sph/domain.py</code></h4>
+<p>SPH domain setup.</p>
+<h4 id="jalrakshasphcouplingpy"><code>jalraksha/sph/coupling.py</code></h4>
+<p>SPH-SWE one-way coupling (2D result drives SPH inflow).</p>
+<h4 id="jalrakshasphpysph_runnerpy"><code>jalraksha/sph/pysph_runner.py</code></h4>
+<p>PySPH integration wrapper.</p>
+<h4 id="jalrakshageesarpy"><code>jalraksha/gee/sar.py</code></h4>
+<p>Sentinel-1 SAR water detection via Google Earth Engine (729 lines).</p>
+<p><strong>Method:</strong> Otsu thresholding on VV polarization, split-based approach for bimodal tiles.</p>
+<h4 id="jalrakshageeauthpy"><code>jalraksha/gee/auth.py</code></h4>
+<p>GEE authentication (uses <code>~/.config/earthengine/credentials</code>).</p>
+<h4 id="jalrakshageepopulationpy"><code>jalraksha/gee/population.py</code></h4>
+<p>GEE population exposure analysis.</p>
+<h4 id="jalrakshavalidationbenchmarkspy"><code>jalraksha/validation/benchmarks.py</code></h4>
+<p>Analytical benchmarks: Ritter dam-break, lake-at-rest, mass conservation.</p>
+<h4 id="jalrakshavalidationdelft3d_benchmarkpy"><code>jalraksha/validation/delft3d_benchmark.py</code></h4>
+<p>Delft3D comparison benchmarks: Malpasset, Chamoli.</p>
+<h4 id="jalrakshavalidationmetricspy"><code>jalraksha/validation/metrics.py</code></h4>
+<p>Validation metrics: RMSE, bias, Nash-Sutcliffe efficiency.</p>
+<h4 id="jalrakshavalidationsensitivitypy"><code>jalraksha/validation/sensitivity.py</code></h4>
+<p>Sensitivity analysis utilities.</p>
+<h3 id="22-api-service-servicesapijalraksha_service">2.2 API Service (<code>services/api/jalraksha_service/</code>)</h3>
+<h4 id="mainpy--fastapi-application"><code>main.py</code> — FastAPI Application</h4>
+<p><strong>Endpoints:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/runs</code></td>
+<td>Submit simulation, enqueue Celery job</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/runs/{run_id}</code></td>
+<td>Status + progress</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/runs/{run_id}/result</code></td>
+<td>Exports, gauges, hazard</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/runs/{run_id}/comparison</code></td>
+<td>Delft3D comparison</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/dams</code></td>
+<td>Dam presets</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/gauges/{run_id}</code></td>
+<td>Per-gauge results</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/gee/latest</code></td>
+<td>Near-real-time SAR extent</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/health</code></td>
+<td>Liveness check</td>
+</tr>
+</tbody>
+</table>
+<h4 id="workerpy--celery-app"><code>worker.py</code> — Celery App</h4>
+<p>Background job processing. Connects to Redis for task queue.</p>
+<h4 id="taskspy--celery-job-definitions"><code>tasks.py</code> — Celery Job Definitions</h4>
+<p>Thin wrappers around <code>run_dam_break_ensemble()</code>.</p>
+<h4 id="schemaspy--pydantic-models"><code>schemas.py</code> — Pydantic Models</h4>
+<p>Request/response schemas for API validation.</p>
+<h4 id="configpy--service-configuration"><code>config.py</code> — Service Configuration</h4>
+<p>Settings, demo dam registry.</p>
+<h4 id="dbpy--database"><code>db.py</code> — Database</h4>
+<p>SQLite for job metadata (run_id, status, timestamps).</p>
+<h3 id="23-frontend-frontend">2.3 Frontend (<code>frontend/</code>)</h3>
+<h4 id="srcappjsx"><code>src/App.jsx</code></h4>
+<p>Main React application component.</p>
+<h4 id="srcapijs"><code>src/api.js</code></h4>
+<p>API client for backend communication.</p>
+<h4 id="srcdataentitiesjs"><code>src/data/entities.js</code></h4>
+<p>Data entity definitions.</p>
+<h4 id="srcstatesimulationclockjsx"><code>src/state/SimulationClock.jsx</code></h4>
+<p>Time synchronization for animations.</p>
+<h4 id="srcpanels"><code>src/panels/</code></h4>
+<p>Dashboard panel components:</p>
+<ul>
+<li><code>ControlPanel.jsx</code> — Dam/solver selection, run button</li>
+<li><code>Map2D.jsx</code> — Leaflet 2D map with flood overlay</li>
+<li><code>Scene3D.jsx</code> — Cesium 3D globe</li>
+<li><code>GaugesPanel.jsx</code> — Gauge arrival time table</li>
+<li><code>EnsemblePanel.jsx</code> — Uncertainty visualization</li>
+<li><code>ImpactPanel.jsx</code> — Population/damage/fatality</li>
+<li><code>ComparisonPanel.jsx</code> — SWE vs Delft3D comparison</li>
+<li><code>DownloadsPanel.jsx</code> — Export download links</li>
+<li><code>ValidationPanel.jsx</code> — Benchmark results</li>
+<li><code>SphPanel.jsx</code> — SPH visualization</li>
+</ul>
+<h3 id="24-tests-tests">2.4 Tests (<code>tests/</code>)</h3>
+<p>Comprehensive test suite covering:</p>
+<ul>
+<li>Solver correctness (test_solver.py)</li>
+<li>Terrain pipeline (test_terrain.py)</li>
+<li>Breach generation (test_breach.py)</li>
+<li>DEM processing (test_dem.py)</li>
+<li>Exports (test_export.py)</li>
+<li>API endpoints (test_api.py)</li>
+<li>Integration (test_integration.py)</li>
+<li>Impact assessment (test_impact.py)</li>
+<li>Delft3D adapter (test_delft3d.py)</li>
+<li>SPH (test_sph.py)</li>
+<li>GEE (test_gee.py)</li>
+<li>Validation (test_validation.py)</li>
+</ul>
+<h3 id="25-tools-tools">2.5 Tools (<code>tools/</code>)</h3>
+<h4 id="toolsparaview"><code>tools/paraview/</code></h4>
+<p>ParaView 3D visualization:</p>
+<ul>
+<li><code>make_dataset.py</code> — Dataset generation</li>
+<li><code>reservoir.py</code> — Reservoir surface extraction</li>
+<li><code>synthetic_flood.py</code> — Synthetic flood visualization</li>
+<li><code>base_block.py</code> — Base block for 3D</li>
+</ul>
+<h4 id="toolscesium"><code>tools/cesium/</code></h4>
+<p>Cesium terrain tools:</p>
+<ul>
+<li><code>build_terrain_tiles.py</code> — Terrain tile generation</li>
+<li><code>upload_terrain_to_ion.py</code> — Upload to Cesium Ion</li>
+</ul>
+<h4 id="toolsmatlab"><code>tools/matlab/</code></h4>
+<p>MATLAB export utilities.</p>
+<h4 id="toolssih-presentation"><code>tools/sih-presentation/</code></h4>
+<p>SIH presentation builder.</p>
+<hr>
+<h1 id="3-data-ingestion--input-pipeline">3. Data Ingestion &amp; Input Pipeline</h1>
+<h2 id="sources-of-data">Sources of Data</h2>
+<h3 id="31-terrain-data-dem">3.1 Terrain Data (DEM)</h3>
+<p><strong>Source:</strong> Copernicus DEM GLO-30</p>
+<ul>
+<li><strong>Endpoint:</strong> <code>https://copernicus-dem-30m.s3.amazonaws.com/</code></li>
+<li><strong>Resolution:</strong> 1 arc-second (~30 m)</li>
+<li><strong>Format:</strong> Cloud-Optimized GeoTIFF</li>
+<li><strong>Coverage:</strong> Global</li>
+<li><strong>License:</strong> Free, open, no login required</li>
+<li><strong>Tile naming:</strong> <code>Copernicus_DSM_COG_10_N&lt;lat&gt;_00_E&lt;lon&gt;_00_DEM.tif</code></li>
+</ul>
+<p><strong>Why this source:</strong> Open, no authentication, documented by Copernicus programme.</p>
+<p><strong>Why NOT other sources:</strong></p>
+<ul>
+<li>FABDEM: CC BY-NC-SA (non-commercial restriction)</li>
+<li>MERIT: CC BY-NC (non-commercial restriction)</li>
+<li>CartoDEM / Bhuvan: Geo-fenced, login-gated</li>
+<li>India-WRIS: Forbidden (login-gated)</li>
+</ul>
+<h3 id="32-land-cover-friction">3.2 Land Cover (Friction)</h3>
+<p><strong>Source:</strong> ESA WorldCover</p>
+<ul>
+<li><strong>Resolution:</strong> 10 m</li>
+<li><strong>Use:</strong> Manning's n friction coefficients</li>
+<li><strong>Fallback:</strong> Default n = 0.035 (grassland) if unavailable</li>
+</ul>
+<h3 id="33-population">3.3 Population</h3>
+<p><strong>Source:</strong> GHSL (Global Human Settlement Layer)</p>
+<ul>
+<li><strong>Use:</strong> Population at risk estimation</li>
+<li><strong>Integration:</strong> Via GEE or direct download</li>
+</ul>
+<h3 id="34-user-inputs-dam-parameters">3.4 User Inputs (Dam Parameters)</h3>
+<p><strong>Via CLI:</strong></p>
+<pre class="hljs"><code><div>jalraksha run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
+</div></code></pre>
+<p><strong>Via API:</strong></p>
+<pre class="hljs"><code><div>POST /runs
+<span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;dam_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;tehri&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;swe&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;ensemble_size&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">100</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver_duration_s&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1800</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;target_resolution&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">200</span>
+<span class="hljs-punctuation">}</span>
+</div></code></pre>
+<p><strong>Via Config File (jalraksha.yaml):</strong></p>
+<pre class="hljs"><code><div><span class="hljs-attr">dam_name:</span> <span class="hljs-string">tehri</span>
+<span class="hljs-attr">dam_location:</span> [<span class="hljs-number">30.3789</span>, <span class="hljs-number">78.4789</span>]
+<span class="hljs-attr">dam_height:</span> <span class="hljs-number">260</span>
+<span class="hljs-attr">gross_storage:</span> <span class="hljs-number">3540</span>
+<span class="hljs-attr">crs:</span> <span class="hljs-string">&quot;EPSG:32644&quot;</span>
+</div></code></pre>
+<h3 id="35-environment-variables">3.5 Environment Variables</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>JALRAKSHA_DFLOWFM_EXE</code></td>
+<td>Path to Delft3D executable</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td><code>JALRAKSHA_GEE_PROJECT</code></td>
+<td>GCP project ID for GEE</td>
+<td>For GEE features</td>
+</tr>
+<tr>
+<td><code>CESIUM_ION_TOKEN</code></td>
+<td>Cesium Ion access token</td>
+<td>For 3D terrain</td>
+</tr>
+<tr>
+<td><code>CELERY_EAGER</code></td>
+<td>Run tasks synchronously (no Redis)</td>
+<td>For laptop demo</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ingestion-mechanisms">Ingestion Mechanisms</h2>
+<h3 id="dem-fetch-primary-pipeline">DEM Fetch (Primary Pipeline)</h3>
+<pre><code class="language-mermaid"><div class="mermaid">sequenceDiagram
+    participant User
+    participant CLI
+    participant DEM_Fetch as dem.py
+    participant AWS_S3
+    participant Cache
+    
+    User->>CLI: jalraksha run --lat 30.37 --lon 78.47
+    CLI->>DEM_Fetch: fetch_dem(lat, lon, radius_km)
+    DEM_Fetch->>Cache: check_cache()
+    alt Cache hit
+        Cache-->>DEM_Fetch: cached_path
+    else Cache miss
+        DEM_Fetch->>AWS_S3: /vsicurl range request
+        AWS_S3-->>DEM_Fetch: tile data
+        DEM_Fetch->>Cache: store clipped GeoTIFF
+        Cache-->>DEM_Fetch: new_path
+    end
+    DEM_Fetch-->>CLI: dem_path
+</div></code></pre>
+<h3 id="ingestion-via-api">Ingestion via API</h3>
+<pre><code class="language-mermaid"><div class="mermaid">sequenceDiagram
+    participant Browser
+    participant API as FastAPI
+    participant Celery
+    participant Worker
+    
+    Browser->>API: POST /runs {dam_id, solver, ensemble_size}
+    API->>API: Validate RunRequest (Pydantic)
+    API->>Celery: enqueue submit_run_task
+    Celery->>Worker: Run task
+    Worker->>Worker: fetch_dem(), run_dam_break_ensemble()
+    Worker->>Worker: write_export_products()
+    Worker->>Celery: Task complete
+    Browser->>API: GET /runs/{id}/result
+    API-->>Browser: exports, gauges, hazard
+</div></code></pre>
+<h2 id="parsing-validation--transformation">Parsing, Validation &amp; Transformation</h2>
+<h3 id="input-validation-pydantic-schemas">Input Validation (Pydantic Schemas)</h3>
+<p><strong><code>RunRequest</code>:</strong></p>
+<ul>
+<li><code>dam_id</code>: Optional[str] — must match a preset</li>
+<li><code>lat</code>, <code>lon</code>, <code>height_m</code>, <code>storage_mm3</code>: Optional[float] — required if no preset</li>
+<li><code>ensemble_size</code>: int (1-10000, default 100)</li>
+<li><code>solver</code>: &quot;swe&quot; | &quot;delft3d&quot; | &quot;both&quot;</li>
+<li><code>solver_duration_s</code>: float &gt; 0 (default 1800)</li>
+<li><code>target_resolution</code>: float &gt; 0 (default 200)</li>
+</ul>
+<h3 id="dem-transformation-pipeline">DEM Transformation Pipeline</h3>
+<ol>
+<li><strong>Fetch:</strong> Download 1° tiles overlapping domain</li>
+<li><strong>Merge:</strong> Mosaic multiple tiles</li>
+<li><strong>Clip:</strong> Cut to bounding box (dam + 60 km radius)</li>
+<li><strong>Reproject:</strong> Convert from EPSG:4326 to UTM</li>
+<li><strong>Resample:</strong> To target resolution (e.g., 200 m)</li>
+<li><strong>Condition:</strong> Burn streams, fix pits</li>
+<li><strong>Cache:</strong> Store clipped GeoTIFF for reuse</li>
+</ol>
+<h3 id="breach-hydrograph-generation">Breach Hydrograph Generation</h3>
+<ol>
+<li><strong>Select regression:</strong> Froehlich, MacDonald, or Wahl</li>
+<li><strong>Sample parameters:</strong> Draw from uncertainty distributions</li>
+<li><strong>Compute peak outflow:</strong> Q_p = f(height, storage)</li>
+<li><strong>Compute breach geometry:</strong> Width, side slope</li>
+<li><strong>Generate hydrograph:</strong> Time series of discharge Q(t)</li>
+</ol>
+<hr>
+<h1 id="4-core-processing-logic--algorithms">4. Core Processing Logic &amp; Algorithms</h1>
+<h2 id="41-2d-shallow-water-equations">4.1 2D Shallow Water Equations</h2>
+<h3 id="governing-equations">Governing Equations</h3>
+<p>The 2D SWE (Saint-Venant equations) in conservative form:</p>
+<pre class="hljs"><code><div>∂h/∂t + ∂(hu)/∂x + ∂(hv)/∂y = 0
+
+∂(hu)/∂t + ∂(hu² + gh²/2)/∂x + ∂(huv)/∂y = -gh ∂b/∂x - τ_bx/ρ
+
+∂(hv)/∂t + ∂(huv)/∂x + ∂(hv² + gh²/2)/∂y = -gh ∂b/∂y - τ_by/ρ
+</div></code></pre>
+<p>Where:</p>
+<ul>
+<li><code>h</code> = water depth</li>
+<li><code>u</code>, <code>v</code> = depth-averaged velocities</li>
+<li><code>b</code> = bed elevation</li>
+<li><code>g</code> = gravitational acceleration</li>
+<li><code>τ_b</code> = bed shear stress</li>
+</ul>
+<h3 id="numerical-method">Numerical Method</h3>
+<p><strong>Spatial Discretisation:</strong> Cell-centred finite volume on uniform Cartesian grid</p>
+<p><strong>Flux Computation:</strong> HLLC Riemann solver</p>
+<ul>
+<li>Estimates wave speeds (S_L, S_R, S_*)</li>
+<li>Computes star-region fluxes</li>
+<li>Handles dry states (h ≈ 0)</li>
+</ul>
+<p><strong>Well-Balancing:</strong> Audusse hydrostatic reconstruction</p>
+<ul>
+<li>Reconstructs interface values to preserve hydrostatic balance</li>
+<li>Critical for still-lake test case</li>
+</ul>
+<p><strong>Slope Limiting:</strong> MUSCL (Monotonic Upstream-Centred Scheme)</p>
+<ul>
+<li>Second-order accuracy in space</li>
+<li>Minmod limiter to prevent oscillations</li>
+</ul>
+<p><strong>Friction Treatment:</strong> Manning's n</p>
+<ul>
+<li>Source term: S_f = n² g h^(1/3) |V| V</li>
+<li>Implicit treatment for stability</li>
+</ul>
+<h3 id="boundary-conditions">Boundary Conditions</h3>
+<ul>
+<li><strong>Inflow:</strong> Breach hydrograph Q(t) at breach cell</li>
+<li><strong>Outflow:</strong> Free outflow (zero gradient)</li>
+<li><strong>Wall:</strong> Reflective (no normal flux)</li>
+<li><strong>Dry:</strong> Threshold h &lt; 1e-6 m = dry cell</li>
+</ul>
+<h2 id="42-ensemble-generation">4.2 Ensemble Generation</h2>
+<h3 id="breach-parameter-uncertainty">Breach Parameter Uncertainty</h3>
+<p>Historical regressions disagree by factor 2-3:</p>
+<table>
+<thead>
+<tr>
+<th>Regression</th>
+<th>Peak Outflow Formula</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Froehlich (1995)</td>
+<td>Q_p = 0.607 × V^0.295 × H^1.24</td>
+</tr>
+<tr>
+<td>MacDonald</td>
+<td>Q_p = 3.85 × (VH)^0.46</td>
+</tr>
+<tr>
+<td>Wahl (2004)</td>
+<td>Uncertainty bounds on Froehlich</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ensemble-sampling">Ensemble Sampling</h3>
+<p>For each member i ∈ {1, ..., N}:</p>
+<ol>
+<li>Sample breach width B_i ~ LogNormal(μ_B, σ_B)</li>
+<li>Sample breach time T_r ~ LogNormal(μ_T, σ_T)</li>
+<li>Sample side slope z ~ Uniform(0.5, 1.5)</li>
+<li>Compute Q_p, t_peak from regression</li>
+<li>Construct triangular/polynomial hydrograph</li>
+</ol>
+<h2 id="43-arrival-time-computation">4.3 Arrival Time Computation</h2>
+<p><strong>Definition:</strong> First time depth ≥ 0.1 m at gauge location.</p>
+<p><strong>Gauge Snapping:</strong> Gauges snap to the lowest nearby cell (the river), not the nearest GPS cell (often a canyon wall).</p>
+<h2 id="44-impact-assessment">4.4 Impact Assessment</h2>
+<h3 id="hazard-classification">Hazard Classification</h3>
+<pre class="hljs"><code><div>h × v &lt; 0.5    → Low
+0.5 ≤ h × v &lt; 1.0  → Moderate
+1.0 ≤ h × v &lt; 2.0  → Significant
+h × v ≥ 2.0    → Extreme
+</div></code></pre>
+<h3 id="population-at-risk">Population at Risk</h3>
+<ol>
+<li>Overlay flood extent on GHSL population grid</li>
+<li>Sum population in cells where h &gt; threshold</li>
+<li>Report with uncertainty range</li>
+</ol>
+<h3 id="damage-estimation">Damage Estimation</h3>
+<ol>
+<li>Apply depth-damage curves (Graham, DeKay-McClelland)</li>
+<li>Sum damage per land use class</li>
+<li>Report in INR</li>
+</ol>
+<h3 id="fatality-estimation">Fatality Estimation</h3>
+<ol>
+<li>Jonkman (2007): f_fatal = f(flood severity, warning time)</li>
+<li>Graham (2009): Mortality rate vs depth-velocity</li>
+<li>Report range (optimistic/pessimistic)</li>
+</ol>
+<h2 id="45-storage--state-management">4.5 Storage &amp; State Management</h2>
+<h3 id="cache-structure">Cache Structure</h3>
+<pre class="hljs"><code><div>./data/
+├── dem/
+│   ├── dem_30.38_78.48_clipped.tif
+│   └── mosaic_30.38_78.48.tif
+├── runs/
+│   ├── {run_id}/
+│   │   ├── exports/
+│   │   │   ├── cog_h_max_median.tif
+│   │   │   ├── shp_inundation_zip.zip
+│   │   │   ├── kml_inundation.kml
+│   │   │   └── xdmf_series.xdmf
+│   │   └── keyframes/
+│   │       ├── frame_0000.png
+│   │       └── ...
+│   └── ...
+└── gee/
+    └── observed_extent.tif
+</div></code></pre>
+<h3 id="database-sqlite">Database (SQLite)</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">CREATE TABLE</span> runs (
+    run_id TEXT <span class="hljs-keyword">PRIMARY KEY</span>,
+    status TEXT,  <span class="hljs-comment">-- queued | running | done | failed</span>
+    solver TEXT,
+    created_at <span class="hljs-type">TIMESTAMP</span>,
+    completed_at <span class="hljs-type">TIMESTAMP</span>,
+    config JSON,
+    <span class="hljs-keyword">result</span> JSON
+);
+</div></code></pre>
+<hr>
+<h1 id="5-current-gaps-bugs--known-vulnerabilities">5. Current Gaps, Bugs &amp; Known Vulnerabilities</h1>
+<h2 id="51-broken-code--errors">5.1 Broken Code &amp; Errors</h2>
+<h3 id="delft3d-runner-critical">Delft3D Runner (CRITICAL)</h3>
+<p><strong>File:</strong> <code>jalraksha/delft3d/runner.py</code></p>
+<p><strong>Issue:</strong> Searches for <code>dflowfm</code> on PATH, but Delft3D FM Suite 2026.02 uses <code>DeltaShell.Console.exe</code>.</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Current (broken):</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">resolve_dflowfm</span>(<span class="hljs-params">custom_path=<span class="hljs-literal">None</span></span>):
+    <span class="hljs-comment"># Searches for &quot;dflowfm&quot; literal string</span>
+    <span class="hljs-comment"># Won&#x27;t find DeltaShell.Console.exe</span>
+
+<span class="hljs-comment"># Should be:</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">resolve_delft3d</span>(<span class="hljs-params">custom_path=<span class="hljs-literal">None</span></span>):
+    <span class="hljs-comment"># Check JALRAKSHA_DELFT3D_EXE env var</span>
+    <span class="hljs-comment"># Check known location: C:\Program Files\Deltares\Delft3D FM Suite 2026.02 OpenHMWQ\bin\DeltaShell.Console.exe</span>
+    <span class="hljs-comment"># Fall back to PATH search for &quot;DeltaShell.Console&quot;</span>
+</div></code></pre>
+<p><strong>Impact:</strong> <code>solver=&quot;delft3d&quot;</code> silently falls back to SWE. No error shown to user.</p>
+<h3 id="sph-module-not-wired">SPH Module (NOT WIRED)</h3>
+<p><strong>Files:</strong> <code>jalraksha/sph/*.py</code></p>
+<p><strong>Issue:</strong> Complete SPH implementation exists but is never called from the API or dashboard.</p>
+<p><strong>Impact:</strong> <code>solver=&quot;sph&quot;</code> option in API schema does nothing.</p>
+<h3 id="gee-authentication-incomplete">GEE Authentication (INCOMPLETE)</h3>
+<p><strong>File:</strong> <code>jalraksha/gee/auth.py</code></p>
+<p><strong>Issue:</strong> Credentials file exists at <code>~/.config/earthengine/credentials</code>, but <code>JALRAKSHA_GEE_PROJECT</code> env var is not set.</p>
+<p><strong>Impact:</strong> GEE SAR overlay returns &quot;unavailable&quot; on dashboard.</p>
+<h2 id="52-incomplete-features-todosfixmes">5.2 Incomplete Features (TODOs/FIXMEs)</h2>
+<h3 id="unvetted-coefficients">Unvetted Coefficients</h3>
+<p><strong>File:</strong> <code>jalraksha/presets.py</code></p>
+<p>Multiple dam parameters marked as UNVETTED:</p>
+<ul>
+<li>Khadakwasla height_m, storage_mm3 — user-supplied, no primary source</li>
+<li>Tehri frl_m, crest_m — preset literal, no THDC/CWC citation</li>
+</ul>
+<p><strong>Impact:</strong> Solver runs with these values, but they lack authoritative source.</p>
+<h3 id="missing-implementations">Missing Implementations</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Delft3D → dashboard</td>
+<td>Not wired</td>
+<td>Judges can't see Delft3D comparison</td>
+</tr>
+<tr>
+<td>SPH → dashboard</td>
+<td>Not wired</td>
+<td>Judges can't see SPH results</td>
+</tr>
+<tr>
+<td>GEE → dashboard</td>
+<td>Not wired</td>
+<td>Judges can't see SAR overlay</td>
+</tr>
+<tr>
+<td>Validation → dashboard</td>
+<td>Not wired</td>
+<td>Judges can't see benchmark proof</td>
+</tr>
+<tr>
+<td>Impact → dashboard</td>
+<td>Not wired</td>
+<td>Judges can't see damage estimates</td>
+</tr>
+</tbody>
+</table>
+<h2 id="53-edge-cases--failure-points">5.3 Edge Cases &amp; Failure Points</h2>
+<h3 id="dem-fetch-failures">DEM Fetch Failures</h3>
+<ul>
+<li><strong>Offline mode:</strong> Falls back to synthetic terrain (flat plane)</li>
+<li><strong>NoData edges:</strong> Can create boundary sinks if not clipped properly</li>
+<li><strong>Tile gaps:</strong> Some Copernicus tiles have NoData over water bodies</li>
+</ul>
+<h3 id="solver-instability">Solver Instability</h3>
+<ul>
+<li><strong>Dry cells:</strong> h &lt; 1e-6 threshold can cause mass conservation errors</li>
+<li><strong>Steep terrain:</strong> HLLC may produce negative depths on cliffs</li>
+<li><strong>Large domains:</strong> 100 km radius at 200 m = 1000×1000 grid = ~35 min per member</li>
+</ul>
+<h3 id="ensemble-size">Ensemble Size</h3>
+<ul>
+<li><strong>Too small (&lt; 10):</strong> Uncertainty band not meaningful</li>
+<li><strong>Too large (&gt; 1000):</strong> Compute time prohibitive for demo</li>
+</ul>
+<h2 id="54-dependency-issues">5.4 Dependency Issues</h2>
+<h3 id="python-packages">Python Packages</h3>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Version</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NumPy</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>SciPy</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Numba</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Rasterio</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>GDAL</td>
+<td>System lib</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>FastAPI</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>Celery</td>
+<td>Latest</td>
+<td>✅ Working</td>
+</tr>
+<tr>
+<td>PySPH</td>
+<td>Optional</td>
+<td>⚠️ Not installed by default</td>
+</tr>
+<tr>
+<td>earthengine-api</td>
+<td>Optional</td>
+<td>⚠️ Needs project config</td>
+</tr>
+</tbody>
+</table>
+<h3 id="system-dependencies">System Dependencies</h3>
+<table>
+<thead>
+<tr>
+<th>Dependency</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Redis</td>
+<td>Required for Celery (or use CELERY_EAGER=1)</td>
+</tr>
+<tr>
+<td>Postgres</td>
+<td>Optional (SQLite default)</td>
+</tr>
+<tr>
+<td>GDAL (system)</td>
+<td>Required for raster operations</td>
+</tr>
+<tr>
+<td>Delft3D FM Suite</td>
+<td>Optional (installed at C:\Program Files\Deltares...)</td>
+</tr>
+<tr>
+<td>Cesium Ion Token</td>
+<td>Optional (for 3D terrain)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h1 id="6-remediation--action-plan">6. Remediation &amp; Action Plan</h1>
+<h2 id="61-bug-fixes-priority-order">6.1 Bug Fixes (Priority Order)</h2>
+<h3 id="fix-1-delft3d-runner-high">Fix 1: Delft3D Runner (HIGH)</h3>
+<p><strong>File:</strong> <code>jalraksha/delft3d/runner.py</code></p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Add to resolve_dflowfm() or create new resolve_delft3d():</span>
+<span class="hljs-keyword">import</span> os
+
+DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\Delft3D FM Suite 2026.02 OpenHMWQ\bin\DeltaShell.Console.exe&quot;</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">resolve_delft3d</span>(<span class="hljs-params">custom_path=<span class="hljs-literal">None</span></span>):
+    <span class="hljs-comment"># 1. Check explicit path</span>
+    <span class="hljs-keyword">if</span> custom_path <span class="hljs-keyword">and</span> os.path.isfile(custom_path):
+        <span class="hljs-keyword">return</span> custom_path
+    
+    <span class="hljs-comment"># 2. Check environment variable</span>
+    env_path = os.environ.get(<span class="hljs-string">&quot;JALRAKSHA_DELFT3D_EXE&quot;</span>)
+    <span class="hljs-keyword">if</span> env_path <span class="hljs-keyword">and</span> os.path.isfile(env_path):
+        <span class="hljs-keyword">return</span> env_path
+    
+    <span class="hljs-comment"># 3. Check known location</span>
+    <span class="hljs-keyword">if</span> os.path.isfile(DELFT3D_KNOWN_PATH):
+        <span class="hljs-keyword">return</span> DELFT3D_KNOWN_PATH
+    
+    <span class="hljs-comment"># 4. Search PATH for DeltaShell.Console</span>
+    <span class="hljs-keyword">for</span> path_dir <span class="hljs-keyword">in</span> os.environ.get(<span class="hljs-string">&quot;PATH&quot;</span>, <span class="hljs-string">&quot;&quot;</span>).split(os.pathsep):
+        candidate = os.path.join(path_dir, <span class="hljs-string">&quot;DeltaShell.Console.exe&quot;</span>)
+        <span class="hljs-keyword">if</span> os.path.isfile(candidate):
+            <span class="hljs-keyword">return</span> candidate
+    
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>
+</div></code></pre>
+<h3 id="fix-2-wire-delft3d-to-api-high">Fix 2: Wire Delft3D to API (HIGH)</h3>
+<p><strong>File:</strong> <code>services/api/jalraksha_service/tasks.py</code></p>
+<pre class="hljs"><code><div><span class="hljs-comment"># In submit_run_task():</span>
+<span class="hljs-keyword">if</span> solver <span class="hljs-keyword">in</span> (<span class="hljs-string">&quot;delft3d&quot;</span>, <span class="hljs-string">&quot;both&quot;</span>):
+    <span class="hljs-keyword">from</span> jalraksha.delft3d.runner <span class="hljs-keyword">import</span> resolve_delft3d
+    delft3d_path = resolve_delft3d()
+    <span class="hljs-keyword">if</span> delft3d_path <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+        <span class="hljs-comment"># Fall back to SWE with warning</span>
+        logger.warning(<span class="hljs-string">&quot;Delft3D not found, falling back to SWE&quot;</span>)
+        solver = <span class="hljs-string">&quot;swe&quot;</span>
+</div></code></pre>
+<h3 id="fix-3-set-jalraksha_gee_project-high">Fix 3: Set JALRAKSHA_GEE_PROJECT (HIGH)</h3>
+<pre class="hljs"><code><div>setx JALRAKSHA_GEE_PROJECT &quot;your-gcp-project-id&quot; /M
+</div></code></pre>
+<p>Then restart all terminals.</p>
+<h3 id="fix-4-wire-impact-to-dashboard-medium">Fix 4: Wire Impact to Dashboard (MEDIUM)</h3>
+<p><strong>File:</strong> <code>frontend/src/panels/ImpactPanel.jsx</code></p>
+<p>Ensure the panel:</p>
+<ol>
+<li>Receives impact data from <code>/runs/{id}/result</code></li>
+<li>Displays population at risk</li>
+<li>Displays damage estimate with uncertainty</li>
+<li>Displays fatality estimate with range</li>
+</ol>
+<h3 id="fix-5-wire-validation-to-dashboard-medium">Fix 5: Wire Validation to Dashboard (MEDIUM)</h3>
+<p><strong>File:</strong> <code>frontend/src/panels/ValidationPanel.jsx</code></p>
+<p>Add API endpoint:</p>
+<pre class="hljs"><code><div>GET /api/validate?test=ritter
+</div></code></pre>
+<p>Returns:</p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;test&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ritter&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;passed&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;max_error&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">0.03</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;plot_url&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;/files/validation_ritter.png&quot;</span>
+<span class="hljs-punctuation">}</span>
+</div></code></pre>
+<h2 id="62-optimization-opportunities">6.2 Optimization Opportunities</h2>
+<h3 id="performance">Performance</h3>
+<ol>
+<li><strong>Numba JIT:</strong> Already used in solver. Ensure all hot loops are <code>@njit</code> decorated.</li>
+<li><strong>Parallel ensemble:</strong> Already uses multiprocessing. Consider joblib for simpler API.</li>
+<li><strong>DEM caching:</strong> Already implemented. Ensure cache invalidation is correct.</li>
+<li><strong>COG generation:</strong> Use <code>rio-cogo</code> for faster Cloud-Optimized GeoTIFF creation.</li>
+</ol>
+<h3 id="code-quality">Code Quality</h3>
+<ol>
+<li><strong>Type hints:</strong> Add to all public functions.</li>
+<li><strong>Docstrings:</strong> Already comprehensive. Maintain.</li>
+<li><strong>Error handling:</strong> Add more specific exception types.</li>
+<li><strong>Logging:</strong> Replace <code>print()</code> with <code>logging</code> module.</li>
+</ol>
+<h3 id="security">Security</h3>
+<ol>
+<li><strong>Input validation:</strong> Pydantic schemas already validate. Add bounds checking.</li>
+<li><strong>Path traversal:</strong> Sanitize file paths in export functions.</li>
+<li><strong>CORS:</strong> Currently <code>allow_origins=[&quot;*&quot;]</code>. Restrict in production.</li>
+<li><strong>Secrets:</strong> Don't log environment variables.</li>
+</ol>
+<h2 id="63-demo-day-checklist">6.3 Demo-Day Checklist</h2>
+<h3 id="pre-baked-runs">Pre-Baked Runs</h3>
+<ul>
+<li><input type="checkbox" id="checkbox0"><label for="checkbox0">Tehri 100-member ensemble (pre-computed)</label></li>
+<li><input type="checkbox" id="checkbox1"><label for="checkbox1">Khadakwasla 100-member ensemble (pre-computed)</label></li>
+<li><input type="checkbox" id="checkbox2"><label for="checkbox2">Both runs exported to all formats (.tif, .shp, .kml, .xdmf)</label></li>
+</ul>
+<h3 id="environment">Environment</h3>
+<ul>
+<li><input type="checkbox" id="checkbox3"><label for="checkbox3">Redis running (or CELERY_EAGER=1)</label></li>
+<li><input type="checkbox" id="checkbox4"><label for="checkbox4">Frontend dev server running</label></li>
+<li><input type="checkbox" id="checkbox5"><label for="checkbox5">API server running</label></li>
+<li><input type="checkbox" id="checkbox6"><label for="checkbox6">DEM cached locally (offline demo)</label></li>
+</ul>
+<h3 id="fallback-plan">Fallback Plan</h3>
+<ul>
+<li><input type="checkbox" id="checkbox7"><label for="checkbox7">If UI dies: CLI log + GeoTIFF in QGIS + one keyframe PNG</label></li>
+<li><input type="checkbox" id="checkbox8"><label for="checkbox8">If Delft3D fails: Show SWE-only with &quot;Delft3D unavailable&quot; badge</label></li>
+<li><input type="checkbox" id="checkbox9"><label for="checkbox9">If GEE fails: Show &quot;GEE not configured&quot; message</label></li>
+<li><input type="checkbox" id="checkbox10"><label for="checkbox10">If internet fails: Use cached DEM + pre-baked runs</label></li>
+</ul>
+<hr>
+<h1 id="appendix-a-file-inventory">Appendix A: File Inventory</h1>
+<h2 id="core-library-jalraksha">Core Library (<code>jalraksha/</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__init__.py</code></td>
+<td>~10</td>
+<td>Package init</td>
+</tr>
+<tr>
+<td><code>api.py</code></td>
+<td>~200</td>
+<td>High-level API</td>
+</tr>
+<tr>
+<td><code>cache.py</code></td>
+<td>~100</td>
+<td>Cache management</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>~168</td>
+<td>CLI entry point</td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>~80</td>
+<td>Configuration</td>
+</tr>
+<tr>
+<td><code>dem.py</code></td>
+<td>~607</td>
+<td>DEM fetch/processing</td>
+</tr>
+<tr>
+<td><code>hardening.py</code></td>
+<td>~150</td>
+<td>Dam type hardening</td>
+</tr>
+<tr>
+<td><code>presets.py</code></td>
+<td>~421</td>
+<td>Dam presets</td>
+</tr>
+<tr>
+<td><code>run.py</code></td>
+<td>~843</td>
+<td>Pipeline orchestrator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="solver-jalrakshasolver">Solver (<code>jalraksha/solver/</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core.py</code></td>
+<td>~400</td>
+<td>SWE solver core</td>
+</tr>
+<tr>
+<td><code>flux.py</code></td>
+<td>~200</td>
+<td>HLLC flux</td>
+</tr>
+<tr>
+<td><code>parallel.py</code></td>
+<td>~100</td>
+<td>Ensemble parallelization</td>
+</tr>
+<tr>
+<td><code>types.py</code></td>
+<td>~80</td>
+<td>Grid/State types</td>
+</tr>
+</tbody>
+</table>
+<h2 id="terrain-jalrakshaterrain">Terrain (<code>jalraksha/terrain/</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>breach.py</code></td>
+<td>~300</td>
+<td>Breach hydrographs</td>
+</tr>
+<tr>
+<td><code>conditioning.py</code></td>
+<td>~150</td>
+<td>Terrain conditioning</td>
+</tr>
+<tr>
+<td><code>domain.py</code></td>
+<td>~250</td>
+<td>Domain construction</td>
+</tr>
+<tr>
+<td><code>roughness.py</code></td>
+<td>~100</td>
+<td>Manning friction</td>
+</tr>
+</tbody>
+</table>
+<h2 id="impact-jalrakshaimpact">Impact (<code>jalraksha/impact/</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>damage.py</code></td>
+<td>~150</td>
+<td>Damage estimation</td>
+</tr>
+<tr>
+<td><code>fatality.py</code></td>
+<td>~120</td>
+<td>Fatality estimation</td>
+</tr>
+<tr>
+<td><code>hazard.py</code></td>
+<td>~100</td>
+<td>Hazard classification</td>
+</tr>
+<tr>
+<td><code>population.py</code></td>
+<td>~100</td>
+<td>Population at risk</td>
+</tr>
+</tbody>
+</table>
+<h2 id="export-jalrakshaexport">Export (<code>jalraksha/export/</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>geotiff.py</code></td>
+<td>~200</td>
+<td>GeoTIFF export</td>
+</tr>
+<tr>
+<td><code>shapefile.py</code></td>
+<td>~150</td>
+<td>Shapefile export</td>
+</tr>
+<tr>
+<td><code>kml.py</code></td>
+<td>~120</td>
+<td>KML export</td>
+</tr>
+<tr>
+<td><code>xdmf_export.py</code></td>
+<td>~180</td>
+<td>XDMF export</td>
+</tr>
+<tr>
+<td><code>keyframes.py</code></td>
+<td>~100</td>
+<td>Keyframe generation</td>
+</tr>
+<tr>
+<td><code>georef.py</code></td>
+<td>~80</td>
+<td>Georeferencing</td>
+</tr>
+<tr>
+<td><code>matlab_export.py</code></td>
+<td>~80</td>
+<td>MATLAB export</td>
+</tr>
+</tbody>
+</table>
+<h2 id="external-models">External Models</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Files</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>delft3d/</code></td>
+<td>5 files</td>
+<td>Built, not wired</td>
+</tr>
+<tr>
+<td><code>sph/</code></td>
+<td>4 files</td>
+<td>Built, not wired</td>
+</tr>
+<tr>
+<td><code>gee/</code></td>
+<td>3 files</td>
+<td>Built, needs auth</td>
+</tr>
+<tr>
+<td><code>validation/</code></td>
+<td>4 files</td>
+<td>Standalone</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h1 id="appendix-b-api-reference">Appendix B: API Reference</h1>
+<h2 id="endpoints">Endpoints</h2>
+<h3 id="post-runs">POST /runs</h3>
+<p>Submit a simulation job.</p>
+<p><strong>Request:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;dam_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;tehri&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;swe&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;ensemble_size&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">100</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver_duration_s&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1800</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;target_resolution&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">200</span>
+<span class="hljs-punctuation">}</span>
+</div></code></pre>
+<p><strong>Response:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;run_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;abc123&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;status&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;queued&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;swe&quot;</span>
+<span class="hljs-punctuation">}</span>
+</div></code></pre>
+<h3 id="get-runsrun_id">GET /runs/{run_id}</h3>
+<p>Get run status.</p>
+<p><strong>Response:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;run_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;abc123&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;status&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;done&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;progress_pct&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">100.0</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;solver&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;swe&quot;</span>
+<span class="hljs-punctuation">}</span>
+</div></code></pre>
+<h3 id="get-runsrun_idresult">GET /runs/{run_id}/result</h3>
+<p>Get run results.</p>
+<p><strong>Response:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;run_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;abc123&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;dam_name&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Tehri Dam&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;exports&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+        <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;kind&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;cog_h_max_median&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;path_or_url&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;/files/abc123/h_max_median.tif&quot;</span><span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;kind&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;shp_inundation_zip&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;path_or_url&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;/files/abc123/inundation.zip&quot;</span><span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;kind&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;kml_inundation&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;path_or_url&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;/files/abc123/inundation.kml&quot;</span><span class="hljs-punctuation">}</span>
+    <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;gauges&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+        <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;gauge_name&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Koteshwar&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;distance_km&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">13.0</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;arrival_time_s&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1200</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;max_depth_m&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">15.2</span><span class="hljs-punctuation">}</span>
+    <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-string">&quot;h</span></div></code></pre>
+
+</body>
+</html>

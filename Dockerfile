@@ -19,8 +19,14 @@ COPY jalraksha /app/jalraksha
 # Install JalRaksha and dependencies
 RUN pip install --no-cache-dir -e .
 
-# Expose Streamlit dashboard port
-EXPOSE 8501
-
-# Default command launches CLI help or Streamlit dashboard
-CMD ["streamlit", "run", "jalraksha/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# This image packages the jalraksha library and its CLI only.
+#
+# It previously launched a Streamlit dashboard on 8501; that dashboard has been
+# removed, superseded by the React frontend + FastAPI service. Those are built
+# by frontend/Dockerfile and services/api/Dockerfile respectively and wired up
+# in docker-compose.yml — this file is not referenced by compose at all.
+#
+# Default to the CLI's help rather than a server: the image has no web
+# component to serve, and silently exposing a port nothing listens on is worse
+# than doing nothing.
+CMD ["python", "-m", "jalraksha.cli", "--help"]

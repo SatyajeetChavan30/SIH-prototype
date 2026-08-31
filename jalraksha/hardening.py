@@ -99,7 +99,15 @@ def validate_dam_config(config: Dict[str, Any]) -> None:
             f"Valid modes: {sorted(valid_failure_modes)}"
         )
 
-    valid_dam_types = {"embankment", "concrete", "arch", "rockfill", "gravity", "other"}
+    valid_dam_types = {
+        "embankment", "concrete", "arch", "rockfill", "gravity", "other",
+        # A masonry gravity dam is a gravity dam; "masonry" is the natural word
+        # for one and rejecting it was a vocabulary failure, not a validation.
+        # Accepted as an alias rather than a new class, because nothing
+        # downstream distinguishes it from "gravity" — see breach.py's
+        # FITTED_DAM_CLASSES, where both sit outside the fitted population.
+        "masonry",
+    }
     dam_type = config.get("dam_type", "embankment")
     if dam_type not in valid_dam_types:
         raise HardeningError(
@@ -130,12 +138,9 @@ def validate_ensemble_params(
             f"[{ENSEMBLE_SIZE_MIN}, {ENSEMBLE_SIZE_MAX}]."
         )
 
-    if not isinstance(solver_duration_s, (int, float)) or not (
-        SOLVER_DURATION_MIN_S <= solver_duration_s <= SOLVER_DURATION_MAX_S
-    ):
+    if not isinstance(solver_duration_s, (int, float)) or solver_duration_s < SOLVER_DURATION_MIN_S:
         raise HardeningError(
-            f"solver_duration_s={solver_duration_s!r} s out of range "
-            f"[{SOLVER_DURATION_MIN_S}, {SOLVER_DURATION_MAX_S}] s."
+            f"solver_duration_s={solver_duration_s!r} s must be >= {SOLVER_DURATION_MIN_S} s."
         )
 
     if not isinstance(target_resolution, (int, float)) or target_resolution <= 0 or target_resolution > 5000:

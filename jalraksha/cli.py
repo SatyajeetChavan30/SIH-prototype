@@ -18,8 +18,20 @@ Outputs:
 """
 
 import argparse
+import json
 from pathlib import Path
+import sys
 from typing import Optional
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
+from jalraksha_service.db import (
+    create_run,
+    init_db,
+    insert_exports,
+    insert_gauge_results,
+    update_run_status,
+)
 
 from jalraksha.config import load_config, setup_cache, ConfigError
 from jalraksha.dem import fetch_dem
@@ -43,6 +55,9 @@ def main():
     )
     run_parser.add_argument(
         "--ensemble-size", type=int, default=10, help="Number of breach ensemble members"
+    )
+    run_parser.add_argument(
+        "--time", type=float, default=1800.0, help="Simulation duration in seconds (default 1800)"
     )
 
     # `jalraksha validate` — check config only
@@ -70,6 +85,7 @@ def main():
 
 def cmd_run(args):
     """Execute: jalraksha run"""
+    run_id = None
     try:
         # Load config from file or CLI args
         if args.config:
@@ -88,8 +104,26 @@ def cmd_run(args):
                 "crs": "EPSG:32643",
             }
 
-        # Set up cache
+        # Set up cache and ensure output dir exists
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+        init_db()
         cache_dir = setup_cache(args.output_dir)
+
+        run_id = create_run(
+            dam_id=config.get("dam_name"),
+            params={
+                "dam_name": config.get("dam_name"),
+                "lat": config["dam_location"][0],
+                "lon": config["dam_location"][1],
+                "height_m": config["dam_height"],
+                "storage_mm3": config["gross_storage"],
+                "ensemble_size": getattr(args, "ensemble_size", 10),
+                "solver_duration_s": float(getattr(args, "time", 1800.0)),
+                "output_dir": args.output_dir,
+            },
+            solver="swe",
+        )
+        print(f"[RUN_ID] {run_id}")
 
         # Fetch DEM (Phase 0)
         print(f"\n[INFO] Preparing simulation for {config.get('dam_name', 'unnamed')} dam...")
@@ -118,9 +152,31 @@ def cmd_run(args):
             dem_path=str(dem_path),
             ensemble_size=getattr(args, "ensemble_size", 10),
             output_dir=args.output_dir,
-            solver_duration_s=1800.0,
+            solver_duration_s=float(getattr(args, "time", 1800.0)),
             target_resolution=200.0,
         )
+
+        update_run_status(run_id, "done", 100.0)
+        # Record gauge results if present
+        if results.get("arrival_times"):
+            gauges = []
+            for gname, g in results["arrival_times"].items():
+                gauges.append({
+                    "gauge_name": gname,
+                    "distance_km": g.get("distance_km"),
+                    "arrival_time_s": g.get("median"),
+                    "max_depth_m": None,
+                    "par_estimate": None,
+                })
+            insert_gauge_results(run_id, gauges)
+        # Record exports
+        exports = []
+        for kind, path in (results.get("raster_paths") or {}).items():
+            exports.append({"kind": kind, "path_or_url": path})
+        if results.get("keyframe_manifest_url"):
+            exports.append({"kind": "keyframe_manifest", "path_or_url": results["keyframe_manifest_url"]})
+        insert_exports(run_id, exports)
+        print(f"[RUN_ID] {run_id} — done")
 
         print("\n[SUCCESS] Simulation completed successfully!")
 
@@ -128,6 +184,8 @@ def cmd_run(args):
         print(f"[ERROR] Config error: {e}")
         exit(1)
     except Exception as e:
+        if run_id is not None:
+            update_run_status(run_id, "failed", 0.0, error=str(e))
         print(f"[ERROR] Error: {e}")
         exit(1)
 

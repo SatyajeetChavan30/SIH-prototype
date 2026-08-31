@@ -17,11 +17,154 @@ References:
 
 import numpy as np
 import rasterio
-from rasterio.transform import Affine
-from scipy.ndimage import gaussian_filter
+from rasterio.transform import Affine, from_origin
+from rasterio.warp import Resampling, reproject
+from scipy.ndimage import gaussian_filter, distance_transform_edt
 from scipy.interpolate import RegularGridInterpolator
 
 from jalraksha.solver.types import Grid, State, create_state
+
+
+def _fill_nodata(elevation: np.ndarray, invalid_mask: np.ndarray) -> np.ndarray:
+    """
+    Fill nodata cells with their nearest valid neighbour's elevation.
+
+    Copernicus GLO-30 has genuine voids over steep terrain and water bodies, and
+    reprojection leaves nodata in the corners where the rotated source footprint
+    does not cover the metric grid. Either way an unfilled cell is a hole in the
+    bed: the solver would drain the whole reservoir into it (CLAUDE.md "DEM
+    artifacts"). Nearest-neighbour fill is crude but never invents a sink, which
+    is the property that matters here.
+    """
+    if not invalid_mask.any():
+        return elevation
+    # distance_transform_edt returns, for each invalid cell, the index of the
+    # nearest valid cell — exactly the lookup we need.
+    nearest = distance_transform_edt(
+        invalid_mask, return_distances=False, return_indices=True
+    )
+    return elevation[tuple(nearest)]
+
+
+def load_dem_as_grid(
+    dem_path: str,
+    dam_lat: float,
+    dam_lon: float,
+    target_resolution: float = 200.0,
+    domain_radius_km: float = 60.0,
+    smooth_sigma: float = 0.0,
+) -> tuple:
+    """
+    Load a DEM and reproject it onto a uniform metric grid centred on the dam.
+
+    This is the single honest DEM -> Grid path. It replaces two broken ones: the
+    old preprocess_dem() never reprojected (it divided a span in *degrees* by a
+    resolution in *metres*, yielding nx=0 clamped to a 10x10 floor, and hardcoded
+    EPSG:32643 regardless of location), and terrain/domain.py::build_domain()
+    ignored the DEM entirely in favour of a synthetic cone.
+
+    CLAUDE.md requires a metric CRS for every solver operation — never degrees.
+
+    Args:
+        dem_path: GeoTIFF DEM, typically geographic (EPSG:4326) from Phase 0.
+        dam_lat, dam_lon: Dam location (degrees), used to centre the domain and
+            to select the UTM zone.
+        target_resolution: Grid spacing (m).
+        domain_radius_km: Half-width of the square domain (km).
+        smooth_sigma: Gaussian smoothing in cells. DEFAULTS TO 0 (disabled).
+
+            Measured against the 30 m source at two Bhagirathi landmarks, an
+            isotropic Gaussian roughly DOUBLES the valley-floor error, because it
+            blends the channel with the canyon walls that tower over it:
+
+                                    sigma=0   sigma=1
+                Tehri    @ 400 m     +31.5 m   +39.5 m
+                Devprayag@ 400 m     +61.8 m  +140.3 m
+                Tehri    @ 200 m     +17.7 m   +25.0 m
+                Devprayag@ 200 m     +31.8 m   +82.3 m
+
+            A river bed raised 140 m is not a cosmetic defect: it is the surface
+            the flood routes over. The residual bias at sigma=0 is irreducible
+            sub-grid averaging (a gorge narrower than one cell must average floor
+            and wall), and halves with resolution as expected.
+
+            CLAUDE.md's warning about GLO-30 cliff/water-body artifacts still
+            stands, but a low-pass filter is the wrong instrument for it — it
+            attacks the channel hardest. Use the edge-aware path
+            (apply_edge_detection) for artifact suppression instead.
+
+    Returns:
+        (grid, bed_elevation): a Grid in metric CRS, and the float64 bed
+        elevation array of shape (grid.ny, grid.nx). Row 0 is the SOUTHERNMOST
+        row, matching Grid.cell_centres_y() which increases northward.
+    """
+    # Local import: terrain.domain imports this module's siblings, and importing
+    # it at module scope would create a cycle.
+    from jalraksha.terrain.domain import latlon_to_utm
+
+    zone, dam_easting, dam_northing = latlon_to_utm(dam_lat, dam_lon)
+    epsg = (32600 if dam_lat >= 0 else 32700) + zone
+    dst_crs = f"EPSG:{epsg}"
+
+    half_span_m = domain_radius_km * 1000.0
+    n_cells = int(round(2.0 * half_span_m / target_resolution))
+    if n_cells < 10:
+        raise ValueError(
+            f"Domain of {domain_radius_km} km at {target_resolution} m resolution "
+            f"gives only {n_cells} cells; increase the radius or refine the grid."
+        )
+
+    x0 = dam_easting - half_span_m
+    y0 = dam_northing - half_span_m
+
+    # Destination transform is north-up (row 0 = north), which is the raster
+    # convention rasterio.warp expects. We flip to south-up at the end to match
+    # the Grid's y-increasing-northward convention.
+    dst_transform = from_origin(x0, y0 + n_cells * target_resolution,
+                                target_resolution, target_resolution)
+    destination = np.full((n_cells, n_cells), np.nan, dtype=np.float64)
+
+    with rasterio.open(dem_path) as src:
+        src_nodata = src.nodata
+        reproject(
+            source=rasterio.band(src, 1),
+            destination=destination,
+            src_transform=src.transform,
+            src_crs=src.crs,
+            src_nodata=src_nodata,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            dst_nodata=np.nan,
+            resampling=Resampling.bilinear,
+        )
+
+    invalid = ~np.isfinite(destination)
+    if src_nodata is not None:
+        invalid |= destination == src_nodata
+    n_invalid = int(invalid.sum())
+    if n_invalid:
+        if n_invalid == destination.size:
+            raise ValueError(
+                f"DEM {dem_path} does not cover the {domain_radius_km} km domain "
+                f"around ({dam_lat}, {dam_lon}) — every cell is nodata."
+            )
+        print(f"  Filling {n_invalid} nodata cell(s) ({n_invalid / destination.size * 100:.2f}%)")
+        destination = _fill_nodata(destination, invalid)
+
+    if smooth_sigma and smooth_sigma > 0:
+        destination = gaussian_filter(destination, sigma=smooth_sigma)
+
+    # Flip north-up raster rows to south-up, so row 0 is the southernmost row and
+    # indexing agrees with Grid.cell_centres_y() / the keyframe bounds in
+    # jalraksha/export/keyframes.py.
+    bed_elevation = np.ascontiguousarray(np.flipud(destination), dtype=np.float64)
+
+    grid = Grid(
+        nx=n_cells, ny=n_cells,
+        dx=target_resolution, dy=target_resolution,
+        x0=x0, y0=y0, crs=dst_crs,
+    )
+    return grid, bed_elevation
 
 
 def preprocess_dem(
@@ -43,50 +186,109 @@ def preprocess_dem(
         domain_radius_km: Domain extent from dam center (default 60 km)
 
     Returns:
-        (grid, state): Grid object and initial State for solver
+        (grid, state, manning_n_field): Grid in metric CRS, initial State with a
+        DRY bed and real topography in .b, and the Manning's n field.
+
+    Note:
+        This is now a thin wrapper over load_dem_as_grid(). The previous body
+        divided a span in degrees by a resolution in metres (nx = 1.0 / 200 -> 0,
+        clamped to a 10x10 floor), mixed degree origins with metre spacing, and
+        hardcoded EPSG:32643 for every location. It also started the domain with
+        a uniform 1 m of water everywhere, which is not a physical initial
+        condition for a dam-break run.
     """
-    # Load DEM from cache
     with rasterio.open(dem_path) as dem_src:
-        dem_data = dem_src.read(1)  # Band 1
-        dem_transform = dem_src.transform
-        dem_crs = dem_src.crs
-        dem_bounds = dem_src.bounds
-        dem_res_x = dem_src.res[0]
-        dem_res_y = dem_src.res[1]
+        src_crs = dem_src.crs
+        bounds = dem_src.bounds
 
-    # Resample DEM to target resolution
-    dem_resampled = resample_dem(dem_data, dem_res_x, target_resolution)
-
-    # Apply smoothing (Gaussian filter, σ=1 pixel)
-    dem_smooth = gaussian_filter(dem_resampled.astype(np.float32), sigma=1.0)
-
-    # Create uniform Cartesian grid in metric CRS
-    # For now, use simple lat/lon bounds; later convert to UTM via dam location
-    nx = int((dem_bounds.right - dem_bounds.left) / target_resolution)
-    ny = int((dem_bounds.top - dem_bounds.bottom) / target_resolution)
-
-    grid = Grid(
-        nx=max(nx, 10),  # Minimum 10 cells
-        ny=max(ny, 10),
-        dx=target_resolution,
-        dy=target_resolution,
-        x0=dem_bounds.left,
-        y0=dem_bounds.bottom,
-        crs="EPSG:32643",  # UTM 43N for India (will be refined in domain.py)
+    # A CRS tag can lie. Only treat a DEM as geographic if its bounds are also
+    # plausible degrees — mislabelled rasters (EPSG:4326 declared over a metre
+    # transform) are common enough in the wild that trusting the tag alone
+    # produces a domain centred at, say, (450 N, -27450 E).
+    looks_geographic = (
+        src_crs is not None
+        and src_crs.is_geographic
+        and -180.0 <= bounds.left < bounds.right <= 180.0
+        and -90.0 <= bounds.bottom < bounds.top <= 90.0
     )
 
-    # Interpolate DEM to grid
-    bed_elevation = interpolate_dem_to_grid(dem_smooth, grid, dem_bounds)
+    if dam_lat is None or dam_lon is None:
+        if looks_geographic:
+            # Geographic DEM, no dam given: centre the metric domain on the DEM.
+            dam_lon = (bounds.left + bounds.right) / 2.0
+            dam_lat = (bounds.bottom + bounds.top) / 2.0
+        else:
+            # Already-metric DEM (or no CRS at all): its own extent IS the
+            # domain, so resample in place. Reprojecting it onto a dam-centred
+            # UTM grid would be wrong twice over — there is no dam location to
+            # centre on, and the coordinates are metres already.
+            grid, bed_elevation = _grid_from_projected_dem(dem_path, target_resolution)
+            return _finish_domain(grid, bed_elevation)
 
-    # Assign Manning's n (default uniform if no table provided)
-    if manning_table is None:
-        manning_n_field = np.ones((grid.ny, grid.nx)) * 0.03
-    else:
-        manning_n_field = np.ones((grid.ny, grid.nx)) * 0.03  # TODO: load worldcover
+    grid, bed_elevation = load_dem_as_grid(
+        dem_path,
+        dam_lat,
+        dam_lon,
+        target_resolution=target_resolution,
+        domain_radius_km=domain_radius_km,
+    )
+    return _finish_domain(grid, bed_elevation)
 
-    # Initial conditions: still water
-    h_init = np.ones((grid.ny, grid.nx), dtype=np.float32) * 1.0  # 1 m initial depth
-    state = create_state(grid, h_init, b_init=bed_elevation.astype(np.float32))
+
+def _grid_from_projected_dem(dem_path: str, target_resolution: float) -> tuple:
+    """Resample an already-metric DEM onto a uniform grid over its own extent."""
+    with rasterio.open(dem_path) as src:
+        bounds = src.bounds
+        crs = src.crs
+        nx = max(10, int(round((bounds.right - bounds.left) / target_resolution)))
+        ny = max(10, int(round((bounds.top - bounds.bottom) / target_resolution)))
+
+        dst_transform = from_origin(
+            bounds.left, bounds.bottom + ny * target_resolution,
+            target_resolution, target_resolution,
+        )
+        destination = np.full((ny, nx), np.nan, dtype=np.float64)
+        reproject(
+            source=rasterio.band(src, 1),
+            destination=destination,
+            src_transform=src.transform,
+            src_crs=crs,
+            src_nodata=src.nodata,
+            dst_transform=dst_transform,
+            dst_crs=crs,
+            dst_nodata=np.nan,
+            resampling=Resampling.bilinear,
+        )
+
+    invalid = ~np.isfinite(destination)
+    if invalid.any():
+        if invalid.all():
+            raise ValueError(f"DEM {dem_path} has no valid cells.")
+        destination = _fill_nodata(destination, invalid)
+
+    grid = Grid(
+        nx=nx, ny=ny, dx=target_resolution, dy=target_resolution,
+        x0=bounds.left, y0=bounds.bottom,
+        crs=str(crs) if crs is not None else "EPSG:32643",
+    )
+    # Flip to south-up rows, matching Grid.cell_centres_y().
+    return grid, np.ascontiguousarray(np.flipud(destination), dtype=np.float64)
+
+
+def _finish_domain(grid: Grid, bed_elevation: np.ndarray) -> tuple:
+    """Wrap a (grid, bed) pair into the (grid, state, manning) triple."""
+
+    # TODO: UNVETTED — uniform 0.03 until terrain/roughness.py returns a real
+    # ESA WorldCover field; 0.03 is a conventional natural-channel value
+    # (Chow 1959, Table 5-6).
+    manning_n_field = np.full((grid.ny, grid.nx), 0.03, dtype=np.float64)
+
+    # Dry bed: depth in h, elevation in b.
+    state = create_state(
+        grid,
+        h_init=np.zeros((grid.ny, grid.nx), dtype=np.float64),
+        b_init=bed_elevation,
+    )
 
     return grid, state, manning_n_field
 
