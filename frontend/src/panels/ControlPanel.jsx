@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import {
   listDams, submitRun, pollUntilDone, getResult, openInParaview,
-  listRuns, getGeeStatus,
+  listRuns, getGeeStatus, getBlockageDetection,
 } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
+
+// Grid resolution every run is submitted at. Named rather than left to the
+// API's default because the blockage form has to state, live, how many cells a
+// barrier of a given width spans — a barrier narrower than a couple of cells
+// has an outflow governed by the mesh instead of by the deposit, and the
+// operator should see that before submitting, not as a 422 afterwards.
+const TARGET_RESOLUTION_M = 100;
 
 /**
  * Control panel (brief §5.4).
@@ -22,6 +29,18 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   const [heightM, setHeightM] = useState(DAM.height_m);
   const [storage, setStorage] = useState(DAM.storage_mm3);
   const [breachMode, setBreachMode] = useState("central");
+  const [scenarioType, setScenarioType] = useState("dam_break");
+  // Landslide-barrier geometry. None of it can come from the site record: the
+  // deposit is not the dam, and a natural dam has no published dimensions.
+  // "manual" is the default because it needs no network — the offline path is
+  // the demo's guaranteed floor, and auto-detection is a bonus on top of it.
+  const [blockageSource, setBlockageSource] = useState("manual");
+  const [blockageLat, setBlockageLat] = useState("");
+  const [blockageLon, setBlockageLon] = useState("");
+  const [blockageCrestM, setBlockageCrestM] = useState(50);
+  const [blockageWidthM, setBlockageWidthM] = useState(600);
+  const [blockageBreachMode, setBlockageBreachMode] = useState("overtop");
+  const [detection, setDetection] = useState(null);
   const [ensemble, setEnsemble] = useState(100);
   const [solver, setSolver] = useState("swe");
   // 180 min, not 30. At 30 minutes the flood covers ~3.7 km and Khadakwasla's
@@ -88,6 +107,60 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   };
 
   const selectedDam = dams.find((d) => d.id === damId) || null;
+
+  // Which scenarios this site can model, read from the registry.
+  //
+  // This used to be `isMuthaRiverScenario = scenarioType !== "dam_break"` and
+  // `effectiveDamId = isMuthaRiverScenario ? "khadakwasla" : damId`, which
+  // routed EVERY non-dam-break scenario to one dam. That made a dedicated
+  // blockage site unreachable from the UI no matter what the backend supported,
+  // and the variable name encoded the assumption. Records without the field are
+  // pre-existing hand-written dams, which model everything.
+  const ALL_SCENARIOS = ["dam_break", "river_blockage", "river_overflow"];
+  const scenariosFor = (dam) => dam?.scenario_types || ALL_SCENARIOS;
+  const availableScenarios = scenariosFor(selectedDam);
+  const isBlockage = scenarioType === "river_blockage";
+  const isRiverScenario = scenarioType !== "dam_break";
+  const isBlockageSite = selectedDam?.record_type === "blockage";
+
+  // Fall back to a site that CAN model the chosen scenario, rather than to one
+  // hardcoded dam. Only fires when the current selection genuinely cannot.
+  const fallbackSite = dams.find((d) => scenariosFor(d).includes(scenarioType));
+  const effectiveDamId = availableScenarios.includes(scenarioType)
+    ? damId
+    : fallbackSite?.id || damId;
+
+  // A manual blockage cannot run without its barrier. Checked here so the Run
+  // button is disabled with an explanation, rather than round-tripping to a 422.
+  const blockageIncomplete =
+    isBlockage &&
+    blockageSource === "manual" &&
+    !(blockageLat !== "" && blockageLon !== "" && blockageCrestM > 0 && blockageWidthM > 0);
+
+  // Seed the barrier position from the site, and RE-seed whenever the site
+  // changes. A position the operator typed belongs to the site they typed it
+  // for; carrying it across to another river would place the barrier hundreds
+  // of kilometres from the terrain being simulated, and the geometry would fail
+  // with an out-of-domain error rather than an obvious one.
+  //
+  // Prefers the site's terrain-derived suggestion over its reach centre: the
+  // centre is where the map marker sits, which for a mountain reach can be a
+  // ridge, and a barrier seeded on a ridge fails the valley-spanning check.
+  const seededSiteRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!isBlockage || !selectedDam) return;
+    if (seededSiteRef.current === selectedDam.id) return;
+    seededSiteRef.current = selectedDam.id;
+    setBlockageLat(selectedDam.suggested_barrier_lat ?? selectedDam.lat);
+    setBlockageLon(selectedDam.suggested_barrier_lon ?? selectedDam.lon);
+    if (selectedDam.blockage_crest_height_m) {
+      setBlockageCrestM(selectedDam.blockage_crest_height_m);
+    }
+    if (selectedDam.blockage_width_m) {
+      setBlockageWidthM(selectedDam.blockage_width_m);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBlockage, selectedDam?.id]);
   // loadExisting closes over damId; a ref keeps its comparison current without
   // adding damId to every dependency list that touches it.
   const damIdRef = React.useRef(damId);
@@ -112,16 +185,31 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
     // dam_id must be absent for a custom dam: the API's `else` branch (explicit
     // lat/lon/height/storage) is only reachable when dam_id is falsy, so
     // posting the literal "custom" hit its Unknown dam_id path and 422'd.
-    const isCustom = !damId || damId === "custom";
+    const isCustom = !effectiveDamId || effectiveDamId === "custom";
     const runId = (await submitRun({
-      dam_id: isCustom ? null : damId,
+      dam_id: isCustom ? null : effectiveDamId,
       ...(isCustom ? { lat: DAM.lat, lon: DAM.lon } : {}),
-      height_m: heightM,
-      storage_mm3: storage,
+      // A blockage sends no height or storage. Its crest comes from the barrier
+      // spec and its impounded volume is measured from the updated DEM; sending
+      // a slider value would be exactly the request the API refuses, and for
+      // the right reason.
+      ...(isBlockage ? {} : { height_m: heightM, storage_mm3: storage }),
       breach_mode: breachMode,
+      scenario_type: scenarioType,
       ensemble_size: ensemble,
       solver,
       solver_duration_s: (durationMin || 30) * 60,
+      target_resolution: TARGET_RESOLUTION_M,
+      ...(isBlockage ? {
+        blockage_source: blockageSource,
+        blockage_lat: blockageLat === "" ? null : +blockageLat,
+        blockage_lon: blockageLon === "" ? null : +blockageLon,
+        blockage_crest_height_m: blockageCrestM || null,
+        blockage_width_m: blockageWidthM || null,
+        blockage_breach_mode: blockageBreachMode,
+        blockage_date_pre: selectedDam?.blockage_date_pre || null,
+        blockage_date_post: selectedDam?.blockage_date_post || null,
+      } : {}),
     })).run_id;
     setStatus(`queued ${runId.slice(0, 8)}`);
     setCurrentRunId(runId);
@@ -186,28 +274,87 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   return (
     <div style={{ padding: 12, width: 280, overflowY: "auto", borderRight: "1px solid #ddd" }}>
       <h3>JalRaksha</h3>
-      <label>Dam</label>
-      <select value={damId || ""} onChange={(e) => selectDam(e.target.value)}>
+      <label>Site</label>
+      <select value={effectiveDamId || ""}
+              onChange={(e) => selectDam(e.target.value)}>
         {dams.map((d) => (
-          <option key={d.id} value={d.id}>{d.name}</option>
+          <option key={d.id} value={d.id}
+                  disabled={!scenariosFor(d).includes(scenarioType)}>
+            {d.name}{d.record_type === "blockage" ? " (blockage site)" : ""}
+          </option>
         ))}
         <option value="custom">Custom</option>
       </select>
 
-      <label>Height (m): {heightM}</label>
-      <input type="range" min="10" max="400" value={heightM}
-             onChange={(e) => setHeightM(+e.target.value)} />
-
-      <label>Storage (MCM): {storage}</label>
-      <input type="range" min="10" max="20000" value={storage}
-             onChange={(e) => setStorage(+e.target.value)} />
-
-      <label>Breach mode</label>
-      <select value={breachMode} onChange={(e) => setBreachMode(e.target.value)}>
-        <option value="central">Central</option>
-        <option value="overtopping">Overtopping</option>
-        <option value="piping">Piping</option>
+      <label>Simulation scenario</label>
+      <select
+        value={scenarioType}
+        onChange={(e) => {
+          const next = e.target.value;
+          setScenarioType(next);
+          // Move to a site that can model the chosen scenario only when the
+          // current one cannot. The panel used to pin every non-dam-break
+          // scenario to Khadakwasla unconditionally, which made a dedicated
+          // blockage site unreachable.
+          if (!scenariosFor(selectedDam).includes(next)) {
+            const site = dams.find((d) => scenariosFor(d).includes(next));
+            if (site) selectDam(site.id);
+          }
+        }}
+      >
+        <option value="dam_break"
+                disabled={!availableScenarios.includes("dam_break") && !fallbackSite}>
+          Dam break
+        </option>
+        <option value="river_blockage">River blockage (landslide dam)</option>
+        <option value="river_overflow">River overflow (screening)</option>
       </select>
+      {selectedDam?.note && (
+        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+          {selectedDam.note}
+        </div>
+      )}
+      {scenarioType === "river_overflow" && (
+        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+          Screening only. The release is volume-conserving and its shape is an
+          assumption — modelling a controlled spillway release needs a gate
+          rating curve and an operating rule, which this project does not have.
+        </div>
+      )}
+
+      {!isBlockage && <>
+        <label>Height (m): {heightM}</label>
+        <input type="range" min="10" max="400" value={heightM}
+               onChange={(e) => setHeightM(+e.target.value)} />
+
+        <label>Storage (MCM): {storage}</label>
+        <input type="range" min="10" max="20000" value={storage}
+               onChange={(e) => setStorage(+e.target.value)} />
+      </>}
+
+      {isBlockage && (
+        <BlockageControls
+          gee={gee}
+          site={selectedDam}
+          source={blockageSource} setSource={setBlockageSource}
+          lat={blockageLat} setLat={setBlockageLat}
+          lon={blockageLon} setLon={setBlockageLon}
+          crestHeightM={blockageCrestM} setCrestHeightM={setBlockageCrestM}
+          widthM={blockageWidthM} setWidthM={setBlockageWidthM}
+          breachMode={blockageBreachMode} setBreachMode={setBlockageBreachMode}
+          targetResolution={TARGET_RESOLUTION_M}
+          detection={detection} setDetection={setDetection}
+        />
+      )}
+
+      {scenarioType === "dam_break" && <>
+        <label>Breach mode</label>
+        <select value={breachMode} onChange={(e) => setBreachMode(e.target.value)}>
+          <option value="central">Central</option>
+          <option value="overtopping">Overtopping</option>
+          <option value="piping">Piping</option>
+        </select>
+      </>}
 
       <label>Ensemble size: {ensemble}</label>
       <input type="range" min="1" max="10000" value={ensemble}
@@ -220,8 +367,8 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       <label>Solver</label>
       <select value={solver} onChange={(e) => setSolver(e.target.value)}>
         <option value="swe">SWE (screening)</option>
-        <option value="delft3d">Delft3D FM</option>
-        <option value="both">Both (compare)</option>
+        <option value="delft3d" disabled={isRiverScenario}>Delft3D FM</option>
+        <option value="both" disabled={isRiverScenario}>Both (compare)</option>
         <option value="sph">+ Near-field SPH (advanced)</option>
       </select>
       {solver === "sph" && (
@@ -231,8 +378,32 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
           <strong> not</strong> reach downstream gauges, and it is slow.
         </div>
       )}
+      {isRiverScenario && !["swe", "sph"].includes(solver) && (
+        <div style={{ fontSize: 10, color: "#b00020", marginTop: 4 }}>
+          Select SWE or near-field SPH for this river scenario. Delft3D FM is
+          configured for dam-break hydrographs only.
+        </div>
+      )}
+      {isBlockage && blockageIncomplete && (
+        <div style={{ fontSize: 10, color: "#b00020", marginTop: 4, lineHeight: 1.4 }}>
+          Place the barrier before running: a blockage needs a position, a crest
+          height above the valley floor, and a crest width across it. None of
+          them can be taken from the site record — the deposit is not the dam.
+        </div>
+      )}
 
-      <button onClick={submit} style={{ marginTop: 10 }}>Run simulation</button>
+      <button
+        onClick={submit}
+        disabled={
+          (isRiverScenario && !["swe", "sph"].includes(solver)) ||
+          (isBlockage && blockageIncomplete)
+        }
+        style={{ marginTop: 10 }}
+      >
+        Run {scenarioType === "dam_break"
+          ? "dam-break"
+          : isBlockage ? "river-blockage" : "river-overflow"} simulation
+      </button>
       <div style={{ marginTop: 8, fontSize: 12 }}>{status}</div>
 
       {currentRunId && (
@@ -323,6 +494,184 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
  * message, or this project's text naming the exact missing variable, so it is
  * rendered verbatim rather than mapped to something generic.
  */
+/**
+ * Where the landslide barrier is and how big it is.
+ *
+ * Two paths, and the manual one is the default on purpose: it needs no network,
+ * no Earth Engine and no cached scene, so it is the demo's guaranteed floor.
+ * Auto-detection is additive — over steep Himalayan terrain its quality gates
+ * may legitimately refuse, and a refusal is displayed and then handed back to
+ * the manual path rather than treated as a failure.
+ *
+ * Nothing here is auto-selected from a detection. An operator confirming a
+ * candidate IS the HADR workflow, and making the confirmation explicit is what
+ * keeps a refusal an ordinary outcome instead of an exception.
+ */
+function BlockageControls({
+  gee, site, source, setSource, lat, setLat, lon, setLon,
+  crestHeightM, setCrestHeightM, widthM, setWidthM,
+  breachMode, setBreachMode, targetResolution, detection, setDetection,
+}) {
+  const [detecting, setDetecting] = useState(false);
+  const geeReady = Boolean(gee?.available);
+  const cells = widthM > 0 ? widthM / targetResolution : 0;
+  const subGrid = cells < 2;
+
+  const detect = async () => {
+    setDetecting(true);
+    setDetection(null);
+    try {
+      setDetection(await getBlockageDetection(site?.id || "rishi_ganga"));
+    } catch (e) {
+      setDetection({ source: "unavailable", reason: e.message });
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const label = { fontSize: 11, marginTop: 8, display: "block", color: "#444" };
+  const field = { width: "100%", boxSizing: "border-box" };
+
+  return (
+    <fieldset style={{
+      marginTop: 10, padding: "8px 10px 10px", border: "1px solid #ddd",
+      borderRadius: 4,
+    }}>
+      <legend style={{ fontSize: 11, color: "#555" }}>Landslide barrier</legend>
+
+      <div style={{ display: "flex", gap: 12, fontSize: 11 }}>
+        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <input type="radio" checked={source === "manual"}
+                 onChange={() => setSource("manual")} />
+          Manual
+        </label>
+        <label style={{
+          display: "flex", gap: 4, alignItems: "center",
+          color: geeReady ? "inherit" : "#999",
+        }}
+          title={geeReady ? "" : (gee?.reason || "Earth Engine is not configured.")}>
+          <input type="radio" checked={source === "detect"} disabled={!geeReady}
+                 onChange={() => setSource("detect")} />
+          Auto-detect (Sentinel-1)
+        </label>
+      </div>
+
+      {source === "detect" && (
+        <div style={{ marginTop: 8 }}>
+          <button onClick={detect} disabled={detecting} style={{ fontSize: 11 }}>
+            {detecting ? "Differencing scenes…" : "Detect new water"}
+          </button>
+          {site?.blockage_date_post && (
+            <div style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+              Window: {site.blockage_date_pre} to {site.blockage_date_post}
+            </div>
+          )}
+          {detection && <DetectionResult detection={detection}
+                                         onUseManual={() => setSource("manual")} />}
+        </div>
+      )}
+
+      <label style={label}>Barrier latitude</label>
+      <input style={field} type="number" step="0.0001" value={lat}
+             onChange={(e) => setLat(e.target.value)} />
+
+      <label style={label}>Barrier longitude</label>
+      <input style={field} type="number" step="0.0001" value={lon}
+             onChange={(e) => setLon(e.target.value)} />
+
+      <label style={label}>Crest height above the valley floor (m): {crestHeightM}</label>
+      <input type="range" min="5" max="250" value={crestHeightM}
+             onChange={(e) => setCrestHeightM(+e.target.value)} />
+      <div style={{ fontSize: 10, color: "#666", lineHeight: 1.4 }}>
+        A HEIGHT above the bed, not an elevation. The two differ by a kilometre
+        or more in the Himalaya and both look plausible.
+      </div>
+
+      <label style={label}>Crest width across the valley (m): {widthM}</label>
+      <input type="range" min="100" max="4000" step="50" value={widthM}
+             onChange={(e) => setWidthM(+e.target.value)} />
+      <div style={{
+        fontSize: 10, lineHeight: 1.4,
+        color: subGrid ? "#b00020" : "#666",
+      }}>
+        {cells.toFixed(1)} cells at {targetResolution} m resolution
+        {subGrid && " — too narrow to resolve; its outflow would be set by the grid rather than by the deposit."}
+      </div>
+
+      <label style={label}>Failure mode</label>
+      <select style={field} value={breachMode}
+              onChange={(e) => setBreachMode(e.target.value)}>
+        <option value="overtop">Overtop (barrier intact)</option>
+        <option value="full_notch">Full notch (barrier cut to the valley floor)</option>
+      </select>
+      <div style={{ fontSize: 10, color: "#666", marginTop: 4, lineHeight: 1.4 }}>
+        Changes the local cross-section, not the released volume — that comes
+        from routing the lake measured off the updated DEM.
+      </div>
+
+      <div style={{
+        marginTop: 8, fontSize: 10, color: "#7a3e00", lineHeight: 1.4,
+      }}>
+        The impounded volume is <strong>not</strong> set here. It is measured by
+        filling the DEM behind this barrier, because a landslide dam has no
+        published storage.
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * What the Sentinel-1 difference found, or why it declined.
+ *
+ * A refusal is rendered as an ordinary result with its reason verbatim, not as
+ * an error. Over the Tehri gorge the equivalent SAR gate measures precision
+ * 0.010 against JRC permanent water and correctly refuses; that measurement is
+ * itself worth showing, and the manual path is one click away.
+ */
+function DetectionResult({ detection, onUseManual }) {
+  const refused = detection.source === "unavailable";
+  return (
+    <div style={{
+      marginTop: 6, padding: "6px 8px", fontSize: 10, borderRadius: 4,
+      border: `1px solid ${refused ? "#e65100" : "#2e7d32"}`,
+      background: refused ? "#fff4e5" : "#edf7ed",
+      color: refused ? "#7a3e00" : "#1b5e20", lineHeight: 1.45,
+    }}>
+      <strong>
+        {refused ? "No detection produced" : `Detected (${detection.source})`}
+      </strong>
+      {detection.reason && <div style={{ marginTop: 3 }}>{detection.reason}</div>}
+      {!refused && (
+        <div style={{ marginTop: 3 }}>
+          <div>Post scene: {detection.scene_id_post}</div>
+          <div>Acquired: {detection.acquired_at_post}</div>
+          <div>
+            Thresholds: {detection.threshold_db_pre?.toFixed(1)} /{" "}
+            {detection.threshold_db_post?.toFixed(1)} dB (pre / post, per scene)
+          </div>
+          <div>
+            Pre-mask precision vs JRC:{" "}
+            {detection.precision_of_pre_mask_vs_jrc?.toFixed(3)}
+          </div>
+          <div>
+            New water: {(detection.new_water_fraction * 100)?.toFixed(2)}% of the
+            window, {(detection.fraction_near_drainage * 100)?.toFixed(0)}% of it
+            on a watercourse
+          </div>
+          <div style={{ marginTop: 3 }}>
+            Confirm the barrier position below — nothing is auto-selected.
+          </div>
+        </div>
+      )}
+      {refused && (
+        <button onClick={onUseManual} style={{ marginTop: 5, fontSize: 10 }}>
+          Place the barrier manually
+        </button>
+      )}
+    </div>
+  );
+}
+
 function GeeBadge({ gee }) {
   if (!gee) return null;
   const ok = gee.available;

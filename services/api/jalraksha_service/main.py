@@ -32,7 +32,7 @@ from jalraksha_service.schemas import (
     RunRequest, RunStatus, RunResult, GaugeResult, ExportRef,
     ComparisonResult, DamPreset, GeoSarResponse,
     EnsembleSummary, GridSummary, EngineInfo, RunListEntry,
-    GeeStatus, ValidationCheck, ValidationResult,
+    GeeStatus, ValidationCheck, ValidationResult, BlockageDetectionResponse,
 )
 from jalraksha_service.worker import celery_app
 
@@ -125,10 +125,49 @@ def list_dams() -> List[Dict[str, Any]]:
 def submit_run(req: RunRequest):
     if req.solver not in settings.SOLVERS:
         raise HTTPException(422, f"Invalid solver {req.solver!r}; choose from {settings.SOLVERS}")
+    if req.scenario_type != "dam_break" and req.solver not in {"swe", "sph"}:
+        raise HTTPException(
+            422,
+            "River blockage and overflow scenarios currently require the SWE "
+            "pipeline (or SWE + near-field SPH). Delft3D comparison is only "
+            "configured for dam-break hydrographs.",
+        )
     try:
         dam_config = req.to_dam_config()
     except ValueError as e:
         raise HTTPException(422, str(e))
+
+    # Domain-shape overrides. Threaded through dam_config, same convention as
+    # the preset's own domain_radius_km (tasks.py reads both off dam_config,
+    # not task_args) -- these are per-request, not part of any dam preset.
+    if req.domain_margins_km is not None:
+        dam_config["domain_margins_km"] = req.domain_margins_km
+    dam_config["fill_max_depth_m"] = req.fill_max_depth_m
+    dam_config["notch_breach"] = req.notch_breach
+
+    # Detection needs Earth Engine, and a run that cannot detect and has no
+    # manual barrier to fall back on has nothing to burn into the DEM. Checked
+    # here because gee_status() is cached and answers in milliseconds: failing at
+    # submission beats failing twenty minutes into a solve.
+    if req.scenario_type == "river_blockage" and req.blockage_source == "detect":
+        from jalraksha.gee.auth import gee_status
+
+        available, reason = gee_status()
+        has_manual_fallback = None not in (
+            req.blockage_lat, req.blockage_lon,
+            req.blockage_crest_height_m, req.blockage_width_m,
+        )
+        if not available and not has_manual_fallback:
+            raise HTTPException(
+                422,
+                f"blockage_source='detect' needs Earth Engine, which is not "
+                f"available: {reason}. Either configure it, or supply the "
+                f"barrier manually (blockage_lat, blockage_lon, "
+                f"blockage_crest_height_m, blockage_width_m) — the manual path "
+                f"runs fully offline. The run is refused rather than falling "
+                f"back to the pre-event DEM, which would simulate a valley the "
+                f"landslide has already changed.",
+            )
 
     dam_id = req.dam_id
     # Persist the solver parameters alongside the dam config, under a namespaced
@@ -146,6 +185,7 @@ def submit_run(req: RunRequest):
             "ensemble_size": req.ensemble_size,
             "solver_duration_s": req.solver_duration_s,
             "target_resolution": req.target_resolution,
+            "scenario_type": req.scenario_type,
         },
     }
     run_id = db.create_run(dam_id, run_record, req.solver)
@@ -287,6 +327,18 @@ def run_result(run_id: str) -> RunResult:
     if any(e["kind"] == "comparison_metrics" for e in exports_rows):
         comparison_url = f"/runs/{run_id}/comparison"
 
+    # Which terrain this run was computed over, and whether it was modified.
+    # Runs written before this existed have no "dem" block and report None,
+    # which is the honest answer: nobody recorded it at the time.
+    dem_block = summary.get("dem") or {}
+    dem_update = dem_block.get("dem_update")
+    if dem_update:
+        # The updated raster and its sidecar are downloadable products; the
+        # dashboard shows the provenance banner from these fields.
+        for key in ("updated_dem", "provenance_json"):
+            if dem_update.get(key):
+                dem_update[key] = _to_file_url(dem_update[key])
+
     return RunResult(
         run_id=run_id,
         dam_name=run.get("params", {}).get("name", "Dam"),
@@ -305,6 +357,8 @@ def run_result(run_id: str) -> RunResult:
         status=run.get("status"),
         error=run.get("error"),
         comparison_url=comparison_url,
+        dem_update=dem_update,
+        dem_used=_to_file_url(dem_block["dem_used"]) if dem_block.get("dem_used") else None,
     )
 
 
@@ -780,6 +834,102 @@ def gee_latest(reach: str = "bhagirathi") -> GeoSarResponse:
         observed_extent_url=_to_file_url(observed["png_path"]),
         geotiff_url=_to_file_url(observed["geotiff_path"]),
         note=observed.get("note"),
+    )
+
+
+@app.get("/gee/blockage", response_model=BlockageDetectionResponse)
+def gee_blockage(
+    reach: str = "rishi_ganga",
+    date_pre: str | None = None,
+    date_post: str | None = None,
+) -> BlockageDetectionResponse:
+    """
+    Has a new water body — a forming landslide-dammed lake — appeared here?
+
+    The front half of the HADR workflow: detect, screen, and if needed simulate.
+    A Sentinel-1 pre-event median is differenced against a SINGLE post-event
+    scene, JRC permanent water is subtracted, and what is left must sit on a
+    watercourse to be reported.
+
+    THREE STATES, NO FOURTH — the same rule as /gee/latest. A refusal here is an
+    ordinary outcome and not a failure of the demo: the manual barrier path runs
+    fully offline, needs no Earth Engine, and is where a refusal sends you.
+
+    The dates default to the reach's own event window when it has one (Rishi
+    Ganga carries 2021-01-15 / 2021-02-08, the Chamoli event), because the
+    scene that matters for a past event is not the latest one.
+    """
+    from jalraksha.gee.blockage_detect import detect_new_water
+    from jalraksha.gee.sar import SarUnavailableError
+
+    resolved = _resolve_reach(reach)
+    if resolved is None:
+        known = sorted({d["id"] for d in settings.DEMO_DAMS})
+        return BlockageDetectionResponse(
+            reach=reach, source="unavailable",
+            reason=f"Unknown reach {reach!r}. Known reaches: {', '.join(known)}.",
+        )
+
+    record = resolved["dam"]
+    pre_start = date_pre or record.get("blockage_date_pre")
+    post = date_post or record.get("blockage_date_post")
+    if not pre_start or not post:
+        return BlockageDetectionResponse(
+            reach=reach, source="unavailable", bbox=list(resolved["bbox"]),
+            reason=(
+                f"No event window is known for {reach!r} and none was supplied. "
+                f"Change detection needs a before and an after; pass date_pre "
+                f"and date_post, or place the barrier manually."
+            ),
+        )
+    # Pre-event window ends the day before the post acquisition, so a scene from
+    # after the event cannot leak into the "before" median.
+    import datetime as _date
+
+    pre_end = (_date.date.fromisoformat(post) - _date.timedelta(days=1)).isoformat()
+
+    try:
+        detection = detect_new_water(
+            reach=reach,
+            bbox=resolved["bbox"],
+            cache_dir=settings.DATA_DIR / "gee" / "blockage" / reach.lower(),
+            date_pre_start=pre_start,
+            date_pre_end=pre_end,
+            date_post=post,
+        )
+    except SarUnavailableError as exc:
+        return BlockageDetectionResponse(
+            reach=reach, source="unavailable", reason=str(exc),
+            bbox=list(resolved["bbox"]),
+        )
+
+    return BlockageDetectionResponse(
+        reach=reach,
+        source=detection["source"],
+        reason=detection.get("reason"),
+        scene_id_post=detection.get("scene_id_post"),
+        acquired_at_post=detection.get("acquired_at_post"),
+        date_pre_start=detection.get("date_pre_start"),
+        date_pre_end=detection.get("date_pre_end"),
+        threshold_db_pre=detection.get("threshold_db_pre"),
+        threshold_db_post=detection.get("threshold_db_post"),
+        threshold_method=detection.get("threshold_method"),
+        precision_of_pre_mask_vs_jrc=detection.get("precision_of_pre_mask_vs_jrc"),
+        recall_of_pre_mask_vs_jrc=detection.get("recall_of_pre_mask_vs_jrc"),
+        new_water_fraction=detection.get("new_water_fraction"),
+        fraction_near_drainage=detection.get("fraction_near_drainage"),
+        amplitude_form_fraction=detection.get("amplitude_form_fraction"),
+        amplitude_threshold_db=detection.get("amplitude_threshold_db"),
+        bbox=detection.get("bbox"),
+        mask_geotiff_url=(
+            _to_file_url(detection["mask_geotiff_path"])
+            if detection.get("mask_geotiff_path") else None
+        ),
+        mask_png_url=(
+            _to_file_url(detection["mask_png_path"])
+            if detection.get("mask_png_path") else None
+        ),
+        note=detection.get("note"),
     )
 
 

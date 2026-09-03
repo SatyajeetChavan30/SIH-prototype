@@ -41,6 +41,17 @@ const GROUPS = [
     match: (kind) => kind.startsWith("cog_"),
   },
   {
+    id: "terrain",
+    title: "Terrain — modified DEM",
+    blurb:
+      "Present only when this run's terrain was changed. Copernicus GLO-30 " +
+      "with a landslide barrier burned into it — NOT photogrammetry, not " +
+      "InSAR, and not a survey. Every pixel outside the barrier footprint is " +
+      "bit-identical to the Copernicus source; the sidecar JSON records what " +
+      "was modified, from which observation, and the lake's stage-storage curve.",
+    match: (kind) => kind.startsWith("dem_update"),
+  },
+  {
     id: "other",
     title: "Other artifacts",
     blurb: "Playback manifest, 3D dataset and comparison metrics.",
@@ -63,6 +74,10 @@ const LABELS = {
   keyframe_manifest: "Keyframe manifest",
   xdmf: "ParaView 3D dataset (XDMF)",
   comparison_metrics: "Comparison metrics (JSON)",
+  run_summary: "Run summary (JSON)",
+  dem_update: "Observation-conditioned DEM (GeoTIFF)",
+  dem_update_provenance: "DEM modification provenance (JSON)",
+  dem_update_lake: "Impounded lake extent — initial condition, not a solver output",
 };
 
 function label(kind) {

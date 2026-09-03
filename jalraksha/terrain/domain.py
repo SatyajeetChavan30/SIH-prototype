@@ -75,6 +75,8 @@ def build_domain(
     target_resolution: float = 200.0,
     domain_radius_km: float = 60.0,
     use_synthetic_terrain: bool = False,
+    margins_km: Optional[Dict[str, float]] = None,
+    fill_max_depth_m: float = 3.0,
 ) -> Tuple[Grid, Any, np.ndarray]:
     """
     Build computational domain from DEM for dam-break simulation.
@@ -97,10 +99,18 @@ def build_domain(
         dam_config: Dam configuration (lat, lon, height_m, storage_mm3, ...)
         dem_path: Path to DEM GeoTIFF (from Phase 0 cache)
         target_resolution: Target grid resolution (metres)
-        domain_radius_km: Half-width of the square domain (km)
+        domain_radius_km: Half-width of the square domain (km). Ignored when
+            `margins_km` is given.
         use_synthetic_terrain: Emergency fallback — build an analytic valley
             instead of reading the DEM. Off by default; results from a synthetic
             run are not real terrain and must not be presented as such.
+        margins_km: Optional asymmetric extent
+            {"west":.., "east":.., "south":.., "north":..} (km from the dam),
+            for a domain deliberately biased in one direction (e.g. downstream,
+            so the flood has runway to actually exit) rather than centred on
+            the dam. Produces a rectangular grid.
+        fill_max_depth_m: Passed through to load_dem_as_grid — threshold-limited
+            depression fill; see that function's docstring. Pass 0 to disable.
 
     Returns:
         grid: Grid definition in a metric UTM CRS
@@ -127,6 +137,8 @@ def build_domain(
             dam_lon,
             target_resolution=target_resolution,
             domain_radius_km=domain_radius_km,
+            margins_km=margins_km,
+            fill_max_depth_m=fill_max_depth_m,
         )
 
     print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m resolution ({grid.crs})")
@@ -195,21 +207,60 @@ def compute_breach_location(
     grid: Grid,
     dam_lat: float,
     dam_lon: float,
-    utm_zone: int
+    utm_zone: int,
+    inject_lat: Optional[float] = None,
+    inject_lon: Optional[float] = None,
 ) -> Tuple[int, int, float]:
     """
-    Compute breach location on dam.
+    Compute the cell the release hydrograph is injected at.
 
     Args:
         state: Initial state with topography
         grid: Grid definition
         dam_lat, dam_lon: Dam location
         utm_zone: UTM zone
+        inject_lat, inject_lon: Optional explicit injection point, for a release
+            that does not happen at the dam — a landslide barrier partway down
+            the reach, say. Both must be given together. When omitted the
+            behaviour is exactly as before.
 
     Returns:
         i_breach: column index (x), j_breach: row index (y)
         b_breach: bed elevation at that cell (m above sea level)
     """
+    if (inject_lat is None) != (inject_lon is None):
+        raise ValueError(
+            "inject_lat and inject_lon must be supplied together; one alone "
+            "would silently fall back to the domain centre."
+        )
+
+    if inject_lat is not None:
+        # Project into the DOMAIN's zone, not the point's own: every cell shares
+        # one CRS, and a release point near a zone boundary must be expressed in
+        # the grid's coordinates rather than its own.
+        _, easting, northing = latlon_to_utm(inject_lat, inject_lon, utm_zone=utm_zone)
+        i_breach = int(np.floor((easting - grid.x0) / grid.dx))
+        j_breach = int(np.floor((northing - grid.y0) / grid.dy))
+
+        if not (0 <= i_breach < grid.nx and 0 <= j_breach < grid.ny):
+            # Raising, not clamping. A clamped injection point would put the
+            # release on the domain boundary and produce a complete,
+            # plausible-looking flood originating somewhere nobody asked for —
+            # the same failure class the DEM resolver refuses rather than
+            # papering over.
+            raise ValueError(
+                f"Injection point ({inject_lat:.5f}, {inject_lon:.5f}) maps to "
+                f"cell (i={i_breach}, j={j_breach}), outside the "
+                f"{grid.nx} x {grid.ny} domain. The release point is not in the "
+                f"modelled area; widen domain_radius_km or re-centre the domain."
+            )
+        b_breach = float(state.b[j_breach, i_breach])
+        print(
+            f"  Injection point: cell (i={i_breach}, j={j_breach}) from "
+            f"({inject_lat:.5f}, {inject_lon:.5f}), bed elevation {b_breach:.1f} m"
+        )
+        return i_breach, j_breach, b_breach
+
     # load_dem_as_grid centres the domain on the dam, so the dam sits at the
     # middle cell by construction. i indexes x (columns, nx), j indexes y (rows,
     # ny) — matching the state.b[j, i] access used by run.py.

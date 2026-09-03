@@ -11,6 +11,8 @@ JalRaksha is a high-performance Python package for dam-break inundation modellin
     *   *Near-Field*: Weakly Compressible Smoothed Particle Hydrodynamics (WCSPH) solver utilizing a Tait equation of state, hand-off boundary coupling, and PySPH integration.
 *   **Offline-First & Local Caching**: Automated DEM tile cache retrieval (Copernicus GLO-30 DEM from public AWS COG servers) with local fallbacks, assuming zero network reliability on site.
 *   **Probabilistic Monte Carlo Breach Ensemble**: Generates 100-member breach hydrograph ensembles using Froehlich, MacDonald, and Xu-Zhang regressions with Wahl uncertainty bands.
+*   **River Blockage (Landslide Dam) Scenario**: Half the events PS-26161 names are natural blockages rather than dam failures. A landslide barrier is burned into the terrain, *proven* to span the valley, and its impounded volume **measured** by hypsometric fill of the modified DEM — a natural dam has no published gross storage, so the pipeline refuses to run one whose storage came from a slider. Released through Costa (1985), the one transcribed regression whose fitting population included natural dams.
+*   **Observation-Conditioned DEM Update**: A landslide changes the terrain, and the cached DEM predates it. Copernicus GLO-30 is rewritten with the barrier burned in and written as a new GeoTIFF carrying full provenance. Every pixel outside the modified footprint stays bit-identical to the Copernicus source. It is **not** photogrammetry and every product says so — see the note below.
 *   **Automated Impact & Fatality Assessment**:
     *   FD2320 Flood Hazard Classification (Low, Moderate, High, Extreme).
     *   Jonkman (2008), Graham (1999), and DeKay-McClelland (1993) fatality models.
@@ -25,17 +27,96 @@ JalRaksha is a high-performance Python package for dam-break inundation modellin
 ```mermaid
 graph TD
     A[User Request / CLI / Web App] --> B[Cache Manager / DEM Fetcher]
-    B --> C[Terrain Conditioning & Domain Builder]
-    C --> D[Breach Hydrograph Generator]
+    B --> C{Scenario}
+    C -->|dam break, river overflow| E0[Terrain Conditioning & Domain Builder]
+    C -->|river blockage| L1[Barrier Geometry: operator-placed or Sentinel-1 detected]
+    L1 --> L2[Burn barrier, prove it spans the valley]
+    L2 --> L3[Hypsometric fill: lake volume & stage-storage curve]
+    L3 --> L4[Observation-conditioned DEM update + provenance]
+    L4 --> E0
+    E0 --> D[Breach / Outburst Hydrograph Generator]
     D --> E[Monte Carlo Ensemble Loop]
     E --> F[2D SWE Far-Field Solver]
     E --> G[3D SPH Near-Field Solver]
     F --> H[Downstream Gauge Analyzers]
     G --> H
     H --> I[Impact Analysis / FD2320 / Fatality Estimation]
-    I --> J[GeoSpatial Export: COG / KML / Shapefile]
+    I --> J[GeoSpatial Export: COG / KML / Shapefile / updated DEM]
     J --> K[React + Cesium Dashboard / FastAPI Client]
 ```
+
+---
+
+## 🏔 River blockage, and what "rebuild the DEM" actually means
+
+PS-26161 asks for flash-flood modelling from **natural dam / lake formations**
+— Rishi Ganga (Feb 2021), Wapriyang, Phuktal, Kosi — as well as from dam
+failures. `scenario_type: "river_blockage"` models one properly.
+
+A landslide dam differs from an engineered dam in the one way that matters
+most: **nobody surveyed it.** There is no published height and no published
+gross storage. So the storage is *measured*:
+
+1. The barrier is burned into the bed at an operator-supplied (or SAR-detected)
+   position, and **proven to span the valley** — the fill is run, cells that got
+   downstream are counted, and the deposit is widened and retried until none do.
+   A barrier that cannot be made to span raises rather than reporting a small,
+   plausible-looking lake that was quietly leaking around its ends.
+2. The impounded volume comes from a **hypsometric fill** of the modified
+   terrain, which also yields a real elevation–area–capacity curve. Scored
+   against the closed-form capacity of a sloping V-valley, this is accurate to
+   **0.127% at 30 m cells** and converges at second order.
+3. `jalraksha.terrain.breach` **refuses** a blockage run whose `storage_source`
+   is anything but that fill. Without the refusal a dashboard slider silently
+   drives the outburst volume the first time somebody refactors, and the output
+   still reads as a modelled result.
+
+### The DEM is *updated*, not regenerated — and the code says so
+
+"Rebuild the DEM from live satellite imagery" is not achievable on this
+project's data policy, and pretending otherwise would be the overclaim
+CLAUDE.md exists to prevent:
+
+*   **Stereo optical pairs** (Cartosat, Pleiades, WorldView) are the only
+    practical route to a post-event DSM at this scale. They are geo-fenced or
+    commercial; CartoDEM and Bhuvan are forbidden outright.
+*   **Sentinel-1 interferometry** would work in principle, but Earth Engine
+    carries GRD, not SLC. An SLC interferogram means SNAP or ISCE, offline, at
+    hours per pair — against a demo-day assumption of no network.
+*   **Sentinel-2 has no stereo.** It is a single-look sensor.
+
+What ships instead is an **observation-conditioned DEM update**: Copernicus
+GLO-30 with the landslide barrier burned in, written as a new GeoTIFF whose own
+metadata carries
+
+```
+JALRAKSHA_NOT_A_SURVEY = "NOT photogrammetry, NOT InSAR, NOT an elevation
+surface derived from imagery. This is Copernicus GLO-30 with a landslide
+barrier and, where an observation was available, an observed lake extent
+burned into it."
+```
+
+Only the **change** is reprojected back onto the source raster, so every pixel
+outside the barrier footprint is bit-identical to Copernicus — asserted by a
+test. The dashboard shows a matching banner above the map whenever a run's
+terrain was modified, because the 3D globe renders the modified surface whether
+or not anything says so.
+
+### Auto-detection, and a refusal that is itself a result
+
+`GET /gee/blockage` differences a Sentinel-1 pre-event median against a
+**single** post-event scene (a composite would make "rebuilt from the
+2021-02-08 scene" untrue), subtracts JRC permanent water, and requires what
+remains to sit on a watercourse.
+
+Run live over the Rishi Ganga, it **refuses** — and the refusal is worth more
+than a mask nobody checked. JRC's permanent-water band covers **0.001%** of that
+window, against 0.57% at Tehri and 44.5% at Hirakud: a 30 m Landsat-derived
+product does not resolve a narrow braided Himalayan headwater, so there is
+nothing to verify a same-day radar mask against. That is a documented limit of
+open-data change detection over exactly the terrain the problem statement cares
+about. **The manual barrier path needs no network and is the demo's guaranteed
+floor.**
 
 ---
 
@@ -78,6 +159,34 @@ Then open http://localhost:3000. `scripts/run_api.py` sets the eager-task and
 data-dir environment and pins the working directory to the repo root; see
 `paraview/README.md` for why that matters.
 
+### 1b. Run a river-blockage scenario
+
+In the dashboard: pick **Rishi Ganga / Dhauliganga, Chamoli (blockage site)**,
+set scenario to **River blockage (landslide dam)**, leave the barrier source on
+**Manual** (the offline path), and adjust crest height and width. There are no
+height/storage sliders — a landslide dam has neither, and the impounded volume
+is measured from the terrain.
+
+Or over HTTP:
+
+```bash
+curl -X POST http://localhost:8000/runs -H "Content-Type: application/json" -d '{"dam_id":"rishi_ganga","scenario_type":"river_blockage","solver":"swe","blockage_source":"manual","blockage_lat":30.5207,"blockage_lon":79.6098,"blockage_crest_height_m":110,"blockage_width_m":1500,"ensemble_size":4,"solver_duration_s":7200,"target_resolution":100}'
+```
+
+Measured at the Dhauliganga gorge below Tapovan (1,704 m bed, 1,200 m of
+relief), crest height sets the impounded volume steeply:
+
+| crest | 55 m | 90 m | 120 m | 150 m |
+| :--- | ---: | ---: | ---: | ---: |
+| lake | 0.6 MCM | 6.3 MCM | 26.0 MCM | 60.8 MCM |
+
+> **Demo-day cost.** Compute scales badly with barrier size on steep terrain —
+> the CFL limit cuts the timestep as a deep release accelerates down a gorge.
+> The 55 m case solved 4 members in about 15 minutes at 100 m; the 120 m case
+> took roughly 40. Pick a modest barrier or a short `solver_duration_s` live,
+> and pre-compute anything larger — the run picker loads a finished run
+> instantly.
+
 ### 2. Run the CLI Simulation (Tehri Dam Demo)
 Execute a 3-member ensemble run for Tehri Dam:
 ```bash
@@ -106,7 +215,7 @@ configured and *reported as absent* when not — nothing is silently substituted
 | `JALRAKSHA_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** kernel (`dflowfm-cli.exe`), for `solver="both"` runs and for validation. | `dflowfm-cli` then `dflowfm` are looked up on `PATH`, then the usual Deltares install locations are searched automatically. If nothing is found, the comparison runs JalRaksha's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
 | `JALRAKSHA_PARAVIEW_EXE` | Full path to `paraview.exe` (the GUI) for the "View in ParaView (3D)" button. | Defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`; the endpoint answers `paraview_not_found` if it is not there. |
 | `JALRAKSHA_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
-| `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent and the GHSL population-at-risk figure. | `GET /gee/latest` answers `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. |
+| `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent, the GHSL population-at-risk figure, and new-water detection for river blockages. | `GET /gee/latest` and `GET /gee/blockage` answer `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. The **manual** blockage path is unaffected and needs no Earth Engine at all. |
 | `JALRAKSHA_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
 
 ```bash

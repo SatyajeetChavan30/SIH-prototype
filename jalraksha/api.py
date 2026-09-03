@@ -92,9 +92,16 @@ def get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) 
             for g in gauges
         ]
 
-    if 29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0:
-        # Inside the Tehri bounding box with no dam_id — resolve through the
+    if dam_id is None and 29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0:
+        # Inside the Tehri bounding box with NO dam_id — resolve through the
         # registry rather than a second literal copy of the corridor.
+        #
+        # `dam_id is None` is load-bearing, and its absence here was the same
+        # defect as in run.py::define_downstream_gauges: a NAMED Himalayan site
+        # with no corridor of its own fell into this box and was handed Tehri's
+        # towns, on a different river. A caller that names a dam has stated
+        # which dam it means; an empty corridor for that dam is an answer, not a
+        # gap to fill from a neighbour.
         return [
             {
                 "name": g.name, "distance_km": g.distance_km,

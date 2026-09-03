@@ -75,6 +75,22 @@ export async function getSar(reach = "bhagirathi") {
   return r.json();
 }
 
+// Has a new water body — a forming landslide-dammed lake — appeared on this
+// reach since the event? Differences a Sentinel-1 pre-event median against a
+// single post-event scene, minus JRC permanent water.
+//
+// Never throws on a refusal. "unavailable" with a reason is an ordinary,
+// expected answer here: over steep Himalayan terrain the gates may legitimately
+// decline, and the manual barrier path is what the operator falls back to. A
+// thrown error would make an honest refusal look like a broken endpoint.
+export async function getBlockageDetection(reach = "rishi_ganga", { datePre, datePost } = {}) {
+  const params = new URLSearchParams({ reach });
+  if (datePre) params.set("date_pre", datePre);
+  if (datePost) params.set("date_post", datePost);
+  const r = await fetch(`${API}/gee/blockage?${params}`);
+  return r.json();
+}
+
 // Poll until a run reaches a terminal state.
 export async function pollUntilDone(runId, onTick, timeoutMs = 600000) {
   const start = Date.now();

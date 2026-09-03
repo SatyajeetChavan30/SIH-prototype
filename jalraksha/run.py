@@ -26,7 +26,7 @@ from jalraksha.solver.types import Grid, create_state
 from jalraksha.solver.core import SWESolver
 from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
-from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
 from jalraksha.presets import get_gauges
 
 
@@ -241,11 +241,25 @@ def define_downstream_gauges(
     """
     gauges = get_gauges(dam_id)
 
-    if not gauges and 29.0 <= dam_lat <= 31.5 and 77.0 <= dam_lon <= 80.0:
-        # Coordinates inside the Tehri corridor but no dam_id — the shape of
+    if (
+        not gauges
+        and dam_id is None
+        and 29.0 <= dam_lat <= 31.5
+        and 77.0 <= dam_lon <= 80.0
+    ):
+        # Coordinates inside the Tehri corridor AND NO dam_id — the shape of
         # every call site that predates dam_id existing. Resolve through the
         # registry rather than reintroducing a literal copy of the corridor.
         # Mirrors the same fallback in jalraksha/api.py::get_downstream_gauges.
+        #
+        # The `dam_id is None` term is load-bearing and was missing. Without it
+        # the box fired for any NAMED site that simply had no corridor yet, and
+        # a Rishi Ganga blockage at (30.50, 79.63) — well inside the box, and on
+        # a different river 150 km from the Bhagirathi — reported arrival times
+        # at Koteshwar, Devprayag, Rishikesh and Haridwar. That is precisely the
+        # failure this function's own docstring says it was written to end,
+        # returning through the one path that still allowed it: an empty
+        # corridor was treated as a missing dam_id.
         gauges = get_gauges("tehri")
 
     if not gauges:
@@ -363,16 +377,35 @@ def compute_arrival_times_at_gauges(
 
         # Extract arrival times from all ensemble members
         arrival_times_ensemble = []
+        # Peak depth from THE SAME MEMBERS that arrived, not from the ensemble
+        # median raster.
+        #
+        # Those are different questions whenever a minority of members reach a
+        # gauge, and the difference is not small. Measured on a Rishi Ganga
+        # blockage: 1 of 4 members reached Joshimath, so the arrival time was
+        # that member's 4,894 s while the MEDIAN h_max at the same cell was
+        # exactly 0.0 m — three members never wet it, and the median of
+        # {0, 0, 0, d} is 0. The row then read "arrived at 1 h 22 m, peak depth
+        # 0.0 m", which is the contradiction this function's own cell-snapping
+        # comment exists to prevent, arriving by a second route.
+        depths_ensemble = []
+        n_members = 0
         for result in results_ensemble:
             t_arrival_grid = result.get("t_arrival")
             if t_arrival_grid is None:
                 continue
+            n_members += 1
 
             # Arrival time at this gauge cell
             t_arr = t_arrival_grid[j_gauge, i_gauge]
 
             if np.isfinite(t_arr) and t_arr > 0:
                 arrival_times_ensemble.append(float(t_arr))
+                h_max_grid = result.get("h_max")
+                if h_max_grid is not None:
+                    depth = float(h_max_grid[j_gauge, i_gauge])
+                    if np.isfinite(depth):
+                        depths_ensemble.append(depth)
 
         if len(arrival_times_ensemble) > 0:
             arrival_times_dict[gauge["name"]] = {
@@ -382,6 +415,15 @@ def compute_arrival_times_at_gauges(
                 "mean": float(np.mean(arrival_times_ensemble)),
                 "std": float(np.std(arrival_times_ensemble)),
                 "num_samples": len(arrival_times_ensemble),
+                # How many members were solved at all, so a caller can say
+                # "3 of 30 members" rather than leaving the reader to assume a
+                # minority arrival is the consensus one.
+                "num_members": n_members,
+                # Median peak depth ACROSS THE ARRIVING MEMBERS. None when the
+                # solver did not record h_max, which is not the same as zero.
+                "max_depth_m": (
+                    float(np.median(depths_ensemble)) if depths_ensemble else None
+                ),
                 "unit": "s",
                 "distance_km": gauge["distance_km"],
                 # The cell the arrival was actually READ FROM, after the channel
@@ -401,6 +443,8 @@ def compute_arrival_times_at_gauges(
                 "p05": None,
                 "p95": None,
                 "num_samples": 0,
+                "num_members": n_members,
+                "max_depth_m": None,
                 # Callers format this alongside the arrival time; omitting it
                 # here made every no-arrival gauge a TypeError downstream.
                 "distance_km": gauge["distance_km"],
@@ -428,6 +472,10 @@ def _no_arrival_reason(gauge: Dict, bed_elevation, grid: Grid,
     channel-confined dam break genuinely never reaches such a point, and saying
     so is a real screening result, not a gap in the model.
 
+    Elevation is measured against the LOCAL channel (600 m), not a 3 km window,
+    because on a steep river the wide window measures the river's own fall. See
+    the two-window comment below.
+
     Falls back to the plain message when there is no bed data to reason from,
     rather than inventing a cause.
     """
@@ -436,31 +484,165 @@ def _no_arrival_reason(gauge: Dict, bed_elevation, grid: Grid,
     if bed_elevation is None:
         return "No arrival detected within the simulated time."
 
-    try:
-        gauge_bed = float(bed_elevation[j_gauge, i_gauge])
-        # The channel near this gauge: lowest bed within ~3 km, which is far
-        # enough to find the river even where a town spreads away from it.
-        radius = max(1, int(round(3000.0 / min(grid.dx, grid.dy))))
+    def _lowest_within(metres: float) -> float:
+        radius = max(1, int(round(metres / min(grid.dx, grid.dy))))
         j0, j1 = max(0, j_gauge - radius), min(grid.ny, j_gauge + radius + 1)
         i0, i1 = max(0, i_gauge - radius), min(grid.nx, i_gauge + radius + 1)
-        window = np.asarray(bed_elevation[j0:j1, i0:i1])
-        thalweg = float(np.nanmin(window))
+        return float(np.nanmin(np.asarray(bed_elevation[j0:j1, i0:i1])))
+
+    try:
+        gauge_bed = float(bed_elevation[j_gauge, i_gauge])
+        # IS THE HEIGHT EXPLAINED BY THE REACH'S OWN FALL?
+        #
+        # A square window around a gauge always contains ground downstream of
+        # it, so on a steep river its minimum is lower simply because rivers run
+        # downhill. Measured on the Alaknanda below Joshimath: a point sitting
+        # exactly ON the channel came out 58-85 m above the lowest bed within
+        # 3 km, and was told it was a hillside town — which sends a reader to
+        # fix a coordinate that is correct. At 60 m/km even a 600 m window sees
+        # 36 m of fall, so no fixed window solves this.
+        #
+        # The reach GRADIENT does. Estimated between the two windows, it says how
+        # much of `above` is fall rather than height, and only the excess is
+        # evidence the point sits off the channel. On a flat reach the gradient
+        # is ~0 and the test reduces to the original one, which is what keeps the
+        # Pune finding intact — Swargate is 46 m up a bank beside a river that
+        # barely falls.
+        thalweg = _lowest_within(600.0)
         above = gauge_bed - thalweg
+        wide_thalweg = _lowest_within(3000.0)
+        gradient = max(0.0, (thalweg - wide_thalweg) / 2400.0)
+        # 20% margin plus 5 m for GLO-30's own vertical error, so a point on a
+        # steep channel is not condemned by the DEM's noise.
+        explained_by_fall = gradient * 600.0 * 1.2 + 5.0
     except Exception:
         return "No arrival detected within the simulated time."
 
+    if above <= explained_by_fall:
+        return (
+            f"No arrival within the simulated time. This point is at channel "
+            f"level: it stands {above:.0f} m above the lowest bed within 600 m, "
+            f"and this reach falls {gradient * 1000.0:.0f} m/km, which accounts "
+            f"for it. Extend the simulated duration to test whether the flood "
+            f"reaches it later."
+        )
+
     if above >= 15.0:
+        # State the GEOMETRY, and name a cause only where one is known.
+        #
+        # This used to assert "It is a town centre, not a riverside gauge" for
+        # every gauge above the channel. True of the Pune corridor, which is
+        # where it was written; false of a coordinate derived from the terrain
+        # itself, where being above the thalweg means the point was placed
+        # imprecisely rather than that a town sits on a hillside. Two different
+        # findings — one about the world, one about the input — and telling a
+        # reader the wrong one sends them to fix the wrong thing.
+        derived = "TERRAIN-DERIVED" in str(gauge.get("note") or "")
+        cause = (
+            "This coordinate was derived from the DEM, so being above the "
+            "channel means it was placed off the thalweg rather than that the "
+            "location is genuinely elevated — snap it to the local minimum."
+            if derived
+            else
+            "A town centre rather than a riverside gauging station sits above "
+            "the channel like this, and a channel-confined flood does not "
+            "reach it. Not a modelling gap."
+        )
         return (
             f"This point sits {above:.0f} m above the nearest river channel "
-            f"({gauge_bed:.0f} m vs {thalweg:.0f} m). It is a town centre, not "
-            f"a riverside gauge, so a channel-confined dam-break flood does not "
-            f"reach it. Not a modelling gap — the flood would have to rise "
-            f"{above:.0f} m above the river to inundate this location."
+            f"({gauge_bed:.0f} m vs {thalweg:.0f} m). {cause} The flood would "
+            f"have to rise {above:.0f} m above the river to inundate it."
         )
     return (
         f"No arrival within the simulated time. This point is {above:.0f} m "
         f"above the nearest channel; extend the simulated duration to test "
         f"whether the flood reaches it later."
+    )
+
+
+def _notch_breach_into_bed(
+    state_init: "State",
+    grid: Grid,
+    i_breach: int,
+    j_breach: int,
+    b_breach: float,
+    dam_config: Dict,
+) -> None:
+    """
+    Carve an actual gap through the dam ridge at the breach cell.
+
+    inject_breach_hydrograph (below) only ever ADDS depth at one cell each
+    timestep — a source term, with no momentum direction, on a bed that still
+    has the intact dam crest sitting in it. Water that piles up locally spills
+    downstream easily (the valley there is real and steep), but the fraction
+    that spills back toward the reservoir lands in a REAL closed basin — the
+    reservoir bowl the dam was built to hold, bounded by the valley walls on
+    three sides and the (unbreached) dam ridge on the fourth — and just sits
+    there, because the domain starts dry and nothing removes it. Measured on
+    a Khadakwasla run: ~42% of released volume trapped this way, plateauing
+    the hazard classification at ~46 permanently SEVERE cells instead of
+    letting it recede.
+
+    A real breach is a channel cut through the dam body down to roughly the
+    original riverbed, not a hole in an otherwise intact wall. This lowers
+    the bed at (and immediately around) the breach cell to approximate that:
+    invert = crest elevation at the breach cell minus the dam height (the one
+    breach-geometry number every hydrograph member actually carries — see
+    dam_config["height_m"] in terrain/breach.py's metadata — Froehlich/Von
+    Thun-style regressions default the breach invert to the dam base, i.e. a
+    full-depth breach). The result is clamped to never dig BELOW the lowest
+    bed already present just outside the notch footprint, so this can only
+    open a path to terrain that's already there — it cannot manufacture a new
+    pit deeper than the surrounding channel.
+
+    dam height_m is a fixed input to the ensemble (not sampled per member —
+    only outflow/timing vary), so there is one notch geometry, computed once,
+    shared by the whole ensemble, exactly like the terrain itself.
+    """
+    height_m = float(dam_config.get("height_m", 0.0))
+    if height_m <= 0:
+        return
+
+    # Footprint: a small block around the breach cell, standing in for breach
+    # WIDTH (no width is available per-member either; ~2-3 cells at 200-300 m
+    # resolution is a few hundred metres, in line with the embankment/gravity
+    # breach widths these regressions are fitted to).
+    footprint_radius = 1
+    search_radius = footprint_radius + 3
+
+    j0f = max(0, j_breach - footprint_radius)
+    j1f = min(grid.ny, j_breach + footprint_radius + 1)
+    i0f = max(0, i_breach - footprint_radius)
+    i1f = min(grid.nx, i_breach + footprint_radius + 1)
+
+    j0s = max(0, j_breach - search_radius)
+    j1s = min(grid.ny, j_breach + search_radius + 1)
+    i0s = max(0, i_breach - search_radius)
+    i1s = min(grid.nx, i_breach + search_radius + 1)
+
+    surrounding = state_init.b[j0s:j1s, i0s:i1s].copy()
+    # Exclude the footprint itself from the "what's already there" floor —
+    # otherwise a first notch call would clamp against its own not-yet-lowered
+    # cells and do nothing.
+    surrounding_mask = np.ones_like(surrounding, dtype=bool)
+    fj0, fj1 = j0f - j0s, j1f - j0s
+    fi0, fi1 = i0f - i0s, i1f - i0s
+    surrounding_mask[fj0:fj1, fi0:fi1] = False
+    local_floor = float(surrounding[surrounding_mask].min()) if surrounding_mask.any() else b_breach
+
+    candidate_invert = b_breach - height_m
+    invert = max(candidate_invert, local_floor)
+
+    footprint = state_init.b[j0f:j1f, i0f:i1f]
+    n_lowered = int((footprint > invert).sum())
+    max_drop = float((footprint - invert)[footprint > invert].max()) if n_lowered else 0.0
+    np.minimum(footprint, invert, out=footprint)
+
+    print(
+        f"  Breach notch: cell (i={i_breach}, j={j_breach}) crest {b_breach:.1f} m "
+        f"-> invert {invert:.1f} m (dam height {height_m:.1f} m, "
+        f"local terrain floor {local_floor:.1f} m); "
+        f"{n_lowered} cell(s) lowered, max drop {max_drop:.1f} m"
     )
 
 
@@ -541,6 +723,9 @@ def run_dam_break_ensemble(
     domain_radius_km: float = 60.0,
     use_synthetic_terrain: bool = False,
     progress_cb: Optional[Callable[[float, str], None]] = None,
+    margins_km: Optional[Dict[str, float]] = None,
+    fill_max_depth_m: float = 3.0,
+    notch_breach: bool = True,
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -572,7 +757,24 @@ def run_dam_break_ensemble(
         n_workers: Ensemble members to run concurrently. None uses every CPU
             core; 1 forces in-process execution (needed when the caller is
             itself inside a worker process, and useful for debugging).
-        domain_radius_km: Half-width of the square solver domain (km).
+        domain_radius_km: Half-width of the square solver domain (km). Ignored
+            when `margins_km` is given.
+        margins_km: Optional asymmetric domain extent
+            {"west":.., "east":.., "south":.., "north":..} (km from the dam),
+            for a domain biased downstream instead of dam-centred. See
+            terrain/domain.py::build_domain.
+        fill_max_depth_m: Threshold-limited depression fill applied to the
+            bed (metres); see terrain/conditioning.py::fill_depressions. 0
+            disables it.
+        notch_breach: Lower the bed at the breach cell to the ensemble's
+            median breach invert (crest elevation minus median breach depth)
+            before the member loop, so a failed dam has an actual gap in the
+            terrain instead of only a source term. Without this, water that
+            spreads upstream from an isotropic point injection (see
+            inject_breach_hydrograph below) is walled into the reservoir bowl
+            by the intact DEM crest and never drains — measured on Khadakwasla
+            as ~42% of released volume permanently trapped, plateauing the
+            hazard classification instead of letting it recede.
         use_synthetic_terrain: Emergency fallback to an analytic valley instead
             of the real DEM. Results are not real terrain — see build_domain.
 
@@ -629,6 +831,8 @@ def run_dam_break_ensemble(
             target_resolution=target_resolution,
             domain_radius_km=domain_radius_km,
             use_synthetic_terrain=use_synthetic_terrain,
+            margins_km=margins_km,
+            fill_max_depth_m=fill_max_depth_m,
         )
         print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m")
         print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")
@@ -640,9 +844,34 @@ def run_dam_break_ensemble(
     dam_lat = dam_config["lat"]
     dam_lon = dam_config["lon"]
     utm_zone = compute_utm_zone(dam_lat, dam_lon)
+    # A blockage releases at the barrier, which is not necessarily the domain
+    # centre — the Khadakwasla fallback puts one partway up the Mutha while the
+    # DEM is still centred on the dam. dam_config can override with an explicit
+    # inject_lat/inject_lon for that case.
+    #
+    # Absent an override, this now ALWAYS resolves the breach from the dam's
+    # own lat/lon rather than assuming grid.nx//2, grid.ny//2 is the dam. That
+    # assumption only held while build_domain() centred every domain on the
+    # dam; an offset domain (e.g. biased downstream so the flood has runway
+    # instead of spending half its cells upstream of the reservoir) breaks it
+    # silently — the breach would inject into whatever the grid centre happens
+    # to be, tens of km from the actual dam, and still produce a
+    # plausible-looking run. Resolving from real coordinates is identical to
+    # the old nx//2 result on every dam-centred domain that exists today (see
+    # compute_breach_location's own inject_lat branch), so this is a
+    # correctness fix with no behaviour change for existing runs.
     i_breach, j_breach, b_breach = compute_breach_location(
-        state_init, grid, dam_lat, dam_lon, utm_zone
+        state_init,
+        grid,
+        dam_lat,
+        dam_lon,
+        utm_zone,
+        inject_lat=dam_config.get("inject_lat", dam_lat),
+        inject_lon=dam_config.get("inject_lon", dam_lon),
     )
+
+    if notch_breach:
+        _notch_breach_into_bed(state_init, grid, i_breach, j_breach, b_breach, dam_config)
 
     # Define downstream gauges
     gauges = define_downstream_gauges(dam_lat, dam_lon, dam_config.get("dam_id"))
@@ -654,7 +883,7 @@ def run_dam_break_ensemble(
     _report(18.0, "Generating breach ensemble")
     print("\n[Step 2] Generating breach hydrograph ensemble...")
     try:
-        hydrographs = synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)
+        hydrographs = synthesize_scenario_ensemble(dam_config, num_samples=ensemble_size)
         breach_stats = ensemble_statistics(hydrographs)
         print(f"  Q_peak median: {breach_stats['q_peak_median']:.0f} m3/s")
         print(f"  Q_peak range: {breach_stats['q_peak_p05']:.0f}-{breach_stats['q_peak_p95']:.0f} m3/s (5th-95th)")

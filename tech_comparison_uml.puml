@@ -1,0 +1,172 @@
+@startuml JalRaksha_Technology_Comparison
+title Existing Flood Modeling Tools vs. JalRaksha — UML Class Comparison
+
+skinparam class {
+    BackgroundColor<<Existing>> #F5F5F5
+    BorderColor<<Existing>> #999999
+    BackgroundColor<<Ours>> #DAE8FC
+    BorderColor<<Ours>> #6C8EBF
+    ArrowColor #666666
+}
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+
+' ===================== ABSTRACT BASE =====================
+abstract class FloodModelingTool <<Existing>> {
+    + physicsModel : String
+    + spatialDimension : String
+    + runtime60km : String
+    + uncertaintyQuantification : Boolean
+    + demAcquisition : String
+    + offlineCapable : Boolean
+    + webDashboard : Boolean
+    + exportFormats : List<String>
+    + license : String
+    --
+    + runSimulation()
+    + exportResults()
+}
+
+' ===================== EXISTING TOOLS =====================
+class Delft3D_FM <<Existing>> {
+    + physicsModel = "2D/3D Hydrostatic SWE"
+    + spatialDimension = "2D or 3D depth-avg"
+    + runtime60km = "2-6 hours"
+    + uncertaintyQuantification = false
+    + demAcquisition = "Manual grid/bathymetry"
+    + offlineCapable = true
+    + webDashboard = false
+    + exportFormats = ["NetCDF", "ASCII"]
+    + license = "AGPL-3.0"
+    --
+    + runSimulation() : "Manual mesh required"
+}
+
+class HEC_RAS_2D <<Existing>> {
+    + physicsModel = "2D Shallow Water"
+    + spatialDimension = "2D only"
+    + runtime60km = "30-120 minutes"
+    + uncertaintyQuantification = false
+    + demAcquisition = "Manual GIS setup"
+    + offlineCapable = true
+    + webDashboard = false
+    + exportFormats = ["HDF5", "GIS"]
+    + license = "Public Domain"
+    --
+    + runSimulation() : "Windows GUI only"
+}
+
+class DualSPHysics <<Existing>> {
+    + physicsModel = "3D Navier-Stokes (SPH)"
+    + spatialDimension = "Full 3D"
+    + runtime60km = "Days-weeks"
+    + uncertaintyQuantification = false
+    + demAcquisition = "Manual CAD/mesh"
+    + offlineCapable = true
+    + webDashboard = false
+    + exportFormats = ["CSV", "VTK"]
+    + license = "LGPL-3.0"
+    --
+    + runSimulation() : "GPU/CUDA required, OOM at scale"
+}
+
+class GeoClaw <<Existing>> {
+    + physicsModel = "2D Shallow Water"
+    + spatialDimension = "2D only"
+    + runtime60km = "~hours"
+    + uncertaintyQuantification = false
+    + demAcquisition = "Manual DEM prep"
+    + offlineCapable = true
+    + webDashboard = false
+    + exportFormats = ["HDF5", "NetCDF"]
+    + license = "GPL-3.0"
+    --
+    + runSimulation() : "Python API"
+}
+
+class ANUGA <<Existing>> {
+    + physicsModel = "2D Shallow Water"
+    + spatialDimension = "2D only"
+    + runtime60km = "~minutes"
+    + uncertaintyQuantification = false
+    + demAcquisition = "Manual DEM prep"
+    + offlineCapable = true
+    + webDashboard = false
+    + exportFormats = ["NetCDF", "GIS"]
+    + license = "GPL-3.0"
+    --
+    + runSimulation() : "Python API"
+}
+
+' ===================== JALRAKSHA (OURS) =====================
+class JalRaksha <<Ours>> {
+    + physicsModel = "3D SPH (near) + 2D SWE (far)"
+    + spatialDimension = "Hybrid: 3D near dam, 2D downstream"
+    + runtime60km = "10-60 minutes"
+    + uncertaintyQuantification = true
+    + demAcquisition = "Automated Copernicus GLO-30"
+    + offlineCapable = true
+    + webDashboard = true
+    + exportFormats = ["GeoTIFF", "Shapefile", "KML", "XDMF"]
+    + license = "MIT / BSD"
+    --
+    + runSimulation() : "Headless CLI, automated pipeline"
+    + runEnsemble() : "100-member Monte Carlo"
+    + assessImpact() : "Population, damage, fatalities"
+    + fetchSatelliteOverlay() : "GEE Sentinel-1 SAR"
+}
+
+' ===================== SUPPORTING COMPONENTS (JalRaksha only) =====================
+class BreachRegressionEngine <<Ours>> {
+    + method = "Wahl 2004"
+    + samplingMethod = "Monte Carlo"
+    --
+    + generateBreachParams()
+}
+
+class EnsembleEngine <<Ours>> {
+    + members = "10-1000"
+    + statistics = ["p5", "p50", "p95"]
+    --
+    + aggregateResults()
+    + propagateUncertainty()
+}
+
+class ValidationSuite <<Ours>> {
+    + methods = ["Ritter RMSE", "Stoker wet-bed"]
+    --
+    + validateResults()
+}
+
+class ExportEngine <<Ours>> {
+    + formats = ["GeoTIFF", "Shapefile", "XDMF", "HDF5"]
+    --
+    + exportAll()
+}
+
+' ===================== RELATIONSHIPS =====================
+FloodModelingTool <|-- Delft3D_FM
+FloodModelingTool <|-- HEC_RAS_2D
+FloodModelingTool <|-- DualSPHysics
+FloodModelingTool <|-- GeoClaw
+FloodModelingTool <|-- ANUGA
+FloodModelingTool <|-- JalRaksha
+
+JalRaksha *-- BreachRegressionEngine : uses
+JalRaksha *-- EnsembleEngine : uses
+JalRaksha *-- ValidationSuite : uses
+JalRaksha *-- ExportEngine : uses
+
+note right of JalRaksha
+  **Key Differentiators**
+  - Only tool with automated
+    100-member uncertainty ensemble
+  - Only tool with hybrid 3D+2D
+    domain decomposition
+  - Only tool with web dashboard
+    + REST API + offline-first design
+  - Only tool with built-in impact
+    assessment (population/damage)
+end note
+
+@enduml

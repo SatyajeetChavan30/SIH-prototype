@@ -98,6 +98,7 @@ export default function EnsemblePanel({ result }) {
           <strong>
             Screening figure only — dam class outside fitted population
             {ensemble.dam_type ? ` (${ensemble.dam_type})` : ""}
+            {ensemble.scenario_type ? ` · ${ensemble.scenario_type.replaceAll("_", " ")}` : ""}
           </strong>
           <div style={{ marginTop: 4 }}>{ensemble.dam_class_note}</div>
         </div>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-09-03T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="Dam Breach Simulation Workflow" id="dam-breach-flow">
+    <mxGraphModel dx="2200" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Dam Breach Simulation Workflow" style="text;html=1;fontSize=24;fontStyle=1;align=left;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- START -->
+        <mxCell id="start" value="START: User Opens&#10;Web Dashboard" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- User Inputs Parameters -->
+        <mxCell id="inputs" value="User Inputs Parameters&#10;Location, breach type, and&#10;simulation boundaries." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="230" y="110" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- REST API -->
+        <mxCell id="api" value="REST API Receives Request" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="430" y="120" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Decision: Input Valid -->
+        <mxCell id="validDecision" value="Input Valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="620" y="105" width="130" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Return Error -->
+        <mxCell id="returnError" value="Return Error to Dashboard" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="620" y="260" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Fetch External Data -->
+        <mxCell id="fetchData" value="Fetch External Data&#10;Pull elevation, imagery,&#10;climate, and water data." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="800" y="105" width="160" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Breach Regression Analysis -->
+        <mxCell id="breachAnalysis" value="Breach Regression Analysis&#10;Wahl 2004 method and&#10;Monte Carlo sampling." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="105" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Decision: Simulation Scale -->
+        <mxCell id="scaleDecision" value="Simulation Scale?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="95" width="150" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- 3D SPH Solver -->
+        <mxCell id="sph" value="3D SPH Solver (Phase 1)&#10;Near-field hydraulics and&#10;terrain interaction." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="20" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- 2D SWE Solver -->
+        <mxCell id="swe" value="2D SWE Solver (Phase 2)&#10;Far-field propagation and&#10;flood spread." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="150" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Ensemble Engine -->
+        <mxCell id="ensemble" value="Ensemble Engine Aggregation&#10;Combine outputs and&#10;calculate statistics." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1660" y="85" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Validation Suite Check -->
+        <mxCell id="validation" value="Validation Suite Check&#10;Ritter RMSE and Stoker&#10;wet-bed validation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1890" y="85" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Decision: Validation Passed -->
+        <mxCell id="valPassedDecision" value="Validation Passed?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="2110" y="75" width="150" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Export Engine Processing -->
+        <mxCell id="exportEngine" value="Export Engine Processing&#10;Format as GeoTIFF, Shapefile,&#10;XDMF, HDF5." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="2310" y="95" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Store Results -->
+        <mxCell id="storeResults" value="Store Results&#10;Cache in database and&#10;user storage." style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontColor=#1a1a1a;align=center;boundedLbl=1;" vertex="1" parent="1">
+          <mxGeometry x="2530" y="95" width="150" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Return Results to Dashboard -->
+        <mxCell id="returnResults" value="Return Results to Dashboard&#10;Render visualization and&#10;download options." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontColor=#1a1a1a;align=center;" vertex="1" parent="1">
+          <mxGeometry x="2730" y="95" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Decision: User Wants Export -->
+        <mxCell id="wantsExportDecision" value="User Wants Export?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="2950" y="85" width="150" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- END -->
+        <mxCell id="end" value="END: Simulation Complete" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="3150" y="105" width="150" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="start" target="inputs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="inputs" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="api" target="validDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;" edge="1" parent="1" source="validDecision" target="fetchData">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="validDecision" target="returnError">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="returnError" target="inputs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="290" />
+              <mxPoint x="310" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="fetchData" target="breachAnalysis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="breachAnalysis" target="scaleDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="Near-field" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;exitX=0.75;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="scaleDecision" target="sph">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="Far-field" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="scaleDecision" target="swe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="sph" target="ensemble">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" edge="1" parent="1" source="swe" target="ensemble">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="ensemble" target="validation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="validation" target="valPassedDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;" edge="1" parent="1" source="valPassedDecision" target="exportEngine">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="valPassedDecision" target="breachAnalysis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2185" y="40" />
+              <mxPoint x="1095" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="exportEngine" target="storeResults">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="storeResults" target="returnResults">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="returnResults" target="wantsExportDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#d79b00;" edge="1" parent="1" source="wantsExportDecision" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

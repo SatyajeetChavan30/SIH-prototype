@@ -405,3 +405,202 @@ def test_khadakwasla_frl_is_still_derived_from_the_dem():
     """
     assert KHADAKWASLA.frl_m is None
     assert "UNVETTED" in KHADAKWASLA.frl_source
+
+
+class TestBlockagePresets:
+    """
+    A river-blockage site is a sibling of a dam, not a special case of one.
+
+    The properties asserted here are absences as much as values: a landslide
+    deposit has no published gross storage, and the day somebody helpfully adds
+    a number the ensemble stops measuring the terrain and starts trusting a
+    literal.
+    """
+
+    def test_blockage_preset_publishes_no_gross_storage(self):
+        from jalraksha.presets import BLOCKAGE_PRESETS
+
+        for site in BLOCKAGE_PRESETS.values():
+            assert not hasattr(site, "storage_mm3"), (
+                f"{site.site_id} grew a storage field. The impounded volume of a "
+                f"landslide-dammed lake is measured from a hypsometric fill of "
+                f"the updated DEM, never published on the record."
+            )
+            assert not hasattr(site, "height_m")
+            assert not hasattr(site, "dam_type")
+
+    def test_the_config_marks_storage_as_pending_measurement(self):
+        from jalraksha.presets import RISHI_GANGA
+
+        config = RISHI_GANGA.to_dam_config()
+
+        assert config["scenario_type"] == "river_blockage"
+        assert config["dam_type"] == "landslide"
+        assert config["storage_source"] == "hypsometric_fill_pending"
+        assert "storage_mm3" not in config
+        assert "height_m" not in config
+
+    def test_an_unmeasured_barrier_is_absent_rather_than_guessed(self):
+        """
+        No crest height or width is published for the 2021 Rishi Ganga blockage,
+        so none is asserted. barrier_source says how to measure them instead.
+        """
+        from jalraksha.presets import RISHI_GANGA
+
+        assert RISHI_GANGA.barrier_crest_height_m is None
+        assert RISHI_GANGA.barrier_width_m is None
+        assert "Zenodo" in RISHI_GANGA.barrier_source
+
+        config = RISHI_GANGA.to_dam_config()
+        assert "blockage_crest_height_m" not in config
+        assert "blockage_width_m" not in config
+
+    def test_rishi_ganga_domain_radius_does_not_exceed_the_cached_dem(self):
+        """
+        The solver domain is a SQUARE in UTM; the clip is a rectangle in degrees.
+
+        A square of half-width R reaches R*sqrt(2) at its corners, so a clip
+        sized to R leaves those corners outside and load_dem_as_grid fills them
+        by nearest neighbour — silently, because a filled domain runs perfectly
+        well. Measured on an 18 km domain against an 18 km clip: 11.3% of the
+        grid was fill.
+
+        So the criterion is the DIAGONAL, not the half-width. The clip staged for
+        this site is 26 km for an 18 km domain, which covers it.
+        """
+        import math
+        from pathlib import Path
+
+        import pytest
+        import rasterio
+
+        from jalraksha.presets import RISHI_GANGA
+
+        dem = Path("data/dem") / RISHI_GANGA.dem_filename()
+        if not dem.exists():
+            pytest.skip(f"{dem} is not staged; run fetch_dem before the demo.")
+
+        with rasterio.open(dem) as src:
+            bounds = src.bounds
+
+        width_km = (bounds.right - bounds.left) * 111.32 * math.cos(
+            math.radians(RISHI_GANGA.lat)
+        )
+        height_km = (bounds.top - bounds.bottom) * 110.57
+        usable_radius_km = min(width_km, height_km) / 2.0
+
+        # A cell of slack. fetch_dem trims nodata rows off the clip edge, so a
+        # correctly staged DEM lands a fraction of a cell inside the nominal
+        # radius; demanding exact containment would fail on the trim rather than
+        # on anything the solver would notice.
+        cell_km = 30.0 / 1000.0
+        required_km = RISHI_GANGA.domain_radius_km * math.sqrt(2.0)
+        assert required_km <= usable_radius_km + cell_km, (
+            f"A square domain of half-width {RISHI_GANGA.domain_radius_km} km "
+            f"reaches {required_km:.1f} km at its corners, but the cached DEM "
+            f"only covers {usable_radius_km:.1f} km — the corners would run on "
+            f"nearest-neighbour fill. Stage a wider clip: python -c \"from "
+            f"jalraksha.dem import fetch_dem; fetch_dem({RISHI_GANGA.lat}, "
+            f"{RISHI_GANGA.lon}, domain_radius_km={required_km:.0f}, "
+            f"cache_dir='./data')\""
+        )
+
+    def test_the_corridor_claims_no_town_it_cannot_source(self):
+        """
+        Rishiganga, Tapovan and Joshimath were published once from gazetteer town
+        coordinates and sat 1,319 m, 79 m and 516 m above the nearest river
+        channel — two are hill towns whose centres genuinely are hundreds of
+        metres above their rivers, so they answer a different question from the
+        one a flood gauge asks. Snapping to the lowest cell within 2 km put
+        "Rishiganga power project" at 2,851 m, still not a riverside plant.
+
+        What replaced them names no town at all. Each point is a cell on the
+        DEM-traced thalweg at a stated along-channel distance, and every one says
+        so in its note. A test that demanded the town names back would push the
+        next person straight into inventing coordinates again.
+        """
+        from jalraksha.presets import get_gauges
+
+        gauges = get_gauges("rishi_ganga")
+        assert len(gauges) == 3
+
+        for gauge in gauges:
+            assert "TERRAIN-DERIVED" in gauge.note
+            assert "not a surveyed gauge and not a town" in gauge.note
+            assert "channel" in gauge.name.lower()
+
+        claimed_towns = {"rishiganga", "tapovan", "joshimath", "raini", "ntpc"}
+        for gauge in gauges:
+            assert not (claimed_towns & set(gauge.name.lower().split())), (
+                f"{gauge.name!r} names a settlement whose channel coordinate "
+                f"this repository has not sourced."
+            )
+
+    def test_the_channel_points_descend_downstream(self):
+        """
+        A river runs downhill. Bed elevations along the trace fall 1,700 -> 1,500
+        -> 1,357 -> 1,271 m; a corridor that climbed would be a walk up a valley
+        wall, which is exactly how the previous coordinates failed.
+        """
+        from jalraksha.presets import get_gauges
+
+        gauges = get_gauges("rishi_ganga")
+        distances = [g.distance_km for g in gauges]
+        assert distances == sorted(distances)
+
+        elevations = [
+            float(g.note.split("Bed ")[1].split(" m")[0].replace(",", ""))
+            for g in gauges
+        ]
+        assert elevations == sorted(elevations, reverse=True), (
+            f"Bed elevations {elevations} do not fall downstream."
+        )
+
+    def test_a_missing_corridor_never_borrows_another_sites_towns(self):
+        """The rule the whole GAUGES module was written to enforce."""
+        from jalraksha.presets import get_gauges
+
+        assert len(get_gauges("tehri")) == 4
+        assert len(get_gauges("khadakwasla")) == 7
+        assert get_gauges("bhakra") == ()
+        rishi_names = {g.name for g in get_gauges("rishi_ganga")}
+        tehri_names = {g.name for g in get_gauges("tehri")}
+        assert not (rishi_names & tehri_names)
+
+    def test_the_preset_corrects_the_problem_statements_glof_framing(self):
+        """
+        The problem statement calls Chamoli a natural lake formation. It was a
+        rock-and-ice avalanche; a blockage did form afterwards. Carrying the
+        correction on the record is a credibility asset, and losing it would let
+        the deck repeat the error.
+        """
+        from jalraksha.presets import RISHI_GANGA
+
+        assert "AVALANCHE" in RISHI_GANGA.note.upper()
+        assert "Shugar" in RISHI_GANGA.note
+
+    def test_an_unknown_blockage_site_raises_rather_than_substituting(self):
+        import pytest
+
+        from jalraksha.presets import PresetError, get_blockage_preset
+
+        with pytest.raises(PresetError, match="Unknown blockage site"):
+            get_blockage_preset("wapriyang")
+
+    def test_a_blockage_site_offers_only_the_blockage_scenario(self):
+        """
+        Offering "dam break" for a landslide site would ask the breach
+        regressions for the failure of a structure that does not exist.
+        """
+        import sys
+
+        sys.path.insert(0, "services/api")
+        from jalraksha_service.config import settings
+
+        record = next(d for d in settings.DEMO_DAMS if d["id"] == "rishi_ganga")
+
+        assert record["record_type"] == "blockage"
+        assert record["scenario_types"] == ["river_blockage"]
+        assert record["height_m"] is None
+        assert record["storage_mm3"] is None
+        assert record["dam_type"] is None

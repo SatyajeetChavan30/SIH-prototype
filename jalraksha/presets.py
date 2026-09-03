@@ -317,6 +317,20 @@ KHADAKWASLA = DamPreset(
     # re-fetch the DEM with an eastward margin rather than nudging this up.
     # test_domain_radius_does_not_exceed_the_cached_dem pins the DEM side so
     # this cannot silently drift again.
+    #
+    # UPDATE: the cached DEM at data/dem/dem_18.44_73.77_clipped.tif was
+    # subsequently widened to a 240 x 188 km (40 km west / 200 km east / 94 km
+    # north+south) extent for a specific investigation — a 27 km dam-centred
+    # domain plateaus the hazard classification instead of letting it recede,
+    # because the flood has nowhere to drain to (see run.py's
+    # _notch_breach_into_bed and terrain/conditioning.py's fill_depressions).
+    # That investigation used domain_margins_km as a PER-REQUEST override
+    # (services/api/jalraksha_service/schemas.py's RunRequest.domain_margins_km),
+    # not a change to this preset — every default Khadakwasla run, including
+    # the dashboard demo, still gets exactly this 27 km dam-centred square.
+    # The wider cache is a superset of the old 57x56 km clip (nothing that
+    # worked before stopped working); test_domain_radius_does_not_exceed_the_
+    # cached_dem still passes, now with much more headroom.
     domain_radius_km=27.0,
     epsg=32643,
     # None => derive the fill level from the DEM's own impounded pool surface
@@ -368,6 +382,185 @@ KHADAKWASLA = DamPreset(
 
 PRESETS: Dict[str, DamPreset] = {p.dam_id: p for p in (KHADAKWASLA, TEHRI)}
 DEFAULT_PRESET_ID = "khadakwasla"
+
+
+# ---------------------------------------------------------------------------
+# River-blockage sites (natural dams)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class BlockagePreset:
+    """
+    A site where a landslide can dam the river. NOT a dam.
+
+    A sibling of DamPreset rather than a subclass, because the two disagree
+    about what is knowable and DamPreset's disagreement is a safety property
+    worth keeping intact. DamPreset.to_dam_config() REFUSES to emit a config
+    with a missing height, storage or dam type, which is right for an
+    engineered structure whose figures are published in a register. A landslide
+    deposit has none of the three by nature, so a subclass would have to weaken
+    that refusal for every dam in order to serve this one record.
+
+    lat/lon are the BARRIER, not a dam. Everything the release model needs that
+    is not here — impounded volume, surface area, crest and floor elevations —
+    is measured at run time from a DEM with the barrier burned into it
+    (jalraksha.terrain.blockage, jalraksha.terrain.dem_update). There is
+    deliberately no storage field: a literal here would be exactly the
+    slider-sets-the-physics failure that
+    breach._synthesize_blockage_ensemble refuses.
+    """
+
+    site_id: str
+    name: str
+    lat: float
+    lon: float
+    river: str
+    state: str
+    region: str
+    domain_radius_km: float
+    epsg: int
+    barrier_source: str
+    event_date: Optional[str] = None
+    barrier_crest_height_m: Optional[float] = None
+    barrier_width_m: Optional[float] = None
+    barrier_thickness_m: Optional[float] = None
+    # A terrain-derived starting position for the operator, NOT a surveyed
+    # deposit location. Kept separate from lat/lon, which is the reach centre.
+    suggested_barrier_lat: Optional[float] = None
+    suggested_barrier_lon: Optional[float] = None
+    direction_search_radius_cells: Tuple[int, int] = (5, 12)
+    vertical_exaggeration: float = 1.2
+    nominal_depth_m: float = 40.0
+    detect_date_pre: Optional[str] = None
+    detect_date_post: Optional[str] = None
+    note: Optional[str] = None
+
+    def dem_filename(self) -> str:
+        """Must mirror jalraksha/dem.py::fetch_dem's clipped-cache filename."""
+        return f"dem_{self.lat:.2f}_{self.lon:.2f}_clipped.tif"
+
+    def to_dam_config(self) -> Dict[str, Any]:
+        """
+        Config for a river_blockage run.
+
+        Emits no storage and no height. ``storage_source`` is set to the
+        pending marker so the ensemble refuses to run until tasks.py has
+        replaced it with a measured volume — an absent marker is refused too,
+        so deleting this line fails loudly rather than silently restoring the
+        old slider-driven behaviour.
+        """
+        config: Dict[str, Any] = {
+            "dam_id": self.site_id,
+            "name": self.name,
+            "lat": self.lat,
+            "lon": self.lon,
+            "dam_type": "landslide",
+            "scenario_type": "river_blockage",
+            "domain_radius_km": self.domain_radius_km,
+            "storage_source": "hypsometric_fill_pending",
+            "direction_search_radius_cells": self.direction_search_radius_cells,
+        }
+        if self.barrier_crest_height_m is not None:
+            config["blockage_crest_height_m"] = self.barrier_crest_height_m
+        if self.barrier_width_m is not None:
+            config["blockage_width_m"] = self.barrier_width_m
+        if self.barrier_thickness_m is not None:
+            config["blockage_thickness_m"] = self.barrier_thickness_m
+        return config
+
+
+RISHI_GANGA = BlockagePreset(
+    site_id="rishi_ganga",
+    name="Rishi Ganga / Dhauliganga, Chamoli",
+    # THE REACH CENTRE, which is where the DOMAIN is centred and where the map
+    # marker sits. It is not the barrier — the barrier is supplied per run,
+    # because a landslide can dam a river anywhere along it.
+    #
+    # Placed on the Dhauliganga between Tapovan and Joshimath rather than at a
+    # nominal village coordinate. An earlier value of (30.44, 79.70) was taken
+    # from a gazetteer reading of Raini and lands on a 4,100 m RIDGE in GLO-30;
+    # the domain still covered the river, but the marker described a mountain
+    # top. Checked against the DEM: Tapovan reads 1,830 m at its valley floor
+    # and Joshimath 1,876 m, both consistent with published elevations, so the
+    # terrain here is right and only the coordinate was wrong.
+    lat=30.50,
+    lon=79.63,
+    river="Rishi Ganga / Dhauliganga",
+    state="Uttarakhand",
+    region="Chamoli, Garhwal Himalaya",
+    # 18 km. Two constraints, both measured rather than assumed:
+    #
+    #   * At 30 km the domain crosses into the E080 Copernicus tile, which is
+    #     not staged. The clip that IS staged was fetched at 20 km and spans
+    #     lon 79.491-79.909, lat 30.260-30.620.
+    #   * That clip's usable radius is 19.92 km, not 20. fetch_dem sizes its
+    #     bbox with 111.0 km per degree of latitude; the true figure near 30 N
+    #     is 110.57, so a "20 km" clip is 0.08 km short of 20 km on the ground.
+    #     Declaring 20 here would put the solver on interpolated fill at the
+    #     domain edge — silently, because build_domain fills the gap and runs.
+    #
+    # 18 km leaves margin against both and still contains the corridor that
+    # matters: Raini to Tapovan to Joshimath is about 15 km.
+    domain_radius_km=18.0,
+    epsg=32644,
+    event_date="2021-02-07",
+    # TODO: UNVETTED — no crest height or width is published for the temporary
+    # blockage, so none is asserted here and the operator must supply them.
+    #
+    # They are MEASURABLE rather than guessable: Chamoli is the only event in
+    # the problem statement's list with pre- and post-event 2 m DEMs publicly
+    # downloadable (Zenodo 4554647 pre, 4558692 post, CC BY-NC-4.0). Differencing
+    # those two gives the deposit's actual location, crest height and width.
+    # Use the NUMBERS; do not redistribute the DEMs, the licence is
+    # non-commercial. docs/VERIFICATION_LOG.md row 26.
+    barrier_crest_height_m=None,
+    barrier_width_m=None,
+    barrier_source=(
+        "Not yet derived. Measure by differencing Zenodo 4554647 (pre-event) "
+        "against 4558692 (post-event), both 2 m; see docs/VERIFICATION_LOG.md "
+        "row 26. Until then the barrier is operator-supplied."
+    ),
+    # A defensible place to put one, found in the DEM rather than in a source:
+    # the deepest gorge cell in this domain below 2,600 m, at 1,702 m with
+    # 1,200 m of cross-valley relief within 2.1 km. Offered as a starting point
+    # for the operator, and labelled as terrain-derived so nobody reads it as
+    # the surveyed 2021 deposit location, which is item 26 in the queue.
+    suggested_barrier_lat=30.5207,
+    suggested_barrier_lon=79.6098,
+    # A steep Himalayan gorge: the narrow-radius annulus that works for Tehri is
+    # the right scale here too, and the broad-terrain radius Khadakwasla needs
+    # would average across ridges.
+    direction_search_radius_cells=(5, 12),
+    vertical_exaggeration=1.2,
+    nominal_depth_m=30.0,
+    # The Sentinel-1 windows for detection. The post date is the first
+    # acquisition after the 7 February 2021 event; a SINGLE scene, not a
+    # composite, so "rebuilt from the 2021-02-08 scene" is a true sentence.
+    detect_date_pre="2021-01-15",
+    detect_date_post="2021-02-08",
+    note=(
+        "The problem statement calls this a natural lake formation on the Rishi "
+        "Ganga. The 7 February 2021 Chamoli event was in fact a ROCK-AND-ICE "
+        "AVALANCHE from Ronti Peak, not a glacial lake outburst — though a "
+        "temporary blockage did form on the Rishi Ganga afterwards, which is "
+        "the blockage modelled here. Shugar et al. (2021), Science."
+    ),
+)
+
+BLOCKAGE_PRESETS: Dict[str, BlockagePreset] = {
+    p.site_id: p for p in (RISHI_GANGA,)
+}
+
+
+def get_blockage_preset(site_id: str) -> BlockagePreset:
+    try:
+        return BLOCKAGE_PRESETS[site_id]
+    except KeyError:
+        raise PresetError(
+            f"Unknown blockage site {site_id!r}. Available: "
+            f"{sorted(BLOCKAGE_PRESETS)}"
+        ) from None
 
 
 # ---------------------------------------------------------------------------
@@ -451,6 +644,75 @@ GAUGES: Dict[str, Tuple[GaugePoint, ...]] = {
                 "the domain to reach it would require fetching more GLO-30 "
                 "tiles first, and would still be routing water down a river "
                 "this town is not on."
+            ),
+        ),
+    ),
+    # NO CORRIDOR FOR rishi_ganga, DELIBERATELY.
+    #
+    # A first attempt published Rishiganga, Tapovan and Joshimath from gazetteer
+    # town coordinates. Checked against the DEM they sat 1,319 m, 79 m and 516 m
+    # ABOVE the nearest river channel -- the pipeline's own _no_arrival_reason
+    # caught it and reported "a town centre, not a riverside gauge" -- and even
+    # snapped to the lowest cell within 2 km, "Rishiganga power project" landed
+    # at 2,851 m, which is not where a riverside plant is. Two of them are hill
+    # towns whose centres genuinely sit hundreds of metres above their rivers, so
+    # the coordinates were not simply mistyped: they answer a different question
+    # from the one a flood gauge asks.
+    #
+    # This repeats the failure GAUGES was created to end (Koteshwar 4 km east of
+    # the gorge, Rishikesh 112 km west of itself), so the entries are removed
+    # rather than snapped into plausibility. get_gauges returns () and the
+    # dashboard shows no corridor, which is the honest state: nobody has sourced
+    # channel positions for this reach.
+    #
+    # WORTH FINISHING. The published HEC-RAS study of the 7 February 2021 flow
+    # reports peak discharge and depth at two named points -- Rishiganga
+    # 7,908-7,975 m3/s at 19.85 m, and Tapovan 5,780-5,957 m3/s at 18.15 m
+    # (literature.md 11.2). With sourced CHANNEL coordinates those become a
+    # citable validation comparison for a natural-dam outburst -- the equivalent
+    # of the Teton benchmark the breach regressions are scored on, and the
+    # strongest evidence this scenario could carry.
+    #
+    # WHAT IS PUBLISHED INSTEAD: unnamed CHANNEL POINTS, derived from the DEM.
+    #
+    # They carry no town name because none is claimed. Each is a cell on the
+    # traced thalweg downstream of the suggested barrier, at a stated
+    # along-channel distance, and the question they answer -- does the release
+    # get this far, and when -- is the one a gauge is for. Naming them after
+    # Joshimath or Tapovan would assert a location this repository cannot source;
+    # leaving the reach unmonitored would discard a real result.
+    #
+    # Traced on dem_30.50_79.63_clipped.tif at 100 m by steepest descent from the
+    # suggested barrier: bed falls 1,700 m -> 1,500 m -> 1,357 m -> 1,271 m over
+    # 15.1 km, which is a plausible Himalayan river profile and not a walk up a
+    # valley wall. Distances are along that trace, so they are approximate in the
+    # way a DEM-traced channel is: the step is up to 15 cells, and the real river
+    # meanders inside it.
+    "rishi_ganga": (
+        GaugePoint(
+            "Dhauliganga channel +5 km", 5.0, 30.5559, 79.5828,
+            river="Dhauliganga",
+            note=(
+                "TERRAIN-DERIVED channel point, not a surveyed gauge and not a "
+                "town. Bed 1,500 m, traced 5.0 km down the thalweg from the "
+                "suggested barrier."
+            ),
+        ),
+        GaugePoint(
+            "Alaknanda channel +10 km", 10.5, 30.5581, 79.5348,
+            river="Dhauliganga / Alaknanda",
+            note=(
+                "TERRAIN-DERIVED channel point, not a surveyed gauge and not a "
+                "town. Bed 1,357 m, traced 10.5 km down the thalweg."
+            ),
+        ),
+        GaugePoint(
+            "Alaknanda channel +15 km", 15.1, 30.5270, 79.5051,
+            river="Alaknanda",
+            note=(
+                "TERRAIN-DERIVED channel point, not a surveyed gauge and not a "
+                "town. Bed 1,271 m, traced 15.1 km down the thalweg -- the "
+                "furthest the trace reaches inside this domain."
             ),
         ),
     ),

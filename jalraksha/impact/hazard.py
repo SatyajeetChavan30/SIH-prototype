@@ -18,7 +18,7 @@ Classification criteria (FD2320):
 """
 
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from enum import Enum
 
 

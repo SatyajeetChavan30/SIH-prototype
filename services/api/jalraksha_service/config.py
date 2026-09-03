@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 #
 # Direction matters — service depends on library, never the reverse. That is
 # jalraksha/presets.py's own stated rule for this exact situation.
-from jalraksha.presets import KHADAKWASLA, get_gauges
+from jalraksha.presets import KHADAKWASLA, RISHI_GANGA, get_gauges
 
 
 def _env(key: str, default: str) -> str:
@@ -69,6 +69,60 @@ def _demo_dam_from_preset(preset: Any) -> Dict[str, Any]:
             }
             for g in get_gauges(preset.dam_id)
         ],
+        # Which incident types this record can model. Published so the dashboard
+        # can gate its scenario selector per site instead of hard-pinning every
+        # non-dam-break scenario to one dam, which is what it used to do.
+        "record_type": "dam",
+        "scenario_types": ["dam_break", "river_blockage", "river_overflow"],
+    }
+
+
+def _demo_blockage_from_preset(preset: Any) -> Dict[str, Any]:
+    """
+    Adapt a jalraksha.presets.BlockagePreset into the /dams wire shape.
+
+    Publishes height_m, storage_mm3 and dam_type as None ON PURPOSE. A landslide
+    deposit has no engineered height and no published gross storage; the crest
+    comes from the barrier spec and the volume from a hypsometric fill of the
+    updated DEM at run time. ``record_type: "blockage"`` is what tells
+    RunRequest.to_dam_config to skip the vetted-figures refusal that would
+    otherwise 422 this record for correctly declining to invent them.
+    """
+    return {
+        "id": preset.site_id,
+        "name": preset.name,
+        "lat": preset.lat,
+        "lon": preset.lon,
+        "height_m": None,
+        "storage_mm3": None,
+        "dam_type": None,
+        "river": preset.river,
+        "state": preset.state,
+        "domain_radius_km": preset.domain_radius_km,
+        "surface_area_km2": None,
+        "vertical_exaggeration": preset.vertical_exaggeration,
+        "nominal_depth_m": preset.nominal_depth_m,
+        "gauges": [
+            {
+                "name": g.name, "distance_km": g.distance_km,
+                "lat": g.lat, "lon": g.lon, "river": g.river, "note": g.note,
+            }
+            for g in get_gauges(preset.site_id)
+        ],
+        "record_type": "blockage",
+        # A blockage site models one thing. Offering "dam break" here would ask
+        # the breach regressions for the failure of a structure that does not
+        # exist.
+        "scenario_types": ["river_blockage"],
+        "blockage_crest_height_m": preset.barrier_crest_height_m,
+        "blockage_width_m": preset.barrier_width_m,
+        # Where to START placing the barrier. Terrain-derived, not surveyed,
+        # and separate from lat/lon so the map marker stays on the reach.
+        "suggested_barrier_lat": preset.suggested_barrier_lat,
+        "suggested_barrier_lon": preset.suggested_barrier_lon,
+        "blockage_date_pre": preset.detect_date_pre,
+        "blockage_date_post": preset.detect_date_post,
+        "note": preset.note,
     }
 
 
@@ -178,6 +232,14 @@ class Settings:
         #   * Its DEM (dem_18.44_73.77_clipped.tif) IS staged, so _resolve_dem
         #     succeeds. bhakra/idukki/hirakud still have none.
         _demo_dam_from_preset(KHADAKWASLA),
+        # The Rishi Ganga / Dhauliganga confluence at Raini — a river-BLOCKAGE
+        # site, not a dam. The problem statement names it first among the
+        # natural lake formations, and its 20 km domain sits entirely inside the
+        # already staged N30_00_E079 Copernicus window, so it runs offline.
+        #
+        # It publishes no height, storage or dam type, and record_type
+        # "blockage" is what stops RunRequest.to_dam_config refusing it for that.
+        _demo_blockage_from_preset(RISHI_GANGA),
     ]
 
     # ParaView desktop integration (POST /runs/{id}/open-paraview).

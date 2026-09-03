@@ -9,6 +9,7 @@ import EnsemblePanel from "./panels/EnsemblePanel.jsx";
 import ImpactPanel from "./panels/ImpactPanel.jsx";
 import ValidationPanel from "./panels/ValidationPanel.jsx";
 import SphPanel from "./panels/SphPanel.jsx";
+import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
 import { resolveApiUrl } from "./api.js";
 import { DAM, GAUGES } from "./data/entities.js";
@@ -91,6 +92,14 @@ function Workspace() {
           </div>
 
           {/*
+            Above the tab content, not inside a tab: the 3D globe renders the
+            MODIFIED terrain on the workspace tab, so the label has to be
+            visible wherever the viewer is looking. Renders nothing at all when
+            the run's terrain was not touched.
+          */}
+          <DemUpdateBanner demUpdate={result?.dem_update} />
+
+          {/*
             Panels stay MOUNTED and are hidden with CSS rather than swapped by a
             ternary. The previous arrangement unmounted the inactive branch, so
             every tab click tore down and rebuilt the Cesium Viewer and the
@@ -133,7 +142,7 @@ function Workspace() {
               <ComparisonPanel runId={runId} />
             </Pane>
             <Pane active={tab === "validation"}>
-              <ValidationPanel />
+              <ValidationPanel result={result} />
             </Pane>
             <Pane active={tab === "downloads"}>
               <DownloadsPanel result={result} />

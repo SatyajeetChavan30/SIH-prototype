@@ -1,0 +1,186 @@
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .section-title { font-size: 18px; font-weight: bold; fill: white; }
+      .box-title { font-size: 14px; font-weight: bold; fill: white; }
+      .box-text { font-size: 11px; fill: white; }
+      .arrow { stroke: #00ccff; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .connector { stroke: #666; stroke-width: 1; stroke-dasharray: 5,5; fill: none; }
+      .frontend { fill: #1e90ff; stroke: #00ccff; stroke-width: 2; }
+      .backend { fill: #222222; stroke: #ffaa00; stroke-width: 2; }
+      .api { fill: #ff6b35; stroke: #ffaa00; stroke-width: 2; }
+      .solver { fill: #d62828; stroke: #ffaa00; stroke-width: 2; }
+      .data-source { fill: #1f77b4; stroke: #00ccff; stroke-width: 2; }
+      .section-bg { fill: #0a0a0a; stroke: #555; stroke-width: 2; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#00ccff" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#0d0d0d"/>
+
+  <!-- FRONTEND SECTION -->
+  <rect x="20" y="20" width="350" height="200" class="section-bg"/>
+  <text x="190" y="45" text-anchor="middle" class="section-title">FRONTEND LAYER</text>
+
+  <!-- Web Dashboard -->
+  <rect x="40" y="70" width="310" height="130" class="frontend" rx="8"/>
+  <text x="195" y="95" text-anchor="middle" class="box-title">Web Dashboard</text>
+  <text x="195" y="115" text-anchor="middle" class="box-text">Live view of flood simulation</text>
+  <text x="195" y="130" text-anchor="middle" class="box-text">Input: latitude, longitude,</text>
+  <text x="195" y="145" text-anchor="middle" class="box-text">height, storage parameters</text>
+  <text x="195" y="160" text-anchor="middle" class="box-text">Real-time results & visualization</text>
+  <text x="195" y="180" text-anchor="middle" class="box-text">Export capabilities</text>
+
+  <!-- BACKEND SECTION TITLE -->
+  <rect x="400" y="20" width="980" height="35" class="section-bg"/>
+  <text x="890" y="45" text-anchor="middle" class="section-title">BACKEND SERVICES</text>
+
+  <!-- LAYER 2: API ORCHESTRATION -->
+  <rect x="400" y="75" width="980" height="100" class="section-bg"/>
+  <text x="890" y="95" text-anchor="middle" class="section-title" font-size="14">Layer 2: API Gateway & Orchestration</text>
+
+  <rect x="420" y="110" width="940" height="55" class="api" rx="8"/>
+  <text x="890" y="135" text-anchor="middle" class="box-title">REST API Server</text>
+  <text x="890" y="155" text-anchor="middle" class="box-text">Request routing • Job queuing • Response aggregation • Error handling</text>
+
+  <!-- Arrow from Frontend to Backend -->
+  <path d="M 350 120 L 400 120" class="arrow"/>
+
+  <!-- LAYER 3: SIMULATION ENGINE -->
+  <rect x="400" y="190" width="980" height="360" class="section-bg"/>
+  <text x="890" y="210" text-anchor="middle" class="section-title" font-size="14">Layer 3: Simulation Engine Core</text>
+
+  <!-- Data Preparation -->
+  <rect x="420" y="230" width="180" height="110" class="solver" rx="8"/>
+  <text x="510" y="255" text-anchor="middle" class="box-title">Terrain</text>
+  <text x="510" y="270" text-anchor="middle" class="box-title">Preparation</text>
+  <text x="510" y="290" text-anchor="middle" class="box-text">Satellite DEM</text>
+  <text x="510" y="305" text-anchor="middle" class="box-text">+ Slices processing</text>
+  <text x="510" y="320" text-anchor="middle" class="box-text">Artifact cleaning</text>
+
+  <!-- Breach Regression -->
+  <rect x="620" y="230" width="180" height="110" class="solver" rx="8"/>
+  <text x="710" y="255" text-anchor="middle" class="box-title">Breach</text>
+  <text x="710" y="270" text-anchor="middle" class="box-title">Regression</text>
+  <text x="710" y="290" text-anchor="middle" class="box-text">Wahl 2004 Method</text>
+  <text x="710" y="305" text-anchor="middle" class="box-text">100 Monte Carlo</text>
+  <text x="710" y="320" text-anchor="middle" class="box-text">members</text>
+
+  <!-- 3D SPH Solver -->
+  <rect x="820" y="230" width="170" height="110" class="solver" rx="8"/>
+  <text x="905" y="255" text-anchor="middle" class="box-title">3D SPH Solver</text>
+  <text x="905" y="270" text-anchor="middle" class="box-title">(Phase 1)</text>
+  <text x="905" y="290" text-anchor="middle" class="box-text">Near-field</text>
+  <text x="905" y="305" text-anchor="middle" class="box-text">solver</text>
+  <text x="905" y="320" text-anchor="middle" class="box-text">Free surface tracking</text>
+
+  <!-- 2D SWE Solver -->
+  <rect x="1010" y="230" width="170" height="110" class="solver" rx="8"/>
+  <text x="1095" y="255" text-anchor="middle" class="box-title">2D SWE Solver</text>
+  <text x="1095" y="270" text-anchor="middle" class="box-title">(Phase 2)</text>
+  <text x="1095" y="290" text-anchor="middle" class="box-text">Far-field</text>
+  <text x="1095" y="305" text-anchor="middle" class="box-text">solver</text>
+  <text x="1095" y="320" text-anchor="middle" class="box-text">Large domain</text>
+
+  <!-- Ensemble Engine -->
+  <rect x="1200" y="230" width="170" height="110" class="solver" rx="8"/>
+  <text x="1285" y="255" text-anchor="middle" class="box-title">Ensemble</text>
+  <text x="1285" y="270" text-anchor="middle" class="box-title">Engine</text>
+  <text x="1285" y="290" text-anchor="middle" class="box-text">Uncertainty</text>
+  <text x="1285" y="305" text-anchor="middle" class="box-text">p5/p50/p95</text>
+  <text x="1285" y="320" text-anchor="middle" class="box-text">statistics</text>
+
+  <!-- Connectors between solvers -->
+  <path d="M 600 285 L 620 285" class="connector"/>
+  <path d="M 800 285 L 820 285" class="connector"/>
+  <path d="M 990 285 L 1010 285" class="connector"/>
+  <path d="M 1180 285 L 1200 285" class="connector"/>
+
+  <!-- Flood Impact Assessment -->
+  <rect x="420" y="360" width="210" height="110" class="solver" rx="8"/>
+  <text x="525" y="385" text-anchor="middle" class="box-title">Flood Impact</text>
+  <text x="525" y="400" text-anchor="middle" class="box-title">Assessment</text>
+  <text x="525" y="420" text-anchor="middle" class="box-text">Population-At-Risk</text>
+  <text x="525" y="435" text-anchor="middle" class="box-text">(GHSL)</text>
+  <text x="525" y="450" text-anchor="middle" class="box-text">Affected area analysis</text>
+
+  <!-- Validation Suite -->
+  <rect x="650" y="360" width="230" height="110" class="solver" rx="8"/>
+  <text x="765" y="385" text-anchor="middle" class="box-title">Validation Suite</text>
+  <text x="765" y="405" text-anchor="middle" class="box-text">Ritter dry-bed: RMSE</text>
+  <text x="765" y="420" text-anchor="middle" class="box-text">Stoker wet-bed: validated</text>
+  <text x="765" y="435" text-anchor="middle" class="box-text">Thacker bow: 2D oscillation</text>
+  <text x="765" y="450" text-anchor="middle" class="box-text">Cross-validation checks</text>
+
+  <!-- Export Engine -->
+  <rect x="900" y="360" width="240" height="110" class="solver" rx="8"/>
+  <text x="1020" y="385" text-anchor="middle" class="box-title">Export Engine</text>
+  <text x="1020" y="405" text-anchor="middle" class="box-text">GeoTIFF (single-band)</text>
+  <text x="1020" y="420" text-anchor="middle" class="box-text">Shapefile (polygons)</text>
+  <text x="1020" y="435" text-anchor="middle" class="box-text">XDMF + HDF5 (animation)</text>
+  <text x="1020" y="450" text-anchor="middle" class="box-text">Keyframes (snapshots)</text>
+
+  <!-- Delft 3D Integration -->
+  <rect x="1160" y="360" width="210" height="110" class="solver" rx="8"/>
+  <text x="1265" y="385" text-anchor="middle" class="box-title">Delft 3D</text>
+  <text x="1265" y="400" text-anchor="middle" class="box-title">Cross-Validation</text>
+  <text x="1265" y="420" text-anchor="middle" class="box-text">Ritter RMSE</text>
+  <text x="1265" y="435" text-anchor="middle" class="box-text">benchmark</text>
+  <text x="1265" y="450" text-anchor="middle" class="box-text">Error metrics</text>
+
+  <!-- Arrow from API to Simulators -->
+  <path d="M 510 180 L 510 230" class="arrow"/>
+  <path d="M 710 180 L 710 230" class="arrow"/>
+  <path d="M 905 180 L 905 230" class="arrow"/>
+  <path d="M 1095 180 L 1095 230" class="arrow"/>
+
+  <!-- LAYER 4: DATA SOURCES -->
+  <rect x="400" y="570" width="980" height="100" class="section-bg"/>
+  <text x="890" y="590" text-anchor="middle" class="section-title" font-size="14">Layer 4: Data Sources (Free, Open, Legal)</text>
+
+  <!-- Data source boxes -->
+  <rect x="420" y="610" width="170" height="50" class="data-source" rx="8"/>
+  <text x="505" y="635" text-anchor="middle" class="box-text">Copernicus</text>
+  <text x="505" y="650" text-anchor="middle" class="box-text">GLO-30 DEM</text>
+
+  <rect x="610" y="610" width="170" height="50" class="data-source" rx="8"/>
+  <text x="695" y="635" text-anchor="middle" class="box-text">CWC Dam</text>
+  <text x="695" y="650" text-anchor="middle" class="box-text">Register</text>
+
+  <rect x="800" y="610" width="170" height="50" class="data-source" rx="8"/>
+  <text x="885" y="635" text-anchor="middle" class="box-text">Google Earth</text>
+  <text x="885" y="650" text-anchor="middle" class="box-text">Engine</text>
+
+  <rect x="990" y="610" width="170" height="50" class="data-source" rx="8"/>
+  <text x="1075" y="635" text-anchor="middle" class="box-text">ESA WorldCover</text>
+  <text x="1075" y="650" text-anchor="middle" class="box-text">Land classification</text>
+
+  <rect x="1180" y="610" width="200" height="50" class="data-source" rx="8"/>
+  <text x="1280" y="635" text-anchor="middle" class="box-text">Offline Cache</text>
+  <text x="1280" y="650" text-anchor="middle" class="box-text">Local storage</text>
+
+  <!-- Arrows from simulators to data layer -->
+  <path d="M 510 470 L 510 610" class="connector"/>
+  <path d="M 765 470 L 765 610" class="connector"/>
+  <path d="M 1020 470 L 1020 610" class="connector"/>
+
+  <!-- Legend -->
+  <rect x="20" y="720" width="1360" height="160" class="section-bg"/>
+  <text x="700" y="745" text-anchor="middle" class="section-title" font-size="14">System Architecture Overview</text>
+
+  <text x="40" y="775" class="box-text" font-size="12">
+    <tspan font-weight="bold">Frontend Layer:</tspan> Web-based dashboard for user interaction and result visualization
+  </text>
+  <text x="40" y="800" class="box-text" font-size="12">
+    <tspan font-weight="bold">Backend Layer (API + Simulation):</tspan> REST API orchestrates requests and coordinates between multiple simulation solvers
+  </text>
+  <text x="40" y="825" class="box-text" font-size="12">
+    <tspan font-weight="bold">Simulation Engine:</tspan> Multi-phase solver approach (3D near-field + 2D far-field) with ensemble uncertainty quantification, validation, and export capabilities
+  </text>
+  <text x="40" y="850" class="box-text" font-size="12">
+    <tspan font-weight="bold">Data Layer:</tspan> Open-source, free, and legally redistributable data sources with offline caching for resilience
+  </text>
+</svg>

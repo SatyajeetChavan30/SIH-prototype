@@ -365,3 +365,203 @@ class TestPopulationAtRisk:
                           warning_lead_time_s=0.0,
                           h_max_grid=np.zeros((10, 10)))
         assert par["total_par"] == 0.0
+
+
+
+class TestBlockageDetectionProvenance:
+    """
+    New-water detection holds the same contract as the SAR extent layer: live,
+    cached, or a refusal that says why. Nothing here fabricates a lake.
+    """
+
+    def test_no_gee_and_no_cache_raises(self, no_gee, tmp_path):
+        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
+        from jalraksha.gee.sar import SarUnavailableError
+
+        reset_refusals()
+        with pytest.raises(SarUnavailableError, match="No synthetic substitute"):
+            detect_new_water(
+                "rishi_ganga", (79.5, 30.3, 79.7, 30.5), tmp_path,
+                date_pre_start="2021-01-15", date_pre_end="2021-02-07",
+                date_post="2021-02-08",
+            )
+
+    def test_refusal_writes_no_file(self, no_gee, tmp_path):
+        """A refusal must leave nothing behind that a later run could serve."""
+        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
+        from jalraksha.gee.sar import SarUnavailableError
+
+        reset_refusals()
+        with pytest.raises(SarUnavailableError):
+            detect_new_water(
+                "rishi_ganga", (79.5, 30.3, 79.7, 30.5), tmp_path,
+                date_pre_start="2021-01-15", date_pre_end="2021-02-07",
+                date_post="2021-02-08",
+            )
+        assert list(tmp_path.iterdir()) == []
+
+    def test_detection_has_no_synthetic_generator(self):
+        """
+        sar.py has a synthetic change mask, gated behind allow_synthetic and used
+        only by tests. The detector has none: a fabricated landslide lake would
+        be a claim about a real place with people living below it.
+        """
+        import jalraksha.gee.blockage_detect as detector
+
+        assert not any(name.startswith("_synthetic") for name in dir(detector))
+        assert not any("synthetic" in name.lower() for name in dir(detector))
+
+    def test_the_precision_gate_is_applied_to_the_pre_scene_not_the_difference(self):
+        """
+        Encodes the design decision so a refactor cannot quietly re-apply
+        MIN_JRC_PRECISION to the new-water mask.
+
+        A lake that formed last week is definitionally absent from a 32-year
+        permanent-water product, so precision against permanent water is near
+        zero BY CONSTRUCTION for a correct detection. That gate on the
+        difference would reject exactly the true positives. It belongs on the
+        PRE scene's total water, which should be the known river.
+        """
+        import inspect
+
+        import jalraksha.gee.blockage_detect as detector
+
+        source = inspect.getsource(detector._fetch_live)
+        gate_lines = [
+            line for line in source.splitlines()
+            if "MIN_JRC_PRECISION" in line and "<" in line
+        ]
+        assert gate_lines, "The precision gate disappeared from the detector."
+        for line in gate_lines:
+            assert "pre_agreement" in line, (
+                f"The precision gate is applied to {line.strip()!r}. It must be "
+                f"measured on the PRE-event mask; applying it to the difference "
+                f"rejects every true positive."
+            )
+        assert "_agreement_with_jrc(pre, pre_water" in source
+
+    def test_flat_patch_gate_rejects_a_hillside_candidate(self):
+        """
+        The strongest filter, and it needs no network: a lake surface is flat, a
+        radar-shadow patch on a valley wall is not, and backscatter alone cannot
+        tell them apart.
+        """
+        import numpy as np
+
+        from jalraksha.gee.blockage_detect import score_candidate_flatness
+
+        candidate = np.zeros((60, 60), dtype=bool)
+        candidate[20:35, 20:35] = True
+
+        hillside = np.tile(np.arange(60, dtype=float) * 25.0, (60, 1))
+        pool = np.full((60, 60), 1420.0)
+
+        assert score_candidate_flatness(
+            hillside, candidate, 60.0)["passes_flatness"] is False
+        assert score_candidate_flatness(
+            pool, candidate, 60.0)["passes_flatness"] is True
+
+    def test_flatness_tolerates_a_single_clipped_cliff_cell(self):
+        """
+        A shoreline ring inevitably clips a cell or two of valley wall. The
+        spread is measured p05-to-p95 so one outlier does not condemn a real lake.
+        """
+        import numpy as np
+
+        from jalraksha.gee.blockage_detect import score_candidate_flatness
+
+        bed = np.full((60, 60), 1420.0)
+        bed[25, 25] = 1600.0
+        candidate = np.zeros((60, 60), dtype=bool)
+        candidate[20:35, 20:35] = True
+
+        assert score_candidate_flatness(bed, candidate, 60.0)["passes_flatness"] is True
+
+    def test_an_empty_candidate_never_passes(self):
+        import numpy as np
+
+        from jalraksha.gee.blockage_detect import score_candidate_flatness
+
+        bed = np.full((10, 10), 1000.0)
+        result = score_candidate_flatness(bed, np.zeros((10, 10), bool), 60.0)
+        assert result["passes_flatness"] is False
+
+    def test_the_post_window_cannot_span_more_than_one_repeat_cycle(self):
+        """
+        A multi-scene post window would make "rebuilt from the 2021-02-08 scene"
+        false. Sentinel-1's repeat cycle bounds it.
+        """
+        from jalraksha.gee.blockage_detect import MAX_POST_WINDOW_DAYS
+
+        assert MAX_POST_WINDOW_DAYS <= 12
+
+    def test_the_size_floor_is_far_below_a_real_event(self):
+        """
+        The published inundation extent of the 7 Feb 2021 Chamoli flow is
+        0.66 km2. The floor must not be anywhere near excluding that class of
+        event, or it would be filtering out the thing it exists to find.
+        """
+        from jalraksha.gee.blockage_detect import MIN_NEW_WATER_AREA_M2
+
+        chamoli_extent_m2 = 0.66e6
+        assert MIN_NEW_WATER_AREA_M2 < chamoli_extent_m2 / 10.0
+
+    def test_a_cached_detection_is_relabelled_and_keeps_its_own_dates(
+        self, no_gee, tmp_path
+    ):
+        """Offline-first: a previously fetched detection is a real observation."""
+        import json
+
+        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
+
+        mask_tif = tmp_path / "new_water_mask.tif"
+        mask_png = tmp_path / "new_water_mask.png"
+        mask_tif.write_bytes(b"tif")
+        mask_png.write_bytes(b"png")
+        (tmp_path / "blockage_manifest.json").write_text(
+            json.dumps({
+                "reach": "rishi_ganga",
+                "source": "sentinel1_change_detection",
+                "scene_id_post": "S1A_IW_GRDH_20210208",
+                "acquired_at_post": "2021-02-08T00:33:45+00:00",
+                "mask_geotiff_path": str(mask_tif),
+                "mask_png_path": str(mask_png),
+            }),
+            encoding="utf-8",
+        )
+
+        reset_refusals()
+        detection = detect_new_water(
+            "rishi_ganga", (79.5, 30.3, 79.7, 30.5), tmp_path,
+            date_pre_start="2021-01-15", date_pre_end="2021-02-07",
+            date_post="2021-02-08",
+        )
+
+        assert detection["source"] == "cached"
+        assert detection["acquired_at_post"] == "2021-02-08T00:33:45+00:00"
+        assert "live query was not possible" in detection["reason"]
+
+    def test_a_manifest_naming_missing_files_is_not_a_usable_cache(
+        self, no_gee, tmp_path
+    ):
+        import json
+
+        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
+        from jalraksha.gee.sar import SarUnavailableError
+
+        (tmp_path / "blockage_manifest.json").write_text(
+            json.dumps({
+                "reach": "rishi_ganga",
+                "mask_geotiff_path": str(tmp_path / "gone.tif"),
+                "mask_png_path": str(tmp_path / "gone.png"),
+            }),
+            encoding="utf-8",
+        )
+
+        reset_refusals()
+        with pytest.raises(SarUnavailableError):
+            detect_new_water(
+                "rishi_ganga", (79.5, 30.3, 79.7, 30.5), tmp_path,
+                date_pre_start="2021-01-15", date_pre_end="2021-02-07",
+                date_post="2021-02-08",
+            )
