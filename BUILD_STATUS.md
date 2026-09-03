@@ -1,5 +1,21 @@
 # JalRaksha Build Status — 2026-08-24
 
+> **This is a dated snapshot. Its numbers are no longer current.** Kept as a
+> record of where the build stood on 24 August 2026; the figures below have not
+> been rewritten, because a snapshot that is quietly edited stops being one.
+>
+> **Since then — see `docs/progress.md` for the live checkpoint:**
+>
+> * **Tests: 590 passing** (this page says 235/239).
+> * **Dashboard integration** — eight tabs, run picker, live Earth Engine,
+>   real Delft3D FM. `docs/dashboard_integration.md`.
+> * **River blockage (landslide dam) scenario and the observation-conditioned
+>   DEM update** — the natural-dam half of PS-26161. Four new library modules;
+>   the barrier is burned into the terrain, proven to span the valley, and its
+>   impounded volume measured rather than supplied. `CLAUDE.md` and
+>   `docs/validation_findings.md` §5–7.
+> * **Verification queue grew to 26 rows** (`docs/VERIFICATION_LOG.md`).
+
 ## Summary
 - **Phases Completed:** All 18 Phases Complete! (Phases 0–18 ✅)
 - **Current Status:** Final integration complete, 235/239 tests passing, 71% total code coverage.

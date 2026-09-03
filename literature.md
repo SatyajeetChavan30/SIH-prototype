@@ -180,6 +180,23 @@ These are attractive because they are **screening tools**: they classify a newly
 
 **Natural-dam peak outflow:** Costa (1985), Walder & O'Connor (1997), Peng & Zhang (2012). Published scatter for natural dams is wider than for engineered embankments — state it.
 
+### Implementation status (as built)
+
+| Item | Status | Where |
+| :--- | :--- | :--- |
+| Costa (1985) | **Active** — the only transcribed regression whose fitting population included natural dams, and therefore the only one a blockage run uses | `terrain/breach.py::costa_1985_peak_outflow` |
+| Walder & O'Connor (1997) | Implemented in **shape only**, quarantined behind `WALDER_OCONNOR_1997_VERIFIED = False`; calling it raises | `terrain/natural_dam.py`, queue row 19 |
+| Peng & Zhang (2012) | Same quarantine. Worth finishing: it is the only equation whose inputs — deposit **volume** and **width** — match what a blockage run actually knows, because the burned barrier produces both | `terrain/natural_dam.py`, queue row 20 |
+| Wider natural-dam scatter | **Enforced**, not just stated: `NATURAL_DAM_LOG_CYCLES` is applied instead of Wahl's embankment bands, and with one active family the ensemble takes its whole spread from it. Widths are unvetted placeholders chosen only to exceed Wahl's | `terrain/natural_dam.py`, queue rows 21–22 |
+| Impoundment Index | **Computed** — needs only dam and lake volume, both of which the burned geometry supplies | `terrain/blockage.py::natural_dam_indices` |
+| Blockage Index / DBI | Computed **only when a catchment area is supplied**. It is not derived: that needs flow accumulation over a DEM larger than the simulation domain, and estimating it from the domain would be a plausible-looking wrong number | same |
+| Stability **verdict** | Deliberately **not issued**. The indices are returned as values; Ermini & Casagli's stability envelopes are untranscribed, and this project does not turn an unvetted constant into an operational judgement | queue row 23 |
+
+The "volume is the hard term" note in the table above is what the DEM update
+resolves: burning the deposit into the terrain yields its volume and width
+directly, which is why the blockage scenario and the DEM update are one feature
+rather than two.
+
 Additional Indian and regional events worth documenting (verification status varies): Pareechu 2004 (Himachal/Tibet — ⚠ verify or discard), Yigong 2000 (Tibet), South Lhonak Lake October 2023 (Sikkim, GLOF, Teesta-III dam destroyed), Kedarnath 2013, Gohna Tal 1893.
 
 ---
@@ -400,6 +417,24 @@ That is a published, quantitative, independently-corroborated target. If our mod
 That last one is doubly useful: it gives us both a reference inundation extent and a published F-score to compare our own agreement metric against.
 
 **Known gap [V]:** Shugar et al.'s r.avaflow input dataset was never published — the code-availability section literally reads "available at [insert link when available]". The model inputs must therefore be rebuilt from the Zenodo DEMs. Annoying, but tractable, and worth stating because it shows we checked.
+
+**Blocked on coordinates, not on modelling.** The `rishi_ganga` blockage
+scenario runs end to end, but it cannot yet be scored against the HEC-RAS row
+above, for one reason: comparing needs **channel** coordinates for Rishiganga
+and Tapovan, and gazetteer town coordinates are not them. Run through the
+pipeline, which snaps a gauge toward the channel before measuring, those two
+points still reported **1,319 m** and **79 m** above the nearest channel
+(unsnapped they are worse: 1,576 m and 284 m). They are hill towns genuinely
+far above their rivers, and snapping to the lowest cell within 2 km still left
+Rishiganga at 2,851 m. The corridor therefore publishes three DEM-traced
+thalweg points that name no town.
+
+Source riverside coordinates for those two points and this becomes a real
+quantitative validation of a natural-dam outburst — the equivalent of the Teton
+benchmark the breach regressions are scored on, and the strongest evidence the
+blockage path could carry. The same Zenodo pair (4554647 pre, 4558692 post)
+that supplies the barrier dimensions in verification queue row 26 would also
+locate them.
 
 **Responders:** ITBP and NDRF. (Do not confuse with Phuktal's responders — see below.)
 

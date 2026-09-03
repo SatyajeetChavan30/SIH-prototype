@@ -24,7 +24,7 @@ import { getValidation } from "../api.js";
  * kernel, so a tab that auto-ran it would fire a solver on every page load. The
  * server caches the result; the button asks for it.
  */
-export default function ValidationPanel() {
+export default function ValidationPanel({ result }) {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -110,7 +110,132 @@ export default function ValidationPanel() {
           <RitterChart series={ritter.series} />
         </>
       )}
+
+      <DemUpdateSection demUpdate={result?.dem_update} />
     </div>
+  );
+}
+
+/**
+ * How much to trust a run whose terrain was rebuilt.
+ *
+ * Lives on the Validation tab rather than in a tab of its own because that is
+ * the question it answers. Four of these numbers are load-bearing and none of
+ * them is visible anywhere else:
+ *
+ *   downstream_leak_cells   must be 0. A barrier that does not span the valley
+ *                           impounds nothing and the fill quietly runs around
+ *                           its ends, reporting a small but plausible lake.
+ *   spill_detected_at_m     when set, the pool escapes over a saddle above that
+ *                           level and the usable capacity was capped there.
+ *   storage_fit_residual    how well a power law describes this valley. A
+ *                           stepped Himalayan reach is not guaranteed to be one,
+ *                           and the routing assumes it is.
+ *   volume_plausible        Costa & Schuster (1988) put surveyed natural-dam
+ *                           volumes at 1e6-1e8 m3. Outside that, the requested
+ *                           width is probably wrong.
+ */
+function DemUpdateSection({ demUpdate }) {
+  if (!demUpdate) return null;
+
+  const barrier = demUpdate.barrier || {};
+  const lake = demUpdate.lake || {};
+  const raster = demUpdate.raster || {};
+  const table = demUpdate.stage_storage || {};
+  const observed = demUpdate.observation_source !== "manual_operator_input";
+
+  const curve = (table.levels_m || []).map((level, i) => ({
+    level_m: level,
+    volume_mm3: (table.volumes_m3?.[i] ?? 0) / 1e6,
+    area_km2: (table.areas_m2?.[i] ?? 0) / 1e6,
+  }));
+
+  const rows = [
+    ["Product", demUpdate.product],
+    ["Base DEM", demUpdate.source_dem],
+    ["Base DEM MD5", demUpdate.source_dem_md5],
+    ["Observation", observed
+      ? `${demUpdate.observation_source} — ${demUpdate.observation_scene_id} @ ${demUpdate.observation_acquired_at}`
+      : "operator-supplied barrier; no satellite observation used"],
+    ["Barrier crest", `${fmtNum(barrier.crest_height_m)} m above the valley floor (${fmtNum(barrier.crest_elevation_m)} m absolute)`],
+    ["Barrier width", `${fmtInt(barrier.width_m_final)} m (requested ${fmtInt(barrier.width_m_requested)} m, ${
+      barrier.halfwidth_growth_iterations
+        ? `widened ${barrier.halfwidth_growth_iterations}x to span the valley`
+        : "spanned the valley as requested"})`],
+    ["Deposit volume", `${fmtNum(barrier.volume_m3)} m³ — ${barrier.volume_plausible_for_a_natural_dam ? "inside" : "OUTSIDE"} the 1e6–1e8 m³ range Costa & Schuster (1988) report for surveyed natural dams`],
+    ["Downstream leak", `${barrier.downstream_leak_cells ?? 0} cells`],
+    ["Impounded lake", `${fmtNum(lake.volume_mm3)} MCM over ${fmtNum(lake.area_km2)} km² at ${fmtNum(lake.surface_elevation_m)} m`],
+    ["Volume datum", lake.volume_datum],
+    ["Lateral spill", lake.spill_detected_at_m == null
+      ? "none detected"
+      : `detected at ${fmtNum(lake.spill_detected_at_m)} m — usable capacity capped there`],
+    ["Storage exponent", `b = ${fmtNum(lake.storage_exponent_fit)} (log10 RMS residual ${fmtNum(lake.storage_fit_residual_log10)})`],
+    ["Cells modified", `${fmtInt(raster.cells_modified)}, maximum change +${fmtNum(raster.max_elevation_change_m)} m`],
+  ];
+
+  return (
+    <>
+      <h4 style={S.h4}>DEM update — what was changed, and from what</h4>
+      <p style={S.note}>
+        <strong>{demUpdate.not_a_survey}</strong>
+      </p>
+
+      <table style={{ fontSize: 11, borderCollapse: "collapse", marginTop: 8 }}>
+        <tbody>
+          {rows.map(([key, value]) => (
+            <tr key={key}>
+              <td style={{ padding: "3px 12px 3px 0", color: "#666",
+                           verticalAlign: "top", whiteSpace: "nowrap" }}>
+                {key}
+              </td>
+              <td style={{ padding: "3px 0", color: "#222", wordBreak: "break-all" }}>
+                {value ?? "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {curve.length > 2 && (
+        <>
+          <h4 style={S.h4}>Impounded lake — stage-storage curve</h4>
+          <p style={S.note}>
+            Read directly off the DEM with the barrier burned in, level by level.
+            This is more than the dam-break path has: there, storage comes from a
+            published gross figure and the shape is a power law through a single
+            point. The routing still fits a power law to this curve, so the
+            residual above says whether that approximation costs anything here.
+          </p>
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer>
+              <LineChart data={curve} margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="level_m" type="number" domain={["dataMin", "dataMax"]}
+                       tickFormatter={(v) => v.toFixed(0)}
+                       label={{ value: "water level (m)", position: "insideBottom", offset: -12 }} />
+                <YAxis label={{ value: "MCM", angle: -90, position: "insideLeft" }} />
+                <Tooltip formatter={(v, n) => [Number(v).toFixed(2), n]}
+                         labelFormatter={(v) => `${Number(v).toFixed(1)} m`} />
+                <Legend verticalAlign="top" height={24} />
+                <Line type="monotone" dataKey="volume_mm3" name="storage (MCM)"
+                      stroke="#1565C0" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="area_km2" name="surface area (km²)"
+                      stroke="#e65100" dot={false} strokeWidth={1} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+
+      {demUpdate.updated_dem && (
+        <p style={S.note}>
+          <a href={demUpdate.updated_dem}>Updated GeoTIFF</a>
+          {demUpdate.provenance_json && (
+            <> · <a href={demUpdate.provenance_json}>provenance JSON</a></>
+          )}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -184,6 +309,13 @@ function RitterChart({ series }) {
       </ResponsiveContainer>
     </div>
   );
+}
+
+// Counts and metre-scale lengths, where a decimal point is noise: "118 cells",
+// not "118.0", and "800 m" for a width that is a whole number of grid cells.
+function fmtInt(v) {
+  if (v == null || Number.isNaN(Number(v))) return "—";
+  return Math.round(Number(v)).toLocaleString();
 }
 
 function fmtNum(v) {

@@ -10,7 +10,7 @@ Returns PAR (Population Affected Ratio) and demographic breakdowns.
 """
 
 import numpy as np
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List, Optional, Tuple
 from enum import Enum
 
 

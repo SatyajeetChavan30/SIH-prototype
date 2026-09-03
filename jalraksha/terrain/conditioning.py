@@ -15,6 +15,8 @@ References:
   - ESA WorldCover 2021: https://esa-worldcover.org/
 """
 
+import heapq
+
 import numpy as np
 import rasterio
 from rasterio.transform import Affine, from_origin
@@ -46,6 +48,85 @@ def _fill_nodata(elevation: np.ndarray, invalid_mask: np.ndarray) -> np.ndarray:
     return elevation[tuple(nearest)]
 
 
+def fill_depressions(bed: np.ndarray, max_fill_depth_m: float) -> tuple:
+    """
+    Threshold-limited priority-flood depression fill (Barnes et al. 2014).
+
+    Bilinear downsampling of a narrow river channel to a coarse grid (see
+    load_dem_as_grid's docstring) manufactures spurious local minima along
+    the flow corridor — cells that are pits only because their true channel
+    neighbours got averaged with higher bank elevation. Left alone, the
+    solver's own flood water permanently pools in them (CLAUDE.md "DEM
+    artifacts"): confirmed on a Khadakwasla run where the hazard classification
+    plateaued at ~46 stuck SEVERE cells for the last 7.5 simulated hours of a
+    24 h run instead of receding.
+
+    Computes the FULL hydrological fill (every interior cell reaches a
+    monotone downhill path to the domain boundary — matching the solver's
+    transmissive boundary, the only place water can actually exit), then caps
+    the raise actually applied per cell at `max_fill_depth_m`. A shallow pit
+    (a metre or two — resampling noise) is fully filled; a real basin needing
+    a bigger raise keeps standing at very nearly its original depth, since
+    only the top `max_fill_depth_m` of it gets touched. This is deliberately
+    NOT "fill everything to guarantee drainage" — a genuine multi-metre
+    reservoir bowl or lake is left as terrain, not erased.
+
+    Args:
+        bed: (ny, nx) elevation array, no NaN/nodata (call _fill_nodata first).
+        max_fill_depth_m: cap on the raise applied to any one cell (metres).
+
+    Returns:
+        (filled_bed, stats) — stats has n_filled (cells raised at all),
+        max_raise_m (largest raise actually applied), and n_unfilled_deep
+        (cells whose full hydrological fill exceeded the threshold, i.e. a
+        real depression that was left standing).
+    """
+    ny, nx = bed.shape
+    filled = bed.astype(np.float64, copy=True)
+    visited = np.zeros((ny, nx), dtype=bool)
+    heap = []
+
+    # Seed the flood from the domain boundary: water can only leave there
+    # (solver/core.py's transmissive boundary), so the boundary is the only
+    # valid "sea level" a fill can drain to.
+    for i in range(nx):
+        for j in (0, ny - 1):
+            if not visited[j, i]:
+                visited[j, i] = True
+                heapq.heappush(heap, (filled[j, i], j, i))
+    for j in range(1, ny - 1):
+        for i in (0, nx - 1):
+            if not visited[j, i]:
+                visited[j, i] = True
+                heapq.heappush(heap, (filled[j, i], j, i))
+
+    epsilon = 1e-6
+    while heap:
+        elev, j, i = heapq.heappop(heap)
+        for dj, di in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nj, ni = j + dj, i + di
+            if nj < 0 or nj >= ny or ni < 0 or ni >= nx or visited[nj, ni]:
+                continue
+            visited[nj, ni] = True
+            new_elev = filled[nj, ni] if filled[nj, ni] > elev else elev + epsilon
+            filled[nj, ni] = new_elev
+            heapq.heappush(heap, (new_elev, nj, ni))
+
+    raise_amount = np.clip(filled - bed, 0.0, None)
+    capped_raise = np.minimum(raise_amount, max_fill_depth_m)
+    result = bed + capped_raise
+
+    n_filled = int((raise_amount > epsilon).sum())
+    n_unfilled_deep = int((raise_amount > max_fill_depth_m).sum())
+    max_raise_m = float(capped_raise.max()) if n_filled else 0.0
+
+    return result, {
+        "n_filled": n_filled,
+        "max_raise_m": max_raise_m,
+        "n_unfilled_deep": n_unfilled_deep,
+    }
+
+
 def load_dem_as_grid(
     dem_path: str,
     dam_lat: float,
@@ -53,6 +134,8 @@ def load_dem_as_grid(
     target_resolution: float = 200.0,
     domain_radius_km: float = 60.0,
     smooth_sigma: float = 0.0,
+    margins_km: dict = None,
+    fill_max_depth_m: float = 3.0,
 ) -> tuple:
     """
     Load a DEM and reproject it onto a uniform metric grid centred on the dam.
@@ -70,7 +153,19 @@ def load_dem_as_grid(
         dam_lat, dam_lon: Dam location (degrees), used to centre the domain and
             to select the UTM zone.
         target_resolution: Grid spacing (m).
-        domain_radius_km: Half-width of the square domain (km).
+        domain_radius_km: Half-width of the square domain (km). Ignored when
+            `margins_km` is given.
+        margins_km: Optional asymmetric extent as
+            {"west": ..., "east": ..., "south": ..., "north": ...} (km from
+            the dam), for a domain deliberately biased in one direction
+            (e.g. downstream) rather than centred on the dam. Produces a
+            rectangular grid (nx may differ from ny).
+        fill_max_depth_m: Depressions shallower than this are filled with a
+            threshold-limited priority-flood pass (see `fill_depressions`
+            below) so they don't trap flood water as permanent artefacts of
+            bilinear resampling. Pass 0 to disable. Genuine basins deeper than
+            the threshold are left untouched — this fills resampling noise,
+            not real terrain.
         smooth_sigma: Gaussian smoothing in cells. DEFAULTS TO 0 (disabled).
 
             Measured against the 30 m source at two Bhagirathi landmarks, an
@@ -106,23 +201,37 @@ def load_dem_as_grid(
     epsg = (32600 if dam_lat >= 0 else 32700) + zone
     dst_crs = f"EPSG:{epsg}"
 
-    half_span_m = domain_radius_km * 1000.0
-    n_cells = int(round(2.0 * half_span_m / target_resolution))
-    if n_cells < 10:
-        raise ValueError(
-            f"Domain of {domain_radius_km} km at {target_resolution} m resolution "
-            f"gives only {n_cells} cells; increase the radius or refine the grid."
-        )
-
-    x0 = dam_easting - half_span_m
-    y0 = dam_northing - half_span_m
+    if margins_km is not None:
+        west_m = margins_km["west"] * 1000.0
+        east_m = margins_km["east"] * 1000.0
+        south_m = margins_km["south"] * 1000.0
+        north_m = margins_km["north"] * 1000.0
+        nx = int(round((west_m + east_m) / target_resolution))
+        ny = int(round((south_m + north_m) / target_resolution))
+        if nx < 10 or ny < 10:
+            raise ValueError(
+                f"Domain margins {margins_km} at {target_resolution} m resolution "
+                f"give only {nx}x{ny} cells; widen the margins or refine the grid."
+            )
+        x0 = dam_easting - west_m
+        y0 = dam_northing - south_m
+    else:
+        half_span_m = domain_radius_km * 1000.0
+        nx = ny = int(round(2.0 * half_span_m / target_resolution))
+        if nx < 10:
+            raise ValueError(
+                f"Domain of {domain_radius_km} km at {target_resolution} m resolution "
+                f"gives only {nx} cells; increase the radius or refine the grid."
+            )
+        x0 = dam_easting - half_span_m
+        y0 = dam_northing - half_span_m
 
     # Destination transform is north-up (row 0 = north), which is the raster
     # convention rasterio.warp expects. We flip to south-up at the end to match
     # the Grid's y-increasing-northward convention.
-    dst_transform = from_origin(x0, y0 + n_cells * target_resolution,
+    dst_transform = from_origin(x0, y0 + ny * target_resolution,
                                 target_resolution, target_resolution)
-    destination = np.full((n_cells, n_cells), np.nan, dtype=np.float64)
+    destination = np.full((ny, nx), np.nan, dtype=np.float64)
 
     with rasterio.open(dem_path) as src:
         src_nodata = src.nodata
@@ -144,12 +253,24 @@ def load_dem_as_grid(
     n_invalid = int(invalid.sum())
     if n_invalid:
         if n_invalid == destination.size:
+            extent_desc = margins_km if margins_km is not None else f"{domain_radius_km} km radius"
             raise ValueError(
-                f"DEM {dem_path} does not cover the {domain_radius_km} km domain "
+                f"DEM {dem_path} does not cover the {extent_desc} domain "
                 f"around ({dam_lat}, {dam_lon}) — every cell is nodata."
             )
         print(f"  Filling {n_invalid} nodata cell(s) ({n_invalid / destination.size * 100:.2f}%)")
         destination = _fill_nodata(destination, invalid)
+
+    if fill_max_depth_m and fill_max_depth_m > 0:
+        destination, fill_stats = fill_depressions(destination, fill_max_depth_m)
+        if fill_stats["n_filled"]:
+            print(
+                f"  Depression fill: raised {fill_stats['n_filled']} cell(s) "
+                f"({fill_stats['n_filled'] / destination.size * 100:.3f}%), "
+                f"max raise {fill_stats['max_raise_m']:.2f} m, "
+                f"{fill_stats['n_unfilled_deep']} deeper pit(s) left untouched "
+                f"(above the {fill_max_depth_m:.1f} m threshold)"
+            )
 
     if smooth_sigma and smooth_sigma > 0:
         destination = gaussian_filter(destination, sigma=smooth_sigma)
@@ -160,7 +281,7 @@ def load_dem_as_grid(
     bed_elevation = np.ascontiguousarray(np.flipud(destination), dtype=np.float64)
 
     grid = Grid(
-        nx=n_cells, ny=n_cells,
+        nx=nx, ny=ny,
         dx=target_resolution, dy=target_resolution,
         x0=x0, y0=y0, crs=dst_crs,
     )

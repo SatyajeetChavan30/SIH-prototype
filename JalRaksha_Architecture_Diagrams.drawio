@@ -1,0 +1,1667 @@
+<mxfile host="app.diagrams.net" agent="JalRaksha build_architecture_drawio.py" pages="10">
+  <diagram id="page1" name="1. System Architecture">
+    <mxGraphModel dx="1591" dy="958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="rrblVgkNwbPoLxScXP8e-1" edge="1" parent="1" source="p6134_10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6134_14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="112" width="555" x="22" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;LAYER 1: User Interface&lt;/font&gt;" vertex="1">
+          <mxGeometry height="42" width="214" x="203.5" y="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;WEB Dashboard:&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;live leaflet &amp;amp; Copernicus view&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="78" width="255" x="38" y="116" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Input:&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;latitude,longitude,height,storage&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="78" width="255" x="306" y="116" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="112" width="709" x="602" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;LAYER 2 · API Gateway Orchestration&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="370" x="780" y="76" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 22px;&quot;&gt;REST API Server&lt;/font&gt;" vertex="1">
+          <mxGeometry height="78" width="677" x="618" y="116" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="268" width="1289" x="21" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;LAYER 3 · THE SIMULATION ENGINE -- where the flood is actually modelled&lt;/font&gt;" vertex="1">
+          <mxGeometry height="42" width="520" x="381" y="244" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-13" edge="1" parent="1" source="p6134_23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="p6134_25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="442.5" y="410" />
+              <mxPoint x="874.5" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6134_23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;3D SPH Solver:&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Near-field Solver&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="230" x="270" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;2D SWE Solver:&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;Far-Field Solver&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="192" x="561" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Ensemble Engine:&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;uncertainty bands&lt;br&gt;p05/p50/p95 statistics&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="178" x="830" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Delft 3D:&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;Cross-Validation Engine&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;Ritter RMSE&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="214" x="1050" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-9" edge="1" parent="1" source="p6134_28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="p6134_23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;&quot;&gt;&lt;b style=&quot;&quot;&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Terrain Preparation&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;Downloads satellite ground-height data, stitches the tiles together,&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;cleans the artifacts&lt;/span&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="302" x="38" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-31" edge="1" parent="1" source="p6134_29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6134_30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;b&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Flood Impact Assessment:&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;Population-At-Risk(GHSL)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="294" x="354" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-32" edge="1" parent="1" source="p6134_30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6134_31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;h2&gt;&lt;b&gt;&lt;font style=&quot;font-size: 16px; line-height: 0%;&quot;&gt;Validation Suite:&lt;/font&gt;&lt;/b&gt;&lt;/h2&gt;&lt;h2&gt;&lt;font&gt;&lt;b style=&quot;&quot;&gt;Ritter dry-bed:&lt;/b&gt; RMSE&lt;/font&gt;&lt;/h2&gt;&lt;p&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;&lt;b&gt;Stoker wet-bed:&lt;/b&gt; validated&lt;/font&gt;&lt;/p&gt;&lt;p&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;&lt;b style=&quot;&quot;&gt;Thacker bowl:&lt;/b&gt; 2D oscillation&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="100" width="308" x="662" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;div style=&quot;line-height: 50%;&quot;&gt;&lt;h2 style=&quot;line-height: 50%;&quot;&gt;&lt;b&gt;&lt;font style=&quot;font-size: 16px; line-height: 50%;&quot;&gt;Export Engine:&lt;/font&gt;&lt;/b&gt;&lt;/h2&gt;&lt;p&gt;&lt;b&gt;&lt;font style=&quot;font-size: 12px; line-height: 50%;&quot;&gt;GeoTIFF,&amp;nbsp;&lt;/font&gt;&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;&lt;font style=&quot;font-size: 12px; line-height: 50%;&quot;&gt;Shapefile (.shp) inundation area,&lt;/font&gt;&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;&lt;font style=&quot;font-size: 12px; line-height: 50%;&quot;&gt;KML/KMZ (Google Earth overlays),&lt;/font&gt;&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;&lt;font style=&quot;font-size: 12px; line-height: 50%;&quot;&gt;XDMF + HDF5 (ParaView animation),&lt;/font&gt;&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;&lt;font style=&quot;font-size: 12px; line-height: 50%;&quot;&gt;Keyframes (time-series snapshots)&lt;/font&gt;&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;/p&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="312" x="983" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="136" width="1289" x="22" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="p6134_33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;labelBackgroundColor=none;" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;LAYER 4 · DATA SOURCES -- every one free, open and legal to redistribute&lt;/font&gt;" vertex="1">
+          <mxGeometry height="42" width="548" x="382.5" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="926d8PRPpffOe20-qEM7-2" edge="1" parent="1" source="p6134_20" style="shape=link;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.217;exitY=-0.004;exitDx=0;exitDy=0;exitPerimeter=0;width=35;" target="p6134_10" value="">
+          <mxGeometry relative="1" width="100" as="geometry">
+            <mxPoint x="299.5" y="270" as="sourcePoint" />
+            <mxPoint x="300" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="926d8PRPpffOe20-qEM7-3" edge="1" parent="1" style="shape=link;html=1;rounded=0;entryX=0.506;entryY=0.995;entryDx=0;entryDy=0;entryPerimeter=0;width=32;" target="p6134_14" value="">
+          <mxGeometry relative="1" width="100" as="geometry">
+            <mxPoint x="960.75" y="270" as="sourcePoint" />
+            <mxPoint x="984" y="228" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-8" edge="1" parent="1" source="kIieTIVpwlWBXtLhHktE-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="p6134_28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=8.0;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;labelBackgroundColor=none;" value="&lt;div style=&quot;line-height: 140%;&quot;&gt;&lt;font style=&quot;&quot;&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Breach Regression&lt;/font&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;:&lt;/span&gt;&lt;br&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;(wahl 2004 Method)&lt;/font&gt;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;100 monte carlo members&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="192" x="39" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-4" edge="1" parent="1" source="p6134_23" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="p6134_24" value="">
+          <mxGeometry height="100" relative="1" width="100" as="geometry">
+            <Array as="points" />
+            <mxPoint x="400" y="440" as="sourcePoint" />
+            <mxPoint x="500" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-5" edge="1" parent="1" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="p6134_25" value="">
+          <mxGeometry height="100" relative="1" width="100" as="geometry">
+            <Array as="points" />
+            <mxPoint x="751.5" y="348.5" as="sourcePoint" />
+            <mxPoint x="812.5" y="348.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-16" parent="1" style="shape=datastore;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="100" width="143" x="1137" y="632" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-17" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Database&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="137" x="1137" y="678" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-20" parent="1" style="html=1;dashed=0;whiteSpace=wrap;shape=partialRectangle;right=0;left=0;" value="" vertex="1">
+          <mxGeometry height="90" width="204" x="66" y="641.25" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-21" parent="1" style="html=1;dashed=0;whiteSpace=wrap;shape=partialRectangle;right=0;left=0;" value="" vertex="1">
+          <mxGeometry height="90" width="220" x="320" y="642" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-22" parent="1" style="html=1;dashed=0;whiteSpace=wrap;shape=partialRectangle;right=0;left=0;" value="" vertex="1">
+          <mxGeometry height="78" width="230" x="570" y="648" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-23" parent="1" style="html=1;dashed=0;whiteSpace=wrap;shape=partialRectangle;right=0;left=0;" value="" vertex="1">
+          <mxGeometry height="78" width="230" x="860" y="648" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-24" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 19px;&quot;&gt;Copernicus GLO-30 DEM&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="243" x="50" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-25" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 19px;&quot;&gt;CWC Dam Register&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="178" x="347.25" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-26" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 19px;&quot;&gt;Google Earth Engine&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="192" x="588" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-27" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 19px;&quot;&gt;ESA WorldCover&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="165.5" x="892.25" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-28" edge="1" parent="1" source="p6134_20" style="shape=link;html=1;rounded=0;exitX=0.132;exitY=0.996;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.131;entryY=-0.022;entryDx=0;entryDy=0;entryPerimeter=0;width=30;" target="p6134_32" value="">
+          <mxGeometry relative="1" width="100" as="geometry">
+            <mxPoint x="231" y="570" as="sourcePoint" />
+            <mxPoint x="331" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-29" edge="1" parent="1" style="shape=link;html=1;rounded=0;exitX=0.132;exitY=0.996;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.131;entryY=-0.022;entryDx=0;entryDy=0;entryPerimeter=0;width=28;" value="">
+          <mxGeometry relative="1" width="100" as="geometry">
+            <mxPoint x="1080" y="542" as="sourcePoint" />
+            <mxPoint x="1080" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kIieTIVpwlWBXtLhHktE-33" edge="1" parent="1" source="p6134_26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.574;entryY=0.01;entryDx=0;entryDy=0;entryPerimeter=0;" target="p6134_31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page2" name="2. How It Works">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p6956_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_5" value="HOW IT WORKS -- STEP BY STEP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_6" value="From four simple inputs to a complete flood risk report, in minutes rather than weeks." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_8" value="Seven steps. The officer performs step one. The system performs the other six." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_9" value="2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_10" value="&lt;b&gt;&lt;font color=&quot;#0A6F66&quot;&gt;Built-in uncertainty, not a single guess&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Thirty variations run with different breach sizes&lt;br&gt;▪ Reports the fifth and ninety-fifth percentile arrival band&lt;br&gt;▪ Best case, worst case and most likely -- stated together&lt;br&gt;▪ This is how real engineering reports risk" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F7;strokeColor=#0D9488;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="94" width="410" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_11" value="&lt;b&gt;&lt;font color=&quot;#5D2CB2&quot;&gt;Checked against an independent engine&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ The same textbook case run through Delft3D FM as well&lt;br&gt;▪ A real Deltares kernel, not a lookalike of our own&lt;br&gt;▪ Our answer 0.0317 m error, theirs 0.0349 m&lt;br&gt;▪ The two engines agree to within 0.0294 m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FE;strokeColor=#7C3AED;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="452" y="94" width="428" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_12" value="&lt;b&gt;&lt;font color=&quot;#A35904&quot;&gt;Why the speed matters&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Today: weeks of specialist setup and licensed software&lt;br&gt;▪ Today: field survey costs before a single map exists&lt;br&gt;▪ JalRaksha: four inputs, free data, a full run in 47 seconds&lt;br&gt;▪ Any trained officer can run it -- and it runs offline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCF5EE;strokeColor=#D97706;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="900" y="94" width="411" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_13" value="&lt;b&gt;1. Pick a Dam&lt;/b&gt;&lt;br&gt;Choose from the list, or type in&lt;br&gt;position, height and storage.&lt;br&gt;Four numbers, nothing more." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#475569;strokeColor=#475569;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="272" width="176" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_14" value="No specialist needed -- the numbers are public." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="444" width="176" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_15" value="&lt;b&gt;2. Get the Terrain&lt;/b&gt;&lt;br&gt;Satellite ground-height data&lt;br&gt;arrives at 30-metre detail and&lt;br&gt;is cached for offline reuse." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="210" y="272" width="172" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_16" value="Like fetching a 3D photograph of the valley." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="210" y="444" width="172" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_17" value="&lt;b&gt;3. Prepare the Land&lt;/b&gt;&lt;br&gt;Smooth the artefacts, locate the&lt;br&gt;dam wall, and label what covers&lt;br&gt;the ground downstream." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="394" y="272" width="180" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_18" value="Forest slows water down; concrete speeds it up." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="394" y="444" width="180" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_19" value="&lt;b&gt;4. Model the Break&lt;/b&gt;&lt;br&gt;Work out how wide the breach&lt;br&gt;grows, how quickly, and how much&lt;br&gt;water is released at the peak." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EA580C;strokeColor=#EA580C;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="586" y="272" width="174" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_20" value="Formulas drawn from decades of dam-safety study." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="586" y="444" width="174" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_21" value="&lt;b&gt;5. Simulate the Flood&lt;/b&gt;&lt;br&gt;Follow the water downstream&lt;br&gt;second by second across the whole&lt;br&gt;landscape -- the core calculation." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E40AF;strokeColor=#1E40AF;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="772" y="272" width="186" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_22" value="The heavy step, and still only tens of seconds." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="772" y="444" width="186" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_23" value="&lt;b&gt;6. Assess the Impact&lt;/b&gt;&lt;br&gt;Which areas flood, how deep,&lt;br&gt;when the water arrives, and how&lt;br&gt;many people are exposed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DC2626;strokeColor=#DC2626;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="970" y="272" width="172" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_24" value="Depth becomes consequence, in plain numbers." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="970" y="444" width="172" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_25" value="&lt;b&gt;7. Publish Results&lt;/b&gt;&lt;br&gt;Maps, Google Earth overlays,&lt;br&gt;charts and downloadable reports,&lt;br&gt;ready for the people who decide." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1154" y="272" width="157" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_26" value="One run produces the whole package." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=5.9;fontStyle=2;align=center;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1154" y="444" width="157" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_27" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="198" y="353" as="sourcePoint" />
+            <mxPoint x="210" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_28" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="382" y="353" as="sourcePoint" />
+            <mxPoint x="394" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_29" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="574" y="353" as="sourcePoint" />
+            <mxPoint x="586" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_30" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="353" as="sourcePoint" />
+            <mxPoint x="772" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_31" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="958" y="353" as="sourcePoint" />
+            <mxPoint x="970" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_32" style="html=1;strokeColor=#0284C7;strokeWidth=1.8;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1142" y="353" as="sourcePoint" />
+            <mxPoint x="1154" y="353" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6956_33" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F4FD;strokeColor=#4F46E5;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="544" width="1289" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_34" value="WHAT COMES OUT AT THE END" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="532" width="199" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_35" value="&lt;b&gt;Arrival Time Map&lt;/b&gt;&lt;br&gt;When the water reaches each&lt;br&gt;town -- the number that decides an evacuation order." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DC2626;strokeColor=#DC2626;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="42" y="572" width="242" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_36" value="&lt;b&gt;Inundation Envelope&lt;/b&gt;&lt;br&gt;The outer boundary of the flood, with a&lt;br&gt;fifth-to-ninety-fifth percentile band around it." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D9488;strokeColor=#0D9488;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="300" y="572" width="236" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_37" value="&lt;b&gt;Depth and Hazard Bands&lt;/b&gt;&lt;br&gt;Four hazard classes, from ankle-deep&lt;br&gt;through to above five metres." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EA580C;strokeColor=#EA580C;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="552" y="572" width="230" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_38" value="&lt;b&gt;People and Buildings Exposed&lt;/b&gt;&lt;br&gt;Counts drawn from satellite population&lt;br&gt;and building data, with the source stated." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="798" y="572" width="244" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="p6956_39" value="&lt;b&gt;Evidence Pack&lt;/b&gt;&lt;br&gt;The quality-gate results and the&lt;br&gt;independent cross-check, attached to&lt;br&gt;every single run." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1058" y="572" width="253" height="114" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page3" name="3. User Journey">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p3432_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_5" value="USER JOURNEY -- WHO DOES WHAT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_6" value="Four lanes. The officer clicks; everything to the right of that happens on its own." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_8" value="The person operating the system makes five decisions. The system takes roughly twenty thousand." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_9" value="3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_10" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#0284C7;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="128" width="306" height="562" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_11" value="THE OFFICER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="116" width="101" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_12" value="A dam-safety or disaster-management officer. No coding background." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="32" y="146" width="286" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_13" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5FBFA;strokeColor=#0D9488;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="344" y="128" width="322" height="562" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_14" value="THE COORDINATOR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D9488;strokeColor=#0D9488;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="116" width="129" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_15" value="Receives the request, checks it, and decides what work to start." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="354" y="146" width="302" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_16" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F7FC;strokeColor=#1E40AF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="680" y="128" width="310" height="562" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_17" value="THE ENGINE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E40AF;strokeColor=#1E40AF;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="116" width="94" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_18" value="Does the mathematics: breach, flood spread, impact." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="690" y="146" width="290" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_19" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F8FE;strokeColor=#4F46E5;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1004" y="128" width="307" height="562" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_20" value="THE REPORTER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="116" width="108" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_21" value="Turns results into maps, charts and files people can act on." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1014" y="146" width="287" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_22" value="&lt;b&gt;Opens the dashboard in a browser&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nothing to install.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="182" width="278" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_23" value="&lt;b&gt;Answers in under a fifth of a second&lt;/b&gt;&lt;br&gt;&lt;i&gt;Even mid-run.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0EE;strokeColor=#0D9488;fontColor=#085952;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="182" width="294" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_24" value="&lt;b&gt;Idle, waiting for work&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E4F4;strokeColor=#1E40AF;fontColor=#122669;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="182" width="282" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_25" value="&lt;b&gt;Shows the run picker&lt;/b&gt;&lt;br&gt;&lt;i&gt;Any past run loads instantly.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6E5FB;strokeColor=#4F46E5;fontColor=#2F2A89;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="182" width="279" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_26" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="314" y="225" as="sourcePoint" />
+            <mxPoint x="358" y="225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_27" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="652" y="225" as="sourcePoint" />
+            <mxPoint x="694" y="225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_28" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="225" as="sourcePoint" />
+            <mxPoint x="1018" y="225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_29" value="&lt;b&gt;Picks a dam -- say Tehri, 260 m&lt;/b&gt;&lt;br&gt;&lt;i&gt;Or types four numbers.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="286" width="278" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_30" value="&lt;b&gt;Checks the inputs are physically sensible&lt;/b&gt;&lt;br&gt;&lt;i&gt;Rejects nonsense early.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0EE;strokeColor=#0D9488;fontColor=#085952;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="286" width="294" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_31" value="&lt;b&gt;Loads terrain, or fetches it once&lt;/b&gt;&lt;br&gt;&lt;i&gt;yes -&gt; straight through · no -&gt; fetched once, then kept&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E4F4;strokeColor=#1E40AF;fontColor=#122669;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="286" width="282" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_32" value="&lt;b&gt;Draws the study area on the map&lt;/b&gt;&lt;br&gt;&lt;i&gt;Confirms before running.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6E5FB;strokeColor=#4F46E5;fontColor=#2F2A89;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="286" width="279" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_33" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="314" y="329" as="sourcePoint" />
+            <mxPoint x="358" y="329" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_34" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="652" y="329" as="sourcePoint" />
+            <mxPoint x="694" y="329" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_35" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="329" as="sourcePoint" />
+            <mxPoint x="1018" y="329" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_36" value="&lt;b&gt;Keeps the defaults, presses Run&lt;/b&gt;&lt;br&gt;&lt;i&gt;One button.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="390" width="278" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_37" value="&lt;b&gt;Starts a separate worker for the heavy part&lt;/b&gt;&lt;br&gt;&lt;i&gt;The page stays alive.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0EE;strokeColor=#0D9488;fontColor=#085952;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="390" width="294" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_38" value="&lt;b&gt;Models the breach, then the flood spread&lt;/b&gt;&lt;br&gt;&lt;i&gt;Thirty variations.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E4F4;strokeColor=#1E40AF;fontColor=#122669;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="390" width="282" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_39" value="&lt;b&gt;Streams live progress, member by member&lt;/b&gt;&lt;br&gt;&lt;i&gt;Never a frozen bar.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6E5FB;strokeColor=#4F46E5;fontColor=#2F2A89;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="390" width="279" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_40" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="314" y="431" as="sourcePoint" />
+            <mxPoint x="358" y="431" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_41" style="html=1;strokeColor=#475569;strokeWidth=1.4;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="652" y="431" as="sourcePoint" />
+            <mxPoint x="694" y="431" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_42" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="431" as="sourcePoint" />
+            <mxPoint x="1018" y="431" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_43" value="&lt;b&gt;Watches the arrival times appear&lt;/b&gt;&lt;br&gt;&lt;i&gt;Town by town.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="490" width="278" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_44" value="&lt;b&gt;Saves each result as it lands&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nothing is lost on a crash.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0EE;strokeColor=#0D9488;fontColor=#085952;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="490" width="294" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_45" value="&lt;b&gt;Scores impact: depth, hazard, people exposed&lt;/b&gt;&lt;br&gt;&lt;i&gt;Published formulas.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E4F4;strokeColor=#1E40AF;fontColor=#122669;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="490" width="282" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_46" value="&lt;b&gt;Plots the flood on a 2D map and a 3D globe&lt;/b&gt;&lt;br&gt;&lt;i&gt;Both stay loaded.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6E5FB;strokeColor=#4F46E5;fontColor=#2F2A89;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="490" width="279" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_47" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="314" y="530" as="sourcePoint" />
+            <mxPoint x="358" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_48" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="652" y="530" as="sourcePoint" />
+            <mxPoint x="694" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_49" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="530" as="sourcePoint" />
+            <mxPoint x="1018" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_50" value="&lt;b&gt;Downloads the pack for the district authority&lt;/b&gt;&lt;br&gt;&lt;i&gt;Ready to circulate.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="586" width="278" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_51" value="&lt;b&gt;Attaches the quality-gate evidence&lt;/b&gt;&lt;br&gt;&lt;i&gt;Every run, no exceptions.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0EE;strokeColor=#0D9488;fontColor=#085952;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="358" y="586" width="294" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_52" value="&lt;b&gt;Optionally runs the near-dam 3D detail&lt;/b&gt;&lt;br&gt;&lt;i&gt;About 600 m, 15 s.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E4F4;strokeColor=#1E40AF;fontColor=#122669;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="694" y="586" width="282" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_53" value="&lt;b&gt;Exports maps, overlays, charts, spreadsheets&lt;/b&gt;&lt;br&gt;&lt;i&gt;Standard formats.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6E5FB;strokeColor=#4F46E5;fontColor=#2F2A89;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1018" y="586" width="279" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p3432_54" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="314" y="631" as="sourcePoint" />
+            <mxPoint x="358" y="631" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_55" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="652" y="631" as="sourcePoint" />
+            <mxPoint x="694" y="631" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_56" style="html=1;strokeColor=#475569;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="631" as="sourcePoint" />
+            <mxPoint x="1018" y="631" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_57" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="175" y="268" as="sourcePoint" />
+            <mxPoint x="175" y="286" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_58" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="175" y="372" as="sourcePoint" />
+            <mxPoint x="175" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_59" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="175" y="472" as="sourcePoint" />
+            <mxPoint x="175" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_60" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="175" y="570" as="sourcePoint" />
+            <mxPoint x="175" y="586" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_61" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="505" y="268" as="sourcePoint" />
+            <mxPoint x="505" y="286" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_62" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="505" y="372" as="sourcePoint" />
+            <mxPoint x="505" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_63" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="505" y="472" as="sourcePoint" />
+            <mxPoint x="505" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_64" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="505" y="570" as="sourcePoint" />
+            <mxPoint x="505" y="586" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_65" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="835" y="268" as="sourcePoint" />
+            <mxPoint x="835" y="286" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_66" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="835" y="372" as="sourcePoint" />
+            <mxPoint x="835" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_67" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="835" y="472" as="sourcePoint" />
+            <mxPoint x="835" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_68" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="835" y="570" as="sourcePoint" />
+            <mxPoint x="835" y="586" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_69" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1158" y="268" as="sourcePoint" />
+            <mxPoint x="1158" y="286" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_70" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1158" y="372" as="sourcePoint" />
+            <mxPoint x="1158" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_71" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1158" y="472" as="sourcePoint" />
+            <mxPoint x="1158" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_72" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1158" y="570" as="sourcePoint" />
+            <mxPoint x="1158" y="586" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3432_73" value="Terrain&lt;br&gt;already&lt;br&gt;here?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#D97706;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=5.6;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="630" y="299" width="86" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page4" name="4. Technology Stack">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p436_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_5" value="WHAT IT IS BUILT WITH" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_6" value="Every piece is open-source and free to use. Nothing here carries a licence fee." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_8" value="Total software licence cost: zero. Total field-survey cost: zero." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_9" value="4" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_10" value="&lt;b&gt;FLOOD SIMULATION&lt;/b&gt;&lt;br&gt;The mathematics that moves the water" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D9488;strokeColor=#0D9488;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="98" width="242" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_11" value="&lt;b&gt;NumPy and SciPy&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the numerical core&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F8;strokeColor=#92CFC9;fontColor=#086058;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="184" width="236" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_12" value="&lt;b&gt;Numba&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;compiles the hot loops, roughly 100x&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F8;strokeColor=#92CFC9;fontColor=#086058;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="244" width="236" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_13" value="&lt;b&gt;PySPH&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;particle physics near the dam&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F8;strokeColor=#92CFC9;fontColor=#086058;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="304" width="236" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_14" value="&lt;b&gt;Matplotlib&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;scientific plotting&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F8;strokeColor=#92CFC9;fontColor=#086058;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="364" width="236" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_15" value="&lt;b&gt;Delft3D FM&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Deltares kernel, 2026.01 build&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F8;strokeColor=#92CFC9;fontColor=#086058;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="424" width="236" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_16" value="&lt;b&gt;MAPS AND GEOGRAPHY&lt;/b&gt;&lt;br&gt;Reads satellite data, writes map files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="280" y="98" width="262" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_17" value="&lt;b&gt;Rasterio&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;reads satellite ground-height data&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="184" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_18" value="&lt;b&gt;GeoPandas&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;geographic boundaries and joins&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="244" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_19" value="&lt;b&gt;Shapely&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;flood-zone shapes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="304" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_20" value="&lt;b&gt;PyProj&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;converts between coordinate systems&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="364" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_21" value="&lt;b&gt;xarray&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;time-series flood data&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="424" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_22" value="&lt;b&gt;Earth Engine&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;radar flood and population layers&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#8ED0BC;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="283" y="484" width="256" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_23" value="&lt;b&gt;SERVER AND API&lt;/b&gt;&lt;br&gt;Coordinates the work, never blocks the page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="558" y="98" width="244" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_24" value="&lt;b&gt;FastAPI&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the web service&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#8DC8E6;fontColor=#015681;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="561" y="184" width="238" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_25" value="&lt;b&gt;Uvicorn&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;runs it&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#8DC8E6;fontColor=#015681;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="561" y="244" width="238" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_26" value="&lt;b&gt;Pydantic&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;validates every input&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#8DC8E6;fontColor=#015681;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="561" y="304" width="238" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_27" value="&lt;b&gt;SQLite&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;keeps the run history&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#8DC8E6;fontColor=#015681;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="561" y="364" width="238" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_28" value="&lt;b&gt;Celery&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;optional distributed worker&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#8DC8E6;fontColor=#015681;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="561" y="424" width="238" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_29" value="&lt;b&gt;WHAT PEOPLE SEE&lt;/b&gt;&lt;br&gt;Maps, globe and charts in the browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="820" y="98" width="250" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_30" value="&lt;b&gt;React&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the interface&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="184" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_31" value="&lt;b&gt;Vite&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;instant reloads while building&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="244" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_32" value="&lt;b&gt;Leaflet&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the 2D flood map&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="304" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_33" value="&lt;b&gt;CesiumJS&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the 3D globe with real terrain&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="364" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_34" value="&lt;b&gt;Recharts&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;arrival-time and depth charts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="424" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_35" value="&lt;b&gt;ParaView&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;cinematic flood animation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F3FE;strokeColor=#C4A6F7;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="823" y="484" width="244" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_36" value="&lt;b&gt;PACKAGE AND PROVE&lt;/b&gt;&lt;br&gt;Ships anywhere, tests every change" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EA580C;strokeColor=#EA580C;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1088" y="98" width="223" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_37" value="&lt;b&gt;Docker&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the whole system, one command&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF5F0;strokeColor=#F6B492;fontColor=#983908;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1091" y="184" width="217" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_38" value="&lt;b&gt;Pytest&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the automated test suite&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF5F0;strokeColor=#F6B492;fontColor=#983908;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1091" y="244" width="217" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_39" value="&lt;b&gt;Ruff&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;keeps the code clean&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF5F0;strokeColor=#F6B492;fontColor=#983908;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1091" y="304" width="217" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_40" value="&lt;b&gt;GitHub Actions&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;re-runs the gates on every change&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF5F0;strokeColor=#F6B492;fontColor=#983908;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1091" y="364" width="217" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_41" value="The one line item a conventional study cannot avoid -- the licensed modelling package -- simply has no equivalent on this slide." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#824704;fontSize=6.4;fontStyle=3;align=center;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1091" y="440" width="217" height="122" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_42" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F3F5;strokeColor=#14305A;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="572" width="1289" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_43" value="WHERE THE DATA COMES FROM -- free, open, and cached so demo day needs no network" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="36" y="560" width="584" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_44" value="&lt;b&gt;Copernicus Ground Height&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;European Space Agency · 30-metre detail&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3E6EB;strokeColor=#14305A;fontColor=#0D1F3A;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="598" width="216" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_45" value="&lt;b&gt;Earth Engine Imagery&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Radar flood extent and population density&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1F2ED;strokeColor=#059669;fontColor=#036244;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="270" y="598" width="202" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_46" value="&lt;b&gt;ESA Land Cover&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Forest, town or farmland at 10 metres&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E9EBED;strokeColor=#475569;fontColor=#2E3744;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="486" y="598" width="192" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_47" value="&lt;b&gt;Delft3D FM&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Deltares, Netherlands · independent check&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFE7FD;strokeColor=#7C3AED;fontColor=#51269A;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="692" y="598" width="210" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_48" value="&lt;b&gt;CWC Dam Register&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;The official Indian list, 5,000-plus dams&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3E6EB;strokeColor=#14305A;fontColor=#0D1F3A;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="916" y="598" width="206" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p436_49" value="&lt;b&gt;Local Cache&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Fetched once, then offline&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E9EBED;strokeColor=#475569;fontColor=#2E3744;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1136" y="598" width="161" height="72" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page5" name="5. Use Case">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p1211_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_5" value="WHO USES IT, AND WHAT FOR" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_6" value="Four kinds of user inside the country, four data services outside it, twelve things the system does." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_8" value="One system, four audiences: the operator, the emergency planner, the researcher and the policy maker." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_9" value="5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_10" value="" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="62" y="120" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_11" value="&lt;b&gt;Dam Safety Officer&lt;/b&gt;&lt;br&gt;Central Water Commission · watches dam health" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="184" width="144" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_12" value="" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="62" y="262" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_13" value="&lt;b&gt;Emergency Manager&lt;/b&gt;&lt;br&gt;District and national authority · plans the evacuation" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="326" width="144" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_14" value="" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="62" y="404" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_15" value="&lt;b&gt;Researcher / Engineer&lt;/b&gt;&lt;br&gt;Validates the model, runs comparative studies" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="468" width="144" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_16" value="" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="62" y="546" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_17" value="&lt;b&gt;Policy Maker&lt;/b&gt;&lt;br&gt;State or centre · decides where the safety budget goes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="610" width="144" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_18" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FCFE;strokeColor=#0284C7;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="232" y="102" width="774" height="592" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_19" value="EVERYTHING INSIDE THIS BOX IS JALRAKSHA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.4;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="442" y="90" width="354" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_20" value="Choose a dam and set the failure scenario" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CFEAE7;strokeColor=#0D9488;fontColor=#086058;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="260" y="114" width="318" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_21" value="Run a full flood simulation -- minutes, not weeks" style="ellipse;whiteSpace=wrap;html=1;fillColor=#D2D9EF;strokeColor=#1E40AF;fontColor=#142A72;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="266" y="211" width="306" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_22" value="Run thirty what-if variations for an honest range" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CFEAE7;strokeColor=#0D9488;fontColor=#086058;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="258" y="308" width="330" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_23" value="Read the flood on a 2D map and on a 3D globe" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCDAFA;strokeColor=#4F46E5;fontColor=#332E95;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="262" y="405" width="322" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_24" value="Download the pack for the district authority" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCDAFA;strokeColor=#4F46E5;fontColor=#332E95;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="268" y="502" width="302" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_25" value="Get arrival times for every downstream town" style="ellipse;whiteSpace=wrap;html=1;fillColor=#F8D4D4;strokeColor=#DC2626;fontColor=#8F1919;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="260" y="599" width="314" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_26" value="Check answers against the known exact solution" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CDEAE1;strokeColor=#059669;fontColor=#036244;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="644" y="114" width="314" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_27" value="Cross-check against the independent Delft3D engine" style="ellipse;whiteSpace=wrap;html=1;fillColor=#E5D8FB;strokeColor=#7C3AED;fontColor=#51269A;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="638" y="217" width="332" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_28" value="Estimate the population exposed, from satellite data" style="ellipse;whiteSpace=wrap;html=1;fillColor=#F8D4D4;strokeColor=#DC2626;fontColor=#8F1919;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="642" y="308" width="324" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_29" value="Estimate damage to buildings and to life" style="ellipse;whiteSpace=wrap;html=1;fillColor=#F8D4D4;strokeColor=#DC2626;fontColor=#8F1919;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="650" y="411" width="304" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_30" value="Run the detailed 3D physics right at the wall" style="ellipse;whiteSpace=wrap;html=1;fillColor=#E5D8FB;strokeColor=#7C3AED;fontColor=#51269A;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="646" y="502" width="310" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_31" value="Rank several dams against each other by priority" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CDEAE1;strokeColor=#059669;fontColor=#036244;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="640" y="599" width="326" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_32" value="&lt;b&gt;Copernicus Ground Height&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;30-metre satellite elevation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3E6EB;strokeColor=#14305A;fontColor=#0D1F3A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1042" y="122" width="248" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_33" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1042" y="158" as="sourcePoint" />
+            <mxPoint x="970" y="144" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_34" value="&lt;b&gt;Earth Engine&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Radar flood extent, population&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1F2ED;strokeColor=#059669;fontColor=#036244;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1042" y="262" width="262" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_35" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1042" y="298" as="sourcePoint" />
+            <mxPoint x="970" y="284" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_36" value="&lt;b&gt;Delft3D FM&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Independent verification engine&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFE7FD;strokeColor=#7C3AED;fontColor=#51269A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1042" y="406" width="255" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_37" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1042" y="442" as="sourcePoint" />
+            <mxPoint x="970" y="428" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_38" value="&lt;b&gt;CWC Dam Register&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Official Indian dam records&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3E6EB;strokeColor=#14305A;fontColor=#0D1F3A;fontSize=6.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1042" y="548" width="244" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1211_39" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1042" y="584" as="sourcePoint" />
+            <mxPoint x="970" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_40" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="152" y="150" as="sourcePoint" />
+            <mxPoint x="262" y="142" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_41" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="152" y="292" as="sourcePoint" />
+            <mxPoint x="262" y="284" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_42" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="152" y="434" as="sourcePoint" />
+            <mxPoint x="262" y="426" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_43" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.7;endArrow=none;startArrow=none;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="152" y="576" as="sourcePoint" />
+            <mxPoint x="262" y="568" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1211_44" value="Outside services are read, never written to. Nothing leaves the machine the system runs on." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.0;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1042" y="642" width="262" height="52" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page6" name="6. Component Map">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p2440_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_5" value="WHAT EACH PART DOES" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_6" value="Six working parts and three supporting ones. Arrows show which way information travels." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_8" value="Each part depends only on the parts to its left, so any one of them can be replaced on its own." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_9" value="6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_10" value="JALRAKSHA · THE WHOLE SYSTEM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;arcSize=20;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="502" y="96" width="330" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_11" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="125" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_12" value="&lt;b&gt;Flood Simulation Engine&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E40AF;strokeColor=#1E40AF;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="186" width="206" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_13" value="The mathematical core. Follows the water across the terrain step by step, using equations settled in hydraulic engineering." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="24" y="250" width="202" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_14" value="The stepping loop, timestep by timestep" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F5FB;strokeColor=#A5B3DF;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="312" width="206" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_15" value="Flood-front tracking -- where the water actually goes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F5FB;strokeColor=#A5B3DF;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="362" width="206" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_16" value="Wet-and-dry handling at the flood edge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F5FB;strokeColor=#A5B3DF;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="412" width="206" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_17" value="Runs across every processor core available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F5FB;strokeColor=#A5B3DF;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="462" width="206" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_18" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="351" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_19" value="&lt;b&gt;Terrain and Dam Break&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="242" y="186" width="218" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_20" value="Prepares the digital landscape, then models how the wall gives way -- how wide, how quickly, how much water is released." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="244" y="250" width="214" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_21" value="Terrain smoothing and artefact cleaning" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="242" y="312" width="218" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_22" value="Breach growth from published dam-safety work" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="242" y="362" width="218" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_23" value="Study-area definition around the dam" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="242" y="412" width="218" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_24" value="Ground cover mapped to how fast water flows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="242" y="462" width="218" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_25" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="583" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_26" value="&lt;b&gt;Impact and Risk&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DC2626;strokeColor=#DC2626;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="478" y="186" width="210" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_27" value="Turns depth into consequence: which areas, how deep, how many people, and what it is likely to cost." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="480" y="250" width="206" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_28" value="Four hazard classes, ankle-deep to above five metres" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF4F4;strokeColor=#F1A8A8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="478" y="312" width="210" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_29" value="Building damage from published damage curves" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF4F4;strokeColor=#F1A8A8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="478" y="362" width="210" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_30" value="Loss-of-life estimates from the standard tables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF4F4;strokeColor=#F1A8A8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="478" y="412" width="210" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_31" value="Population exposed, read from satellite data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF4F4;strokeColor=#F1A8A8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="478" y="462" width="210" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_32" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="813" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_33" value="&lt;b&gt;Near-Dam 3D Physics&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="706" y="186" width="214" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_34" value="Optional detail for the violent water right at the wall. It adds resolution; it never replaces the main simulation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="708" y="250" width="210" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_35" value="Hand-off from the flood solver, one direction only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F5FE;strokeColor=#CBB0F8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="706" y="312" width="214" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_36" value="A 3D domain roughly 600 metres across" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F5FE;strokeColor=#CBB0F8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="706" y="362" width="214" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_37" value="Particle-based water, about 15 seconds of it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F5FE;strokeColor=#CBB0F8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="706" y="412" width="214" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_38" value="Overtopping and splash behaviour at the crest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F5FE;strokeColor=#CBB0F8;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="706" y="462" width="214" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_39" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="1039" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_40" value="&lt;b&gt;Quality Assurance&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="938" y="186" width="202" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_41" value="Automated proof that must pass before a result is released. Four checks. Fail one and nothing is published." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="940" y="250" width="198" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_42" value="Still water must stay still" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="938" y="312" width="202" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_43" value="No water may be created or lost" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="938" y="362" width="202" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_44" value="No impossible depths anywhere in the grid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="938" y="412" width="202" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_45" value="The answer must match the independent engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2FAF8;strokeColor=#9BD5C3;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="938" y="462" width="202" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_46" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="667" y="148" as="sourcePoint" />
+            <mxPoint x="1236" y="186" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2440_47" value="&lt;b&gt;Reports and Maps&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=8.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="186" width="149" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_48" value="Everything a decision maker actually receives." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=5.7;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1164" y="250" width="145" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_49" value="Flood depth maps for standard mapping tools" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6FE;strokeColor=#B9B5F5;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="312" width="149" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_50" value="Boundary shapes for planning software" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6FE;strokeColor=#B9B5F5;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="362" width="149" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_51" value="Google Earth overlays" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6FE;strokeColor=#B9B5F5;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="412" width="149" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_52" value="Time-lapse animation frames" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6FE;strokeColor=#B9B5F5;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="462" width="149" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_53" value="Spreadsheets of arrival times" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6FE;strokeColor=#B9B5F5;fontColor=#1F2937;fontSize=6.0;fontStyle=0;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1162" y="512" width="149" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_54" value="The one rule the whole map obeys" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.4;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="562" width="602" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_55" value="A part may only depend on the parts to its left. That is why the near-dam 3D physics can be switched off entirely without touching anything else, and why the reporting stage can be rewritten without going near the mathematics. It is also what keeps each part testable on its own." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#824704;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="594" width="602" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_56" value="Supporting services" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.4;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="652" y="562" width="300" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_57" value="&lt;b&gt;Settings Loader&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Reads the run settings and&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;checks them before anything starts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDEEF0;strokeColor=#475569;fontColor=#2E3744;fontSize=6.8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="652" y="594" width="206" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_58" value="&lt;b&gt;Dam Profile Library&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Tehri, Khadakwasla and their&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;downstream towns, ready to run&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAEE;strokeColor=#14305A;fontColor=#0D1F3A;fontSize=6.8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="872" y="594" width="214" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p2440_59" value="&lt;b&gt;Offline Cache&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Holds everything downloaded so&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;the next run needs no network&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDEEF0;strokeColor=#475569;fontColor=#2E3744;fontSize=6.8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1102" y="594" width="209" height="104" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page7" name="7. Data Flow">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p6220_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_5" value="FROM RAW DATA TO A DECISION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_6" value="Three stages. Collect once, simulate on demand, then publish something a district officer can act on." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_8" value="Stage one happens once per dam. Stages two and three happen every time somebody asks a question." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_9" value="7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_10" value="STAGE 1 · COLLECT AND PREPARE" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=8.0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="22" y="96" width="320" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_11" value="Runs once per dam, then never again -- the results are cached on disk." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.6;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="356" y="100" width="540" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_12" value="&lt;b&gt;Fetch the Terrain&lt;/b&gt;&lt;br&gt;Satellite ground-height tiles at&lt;br&gt;30-metre detail, free from the&lt;br&gt;European Space Agency." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="142" width="240" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_13" value="&lt;b&gt;Stitch and Clean&lt;/b&gt;&lt;br&gt;Several tiles merged into one&lt;br&gt;seamless surface, with cliff and&lt;br&gt;water-body artefacts removed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D9488;strokeColor=#0D9488;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="278" y="142" width="256" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_14" value="&lt;b&gt;Label the Ground&lt;/b&gt;&lt;br&gt;Forest, town or farmland -- this&lt;br&gt;is what sets how much the land&lt;br&gt;slows the water down." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="550" y="142" width="234" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_15" value="&lt;b&gt;Define the Study Area&lt;/b&gt;&lt;br&gt;Draw the box around the dam,&lt;br&gt;in metres rather than degrees,&lt;br&gt;on an even calculation grid." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#475569;strokeColor=#475569;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="800" y="142" width="242" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_16" value="&lt;b&gt;Locate the Wall&lt;/b&gt;&lt;br&gt;Pin down exactly where the dam&lt;br&gt;sits and where the breach would&lt;br&gt;open. Everything keys off this." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#475569;strokeColor=#475569;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1058" y="142" width="253" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_17" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="262" y="188" as="sourcePoint" />
+            <mxPoint x="278" y="188" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_18" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="534" y="188" as="sourcePoint" />
+            <mxPoint x="550" y="188" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_19" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="784" y="188" as="sourcePoint" />
+            <mxPoint x="800" y="188" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_20" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1042" y="188" as="sourcePoint" />
+            <mxPoint x="1058" y="188" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_21" style="html=1;strokeColor=#D97706;strokeWidth=2.2;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="510" y="234" as="sourcePoint" />
+            <mxPoint x="510" y="272" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_22" value="terrain grid + breach position + ground-roughness map -&gt; handed to the simulation" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="530" y="238" width="660" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_23" value="STAGE 2 · SIMULATE" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fillColor=#1E40AF;strokeColor=#1E40AF;fontColor=#FFFFFF;fontSize=8.0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="22" y="280" width="320" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_24" value="The whole of this stage completes in about 47 seconds for a full Tehri run." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.6;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="356" y="284" width="620" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_25" value="&lt;b&gt;Model the Failure&lt;/b&gt;&lt;br&gt;Breach width, how fast it opens,&lt;br&gt;and the peak water released.&lt;br&gt;Thirty variations, not one." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EA580C;strokeColor=#EA580C;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="326" width="232" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_26" value="&lt;b&gt;Spread the Water&lt;/b&gt;&lt;br&gt;Every cell of the landscape,&lt;br&gt;second by second, downstream.&lt;br&gt;The core of the whole system." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E40AF;strokeColor=#1E40AF;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="270" y="326" width="262" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_27" value="&lt;b&gt;Sweep the Uncertainty&lt;/b&gt;&lt;br&gt;Different breach sizes give&lt;br&gt;different outcomes. The answer&lt;br&gt;is a band, not a point." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D9488;strokeColor=#0D9488;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="548" y="326" width="230" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_28" value="&lt;b&gt;Time the Arrivals&lt;/b&gt;&lt;br&gt;When does the water reach each&lt;br&gt;town? This is the number an&lt;br&gt;evacuation order depends on." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="794" y="326" width="246" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_29" value="&lt;b&gt;Optional 3D Detail&lt;/b&gt;&lt;br&gt;Violent water at the wall itself.&lt;br&gt;About 600 metres, 15 seconds.&lt;br&gt;It can never reach a town." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1056" y="326" width="255" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_30" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="254" y="372" as="sourcePoint" />
+            <mxPoint x="270" y="372" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_31" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="532" y="372" as="sourcePoint" />
+            <mxPoint x="548" y="372" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_32" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="778" y="372" as="sourcePoint" />
+            <mxPoint x="794" y="372" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_33" style="html=1;strokeColor=#0284C7;strokeWidth=1.6;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1040" y="372" as="sourcePoint" />
+            <mxPoint x="1056" y="372" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_34" style="html=1;strokeColor=#D97706;strokeWidth=2.2;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="510" y="418" as="sourcePoint" />
+            <mxPoint x="510" y="456" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6220_35" value="maximum depth + arrival time + the percentile band -&gt; handed to the reporting stage" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#8D4D04;fontSize=6.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="530" y="422" width="680" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_36" value="STAGE 3 · PUBLISH" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=8.0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="22" y="464" width="320" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_37" value="Nothing reaches this stage until all four quality gates have passed." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.6;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="356" y="468" width="660" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_38" value="&lt;b&gt;Score the Impact&lt;/b&gt;&lt;br&gt;How deep in each area, how many&lt;br&gt;people exposed, and the likely&lt;br&gt;damage -- with the source stated." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DC2626;strokeColor=#DC2626;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="510" width="252" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_39" value="&lt;b&gt;Draw the Flood Maps&lt;/b&gt;&lt;br&gt;Colour-coded depth maps that open&lt;br&gt;in any standard mapping tool, plus&lt;br&gt;Google Earth overlays." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=#4F46E5;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="290" y="510" width="238" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_40" value="&lt;b&gt;Render the Animation&lt;/b&gt;&lt;br&gt;Time-lapse of the flood spreading,&lt;br&gt;for briefings and for public&lt;br&gt;awareness material." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#475569;strokeColor=#475569;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="544" y="510" width="230" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_41" value="&lt;b&gt;Fill the Dashboard&lt;/b&gt;&lt;br&gt;Maps, globe, charts, gauge traces&lt;br&gt;and every download, live in the&lt;br&gt;browser. Nothing to install." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="790" y="510" width="244" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_42" value="&lt;b&gt;Attach the Evidence&lt;/b&gt;&lt;br&gt;The four gate results and the&lt;br&gt;independent cross-check travel&lt;br&gt;with the report, every time." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=7.8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="510" width="261" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_43" value="The one-way arrow matters. The near-dam 3D physics reads the flood solver&#39;s output and refines it. It never feeds back. Anyone claiming a two-way coupling here would be overstating what was built." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2EBFD;strokeColor=#7C3AED;fontColor=#4A238E;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="624" width="640" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p6220_44" value="Stage one is the reason this works offline. Once a dam&#39;s terrain has been fetched, the entire pipeline runs with the network unplugged -- which is the assumption demo day is built on." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F4F0;strokeColor=#059669;fontColor=#035A3F;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="686" y="624" width="625" height="56" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page8" name="8. Why It Matters">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p3755_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_5" value="WHY IT MATTERS" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_6" value="India has more than five thousand large dams, many of them ageing. Today only a handful ever get studied." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_8" value="The point is not a better flood model. The point is that every dam can be screened, not just the funded ones." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_9" value="8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_10" value="A conventional dam-break study takes &lt;b&gt;weeks&lt;/b&gt; of specialist time and licensed software, so it is only commissioned for the dams somebody has already worried about.&lt;br&gt;JalRaksha completes the same screening in &lt;b&gt;minutes&lt;/b&gt;, from free satellite data -- which changes who gets screened, not just how fast." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECF7;strokeColor=#1E40AF;fontColor=#1F2937;fontSize=9;fontStyle=1;align=left;verticalAlign=middle;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="96" width="1289" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_11" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;SAVES LIVES&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Arrival times per town -- the number that sets an evacuation order&lt;br&gt;▪ Flood extent showing which areas to clear, and in what order&lt;br&gt;▪ Population exposed, estimated from satellite data&lt;br&gt;▪ Works with the network unplugged, when it matters most" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="176" width="316" height="166" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_12" value="&lt;b&gt;&lt;font color=&quot;#A35904&quot;&gt;SAVES MONEY&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ No software licence to buy -- every component is open&lt;br&gt;▪ No field survey needed before the first map exists&lt;br&gt;▪ Minutes per dam instead of weeks&lt;br&gt;▪ Run by a trained officer, not a hired specialist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCF5EE;strokeColor=#D97706;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="352" y="176" width="302" height="152" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_13" value="&lt;b&gt;&lt;font color=&quot;#0A6F66&quot;&gt;HONEST BY DESIGN&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Reports a range, never a single falsely precise number&lt;br&gt;▪ Poor satellite imagery is refused, not quietly used&lt;br&gt;▪ Four quality gates block a bad result rather than flagging it&lt;br&gt;▪ Every limitation is stated on the report itself" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F7;strokeColor=#0D9488;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="668" y="176" width="330" height="172" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_14" value="&lt;b&gt;&lt;font color=&quot;#5D2CB2&quot;&gt;INDEPENDENTLY CHECKED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Matched against Delft3D FM on the same textbook case&lt;br&gt;▪ Our error 0.0317 m, theirs 0.0349 m&lt;br&gt;▪ Both engines agree to within 0.0294 m&lt;br&gt;▪ Built on two decades of published dam-safety research" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FE;strokeColor=#7C3AED;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1012" y="176" width="299" height="158" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_15" value="How that compares with current practice" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=10;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="362" width="600" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_16" value="What you need" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="396" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_17" value="How it is done today" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="396" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_18" value="How JalRaksha does it" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="396" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_19" value="Time to a first answer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="434" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_20" value="Weeks of specialist setup" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="434" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_21" value="Minutes -- pick a dam and press run" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="434" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_22" value="Data you must buy" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="472" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_23" value="Licensed elevation data plus a field survey" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="472" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_24" value="None. Free satellite data, cached locally" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="472" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_25" value="Independent verification" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="510" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_26" value="Rarely available, rarely published" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="510" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_27" value="Cross-checked against Delft3D FM, published here" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="510" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_28" value="How uncertainty is shown" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="548" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_29" value="A single number, with no band around it" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="548" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_30" value="Thirty runs -- best, worst and most likely" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="548" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_31" value="Poor satellite imagery" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="586" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_32" value="Used anyway, because there is nothing else" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="586" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_33" value="Refused automatically below the quality threshold" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FAFD;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="586" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_34" value="Network on the day" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="624" width="282" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_35" value="Required -- the tools are cloud-hosted" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="308" y="624" width="466" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_36" value="Not required. Everything runs from cache" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="778" y="624" width="535" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_37" value="Refusing a bad input is a feature, not a gap. At Khadakwasla the radar scene scored 0.486 against a 0.5 threshold and was rejected outright -- no substitute overlay was drawn in its place." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E9;strokeColor=#DC2626;fontColor=#841717;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="658" width="630" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3755_38" value="None of the right-hand column is aspiration. Every row in it is running today, on the machine this deck was built on, and the numbers quoted came off that machine." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F4F0;strokeColor=#059669;fontColor=#035A3F;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="676" y="658" width="635" height="44" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page9" name="9. Validation">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p8140_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_5" value="HOW WE KNOW THE ANSWERS ARE RIGHT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_6" value="Four checks that must pass, plus a comparison against an engine we did not write." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_8" value="If a check fails, the result is blocked -- not flagged, not footnoted. Blocked." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_9" value="9" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_10" value="No result is ever shown until all four checks pass. A warning label on a wrong flood map is worse than no map at all, so a failed check stops the run." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAE1E1;strokeColor=#DC2626;fontColor=#9A1B1B;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=8;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="96" width="1289" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_11" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;CHECK 1 · STILL WATER STAYS STILL&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Water in a bowl with nothing pushing it must not drift.&lt;br&gt;Measured drift: 0.0000000000000598 metres per second.&lt;br&gt;The threshold allows a thousand times more than that.&lt;br&gt;Result: passes, with room to spare." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.2;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="168" width="316" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_12" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;CHECK 2 · NO WATER APPEARS OR VANISHES&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Total water in the simulation must stay constant.&lt;br&gt;Measured loss across a thousand steps: 0.000000 per cent.&lt;br&gt;Exact to the limit of what the machine can represent.&lt;br&gt;Result: passes." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.2;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="354" y="168" width="306" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_13" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;CHECK 3 · NO IMPOSSIBLE NUMBERS&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Depth can never be negative, and nothing may go undefined.&lt;br&gt;The flood edge, where water meets dry ground, is the hard part.&lt;br&gt;Every cell across every test case stayed physical.&lt;br&gt;Result: passes on all cases." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.2;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="682" y="168" width="310" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_14" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;CHECK 4 · MATCHES THE KNOWN ANSWER&lt;/font&gt;&lt;/b&gt;&lt;br&gt;A textbook dam-break has an exact answer written in 1892.&lt;br&gt;Exact depth at the wall: 4.444 metres.&lt;br&gt;Our answer: 4.532 metres -- an error of about 3 centimetres.&lt;br&gt;Result: passes, well inside tolerance." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.2;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1014" y="168" width="297" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_15" value="And then checked against an engine we did not write" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#632EBE;fontSize=11;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="306" width="800" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_16" value="&lt;b&gt;&lt;font color=&quot;#5D2CB2&quot;&gt;What was actually done&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ The same textbook case was run twice -- once through our engine, once through Delft3D FM.&lt;br&gt;▪ Delft3D FM is made by Deltares, an independent Dutch institute. Governments use it for real flood studies.&lt;br&gt;▪ It is a genuine Deltares kernel running here, 2026.01 build -- not a re-implementation of ours.&lt;br&gt;▪ Both runs were scored against the exact mathematical answer, over the interior of the domain.&lt;br&gt;▪ Neither engine was tuned to match the other." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FE;strokeColor=#7C3AED;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="342" width="462" height="198" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_17" value="Ten metres of water, a flat frictionless bed, ten-metre cells, forty seconds of flow, and the three outermost cells at each end trimmed before scoring. Anyone can repeat it." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2EBFD;strokeColor=#7C3AED;fontColor=#4A238E;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="552" width="462" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_18" value="The result" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#5D2CB2;fontSize=8.8;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="344" width="400" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_19" value="Engine" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="378" width="275" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_20" value="Error against the exact answer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="785" y="378" width="185" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_21" value="Depth at the wall" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="974" y="378" width="155" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_22" value="Verdict" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1133" y="378" width="178" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_23" value="JalRaksha" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE3FC;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="418" width="275" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_24" value="0.0317 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="785" y="418" width="185" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_25" value="4.532 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="974" y="418" width="155" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_26" value="passes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1133" y="418" width="178" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_27" value="Delft3D FM (Deltares)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE3FC;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="458" width="275" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_28" value="0.0349 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2EBFD;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="785" y="458" width="185" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_29" value="4.515 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2EBFD;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="974" y="458" width="155" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_30" value="passes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2EBFD;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1133" y="458" width="178" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_31" value="The exact answer (1892)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE3FC;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="498" width="275" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_32" value="reference" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="785" y="498" width="185" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_33" value="4.444 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="974" y="498" width="155" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_34" value="reference" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1133" y="498" width="178" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_35" value="The two engines agree with each other to 0.0294 metres. Ten metres of water standing behind the wall, forty seconds of flow, and the whole disagreement between them is under three centimetres." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F4F0;strokeColor=#059669;fontColor=#035A3F;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="506" y="536" width="530" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_36" value="&lt;b&gt;4 / 4 GATES PASSED&lt;/b&gt;&lt;br&gt;&lt;i&gt;and within 3 cm of Delft3D FM&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCF0EA;strokeColor=#059669;fontColor=#04694A;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1062" y="532" width="249" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="p8140_37" value="&lt;b&gt;In plain words:&lt;/b&gt; the flood predictions here are as accurate as the software governments already trust, and we can show the working. What we do not claim is equally clear -- at 30-metre terrain detail, trust the arrival times and the flood boundary; treat any single depth reading as indicative." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#1F2937;fontSize=8.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="644" width="1289" height="56" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page10" name="10. Deployment &amp; Roadmap">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p8731_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="50" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_5" value="HOW IT RUNS, WHAT IS NEW, WHAT COMES NEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=20;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="8" width="955" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_6" value="Packaged to run on one laptop or one server, with no network and no licence." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=8.2;fontStyle=2;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="50" width="955" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_7" value="SMART INDIA&lt;br&gt;HACKATHON 2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#0070C0;fontSize=8;fontStyle=1;align=right;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="12" width="176" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_8" value="Everything on the left of this slide already works. The right-hand column is what we build after the hackathon." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="716" width="1333" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_9" value="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_10" value="How it runs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=11;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="94" width="360" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_11" value="&lt;b&gt;A Browser&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Chrome, Firefox or Edge. Nothing to install,&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;nothing to configure.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#0284C7;fontColor=#015681;fontSize=7.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="126" width="360" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_12" value="&lt;b&gt;The Web Service&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Answers in about a fifth of a second, even&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;while a simulation is running.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E7F4F3;strokeColor=#0D9488;fontColor=#086058;fontSize=7.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="228" width="360" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_13" value="&lt;b&gt;The Simulation Worker&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;A separate process, so a heavy calculation&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;can never freeze the page.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEEE7;strokeColor=#EA580C;fontColor=#983908;fontSize=7.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="330" width="360" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_14" value="&lt;b&gt;Local Storage&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;Results and cached terrain, held on the&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;machine&#39;s own disk.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDEEF0;strokeColor=#475569;fontColor=#2E3744;fontSize=7.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="432" width="360" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_15" value="&lt;b&gt;One Container&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;The whole system packaged so it starts&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#6B7280&quot;&gt;anywhere with a single command.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDECFC;strokeColor=#4F46E5;fontColor=#332E95;fontSize=7.6;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="534" width="360" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_16" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="202" y="214" as="sourcePoint" />
+            <mxPoint x="202" y="228" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p8731_17" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="202" y="316" as="sourcePoint" />
+            <mxPoint x="202" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p8731_18" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="202" y="418" as="sourcePoint" />
+            <mxPoint x="202" y="432" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p8731_19" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.9;endArrow=block;startArrow=none;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="202" y="520" as="sourcePoint" />
+            <mxPoint x="202" y="534" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p8731_20" value="What is genuinely new here" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=11;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="94" width="520" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_21" value="&lt;b&gt;Verified, not asserted&lt;/b&gt;&lt;br&gt;Cross-checked against a real Deltares kernel&lt;br&gt;running on this machine -- demonstrated, not claimed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5EFFE;strokeColor=#7C3AED;fontColor=#51269A;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="126" width="252" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_22" value="&lt;b&gt;A range, not a number&lt;/b&gt;&lt;br&gt;Thirty variations every run, reported as a&lt;br&gt;percentile band around the arrival time." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECF6F5;strokeColor=#0D9488;fontColor=#086058;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="672" y="126" width="254" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_23" value="&lt;b&gt;Bad data is refused&lt;/b&gt;&lt;br&gt;A radar scene below the quality threshold is&lt;br&gt;rejected outright. No synthetic stand-in is ever drawn." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCEEEE;strokeColor=#DC2626;fontColor=#8F1919;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="236" width="252" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_24" value="&lt;b&gt;Honest progress&lt;/b&gt;&lt;br&gt;The dashboard reports which member of thirty is&lt;br&gt;solving, rather than a bar that sits still." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#0284C7;fontColor=#015681;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="672" y="236" width="254" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_25" value="&lt;b&gt;Runs with no network&lt;/b&gt;&lt;br&gt;Everything cached after the first fetch, because&lt;br&gt;demo-day connectivity cannot be assumed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF2EC;strokeColor=#EA580C;fontColor=#983908;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="346" width="252" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_26" value="&lt;b&gt;Near-dam 3D detail&lt;/b&gt;&lt;br&gt;Particle physics at the wall, handed off in one&lt;br&gt;direction only -- about 600 metres, 15 seconds." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5EFFE;strokeColor=#7C3AED;fontColor=#51269A;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="672" y="346" width="254" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_27" value="&lt;b&gt;Replaceable parts&lt;/b&gt;&lt;br&gt;Any component can be swapped without touching&lt;br&gt;the others, because dependencies run one way." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F0FD;strokeColor=#4F46E5;fontColor=#332E95;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="456" width="252" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_28" value="&lt;b&gt;Zero licence cost&lt;/b&gt;&lt;br&gt;Every component is open-source. There is nothing&lt;br&gt;to buy before a state can use it." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF7F3;strokeColor=#059669;fontColor=#036244;fontSize=7.2;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="672" y="456" width="254" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_29" value="Where it goes next" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=11;fontStyle=1;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="952" y="94" width="360" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_30" value="&lt;b&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;DONE&lt;/font&gt;&lt;/b&gt;&lt;br&gt;– The flood simulation engine&lt;br&gt;– The dashboard, eight working tabs&lt;br&gt;– All four quality gates passing&lt;br&gt;– The independent Delft3D cross-check&lt;br&gt;– Thirty-member uncertainty sweep&lt;br&gt;– Offline-first caching&lt;br&gt;– Single-command container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F9F6;strokeColor=#059669;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="952" y="126" width="359" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_31" value="DONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#059669;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="964" y="115" width="80" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_32" value="&lt;b&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;NOW&lt;/font&gt;&lt;/b&gt;&lt;br&gt;– Impact analysis, final pass&lt;br&gt;– Near-dam 3D integration polish&lt;br&gt;– Demo-day rehearsal and fallbacks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF7F0;strokeColor=#D97706;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="952" y="360" width="359" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_33" value="NOW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D97706;strokeColor=#D97706;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="964" y="349" width="80" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_34" value="&lt;b&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;NEXT&lt;/font&gt;&lt;/b&gt;&lt;br&gt;– Screen all five thousand registered dams&lt;br&gt;– Hand results to district authorities directly&lt;br&gt;– Alerts to the phones of people downstream&lt;br&gt;– A hosted service for states without hardware&lt;br&gt;– Feed Tier-2 detailed studies where warranted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F8FC;strokeColor=#0284C7;fontColor=#1F2937;fontSize=6.6;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="952" y="514" width="359" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_35" value="NEXT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="964" y="503" width="80" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_36" value="The framing matters as much as the software. JalRaksha is a first-pass screening instrument: it tells a state which of its dams deserve a full surveyed study, and in what order. It does not replace that study, and the reports say so on their own face rather than in a footnote." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#824704;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="406" y="576" width="520" height="122" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_37" value="One laptop is enough to run all of this. Nothing here assumes a data centre, a licence server or a working connection." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="22" y="632" width="360" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p8731_38" value="None of the last block has been started. It is listed so the boundary between what runs and what is planned stays visible." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDEEF0;strokeColor=#475569;fontColor=#2B333F;fontSize=6.4;fontStyle=3;align=center;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="952" y="656" width="359" height="42" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

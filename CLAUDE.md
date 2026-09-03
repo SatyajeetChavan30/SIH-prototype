@@ -309,6 +309,112 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   rendered Khadakwasla — 1,170 m of relief across 54 km — as a near-flat plate.
   `main.py` is in the `.pvsm` staleness check, so changing those arguments
   invalidates cached states.
+## River blockage (landslide dam) and the observation-conditioned DEM update
+
+Half the events PS-26161 names are natural blockages, not dam failures. The
+`river_blockage` scenario models one properly; `river_overflow` is still a
+screening pulse and says so.
+
+- **A landslide dam has no published storage, so it is measured.**
+  `jalraksha/terrain/blockage.py` burns the barrier into the bed, PROVES it spans
+  the valley (fill, count `downstream_leak_cells`, widen and retry, refuse after
+  8 doublings), and reads an elevation-area-capacity curve straight off the
+  result. `breach._synthesize_blockage_ensemble` REFUSES a run whose
+  `storage_source` is absent or user-supplied — without that check a dashboard
+  slider silently drives the outburst volume again the first time somebody
+  refactors, and the output still reads as a modelled result.
+- **Costa (1985) is the only active regression** on this path: it is the one
+  transcribed equation whose fitting population included natural dams. Walder &
+  O'Connor (1997) and Peng & Zhang (2012) are implemented in shape and
+  quarantined pending coefficient transcription, exactly as Xu & Zhang is.
+  Peng & Zhang needs a deposit VOLUME and WIDTH, which only the burned geometry
+  can supply — the two features are coupled, not bolted together.
+- **The spread comes from the prediction band.** A dam-break ensemble gets most
+  of its spread from four equations disagreeing by 3–4×; with one family there is
+  no such term, so members are sampled across `NATURAL_DAM_LOG_CYCLES`. Those
+  widths are UNVETTED placeholders chosen only to exceed Wahl's embankment bands.
+  Quote the range, never a single discharge.
+- **The dam-class flag INVERTS.** An embankment is in-population for a dam break
+  and out of it for a landslide-dam outburst. Reporting one sense with the other
+  scenario's explanation would be the right warning attached to the wrong reason.
+- **"Rebuild the DEM from satellite imagery" is not achievable on this data
+  policy, and the code says so where it would be edited.** Stereo pairs are
+  geo-fenced or commercial; Earth Engine carries S1 GRD, not SLC. What ships is
+  an **observation-conditioned DEM update**: GLO-30 with a barrier burned in,
+  written as a new GeoTIFF carrying `JALRAKSHA_NOT_A_SURVEY`. Every product and
+  the dashboard banner say it is not photogrammetry.
+- **Delta-add, never a reprojection round trip.** Only the CHANGE is reprojected
+  back onto the source raster, so every pixel outside the barrier footprint stays
+  bit-identical to Copernicus — asserted by a test.
+- **Updated DEMs live in `data/dem/updated/`, never the cache root.**
+  `cache.get_cached_dem` ends in a sorted glob over `dem_{lat}_{lon}*.tif`;
+  `dem_..._blockage.tif` sorts ahead of `..._clipped.tif` and would silently
+  become the DEM for every run at that location, dam-break runs included.
+  Filenames are content-addressed (barrier geometry + scene id + source DEM MD5)
+  — there is no TTL anywhere in this repo and there should not be one.
+- **`_resolve_dem` is NOT modified.** `tasks._resolve_dem_for_run` wraps it and
+  returns the updated path explicitly; a new file in its search path is exactly
+  how the Bhakra-over-a-Pune-tile failure happened.
+- **A tile cache hit is not coverage.** Tiles are fetched as WINDOWS but cached
+  under the full tile's URL, so the tile fetched for Tehri (lon 79.000–79.105)
+  was a confident hit for a Rishi Ganga domain at lon 79.70 and then died inside
+  `rasterio.mask` with "Input shapes do not overlap raster". `dem.py` now checks
+  the cached bounds and re-fetches the UNION, so a tile only ever grows and no
+  earlier domain loses coverage.
+- **A square domain needs a clip √2 wider than its radius.** The solver domain is
+  a square in UTM, the clip a rectangle in degrees, so the corners fall outside.
+  Measured: an 18 km domain on an 18 km clip ran 11.3% on nearest-neighbour fill
+  and reported a lake 2.5× too large. Rishi Ganga's 18 km domain is staged from a
+  26 km clip, and `test_presets.py` asserts the diagonal.
+- **Auto-detection refuses over the Rishi Ganga, and that is a result.**
+  `gee/blockage_detect.py` differences a pre-event median against a SINGLE
+  post-event scene (a composite would make "rebuilt from the 2021-02-08 scene"
+  untrue) and applies `MIN_JRC_PRECISION` to the PRE scene, never to the
+  difference — a lake that formed last week is definitionally absent from a
+  32-year permanent-water product, so that gate on the difference would reject
+  every true positive. Measured live: JRC permanent water covers **0.001%** of
+  the Raini window against 0.57% at Tehri and 44.5% at Hirakud, so there is
+  nothing to verify a same-day mask against and the detector declines. Do NOT
+  widen the threshold. The manual barrier path runs fully offline and is the
+  demo's guaranteed floor.
+- **Rishi Ganga publishes no crest height or width.** Neither is published for
+  the 2021 blockage; both are measurable by differencing Zenodo 4554647 against
+  4558692 (verification queue row 26). The preset carries a terrain-derived
+  `suggested_barrier_*` at the deepest gorge cell in the domain, labelled as
+  terrain-derived so nobody reads it as the surveyed deposit location. Its own
+  note corrects the problem statement: Chamoli was a rock-and-ice avalanche, not
+  a GLOF, though a blockage did form.
+- **Rishi Ganga's corridor names no town.** Published town coordinates for
+  Rishiganga and Tapovan sat 1,319 m and 79 m ABOVE the nearest channel — the
+  pipeline's own `_no_arrival_reason` caught it and said "a town centre, not a
+  riverside gauge" — and snapping to the lowest cell within 2 km
+  still left Rishiganga at 2,851 m. Two of them are hill towns genuinely hundreds
+  of metres above their rivers, so they answer a different question from the one
+  a gauge asks. What ships instead is three DEM-traced thalweg points at stated
+  along-channel distances, each labelled TERRAIN-DERIVED. The published HEC-RAS
+  figures (Rishiganga 7,908–7,975 m³/s at 19.85 m; Tapovan 5,780–5,957 m³/s at
+  18.15 m) become a real validation comparison the moment someone sources
+  channel coordinates — that is the strongest evidence this scenario could carry.
+- **A minority arrival is labelled as one.** One member in four reached 15 km
+  downstream, so the "arrival time" was a single realisation, p05 and p95
+  collapsed onto it — a zero-width band that reads as high confidence — and the
+  peak depth beside it showed 0.0 m, because the ENSEMBLE MEDIAN of `h_max` there
+  is median{0,0,0,d}. Depth now comes from the members that actually arrived, and
+  `_minority_arrival_note` says "1 of 4 members" below half.
+- **Scale sanity, measured at the Dhauliganga gorge below Tapovan** (1,704 m bed,
+  1,200 m of relief): crest 55 / 90 / 120 / 150 m impounds 0.6 / 6.3 / 26.0 /
+  60.8 MCM. A 55 m barrier there produces a local surge that reaches no gauge in
+  an hour, which is the honest answer for a deposit that size on a reach that
+  steep — not a broken run.
+- **DEMO-DAY COST WARNING.** Compute scales badly with barrier size on steep
+  terrain. The 55 m / 0.6 MCM case solved 4 members in about 15 minutes at 100 m
+  over a 36 km box; the 120 m / 26 MCM case was still on its first member after
+  the same wall time, with every worker pinned. The CFL limit is doing it: a
+  deep release down a 1,200 m-relief gorge reaches velocities that cut the
+  timestep to a fraction of a second. Pick a modest barrier or a short
+  `solver_duration_s` for a live demo, and pre-compute anything larger — the run
+  picker loads a finished run instantly.
+
 - **Runs predating this work** have no ensemble statistics, no p05/p95 arrival
   band and no per-gauge peak depth — those fields did not exist when they were
   written, and they render as blanks. New runs are complete.

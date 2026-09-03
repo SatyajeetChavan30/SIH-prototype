@@ -87,6 +87,7 @@ with the cause unrecoverable from any endpoint.
 | `GET /runs` | All runs, newest first, with export counts. Backs the run picker — loading a previous run previously meant typing a 32-character hex id. |
 | `GET /validation` | The correctness gates as pass/fail plus curves. Cached; `?refresh=true` re-runs. |
 | `GET /gee/status` | Earth Engine availability without needing a reach. |
+| `GET /gee/blockage` | Has a new water body — a forming landslide-dammed lake — appeared on this reach? Differences a Sentinel-1 pre-event median against a **single** post-event scene, subtracts JRC permanent water, and requires what remains to sit on a watercourse. Same three-state contract as `/gee/latest`: live, cached, or a refusal that says why. There is no fourth state and nothing here fabricates a lake. |
 
 ## Dashboard tabs
 
@@ -440,6 +441,105 @@ Two fixes were available and one was deliberately NOT taken:
   explains itself — "This point sits 46 m above the nearest river channel
   (583 m vs 536 m)... Not a modelling gap." A dry row with a reason is a real
   screening result; a wet row sampled from 3 km away is not.
+
+## River blockage in the dashboard
+
+The scenario selector previously pinned **every** non-dam-break scenario to
+Khadakwasla:
+
+```js
+const isMuthaRiverScenario = scenarioType !== "dam_break";
+const effectiveDamId = isMuthaRiverScenario ? "khadakwasla" : damId;
+```
+
+That made a dedicated blockage site unreachable from the UI no matter what the
+backend supported, and the variable name encoded the assumption. Sites now
+publish `scenario_types` and `record_type`, and the panel gates per site.
+
+**Note the plumbing trap this exposed:** `config.py` published those fields and
+the dashboard never saw them, because FastAPI's `response_model` silently strips
+anything the Pydantic model does not name. Every site fell back to "models all
+scenarios" — the same behaviour as the hard-pin, and just as invisible. Any new
+registry field needs a matching field on `DamPreset` in `schemas.py`.
+
+**The blockage fieldset** replaces the height/storage sliders, because a
+landslide dam has neither. It carries barrier lat/lon, crest height *above the
+valley floor* (labelled, because a height and an elevation differ by a kilometre
+in the Himalaya and both look plausible), crest width with a **live cell count**
+so a sub-grid barrier is visible before submit rather than as a 422, and a
+manual/auto-detect radio that defaults to manual — the offline path is the
+demo's guaranteed floor.
+
+**The provenance banner** sits above the tab content, not inside a tab, and
+renders whenever `result.dem_update` is present. It has to: `Scene3D` builds its
+surface from the run's own `terrain_elevation`, which *is* the updated bed, so a
+viewer sees modified terrain whether or not anything tells them. Unlabelled
+modified terrain presented as a satellite-derived product is precisely the
+overclaim this project refuses everywhere else. A manual run never shows a scene
+id — the presence of one is what distinguishes an observation from an assumption.
+
+**The Validation tab** gained a *DEM update* section rather than a ninth tab,
+because "how much should you trust this" is the question that tab answers. Four
+of its numbers are load-bearing and appear nowhere else: `downstream_leak_cells`
+(must be 0, or the pool ran around the barrier's ends), `spill_detected_at_m`
+(the pool escapes over a saddle above that level), the storage-fit residual (a
+stepped gorge is not a power law, and the routing assumes it is), and whether
+the deposit volume falls inside Costa & Schuster's surveyed 10⁶–10⁸ m³ range.
+The stage-storage curve is plotted from the sidecar.
+
+**Downloads** gained a *Terrain — modified DEM* group: the updated GeoTIFF, its
+provenance JSON, and the impounded-lake extent, tagged
+`impounded_lake_extent` / "initial condition, not a solver output" so nobody
+reads a constructed lake as simulated inundation.
+
+## Three gauge defects found by running the blockage scenario
+
+All three predate this work and affected dam-break runs too.
+
+**1. A named site borrowed Tehri's gauges.** Both gauge resolvers carry a Tehri
+bounding-box fallback for callers that pass coordinates without a `dam_id`.
+Neither checked that `dam_id` was actually absent:
+
+```python
+if not gauges and 29.0 <= dam_lat <= 31.5 and 77.0 <= dam_lon <= 80.0:
+    gauges = get_gauges("tehri")
+```
+
+So the box fired for any **named** Himalayan site whose corridor happened to be
+empty. A Rishi Ganga blockage at (30.50, 79.63) reported arrival times at
+Koteshwar, Devprayag, Rishikesh and Haridwar — a different river 150 km away.
+That is the exact failure `define_downstream_gauges`' docstring says it was
+written to end, returning through the one path still open to it. `bhakra`,
+`idukki` and `hirakud` all publish empty corridors and were equally exposed.
+
+**2. A minority arrival read as the consensus.** One member in four reached a
+gauge, so the "arrival time" was a single realisation, `p05` and `p95` collapsed
+onto it — a zero-width band that looks like high confidence and means the
+opposite — and the peak depth beside it showed **0.0 m**, because the ensemble
+*median* of `h_max` there is median{0, 0, 0, d}. A row saying "arrived at 1 h
+22 m, peak depth 0.0 m" invites the reader to disbelieve the arrival time, which
+is the number the tool exists to produce. Depth now comes from the members that
+actually arrived (measured 3.89 m, then 10.01 m on a larger barrier, where it
+previously read 0.0), and a note says "1 of 4 ensemble members".
+
+**3. A steep river was mistaken for a hillside town.** `_no_arrival_reason`
+measured elevation against the lowest bed within 3 km — wide enough to find the
+Mula-Mutha where a Pune town spreads away from it. On the Alaknanda that window
+spans **58–85 m of longitudinal fall**, so a point sitting exactly *on* the
+channel was reported as "64 m above the nearest river channel… a town centre,
+not a riverside gauge", sending a reader to fix a coordinate that was correct.
+Narrowing the window does not help: at 60 m/km even 600 m sees 36 m of fall. The
+check now asks whether the height is **explained by the reach gradient**,
+estimated between the two windows. On a flat reach the gradient is ~0 and it
+reduces to the original test, which keeps the Pune finding intact — Swargate is
+46 m up a bank beside a river that barely falls.
+
+Related: the Rishi Ganga corridor itself was published once from gazetteer town
+coordinates. The two that reported no arrival were measured by the pipeline at
+1,319 m and 79 m above the nearest channel; the third is a hill town too, but the
+flood reached it so no figure was produced and none is invented here. They were removed rather than snapped
+into plausibility; three DEM-traced thalweg points that name no town replaced
+them, each labelled `TERRAIN-DERIVED`.
 
 ## Known gaps
 

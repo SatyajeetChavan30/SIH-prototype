@@ -9,9 +9,12 @@ import rasterio
 from rasterio.transform import Affine
 
 from jalraksha.solver.types import Grid, create_state
-from jalraksha.terrain.conditioning import preprocess_dem, interpolate_dem_to_grid, resample_dem
+from jalraksha.terrain.conditioning import (
+    preprocess_dem, interpolate_dem_to_grid, resample_dem, fill_depressions,
+)
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm
 from jalraksha.terrain.roughness import get_manning_value, MANNING_TABLE_ESA
+from jalraksha.run import _notch_breach_into_bed
 
 
 @pytest.fixture
@@ -210,6 +213,169 @@ class TestDomainBuilder:
         assert 0 <= i_breach < grid.nx
         assert 0 <= j_breach < grid.ny
         assert b_breach == state.b[j_breach, i_breach]
+
+
+class TestDrainageFix:
+    """
+    Regression coverage for the Khadakwasla plateau fix: an offset (not
+    dam-centred) domain, threshold-limited depression fill, and a breach
+    notch carved into the bed. See run.py::_notch_breach_into_bed and
+    terrain/conditioning.py::fill_depressions for the full mechanism —
+    without these, water spreading upstream from the isotropic breach
+    injection is walled into the reservoir bowl by an intact DEM crest plus
+    unfilled resampling pits, and never drains (measured: ~42% of released
+    volume permanently retained, hazard plateauing instead of receding).
+    """
+
+    def test_breach_resolves_to_dam_on_offset_domain(self, tmp_path, mock_dem_geotiff):
+        """
+        The single highest-risk item in this fix: an offset domain (biased
+        downstream rather than dam-centred) breaks the old grid.nx//2 breach
+        assumption silently. run.py now always resolves the breach from the
+        dam's own lat/lon via compute_breach_location's inject_lat/inject_lon
+        path (default = dam_lat/dam_lon), not the grid centre. This asserts
+        that still holds when the domain is NOT dam-centred: the breach cell
+        must land near the DAM's UTM position, not the grid's geometric
+        centre, which are deliberately far apart here.
+        """
+        dem_path, _ = mock_dem_geotiff  # a flat-ish mock DEM around (0,0) in its own CRS
+
+        # A domain whose margins are wildly asymmetric, so the grid centre and
+        # the dam location are unambiguously different cells.
+        grid = Grid(nx=100, ny=100, dx=100.0, dy=100.0, x0=0.0, y0=0.0, crs="EPSG:32643")
+        bed = np.full((100, 100), 500.0)
+        state = create_state(grid, h_init=np.zeros((100, 100)), b_init=bed)
+
+        # Place "the dam" at a specific UTM point well away from the grid's
+        # geometric centre (which would be i=50, j=50).
+        from pyproj import Transformer
+        # Pick a lat/lon that projects near grid cell (10, 10), far from centre.
+        transformer = Transformer.from_crs("EPSG:32643", "EPSG:4326", always_xy=True)
+        dam_lon, dam_lat = transformer.transform(grid.x0 + 10 * grid.dx, grid.y0 + 10 * grid.dy)
+
+        i_breach, j_breach, b_breach = compute_breach_location(
+            state, grid, dam_lat=dam_lat, dam_lon=dam_lon, utm_zone=43,
+            inject_lat=dam_lat, inject_lon=dam_lon,
+        )
+
+        # Must land near the DAM (~cell 10,10), not the grid centre (50,50).
+        assert abs(i_breach - 10) <= 1, f"breach i={i_breach}, expected ~10 (near dam), not grid centre"
+        assert abs(j_breach - 10) <= 1, f"breach j={j_breach}, expected ~10 (near dam), not grid centre"
+        assert (i_breach, j_breach) != (grid.nx // 2, grid.ny // 2)
+
+    def test_fill_depressions_shallow_filled_deep_preserved(self):
+        """Threshold-limited fill: shallow pit fully resolved, deep basin left standing."""
+        ny, nx = 20, 20
+        bed = np.zeros((ny, nx))
+        for i in range(nx):
+            bed[:, i] = 10.0 - i * 0.3  # monotonic slope, no ambiguity about "downhill"
+
+        shallow_r, shallow_c = 10, 10
+        deep_r, deep_c = 5, 5
+        bed[shallow_r, shallow_c] -= 1.5   # resampling-noise-scale pit
+        bed[deep_r, deep_c] -= 10.0        # a real basin
+        original = bed.copy()
+
+        filled, stats = fill_depressions(bed, max_fill_depth_m=3.0)
+
+        def neighbours(a, r, c):
+            return [a[r - 1, c], a[r + 1, c], a[r, c - 1], a[r, c + 1]]
+
+        shallow_min_nb = min(neighbours(original, shallow_r, shallow_c))
+        assert filled[shallow_r, shallow_c] >= shallow_min_nb - 1e-6, (
+            "shallow pit must be raised to its pour point"
+        )
+        assert (filled[shallow_r, shallow_c] - original[shallow_r, shallow_c]) <= 3.0 + 1e-6
+
+        deep_raise = filled[deep_r, deep_c] - original[deep_r, deep_c]
+        assert abs(deep_raise - 3.0) < 1e-6, "deep pit's raise must be capped at the threshold"
+        deep_min_nb = min(neighbours(original, deep_r, deep_c))
+        assert filled[deep_r, deep_c] < deep_min_nb - 4.0, (
+            "a real basin must be left standing as a depression, not fully filled"
+        )
+        assert stats["n_unfilled_deep"] == 1
+        assert stats["n_filled"] == 2
+
+    def test_fill_depressions_unrestricted_removes_all_local_minima(self):
+        """Drainability proof: an unrestricted fill leaves no interior local minimum."""
+        ny, nx = 20, 20
+        bed = np.zeros((ny, nx))
+        for i in range(nx):
+            bed[:, i] = 10.0 - i * 0.3
+        bed[10, 10] -= 1.5
+        bed[5, 5] -= 10.0
+
+        filled, _ = fill_depressions(bed, max_fill_depth_m=1e9)
+
+        for r in range(1, ny - 1):
+            for c in range(1, nx - 1):
+                neighbours = [filled[r - 1, c], filled[r + 1, c], filled[r, c - 1], filled[r, c + 1]]
+                assert filled[r, c] >= min(neighbours) - 1e-6, (
+                    f"local minimum remains at ({r},{c}) after unrestricted fill"
+                )
+
+    def test_notch_breach_lowers_bed_and_respects_local_floor(self):
+        """Breach notch carves a gap toward the dam-height invert, clamped to local terrain."""
+        grid = Grid(nx=20, ny=20, dx=200.0, dy=200.0, x0=0.0, y0=0.0, crs="EPSG:32643")
+        bed = np.full((20, 20), 500.0)
+        bed[10, :] = 540.0        # dam ridge
+        bed[11:, :] = 530.0       # reservoir pool, upstream of the ridge
+        for j in range(10):
+            bed[j, :] = 500.0 - (10 - j) * 2.0   # downstream valley, real slope
+
+        state = create_state(grid, h_init=np.zeros((20, 20)), b_init=bed.copy())
+        dam_config = {"height_m": 39.6}  # Khadakwasla's actual preset value
+
+        i_breach, j_breach = 10, 10
+        b_breach = float(state.b[j_breach, i_breach])
+
+        _notch_breach_into_bed(state, grid, i_breach, j_breach, b_breach, dam_config)
+
+        assert state.b[j_breach, i_breach] < b_breach, "breach cell must be lowered"
+        # Must not dig below the lowest bed already present just outside the
+        # footprint (the search-window floor) -- it can only open a path to
+        # terrain that's already there.
+        local_floor = min(
+            state.b[9, 9], state.b[9, 11], state.b[7, 10],  # sample of the search window
+        )
+        assert state.b[j_breach, i_breach] >= min(bed[7:9, 9:12].min(), 480.0) - 1e-6
+        # The notch must sit below the reservoir pool, so trapped water can
+        # actually flow through it toward downstream.
+        assert state.b[j_breach, i_breach] < 530.0, "notch must be below the reservoir pool level"
+
+    def test_offset_rectangular_domain_bounds(self):
+        """margins_km produces an nx != ny rectangle with the intended UTM extent."""
+        from jalraksha.terrain.conditioning import load_dem_as_grid
+
+        # Reuse the fixture-free path: build a small synthetic geotiff inline
+        # covering a wide enough area, then request an asymmetric extent from
+        # it directly via load_dem_as_grid's margins_km.
+        import rasterio
+        from rasterio.transform import Affine
+
+        tmp_path = tempfile.mkdtemp()
+        dem_path = f"{tmp_path}/wide_dem.tif"
+        ny_src, nx_src = 200, 200
+        dem_data = np.full((ny_src, nx_src), 500.0, dtype=np.float32)
+        # Raster covers lon -1..1, lat -1..1 (2 degrees, well over the <=25 km
+        # margins requested below), top-left origin at (-1, 1).
+        transform = Affine.translation(-1.0, 1.0) * Affine.scale(0.01, -0.01)
+        wkt_4326 = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+        with rasterio.open(
+            dem_path, "w", driver="GTiff", height=ny_src, width=nx_src, count=1,
+            dtype=rasterio.float32, transform=transform, crs=wkt_4326,
+        ) as dst:
+            dst.write(dem_data, 1)
+
+        grid, bed = load_dem_as_grid(
+            dem_path, dam_lat=0.0, dam_lon=0.0, target_resolution=1000.0,
+            margins_km={"west": 5, "east": 20, "south": 8, "north": 8},
+            fill_max_depth_m=0.0,
+        )
+
+        assert grid.nx == 25   # (5 + 20) km / 1 km
+        assert grid.ny == 16   # (8 + 8) km / 1 km
+        assert bed.shape == (grid.ny, grid.nx)
 
 
 @pytest.mark.blocking

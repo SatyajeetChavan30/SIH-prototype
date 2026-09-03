@@ -71,6 +71,121 @@ def _resolve_dem(dam_config: Dict[str, Any]) -> str:
     )
 
 
+def _blockage_spec(dam_config: Dict[str, Any]):
+    """
+    Build the barrier spec for a river_blockage run from its dam_config.
+
+    Only the MANUAL path is assembled here. Auto-detection lives in
+    ``jalraksha.gee.blockage_detect`` and is bound in ``_resolve_dem_for_run``,
+    because this service module is the only place the library's Earth Engine
+    layer and its terrain layer are allowed to meet.
+    """
+    from jalraksha.terrain.dem_update import BlockageSpec
+
+    missing = [
+        field
+        for field in (
+            "blockage_lat", "blockage_lon", "blockage_crest_height_m", "blockage_width_m",
+        )
+        if dam_config.get(field) is None
+    ]
+    if missing:
+        raise ValueError(
+            f"A river_blockage run needs the barrier geometry, and these fields "
+            f"are missing: {missing}. Supply them explicitly (manual placement) "
+            f"or run detection first — the barrier cannot be inferred from the "
+            f"dam preset, because a landslide deposit is not the dam."
+        )
+
+    return BlockageSpec(
+        barrier_lat=float(dam_config["blockage_lat"]),
+        barrier_lon=float(dam_config["blockage_lon"]),
+        crest_height_m=float(dam_config["blockage_crest_height_m"]),
+        width_m=float(dam_config["blockage_width_m"]),
+        thickness_m=dam_config.get("blockage_thickness_m"),
+        breach_mode=dam_config.get("blockage_breach_mode", "overtop"),
+        catchment_area_km2=dam_config.get("catchment_area_km2"),
+        direction_search_radius_cells=tuple(
+            dam_config.get("direction_search_radius_cells", (5, 12))
+        ),
+    )
+
+
+def _resolve_dem_for_run(
+    dam_config: Dict[str, Any],
+    target_resolution: float = 200.0,
+    report=None,
+) -> tuple:
+    """
+    Resolve the DEM a run should actually use, updating it for a blockage.
+
+    ``_resolve_dem`` is deliberately NOT modified. Its search order and its
+    refusal to fall back to "any .tif" are load-bearing, and the updated product
+    is returned explicitly here rather than being discovered by a glob — a new
+    file in the search path is exactly how the Bhakra-over-a-Pune-tile failure
+    happened.
+
+    For every scenario except ``river_blockage`` this is a pass-through with no
+    behaviour change at all.
+
+    Returns:
+        (dem_path, provenance_or_None). The provenance carries the barrier and
+        lake geometry the ensemble needs; see
+        ``dem_update.dam_config_updates_from_provenance``.
+    """
+    stale_dem = _resolve_dem(dam_config)
+    if dam_config.get("scenario_type") != "river_blockage":
+        return stale_dem, None
+
+    from jalraksha.terrain.dem_update import write_observation_conditioned_dem
+
+    if report:
+        report(10.0, "Updating terrain for the landslide barrier")
+
+    spec = _blockage_spec(dam_config)
+    observation = dam_config.get("_blockage_observation")
+    observed_mask = None
+
+    updated_dem, provenance = write_observation_conditioned_dem(
+        stale_dem_path=stale_dem,
+        spec=spec,
+        out_dir=settings.DATA_DIR / "dem" / "updated",
+        observation=observation,
+        observed_water_mask=observed_mask,
+        target_resolution=float(target_resolution),
+        domain_radius_km=float(dam_config.get("domain_radius_km", 30.0)),
+    )
+    return str(updated_dem), provenance
+
+
+def _apply_blockage_provenance(
+    dam_config: Dict[str, Any], provenance
+) -> Dict[str, Any]:
+    """
+    Take storage, crest and floor from the burned geometry, not from the request.
+
+    This is the handoff that makes ``breach._synthesize_blockage_ensemble``'s
+    refusal satisfiable: it will not run a blockage whose ``storage_source`` is
+    absent or user-supplied, because a landslide dam has no published capacity.
+
+    The domain stays centred where the DEM is, so the release is injected at the
+    barrier's own coordinates rather than at the domain centre.
+    """
+    from jalraksha.terrain.dem_update import dam_config_updates_from_provenance
+
+    updates = dam_config_updates_from_provenance(provenance)
+    # The barrier's own position becomes the injection point; the domain centre
+    # (and hence the DEM window) is left alone.
+    inject_lat = updates.pop("lat")
+    inject_lon = updates.pop("lon")
+
+    updated = dict(dam_config)
+    updated.update(updates)
+    updated["inject_lat"] = inject_lat
+    updated["inject_lon"] = inject_lon
+    return updated
+
+
 # Near-field SPH window. A few hundred metres either way is the scale over which
 # the violent breach jet is worth resolving with particles; beyond it the flow is
 # depth-averaged and the SWE solver owns it (Maranzoni & Tomirotti 2023).
@@ -105,7 +220,7 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
         reason instead.
     """
     from jalraksha.sph.pysph_runner import SPHUnavailableError, run_near_field_sph
-    from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+    from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
     from jalraksha.terrain.conditioning import load_dem_as_grid
 
     try:
@@ -124,7 +239,7 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
 
     # Phase 3 breach ensemble -> the head and geometry handed to SPH.
     try:
-        hydrographs = synthesize_breach_ensemble(dam_config, num_samples=25)
+        hydrographs = synthesize_scenario_ensemble(dam_config, num_samples=25)
         stats = ensemble_statistics(hydrographs)
         q_target = stats["q_peak_median"]
         member = min(hydrographs,
@@ -990,6 +1105,31 @@ def _min_to_s(value: Any) -> Any:
     return None if value is None else float(value) * 60.0
 
 
+def _minority_arrival_note(entry: Dict[str, Any]) -> str | None:
+    """
+    Say so when only a minority of ensemble members reached a gauge.
+
+    An arrival time reported without this reads as the consensus answer. It is
+    not: on a Rishi Ganga blockage, ONE member in four reached Joshimath, so the
+    "arrival time" was a single realisation and the p05/p95 band collapsed onto
+    it — a band of zero width that looks like high confidence and means the
+    opposite.
+
+    Returned only below half the members, because a majority arrival with a real
+    spread already tells its own story through p05/p95.
+    """
+    arrived = entry.get("num_samples") or 0
+    total = entry.get("num_members") or 0
+    if arrived == 0 or total == 0 or arrived * 2 >= total:
+        return None
+    return (
+        f"MINORITY ARRIVAL: {arrived} of {total} ensemble members reached this "
+        f"gauge. The time shown is the median of those {arrived}, and the "
+        f"p05/p95 band describes them alone — it is not evidence that the flood "
+        f"reliably gets here. Read it as a possible outcome, not the expected one."
+    )
+
+
 def _gauge_max_depths(result: Dict[str, Any]) -> Dict[str, float]:
     """
     Peak depth at each gauge cell, keyed by gauge name.
@@ -1004,8 +1144,20 @@ def _gauge_max_depths(result: Dict[str, Any]) -> Dict[str, float]:
     grid = result.get("grid") or {}
     h_max = result.get("h_max_median")
     gauge_defs = result.get("gauges") or []
+
+    # PREFERRED: the depth compute_arrival_times_at_gauges measured on the
+    # members that actually arrived. The median raster below answers a different
+    # question when only a minority reach a gauge — median{0, 0, 0, d} is 0, so
+    # the row reads "arrived, depth 0.0 m". Fall through to the raster only for
+    # runs written before that field existed.
+    from_arrival = {
+        name: entry.get("max_depth_m")
+        for name, entry in (result.get("arrival_times") or {}).items()
+        if entry.get("max_depth_m") is not None
+    }
+
     if h_max is None or not grid or not gauge_defs:
-        return {}
+        return from_arrival
 
     try:
         import numpy as np
@@ -1053,6 +1205,8 @@ def _gauge_max_depths(result: Dict[str, Any]) -> Dict[str, float]:
                 value = float(np.asarray(h_max)[j, i])
                 if np.isfinite(value):
                     depths[gauge["name"]] = value
+        # The per-member measurement wins wherever it exists.
+        depths.update(from_arrival)
         return depths
     except Exception as exc:  # pragma: no cover - diagnostic, never fatal
         print(f"[gauges] max-depth sampling skipped: {type(exc).__name__}: {exc}")
@@ -1162,6 +1316,7 @@ def _ensemble_summary(result: Dict[str, Any]) -> Dict[str, Any] | None:
             "dam_class_outside_fitted_population"),
         "dam_class_note": breach.get("dam_class_note"),
         "dam_type": breach.get("dam_type"),
+        "scenario_type": breach.get("scenario_type"),
     }
 
 
@@ -1223,6 +1378,12 @@ def run_dam_break_task(
     gauges: List[Dict[str, Any]] = []
     keyframe_manifest_url = None
     hazard_summary = None
+    # Which DEM this run actually used. Recorded for EVERY run, not only a
+    # blockage: the summary already said which dam was simulated but never which
+    # terrain, so a run over a stale or substituted DEM looked identical to one
+    # over the right terrain in every artefact it produced.
+    dem_path = None
+    dem_provenance = None
 
     try:
         # "sph" runs the SAME far-field pipeline as "swe" and then adds the
@@ -1244,7 +1405,14 @@ def run_dam_break_task(
         # near-field SPH afterwards, which is what "both" was always meant to be.
         if solver in ("swe", "sph", "both"):
             from jalraksha.run import run_dam_break_ensemble
-            dem_path = _resolve_dem(dam_config)
+            # For a river_blockage this burns the landslide barrier into the DEM
+            # and returns the updated product plus its provenance; for every
+            # other scenario it is _resolve_dem verbatim.
+            dem_path, dem_provenance = _resolve_dem_for_run(
+                dam_config, target_resolution=target_resolution, report=report
+            )
+            if dem_provenance is not None:
+                dam_config = _apply_blockage_provenance(dam_config, dem_provenance)
             result = run_dam_break_ensemble(
                 dam_config, dem_path, ensemble_size=ensemble_size,
                 output_dir=str(settings.DATA_DIR / "exports" / run_id),
@@ -1257,6 +1425,16 @@ def run_dam_break_task(
                 # falls outside the grid and reports no arrival for a reason
                 # that has nothing to do with the flood.
                 domain_radius_km=float(dam_config.get("domain_radius_km", 60.0)),
+                # Per-request domain-shape overrides (main.py::submit_run).
+                # margins_km, when given, replaces domain_radius_km entirely
+                # with an asymmetric extent -- used for a domain deliberately
+                # biased downstream so a flood has runway to actually exit
+                # instead of plateauing against artefacts (see run.py's
+                # _notch_breach_into_bed and terrain/conditioning.py's
+                # fill_depressions docstrings for why this was needed).
+                margins_km=dam_config.get("domain_margins_km"),
+                fill_max_depth_m=float(dam_config.get("fill_max_depth_m", 3.0)),
+                notch_breach=bool(dam_config.get("notch_breach", True)),
             )
             # Persist gauge results from the pipeline.
             #
@@ -1274,7 +1452,7 @@ def run_dam_break_task(
                     "arrival_p05_s": g.get("p05"),
                     "arrival_p95_s": g.get("p95"),
                     "max_depth_m": gauge_depths.get(gname),
-                    "note": g.get("note"),
+                    "note": _minority_arrival_note(g) or g.get("note"),
                     # Deliberately null. A domain-wide population-at-risk figure
                     # is computed below from real GHSL counts; dividing it among
                     # gauges would need a per-gauge catchment radius that no
@@ -1421,8 +1599,32 @@ def run_dam_break_task(
                 "solver_duration_s": solver_duration_s,
                 "target_resolution": target_resolution,
                 "domain_radius_km": dam_config.get("domain_radius_km"),
+                "scenario_type": dam_config.get("scenario_type", "dam_break"),
+            },
+            "dem": {
+                "dem_used": dem_path,
+                "dem_update": (
+                    dem_provenance.to_dict() if dem_provenance is not None else None
+                ),
             },
         }
+        if dem_provenance is not None:
+            # Registered as exports so the updated terrain and its provenance
+            # flow into the Downloads panel through the plumbing that already
+            # exists, rather than needing a panel to know about a new endpoint.
+            exports.append(
+                {"kind": "dem_update", "path_or_url": dem_provenance.updated_dem}
+            )
+            exports.append(
+                {
+                    "kind": "dem_update_provenance",
+                    "path_or_url": dem_provenance.provenance_json,
+                }
+            )
+            if dem_provenance.lake_mask:
+                exports.append(
+                    {"kind": "dem_update_lake", "path_or_url": dem_provenance.lake_mask}
+                )
         if isinstance(result, dict) and result.get("rapid_estimate"):
             # The analytic path computes peak outflow, celerity, inundation area
             # and an economic figure, then dropped all of them.

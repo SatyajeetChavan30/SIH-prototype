@@ -15,6 +15,10 @@ class RunRequest(BaseModel):
     storage_mm3: Optional[float] = Field(None, description="Gross storage (MCM)")
     dam_type: str = "embankment"
     failure_mode: str = "overtopping"
+    scenario_type: str = Field(
+        "dam_break",
+        description="dam_break | river_blockage | river_overflow",
+    )
     breach_mode: str = "central"
     ensemble_size: int = Field(100, ge=1, le=10000)
     solver: str = Field("swe", description="swe | delft3d | both")
@@ -25,6 +29,30 @@ class RunRequest(BaseModel):
                     "default of 10800 s is a ~35 min compute per member at 200 m.",
     )
     target_resolution: float = Field(200.0, gt=0, description="Grid resolution (m)")
+    domain_margins_km: Optional[Dict[str, float]] = Field(
+        None,
+        description="Optional asymmetric domain extent "
+                    "{'west':.., 'east':.., 'south':.., 'north':..} (km from the "
+                    "dam), for a domain deliberately biased downstream instead of "
+                    "centred on the dam. Overrides the preset's domain_radius_km "
+                    "entirely when given; the domain stays dam-centred otherwise.",
+    )
+    fill_max_depth_m: float = Field(
+        3.0, ge=0,
+        description="Threshold-limited depression fill applied to the DEM before "
+                    "the solver runs (metres). Fills only pits shallower than this "
+                    "-- resampling noise from bilinear downsampling of narrow "
+                    "channels -- leaving genuine basins (reservoirs, lakes) "
+                    "untouched. 0 disables it.",
+    )
+    notch_breach: bool = Field(
+        True,
+        description="Lower the bed at the breach cell to the dam-height invert "
+                    "before the run, so a failed dam has an actual gap instead of "
+                    "only a source term. Without this, water spreading upstream "
+                    "from the isotropic point injection is walled into the "
+                    "reservoir bowl by the intact DEM crest and never drains.",
+    )
     breach_formation_time_s: Optional[float] = Field(
         None, gt=0,
         description="Breach formation time (s). Controls how ABRUPT the release "
@@ -34,7 +62,62 @@ class RunRequest(BaseModel):
                     "member's metadata as failure_time_assumed.",
     )
 
+    # ── River blockage (landslide dam) ───────────────────────────────────────
+    #
+    # Meaningful ONLY when scenario_type == "river_blockage". Supplying them on
+    # any other scenario is rejected rather than ignored: a request whose
+    # parameters silently do nothing is the failure the breach module's own
+    # comment about `failure_mode` complains about.
+    #
+    # Note what is NOT here: storage. A landslide dam has no published gross
+    # storage, so the impounded volume is measured from a hypsometric fill of
+    # the updated DEM. jalraksha.terrain.breach refuses a blockage run whose
+    # storage came from anywhere else.
+    blockage_source: str = Field(
+        "manual",
+        description="manual | detect. 'manual' is the offline-first default: "
+                    "the operator supplies the barrier. 'detect' asks Sentinel-1 "
+                    "for a new water body first and may legitimately refuse over "
+                    "steep terrain.",
+    )
+    blockage_lat: Optional[float] = Field(
+        None, description="Barrier axis latitude (deg). NOT the dam."
+    )
+    blockage_lon: Optional[float] = Field(
+        None, description="Barrier axis longitude (deg). NOT the dam."
+    )
+    blockage_crest_height_m: Optional[float] = Field(
+        None, gt=0,
+        description="Deposit crest height ABOVE THE VALLEY FLOOR (m), not an "
+                    "absolute elevation. The two differ by a kilometre or more "
+                    "in the Himalaya and both look plausible.",
+    )
+    blockage_width_m: Optional[float] = Field(
+        None, gt=0, description="Deposit crest length ACROSS the valley (m)."
+    )
+    blockage_thickness_m: Optional[float] = Field(
+        None, gt=0, description="Deposit extent ALONG the valley (m). Defaults to two cells."
+    )
+    blockage_breach_mode: str = Field(
+        "overtop",
+        description="overtop | full_notch. Changes the local cross-section, not "
+                    "the released volume — that comes from the routing.",
+    )
+    blockage_date_pre: Optional[str] = Field(
+        None, description="Pre-event window start for detection (YYYY-MM-DD)."
+    )
+    blockage_date_post: Optional[str] = Field(
+        None, description="Post-event date for detection (YYYY-MM-DD)."
+    )
+
     def to_dam_config(self) -> Dict[str, Any]:
+        valid_scenarios = {"dam_break", "river_blockage", "river_overflow"}
+        if self.scenario_type not in valid_scenarios:
+            raise ValueError(
+                f"Unsupported scenario_type {self.scenario_type!r}. "
+                f"Choose from {sorted(valid_scenarios)}"
+            )
+        self._validate_blockage_fields()
         if self.dam_id:
             from jalraksha_service.config import settings
             preset = next((d for d in settings.DEMO_DAMS if d["id"] == self.dam_id), None)
@@ -71,6 +154,15 @@ class RunRequest(BaseModel):
                 field for field in ("height_m", "storage_mm3", "dam_type")
                 if cfg.get(field) is None
             ]
+            # A blockage site is exempt. It publishes no height, no gross storage
+            # and no dam type BECAUSE a landslide deposit has none: the crest
+            # height comes from the barrier spec and the storage from a
+            # hypsometric fill of the updated DEM. Applying the dam refusal here
+            # would 422 every blockage preset for correctly declining to invent
+            # figures. The blockage fields are required instead, in
+            # _validate_blockage_fields.
+            if cfg.get("record_type") == "blockage":
+                unvetted = []
             if unvetted:
                 raise ValueError(
                     f"{cfg.get('name', self.dam_id)} has no vetted value for "
@@ -81,12 +173,25 @@ class RunRequest(BaseModel):
                     f"reservoir visualization do not need them."
                 )
         else:
-            if None in (self.lat, self.lon, self.height_m, self.storage_mm3):
-                raise ValueError("Provide dam_id or all of lat/lon/height_m/storage_mm3")
-            cfg = {
-                "name": "Custom", "lat": self.lat, "lon": self.lon,
-                "height_m": self.height_m, "storage_mm3": self.storage_mm3,
-            }
+            if self.scenario_type == "river_blockage":
+                if None in (self.lat, self.lon):
+                    raise ValueError(
+                        "A custom river_blockage run needs lat/lon for the "
+                        "domain centre. It does NOT need height_m or "
+                        "storage_mm3: the barrier crest comes from "
+                        "blockage_crest_height_m and the impounded volume is "
+                        "measured from the updated DEM."
+                    )
+                cfg = {"name": "Landslide blockage", "lat": self.lat, "lon": self.lon}
+            else:
+                if None in (self.lat, self.lon, self.height_m, self.storage_mm3):
+                    raise ValueError(
+                        "Provide dam_id or all of lat/lon/height_m/storage_mm3"
+                    )
+                cfg = {
+                    "name": "Custom", "lat": self.lat, "lon": self.lon,
+                    "height_m": self.height_m, "storage_mm3": self.storage_mm3,
+                }
         cfg["dam_type"] = self.dam_type
         # NOTE ON failure_mode: it reaches ONE function,
         # xu_zhang_2009_peak_outflow, and xu_zhang is not in
@@ -95,11 +200,120 @@ class RunRequest(BaseModel):
         # parameter that does change the character of the release is
         # breach_formation_time_s below.
         cfg["failure_mode"] = self.failure_mode
+        cfg["scenario_type"] = self.scenario_type
         if self.breach_formation_time_s is not None:
             cfg["breach_formation_time_s"] = float(self.breach_formation_time_s)
+
+        if self.scenario_type == "river_blockage":
+            # Deliberately NOT setting breach_bottom_elev_m /
+            # initial_surface_elev_m from height_m here. Those two lines are
+            # dam-break assumptions — a breach invert a tenth of the way up the
+            # wall, a reservoir surface at the crest — and for a blockage the
+            # true values are the barrier crest and the valley floor, absolute
+            # elevations that are not known until the DEM has been read. Setting
+            # them from a dam preset's height would route a landslide lake
+            # against the wrong structure's geometry and still look reasonable.
+            # tasks.py fills them from the burned geometry's provenance.
+            cfg.update(
+                {
+                    "blockage_source": self.blockage_source,
+                    "blockage_lat": self.blockage_lat,
+                    "blockage_lon": self.blockage_lon,
+                    "blockage_crest_height_m": self.blockage_crest_height_m,
+                    "blockage_width_m": self.blockage_width_m,
+                    "blockage_thickness_m": self.blockage_thickness_m,
+                    "blockage_breach_mode": self.blockage_breach_mode,
+                    "blockage_date_pre": self.blockage_date_pre,
+                    "blockage_date_post": self.blockage_date_post,
+                    # Refused by breach._synthesize_blockage_ensemble until
+                    # tasks.py replaces it with a measured volume. The marker is
+                    # the point: an absent storage_source is also refused, so a
+                    # future refactor that drops this line fails loudly instead
+                    # of quietly letting a slider set the outburst volume.
+                    "storage_source": "hypsometric_fill_pending",
+                }
+            )
+            # Storage from the request is meaningless for a landslide dam and
+            # must not survive into the ensemble.
+            cfg.pop("storage_mm3", None)
+            cfg.pop("surface_area_km2", None)
+            return cfg
+
         cfg["breach_bottom_elev_m"] = max(0.0, float(cfg.get("height_m", 100)) * 0.1)
         cfg["initial_surface_elev_m"] = float(cfg.get("height_m", 100))
         return cfg
+
+    def _validate_blockage_fields(self) -> None:
+        """
+        Blockage parameters are required for a blockage and rejected elsewhere.
+
+        Rejecting rather than ignoring: a request carrying a barrier position
+        that changes nothing is worse than one that fails, because the operator
+        has no way to tell which happened.
+        """
+        blockage_fields = {
+            "blockage_lat": self.blockage_lat,
+            "blockage_lon": self.blockage_lon,
+            "blockage_crest_height_m": self.blockage_crest_height_m,
+            "blockage_width_m": self.blockage_width_m,
+            "blockage_thickness_m": self.blockage_thickness_m,
+            "blockage_date_pre": self.blockage_date_pre,
+            "blockage_date_post": self.blockage_date_post,
+        }
+
+        if self.scenario_type != "river_blockage":
+            supplied = sorted(k for k, v in blockage_fields.items() if v is not None)
+            if supplied or self.blockage_source != "manual":
+                raise ValueError(
+                    f"Blockage parameters were supplied on a "
+                    f"{self.scenario_type!r} run, where they do nothing: "
+                    f"{supplied or ['blockage_source']}. Set "
+                    f"scenario_type='river_blockage' to use them."
+                )
+            return
+
+        if self.blockage_source not in ("manual", "detect"):
+            raise ValueError(
+                f"blockage_source must be 'manual' or 'detect', got "
+                f"{self.blockage_source!r}."
+            )
+
+        if self.blockage_breach_mode not in ("overtop", "full_notch"):
+            raise ValueError(
+                f"blockage_breach_mode must be 'overtop' or 'full_notch', got "
+                f"{self.blockage_breach_mode!r}."
+            )
+
+        if self.blockage_source == "manual":
+            missing = [
+                name
+                for name in (
+                    "blockage_lat", "blockage_lon",
+                    "blockage_crest_height_m", "blockage_width_m",
+                )
+                if blockage_fields[name] is None
+            ]
+            if missing:
+                raise ValueError(
+                    f"A manual river_blockage run needs the barrier geometry. "
+                    f"Missing: {', '.join(missing)}. The barrier is not the dam, "
+                    f"so none of it can be taken from the preset."
+                )
+
+        # A barrier narrower than a couple of grid cells is a mesh artefact: its
+        # outflow would be set by the grid spacing rather than by the deposit.
+        # Caught here, at submission, rather than twenty minutes into a run.
+        if self.blockage_width_m is not None:
+            min_width_m = 2.0 * float(self.target_resolution)
+            if float(self.blockage_width_m) < min_width_m:
+                cells = float(self.blockage_width_m) / float(self.target_resolution)
+                raise ValueError(
+                    f"blockage_width_m={self.blockage_width_m:g} m spans only "
+                    f"{cells:.1f} cells at {self.target_resolution:g} m "
+                    f"resolution. A barrier narrower than {min_width_m:g} m "
+                    f"cannot be resolved on this grid — widen the deposit or "
+                    f"refine target_resolution."
+                )
 
 
 class RunStatus(BaseModel):
@@ -197,6 +411,7 @@ class EnsembleSummary(BaseModel):
     dam_class_outside_fitted_population: Optional[bool] = None
     dam_class_note: Optional[str] = None
     dam_type: Optional[str] = None
+    scenario_type: Optional[str] = None
 
 
 class GridSummary(BaseModel):
@@ -257,6 +472,12 @@ class RunResult(BaseModel):
     # be obtained — no headcount is ever invented to fill the gap.
     population_at_risk: Optional[Dict[str, Any]] = None
     comparison_url: Optional[str] = None
+    # Present only when the terrain was modified for this run. Folded into the
+    # result rather than served from its own endpoint so a panel cannot forget
+    # to fetch it: the dashboard MUST label a run whose DEM was rebuilt, and the
+    # 3D view shows the modified terrain whether or not anything says so.
+    dem_update: Optional[Dict[str, Any]] = None
+    dem_used: Optional[str] = None
 
 
 class RunListEntry(BaseModel):
@@ -271,6 +492,56 @@ class RunListEntry(BaseModel):
     export_count: int = 0
     gauge_count: int = 0
     error: Optional[str] = None
+
+
+class BlockageDetectionResponse(BaseModel):
+    """
+    GET /gee/blockage — has a new water body appeared on this reach.
+
+    Mirrors GeoSarResponse's contract, including its rule: THERE IS NO FOURTH
+    STATE. Either a live scene pair was differenced, or a previously fetched
+    detection is served from cache, or the request is refused with a reason.
+    Nothing here fabricates a lake, and no field is filled with a plausible
+    default when the underlying measurement was not made.
+
+    A refusal over steep terrain is an ordinary outcome, not an error: the
+    manual barrier path runs fully offline and is the demo's guaranteed floor.
+    """
+
+    reach: str
+    source: str = "unavailable"  # sentinel1_change_detection | cached | unavailable
+    reason: Optional[str] = None
+    # The POST scene's own identity. A single scene, not a composite — that is
+    # what lets the DEM provenance name the acquisition it was built from.
+    scene_id_post: Optional[str] = None
+    acquired_at_post: Optional[str] = None
+    date_pre_start: Optional[str] = None
+    date_pre_end: Optional[str] = None
+    # Derived per scene, not once for the pair: orbit, incidence angle and soil
+    # moisture differ between acquisitions.
+    threshold_db_pre: Optional[float] = None
+    threshold_db_post: Optional[float] = None
+    threshold_method: Optional[str] = None
+    # The transplanted gate. Measured on the PRE scene's total water, never on
+    # the difference — a new lake is definitionally absent from JRC permanent
+    # water, so that gate on the difference would reject every true positive.
+    precision_of_pre_mask_vs_jrc: Optional[float] = None
+    recall_of_pre_mask_vs_jrc: Optional[float] = None
+    new_water_fraction: Optional[float] = None
+    fraction_near_drainage: Optional[float] = None
+    # An independent construction of the same quantity, reported for comparison
+    # rather than enforced.
+    amplitude_form_fraction: Optional[float] = None
+    amplitude_threshold_db: Optional[float] = None
+    bbox: Optional[List[float]] = None
+    mask_geotiff_url: Optional[str] = None
+    mask_png_url: Optional[str] = None
+    # NOTE: no per-candidate list. The detector produces a MASK; scoring each
+    # patch individually would need the DEM inside the Earth Engine call, which
+    # crosses this package's layering boundary. Fields that are always empty
+    # look like a feature that is broken rather than one that was not built, so
+    # they are absent rather than present-and-empty.
+    note: Optional[str] = None
 
 
 class GeeStatus(BaseModel):
@@ -389,6 +660,35 @@ class DamPreset(BaseModel):
     # empty list is meaningful here and must not be filled with another dam's
     # towns — which is exactly what the dashboard did before this field existed.
     gauges: List[GaugePoint] = Field(default_factory=list)
+
+    # ── Scenario capability and blockage-site fields ─────────────────────────
+    #
+    # Declared here BECAUSE FastAPI's response_model silently strips anything a
+    # model does not name. config.py published these and the dashboard never saw
+    # them: every site fell back to "models all scenarios", which is the same
+    # behaviour the hard-pin bug produced and just as invisible.
+    #
+    # "dam" | "blockage". A blockage site publishes no height, storage or dam
+    # type by nature, and this is what tells to_dam_config to skip the
+    # vetted-figures refusal rather than 422 the record for being correct.
+    record_type: Optional[str] = None
+    # Which incidents this site can model, so the scenario selector can be gated
+    # per site instead of pinning every river scenario to one dam.
+    scenario_types: Optional[List[str]] = None
+    # Published barrier dimensions, when any exist. Both are None for Rishi
+    # Ganga: no crest height or width is published for the 2021 blockage, and
+    # the record declines to invent them.
+    blockage_crest_height_m: Optional[float] = None
+    blockage_width_m: Optional[float] = None
+    # Sentinel-1 change-detection window for this site's event.
+    blockage_date_pre: Optional[str] = None
+    blockage_date_post: Optional[str] = None
+    # A TERRAIN-DERIVED starting position for the operator, not a surveyed
+    # deposit location. Separate from lat/lon, which is the reach centre and can
+    # legitimately sit on high ground.
+    suggested_barrier_lat: Optional[float] = None
+    suggested_barrier_lon: Optional[float] = None
+    note: Optional[str] = None
 
 
 class GeoSarResponse(BaseModel):

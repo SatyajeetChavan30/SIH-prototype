@@ -4,14 +4,49 @@
     {
       "name": "api",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["scripts/run_api.py", "--port", "8000"],
+      "runtimeArgs": [
+        "scripts/run_api.py",
+        "--port",
+        "8000"
+      ],
       "port": 8000
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 3000
+    },
+    {
+      "name": "api-verify",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "scripts/run_api.py",
+        "--port",
+        "8010"
+      ],
+      "port": 8010
+    },
+    {
+      "name": "frontend-verify",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend",
+        "--",
+        "--port",
+        "3010",
+        "--mode",
+        "verify"
+      ],
+      "port": 3010
     }
   ]
 }

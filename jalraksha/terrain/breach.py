@@ -29,6 +29,25 @@ import numpy as np
 from numba import njit
 
 from jalraksha.hardening import HardeningError
+from jalraksha.terrain.natural_dam import (
+    COSTA_NATURAL_BAND_KEY,
+    NATURAL_DAM_LOG_CYCLES,
+    NATURAL_DAM_REGRESSION_FAMILIES,
+    NATURAL_DAM_SCATTER_NOTE,
+)
+from jalraksha.terrain.natural_dam import (
+    dam_class_outside_fitted_population as natural_dam_class_outside_fitted_population,
+)
+
+#: Converts a prediction band of +/- w log10 cycles into the standard deviation
+#: of the log10-normal the ensemble samples the peak from, by reading the band as
+#: a 5th-to-95th percentile interval (1.645 sigma either side).
+#:
+#: TODO: UNVETTED — Wahl (2004) and the natural-dam sources state their bands as
+#: prediction intervals without always naming the coverage. 90% is the
+#: conventional reading and is stated here rather than hidden inside a
+#: coefficient. docs/VERIFICATION_LOG.md rows 5 and 21.
+LOG_CYCLES_TO_SIGMA = 1.0 / 1.645
 
 # ----------------------------------------------------------------------
 # Peak-outflow regressions: units and provenance
@@ -85,6 +104,9 @@ def synthesize_breach_ensemble(
     num_samples: int = 100,
     random_seed: Optional[int] = None,
     regression_families: Optional[List[str]] = None,
+    *,
+    peak_log_cycles: Optional[float] = None,
+    scenario_type: str = "dam_break",
 ) -> List[Dict]:
     """
     Generate ensemble of breach hydrographs.
@@ -102,6 +124,16 @@ def synthesize_breach_ensemble(
         regression_families: Optional list of regression families to sample from
             (e.g. ["froehlich", "von_thun", "macdonald", "xu_zhang"]). If None,
             the Wahl (2004) default is used for all members.
+        peak_log_cycles: Keyword-only. Width, in log10 cycles, of the prediction
+            band the per-member peak is sampled across. None keeps the historical
+            15% lognormal jitter, which is right when several families are mixed
+            because the inter-method disagreement then dominates the spread. A
+            single-family ensemble has no inter-method term, so the band has to
+            carry the uncertainty itself — see _synthesize_blockage_ensemble.
+        scenario_type: Keyword-only. Travels into every member's metadata and
+            selects which fitted population the dam class is judged against:
+            an embankment is in-population for a dam break and OUT of it for a
+            landslide-dam outburst, and vice versa.
 
     Returns:
         List of breach hydrograph dicts with:
@@ -185,6 +217,8 @@ def synthesize_breach_ensemble(
                 regression=family,
                 failure_time_frac=failure_time_frac,
                 rng=rng,
+                peak_log_cycles=peak_log_cycles,
+                scenario_type=scenario_type,
             )
             hydrographs.append(hydrograph)
 
@@ -200,6 +234,177 @@ def synthesize_breach_ensemble(
     return hydrographs
 
 
+def synthesize_scenario_ensemble(
+    dam_config: Dict,
+    num_samples: int = 100,
+    random_seed: Optional[int] = None,
+) -> List[Dict]:
+    """Create hydrographs for the supported incident scenarios.
+
+    ``dam_break`` keeps the published breach-regression workflow.
+
+    ``river_blockage`` is now a modelled landslide-dam outburst: the impounded
+    volume is read off a stage-storage curve derived from a DEM with the barrier
+    burned into it, and the release is routed through the same level-pool solver
+    the dam-break path uses, driven by Costa (1985) — the one transcribed
+    regression whose fitting population included natural dams. See
+    ``_synthesize_blockage_ensemble``.
+
+    ``river_overflow`` remains a volume-conserving screening pulse: its release
+    volume comes from the user-selected storage value and its shape is an
+    assumption. Modelling a controlled spillway release properly needs a gate
+    rating curve and an operating rule, neither of which this project has, and
+    the scenario is out of scope for the current work. It is labelled as an
+    assumption in every member's metadata rather than dressed up.
+    """
+    scenario = dam_config.get("scenario_type", "dam_break")
+    if scenario == "dam_break":
+        return synthesize_breach_ensemble(dam_config, num_samples, random_seed)
+    if scenario == "river_blockage":
+        return _synthesize_blockage_ensemble(dam_config, num_samples, random_seed)
+    if scenario not in {"river_blockage", "river_overflow"}:
+        raise HardeningError(
+            f"Unsupported scenario_type {scenario!r}. "
+            "Valid scenarios: dam_break, river_blockage, river_overflow."
+        )
+
+    storage_m3 = float(dam_config["storage_mm3"]) * MCM_TO_M3
+    duration_s = max(float(dam_config.get("hydrograph_duration_s", HYDROGRAPH_MIN_DURATION_S)), 60.0)
+    rng = np.random.default_rng(random_seed)
+    hydrographs: List[Dict] = []
+
+    # An overflow is a sustained event across the requested simulation window.
+    # The fraction declares how much of the selected impoundment is released,
+    # rather than concealing an invented spillway rating curve.
+    release_fraction = 0.15
+    onset_s = 0.0
+    release_window_s = max(60.0, duration_s - onset_s)
+
+    for member_id in range(num_samples):
+        # Scenario uncertainty is intentionally modest and is carried in the
+        # metadata as an assumption, not as a statistical calibration interval.
+        released_m3 = storage_m3 * release_fraction * float(rng.lognormal(0.0, 0.12))
+        t_array = np.linspace(0.0, duration_s, 1000)
+        q_t = np.zeros_like(t_array)
+        active = (t_array >= onset_s) & (t_array <= onset_s + release_window_s)
+        phase = (t_array[active] - onset_s) / release_window_s
+        # sin^2 has integral 1/2, so q_peak below releases exactly released_m3.
+        q_peak = 2.0 * released_m3 / release_window_s
+        q_t[active] = q_peak * np.sin(np.pi * phase) ** 2
+        hydrographs.append({
+            "t_array": t_array,
+            "Q_t": q_t,
+            "metadata": {
+                "member_id": member_id,
+                "manning_n": float(rng.normal(dam_config.get("manning_n", 0.03), MANNINGS_N_STD)),
+                "q_peak": float(q_peak),
+                "q_peak_m3_s": float(q_peak),
+                "failure_time_s": float(onset_s),
+                "failure_time_assumed": True,
+                "height_m": dam_config["height_m"],
+                "storage_mm3": dam_config["storage_mm3"],
+                "method": f"{scenario}_volume_conserving_screening",
+                "regression": f"{scenario}_screening_assumption",
+                "regressions_used": [f"{scenario}_screening_assumption"],
+                "scenario_type": scenario,
+                "released_volume_m3": float(released_m3),
+                "dam_type": dam_config.get("dam_type", "other"),
+                "dam_class_outside_fitted_population": False,
+                "dam_class_note": None,
+                "unverified_regression": False,
+                "source_note": (
+                    "Volume-conserving screening hydrograph. Release fraction, onset, "
+                    "and shape are user-interface assumptions, not a calibrated "
+                    "blockage-breach or spillway rating model."
+                ),
+            },
+        })
+    return hydrographs
+
+
+#: Storage provenance values a river_blockage run will accept. The impounded
+#: volume of a landslide-dammed lake has to come from the terrain, because
+#: nobody surveyed it and no register publishes it.
+HYPSOMETRIC_STORAGE_SOURCES = ("hypsometric_fill",)
+
+
+def _synthesize_blockage_ensemble(
+    dam_config: Dict,
+    num_samples: int = 100,
+    random_seed: Optional[int] = None,
+) -> List[Dict]:
+    """
+    Outburst hydrographs for a landslide-dammed lake.
+
+    Same machinery as the dam-break path — published peak-outflow regression,
+    level-pool routing against a stage-storage curve — with three differences
+    that matter, each of which is a statement about what is known rather than a
+    tuning choice:
+
+    1. STORAGE COMES FROM THE TERRAIN, NOT FROM A SLIDER. A natural dam has no
+       published gross storage, so the impounded volume is the hypsometric fill
+       of a DEM with the barrier burned into it
+       (``jalraksha.terrain.blockage.stage_storage_table``). A config whose
+       ``storage_source`` does not say so is REFUSED. Without that refusal the
+       dashboard's storage slider silently drives the physics again the first
+       time somebody refactors this, and the result would look identical.
+
+    2. ONLY COSTA (1985) RUNS. It is the one regression in the transcribed set
+       whose fitting population included natural dams. Froehlich, MacDonald and
+       Von Thun are embankment fits; running them here would report an
+       engineered-dam answer for an unengineered landslide deposit. Walder &
+       O'Connor (1997) and Peng & Zhang (2012) are implemented in shape and
+       quarantined pending coefficient transcription — see
+       jalraksha.terrain.natural_dam.
+
+    3. THE SPREAD COMES FROM THE PREDICTION BAND. A dam-break ensemble gets most
+       of its spread from four equations disagreeing with each other by 3-4x.
+       With one active family there is no such term, so the members are sampled
+       across Costa's natural-dam prediction band instead. That band is wider
+       than any embankment band by construction, and its exact width is UNVETTED.
+    """
+    storage_source = str(dam_config.get("storage_source") or "")
+    if not storage_source.startswith(HYPSOMETRIC_STORAGE_SOURCES):
+        raise HardeningError(
+            f"A river_blockage run needs its impounded volume measured from the "
+            f"terrain, but storage_source is {storage_source or 'absent'!r}. A "
+            f"landslide dam has no published gross storage: the volume has to "
+            f"come from a hypsometric fill of the DEM with the barrier burned "
+            f"in (jalraksha.terrain.blockage), not from a user-supplied storage "
+            f"figure. Accepting one here would let a dashboard slider set the "
+            f"outburst volume while the output still read as a modelled result."
+        )
+
+    for required in ("initial_surface_elev_m", "breach_bottom_elev_m"):
+        if dam_config.get(required) is None:
+            raise HardeningError(
+                f"A river_blockage run needs {required!r} — the barrier crest "
+                f"and the valley floor elevation from the burned geometry. "
+                f"Falling back to the dam-break defaults would route the lake "
+                f"against a dam's height instead of the deposit's."
+            )
+
+    hydrographs = synthesize_breach_ensemble(
+        dam_config,
+        num_samples,
+        random_seed,
+        regression_families=list(NATURAL_DAM_REGRESSION_FAMILIES),
+        peak_log_cycles=NATURAL_DAM_LOG_CYCLES[COSTA_NATURAL_BAND_KEY],
+        scenario_type="river_blockage",
+    )
+
+    for hydrograph in hydrographs:
+        metadata = hydrograph["metadata"]
+        metadata.setdefault("scenario_type", "river_blockage")
+        metadata["natural_dam_band_key"] = COSTA_NATURAL_BAND_KEY
+        metadata["natural_dam_note"] = NATURAL_DAM_SCATTER_NOTE
+        metadata["released_volume_m3"] = float(
+            np.trapezoid(hydrograph["Q_t"], hydrograph["t_array"])
+        )
+
+    return hydrographs
+
+
 def _generate_single_hydrograph(
     dam_config: Dict,
     manning_n: float,
@@ -207,6 +412,8 @@ def _generate_single_hydrograph(
     regression: Optional[str] = None,
     failure_time_frac: float = CRITICAL_FAILURE_FRAC,
     rng: Optional[np.random.Generator] = None,
+    peak_log_cycles: Optional[float] = None,
+    scenario_type: str = "dam_break",
 ) -> Dict:
     """
     Generate single breach hydrograph.
@@ -223,6 +430,9 @@ def _generate_single_hydrograph(
         regression: One of {None, 'wahl', 'froehlich', 'von_thun', 'macdonald', 'xu_zhang'}
         failure_time_frac: Fraction of total simulation time at which peak occurs
         rng: Optional numpy Generator for reproducible sampling
+        peak_log_cycles: Prediction-band half-width in log10 cycles. None keeps
+            the 15% lognormal jitter used for multi-family dam-break ensembles.
+        scenario_type: "dam_break" | "river_blockage" | "river_overflow".
 
     Returns:
         Hydrograph dict with time series and metadata
@@ -308,8 +518,23 @@ def _generate_single_hydrograph(
         )
         regression = "froehlich_1995"
 
-    # Sample uncertainty in peak flow (15%)
-    q_peak = float(q_peak) * rng.lognormal(0, 0.15)
+    # Sample uncertainty in peak flow.
+    #
+    # A multi-family dam-break ensemble gets 15% lognormal jitter, because the
+    # dominant term there is the 3-4x disagreement BETWEEN the four published
+    # equations and adding a wide per-member band on top would double-count it.
+    #
+    # A single-family ensemble has no inter-method term at all, so the published
+    # prediction band has to carry the uncertainty by itself or the ensemble
+    # reports a false precision. That is the natural-dam case: Costa (1985) is
+    # the only transcribed regression fitted across landslide and moraine dams,
+    # so a blockage run samples across its band rather than around its centre.
+    if peak_log_cycles is not None and peak_log_cycles > 0.0:
+        q_peak = float(q_peak) * float(
+            10.0 ** (float(peak_log_cycles) * LOG_CYCLES_TO_SIGMA * rng.normal(0.0, 1.0))
+        )
+    else:
+        q_peak = float(q_peak) * rng.lognormal(0, 0.15)
 
     # Route the reservoir through a growing breach sized to this peak, so the
     # recession limb and the released volume are bounded by the storage rather
@@ -326,6 +551,20 @@ def _generate_single_hydrograph(
         surface_area_km2=dam_config.get("surface_area_km2"),
     )
     routed_peak = float(np.max(Q_t)) if Q_t.size else 0.0
+
+    # Which fitted population this dam class is judged against depends on the
+    # scenario, and the sense INVERTS between them. Froehlich, MacDonald and Von
+    # Thun are embankment fits, so a masonry gravity dam is the extrapolation in
+    # a dam-break run. Costa is fitted across natural dams, so in a blockage run
+    # it is the engineered classes that sit outside the population. Reporting one
+    # flag with the other scenario's explanation would be the right warning
+    # attached to the wrong reason.
+    if scenario_type == "river_blockage":
+        outside_population = natural_dam_class_outside_fitted_population(dam_type)
+        class_note = NATURAL_DAM_SCATTER_NOTE if outside_population else None
+    else:
+        outside_population = dam_class_outside_fitted_population(dam_type)
+        class_note = DAM_CLASS_EXTRAPOLATION_NOTE if outside_population else None
 
     # Generate metadata
     metadata = {
@@ -346,24 +585,36 @@ def _generate_single_hydrograph(
         "regressions_used": [regression],
         "extrapolation_ratio": extrapolation_ratio(height),
         "dam_type": dam_type,
+        "scenario_type": scenario_type,
         # Height-based extrapolation and dam-CLASS extrapolation are reported
         # separately on purpose — see dam_class_outside_fitted_population().
-        "dam_class_outside_fitted_population": dam_class_outside_fitted_population(
-            dam_type
-        ),
-        "dam_class_note": (
-            DAM_CLASS_EXTRAPOLATION_NOTE
-            if dam_class_outside_fitted_population(dam_type)
-            else None
-        ),
+        "dam_class_outside_fitted_population": outside_population,
+        "dam_class_note": class_note,
         "unverified_regression": regression == "xu_zhang_2009"
         and not XU_ZHANG_2009_VERIFIED,
+        "peak_sampling": (
+            f"prediction_band_{peak_log_cycles}_log_cycles"
+            if peak_log_cycles
+            else "lognormal_15pct"
+        ),
         "source_note": (
             "Peak from published regression (see function docstring for "
             "citation); hydrograph shape from level-pool routing. Wahl (2004) "
             "uncertainty bands are UNVETTED — see UNCERTAINTY_LOG_CYCLES."
         ),
     }
+
+    if scenario_type == "river_blockage":
+        metadata["natural_dam_note"] = NATURAL_DAM_SCATTER_NOTE
+        metadata["storage_source"] = dam_config.get("storage_source")
+        metadata["lake_volume_datum"] = dam_config.get("lake_volume_datum")
+        metadata["source_note"] = (
+            "Peak from Costa (1985), the one transcribed regression fitted "
+            "across natural (landslide, moraine) dams; hydrograph shape from "
+            "level-pool routing against a stage-storage curve read off the "
+            "updated DEM. Natural-dam prediction bands are UNVETTED — see "
+            "jalraksha.terrain.natural_dam.NATURAL_DAM_LOG_CYCLES."
+        )
 
     return {"t_array": t_array, "Q_t": Q_t, "metadata": metadata}
 
@@ -505,12 +756,40 @@ def ensemble_statistics(hydrographs: List[Dict]) -> Dict:
     # hazard_summary and the dashboard rather than dying in per-member
     # metadata that nothing reads.
     dam_types = {hg["metadata"].get("dam_type") for hg in hydrographs}
+    scenarios = {hg["metadata"].get("scenario_type", "dam_break") for hg in hydrographs}
     outside = any(
         hg["metadata"].get("dam_class_outside_fitted_population") for hg in hydrographs
     )
     stats["dam_type"] = sorted(t for t in dam_types if t)[0] if any(dam_types) else None
     stats["dam_class_outside_fitted_population"] = outside
-    stats["dam_class_note"] = DAM_CLASS_EXTRAPOLATION_NOTE if outside else None
+    # Take the note from the members rather than reconstructing it here: the
+    # embankment and natural-dam explanations are different sentences about
+    # different fitted populations, and a blockage run flagged with the
+    # masonry-monolith wording would be the right warning with the wrong reason.
+    stats["dam_class_note"] = next(
+        (
+            hg["metadata"].get("dam_class_note")
+            for hg in hydrographs
+            if hg["metadata"].get("dam_class_note")
+        ),
+        None,
+    )
+    stats["scenario_type"] = sorted(scenarios)[0] if len(scenarios) == 1 else "mixed"
+
+    # Natural-dam scatter has to travel with the ensemble range, not sit in
+    # per-member metadata nothing reads.
+    stats["natural_dam_note"] = next(
+        (
+            hg["metadata"].get("natural_dam_note")
+            for hg in hydrographs
+            if hg["metadata"].get("natural_dam_note")
+        ),
+        None,
+    )
+    storage_sources = {
+        hg["metadata"].get("storage_source") for hg in hydrographs
+    } - {None}
+    stats["storage_source"] = sorted(storage_sources)[0] if storage_sources else None
 
     return stats
 

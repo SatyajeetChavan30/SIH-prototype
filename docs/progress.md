@@ -1,4 +1,4 @@
-# Progress checkpoint — 2026-08-29
+# Progress checkpoint — 2026-09-03
 
 Snapshot of what is done, what is running, and what is left, written for
 picking the work back up without re-deriving context.
@@ -117,6 +117,41 @@ token now actually takes effect (`vite.config.js` read `process.env` inside
 strings); and the SAR refusal is a collapsible badge rather than a large orange
 block.
 
+## River blockage + observation-conditioned DEM update — DONE (2026-09-03)
+
+The second half of PS-26161: natural dam / lake formations, not just dam
+failures. Full record in CLAUDE.md; measurements in `validation_findings.md`
+§5–7; dashboard changes in `dashboard_integration.md`.
+
+**Four new library modules**, all respecting the phase-dependency rule:
+
+| Module | Phase | Does |
+| :--- | :--- | :--- |
+| `terrain/blockage.py` | 2 | Burns the barrier, PROVES it spans the valley, hypsometric fill, stage-storage curve, stability indices. Pure numpy — no I/O, no network |
+| `terrain/natural_dam.py` | 3 | Natural-dam regressions and their own wider bands. Sibling of `breach.py`, not part of it: Wahl's bands are embankment fits |
+| `terrain/dem_update.py` | 2 | Writes the updated GeoTIFF by delta-add, with provenance. Never imports `gee`, so the offline path has no optional dependency |
+| `gee/blockage_detect.py` | 9 | Sentinel-1 new-water detection. Refusal-first, three states, no synthetic path |
+
+**Verified end to end** through the API on the Rishi Ganga: 25 exports,
+provenance banner, DEM-update panel with stage-storage chart, downloadable
+GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
+
+**Five defects found along the way, none introduced by this work:**
+
+1. A tile cache *hit* that did not cover the request — tiles are cached under
+   the full tile's URL but hold only some earlier domain's window. Tehri's tile
+   answered for a domain 60 km east, then died inside `rasterio.mask`. Now
+   re-fetches the **union**, so a tile only ever grows.
+2. A square UTM domain needs a clip **√2** wider than its radius. An 18 km
+   domain on an 18 km clip ran 11.3% on nearest-neighbour fill and reported a
+   lake **2.5× too large**.
+3. Any *named* Himalayan site without a corridor silently borrowed **Tehri's
+   gauges** — `bhakra`, `idukki` and `hirakud` were equally exposed.
+4. A minority arrival reported as consensus, with a contradictory 0.0 m depth
+   beside it (the ensemble median of `h_max` over members that never arrived).
+5. A steep river mistaken for a hillside town: a 3 km window measures the
+   river's own fall, so a point *on* the channel read as 64 m above it.
+
 ## Still open
 
 - **Cesium Ion token lives in `frontend/.env.local`**, which is git-ignored.
@@ -138,6 +173,23 @@ block.
 - **`.coverage` is tracked** and is a test artifact; `node_modules/` is tracked
   deliberately (offline-first vendoring), which is why dependency changes show
   as thousands of modified files.
+- **Rishi Ganga has no quantitative benchmark yet.** The published HEC-RAS
+  figures need **channel** coordinates for Rishiganga and Tapovan; the gazetteer
+  town centres sit 1,319 m and 79 m above the nearest channel and were removed.
+  Source those and the blockage path gains a real validation case
+  (literature.md §11.2, verification queue row 26).
+- **Walder & O'Connor (1997) and Peng & Zhang (2012) are untranscribed** and
+  quarantined. Costa (1985) is the only active natural-dam regression, so a
+  blockage ensemble has no inter-method spread and takes its range from a
+  prediction band whose width is itself a placeholder (queue rows 19–22).
+- **Blockage runs are expensive on steep terrain.** The CFL limit cuts the
+  timestep as a deep release accelerates down a gorge: 55 m / 0.6 MCM solved
+  4 members in ~15 min at 100 m, the 120 m / 26 MCM case took ~40. Pre-compute
+  anything large before a live demo.
+- **Verification-only launch entries** (`api-verify` on :8010,
+  `frontend-verify` on :3010) and the git-ignored `frontend/.env.verify.local`
+  exist so the dashboard can be driven without colliding with a dev API on
+  :8000. Harmless; delete if unwanted.
 
 ## Next step, if resuming
 

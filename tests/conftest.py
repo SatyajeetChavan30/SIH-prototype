@@ -7,12 +7,23 @@ Provides:
 - mock_dem_geotiff: Mock GeoTIFF array for testing without network
 """
 
-import pytest
-from pathlib import Path
-import tempfile
+# Imported FIRST, and for its side effect, not for a name: jalraksha/__init__.py
+# repairs a PROJ_LIB inherited from an unrelated system install (PostgreSQL ships
+# a proj.db too old for the PROJ rasterio links against). GDAL reads that
+# environment once, when it loads, so the repair has to happen before rasterio is
+# imported anywhere in the session.
+#
+# Without this, whether a test can call CRS.from_epsg depends on which test
+# module pytest happened to collect first — the suite passed as a whole and
+# individual files failed on their own.
+import jalraksha  # noqa: F401  isort:skip
+
 import json
+import tempfile
+from pathlib import Path
 
 import numpy as np
+import pytest
 import rasterio
 from rasterio.transform import Affine
 

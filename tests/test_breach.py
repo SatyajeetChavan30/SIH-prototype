@@ -41,6 +41,7 @@ from jalraksha.terrain.breach import (
     reservoir_storage_curve,
     scs_1981_peak_outflow,
     synthesize_breach_ensemble,
+    synthesize_scenario_ensemble,
     von_thun_gillette_1990_breach_geometry,
     von_thun_gillette_1990_peak_outflow,
     xu_zhang_2009_peak_outflow,
@@ -57,6 +58,267 @@ TETON_MEASURED_PEAK_M3_S = 65120.0
 # than a target value.
 TEHRI_HEIGHT_M = 260.0
 TEHRI_STORAGE_MCM = 3540.0
+
+
+def _blockage_config(**overrides):
+    """
+    A river_blockage config whose storage came from a hypsometric fill.
+
+    The elevations are absolute, as the burned geometry produces them: a valley
+    floor at 1000 m with a 60 m deposit on it. Passing a height where an
+    elevation belongs is the failure mode test_blockage.py's kilometre-shift
+    test guards in the geometry; here the equivalent guard is that these fields
+    are required at all.
+    """
+    config = {
+        "name": "Landslide-dammed lake",
+        "height_m": 60.0,
+        "storage_mm3": 72.0,
+        "dam_type": "landslide",
+        "scenario_type": "river_blockage",
+        "hydrograph_duration_s": 3600.0,
+        "storage_source": "hypsometric_fill",
+        "surface_area_km2": 3.6,
+        "breach_bottom_elev_m": 1000.0,
+        "initial_surface_elev_m": 1060.0,
+    }
+    config.update(overrides)
+    return config
+
+
+class TestRiverOverflowScreening:
+    """
+    The overflow scenario is still a screening pulse, and says so.
+
+    It is deliberately NOT upgraded alongside river_blockage: modelling a
+    controlled spillway release needs a gate rating curve and an operating rule,
+    neither of which this project has. The test pins the label, so the day
+    somebody wires real routing in, the claim has to be updated with it.
+    """
+
+    def test_screening_scenario_is_volume_conserving_and_labelled(self):
+        config = {
+            "name": "Mutha River, Pune",
+            "height_m": 39.6,
+            "storage_mm3": 85.31,
+            "dam_type": "gravity",
+            "scenario_type": "river_overflow",
+            "hydrograph_duration_s": 3600.0,
+        }
+        hydrograph = synthesize_scenario_ensemble(config, num_samples=1, random_seed=7)[0]
+        metadata = hydrograph["metadata"]
+
+        assert metadata["scenario_type"] == "river_overflow"
+        assert metadata["failure_time_assumed"] is True
+        assert metadata["q_peak_m3_s"] > 0.0
+        assert "screening" in metadata["method"]
+        released = np.trapezoid(hydrograph["Q_t"], hydrograph["t_array"])
+        assert released == pytest.approx(metadata["released_volume_m3"], rel=0.01)
+
+
+class TestBlockageEnsemble:
+    """
+    A landslide-dam outburst is modelled, not assumed.
+
+    Before this it was a sin^2 pulse releasing 85% of whatever the dashboard's
+    storage slider said. These tests exist so it cannot quietly become that
+    again: the storage refusal and the family restriction are both asserted, and
+    neither depends on a coefficient that might later be transcribed.
+    """
+
+    def test_storage_from_the_ui_is_refused(self):
+        """
+        The decision that makes the whole feature meaningful. A landslide dam has
+        no published gross storage, so a config that supplies one instead of
+        measuring it must fail loudly rather than route a slider value and label
+        the output a modelled result.
+        """
+        from jalraksha.hardening import HardeningError
+
+        for storage_source in (None, "user_input", "preset"):
+            config = _blockage_config(storage_source=storage_source)
+            with pytest.raises(HardeningError, match="measured from the terrain"):
+                synthesize_scenario_ensemble(config, num_samples=2, random_seed=7)
+
+    def test_barrier_crest_and_valley_floor_are_required(self):
+        from jalraksha.hardening import HardeningError
+
+        for missing in ("initial_surface_elev_m", "breach_bottom_elev_m"):
+            config = _blockage_config(**{missing: None})
+            with pytest.raises(HardeningError, match=missing):
+                synthesize_scenario_ensemble(config, num_samples=2, random_seed=7)
+
+    def test_only_the_natural_dam_family_runs(self):
+        """
+        Froehlich, MacDonald and Von Thun are embankment fits. Running them on an
+        unengineered landslide deposit would report an engineered-dam answer.
+        """
+        members = synthesize_scenario_ensemble(
+            _blockage_config(), num_samples=8, random_seed=7
+        )
+        regressions = {m["metadata"]["regression"] for m in members}
+        assert regressions == {"costa_1985"}
+
+    def test_released_volume_never_exceeds_the_hypsometric_storage(self):
+        """
+        The same invariant the dam-break routing holds, now against a volume read
+        off the terrain rather than a published figure.
+        """
+        config = _blockage_config()
+        storage_m3 = config["storage_mm3"] * MCM_TO_M3
+        members = synthesize_scenario_ensemble(config, num_samples=12, random_seed=7)
+
+        for member in members:
+            released = np.trapezoid(member["Q_t"], member["t_array"])
+            assert released <= storage_m3 * 1.001, (
+                f"Member {member['metadata']['member_id']} released "
+                f"{released:.3e} m3 from a lake holding {storage_m3:.3e} m3."
+            )
+            assert member["metadata"]["released_volume_m3"] == pytest.approx(
+                released, rel=1e-9
+            )
+
+    def test_every_member_carries_the_natural_dam_scatter_note(self):
+        from jalraksha.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
+
+        members = synthesize_scenario_ensemble(
+            _blockage_config(), num_samples=4, random_seed=7
+        )
+        for member in members:
+            assert member["metadata"]["natural_dam_note"] == NATURAL_DAM_SCATTER_NOTE
+            assert member["metadata"]["scenario_type"] == "river_blockage"
+            assert member["metadata"]["storage_source"] == "hypsometric_fill"
+
+        stats = ensemble_statistics(members)
+        assert stats["natural_dam_note"] == NATURAL_DAM_SCATTER_NOTE
+        assert stats["scenario_type"] == "river_blockage"
+        assert stats["storage_source"] == "hypsometric_fill"
+
+    def test_the_dam_class_flag_inverts_for_a_blockage(self):
+        """
+        An embankment is in-population for a dam break and OUT of it for a
+        landslide-dam outburst. Reporting one sense with the other scenario's
+        explanation would be the right warning attached to the wrong reason.
+        """
+        from jalraksha.terrain.breach import DAM_CLASS_EXTRAPOLATION_NOTE
+        from jalraksha.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
+
+        landslide = synthesize_scenario_ensemble(
+            _blockage_config(dam_type="landslide"), num_samples=2, random_seed=7
+        )[0]["metadata"]
+        embankment = synthesize_scenario_ensemble(
+            _blockage_config(dam_type="embankment"), num_samples=2, random_seed=7
+        )[0]["metadata"]
+
+        assert landslide["dam_class_outside_fitted_population"] is False
+        assert embankment["dam_class_outside_fitted_population"] is True
+        assert embankment["dam_class_note"] == NATURAL_DAM_SCATTER_NOTE
+        assert embankment["dam_class_note"] != DAM_CLASS_EXTRAPOLATION_NOTE
+
+    def test_the_ensemble_spreads_across_the_prediction_band(self):
+        """
+        With one active family there is no inter-method disagreement to supply
+        the spread, so the members are sampled across Costa's natural-dam band
+        instead. An ensemble that came back nearly identical would be reporting a
+        false precision.
+        """
+        members = synthesize_scenario_ensemble(
+            _blockage_config(), num_samples=60, random_seed=7
+        )
+        stats = ensemble_statistics(members)
+
+        assert stats["q_peak_p95"] / stats["q_peak_p05"] > 3.0
+        assert all(
+            m["metadata"]["peak_sampling"].startswith("prediction_band")
+            for m in members
+        )
+
+
+class TestNaturalDamRegressions:
+    """
+    Walder & O'Connor (1997) and Peng & Zhang (2012) are implemented in shape
+    and quarantined until their coefficients are transcribed — the same
+    treatment Xu & Zhang (2009) gets, for the same reason.
+    """
+
+    def test_unverified_natural_dam_equations_are_quarantined(self):
+        from jalraksha.terrain.natural_dam import (
+            NATURAL_DAM_REGRESSION_FAMILIES,
+            PENG_ZHANG_2012_VERIFIED,
+            WALDER_OCONNOR_1997_VERIFIED,
+            NaturalDamRegressionUnverified,
+            peng_zhang_2012_peak_outflow,
+            walder_oconnor_1997_peak_outflow,
+        )
+
+        assert WALDER_OCONNOR_1997_VERIFIED is False
+        assert PENG_ZHANG_2012_VERIFIED is False
+        assert "walder_oconnor" not in NATURAL_DAM_REGRESSION_FAMILIES
+        assert "peng_zhang" not in NATURAL_DAM_REGRESSION_FAMILIES
+
+        with pytest.raises(NaturalDamRegressionUnverified, match="row 19"):
+            walder_oconnor_1997_peak_outflow(60.0, 7.2e7)
+        with pytest.raises(NaturalDamRegressionUnverified, match="row 20"):
+            peng_zhang_2012_peak_outflow(60.0, 400.0, 5.4e6, 7.2e7)
+
+    def test_costa_is_the_only_active_natural_dam_family(self):
+        from jalraksha.terrain.natural_dam import NATURAL_DAM_REGRESSION_FAMILIES
+
+        assert NATURAL_DAM_REGRESSION_FAMILIES == ("costa",)
+
+    def test_natural_dam_bands_are_wider_than_the_embankment_bands(self):
+        """
+        Asserts the RELATIONSHIP the literature states, not the placeholder
+        numbers, so it survives transcription unchanged: natural-dam scatter is
+        wider than Wahl's embankment scatter because the dams are unengineered
+        and the case databases are smaller.
+        """
+        from jalraksha.terrain.breach import UNCERTAINTY_LOG_CYCLES
+        from jalraksha.terrain.natural_dam import NATURAL_DAM_LOG_CYCLES
+
+        widest_embankment = max(UNCERTAINTY_LOG_CYCLES.values())
+        narrowest_natural = min(NATURAL_DAM_LOG_CYCLES.values())
+
+        assert narrowest_natural > widest_embankment, (
+            f"The narrowest natural-dam band ({narrowest_natural}) must exceed "
+            f"the widest embankment band ({widest_embankment})."
+        )
+
+    def test_an_unknown_band_key_raises_rather_than_defaulting(self):
+        """
+        breach._wahl_bounds falls back to 0.50 log cycles for an unknown key.
+        Silently defaulting a natural-dam band would let a new regression ship
+        with an embankment-width interval nobody chose.
+        """
+        from jalraksha.terrain.natural_dam import natural_dam_bounds
+
+        with pytest.raises(KeyError):
+            natural_dam_bounds(1000.0, "some_new_equation")
+
+    def test_the_natural_dam_class_population_is_the_mirror_of_the_embankment_one(self):
+        from jalraksha.terrain.breach import (
+            dam_class_outside_fitted_population as embankment_outside,
+        )
+        from jalraksha.terrain.natural_dam import (
+            dam_class_outside_fitted_population as natural_outside,
+        )
+
+        assert embankment_outside("embankment") is False
+        assert natural_outside("embankment") is True
+        assert natural_outside("landslide") is False
+        assert embankment_outside("landslide") is True
+
+    def test_dimensionless_peak_outflow_is_scale_free(self):
+        """
+        Q_p / (g^0.5 * H^2.5) is how a landslide-dam discharge is compared with a
+        published case of a different size. Two geometrically similar events must
+        map to the same number.
+        """
+        from jalraksha.terrain.natural_dam import dimensionless_peak_outflow
+
+        small = dimensionless_peak_outflow(1000.0, 30.0)
+        large = dimensionless_peak_outflow(1000.0 * 2.0**2.5, 60.0)
+        assert small == pytest.approx(large, rel=1e-12)
 
 
 class TestUnits:

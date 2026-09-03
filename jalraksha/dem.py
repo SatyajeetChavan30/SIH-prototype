@@ -41,7 +41,7 @@ Implementation:
 """
 
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 import math
 import warnings
 
@@ -108,6 +108,51 @@ def copdem_tile_name(lat: int, lon: int) -> str:
     lat_str = f"N{lat:02d}" if lat >= 0 else f"S{abs(lat):02d}"
     lon_str = f"E{lon:03d}" if lon >= 0 else f"W{abs(lon):03d}"
     return f"Copernicus_DSM_COG_10_{lat_str}_00_{lon_str}_00_DEM"
+
+
+def _tile_bounds(tile_path):
+    """(lon_min, lat_min, lon_max, lat_max) of a cached tile, or None if unreadable."""
+    try:
+        import rasterio
+
+        with rasterio.open(str(tile_path)) as src:
+            bounds = src.bounds
+        return (bounds.left, bounds.bottom, bounds.right, bounds.top)
+    except Exception:
+        return None
+
+
+def _window_covers(
+    tile_path, lon_min: float, lat_min: float, lon_max: float, lat_max: float
+) -> bool:
+    """
+    Whether a cached tile actually contains the requested bounding box.
+
+    Tiles are cached under the full tile's URL but hold only the window some
+    earlier domain needed, so a cache hit says the FILE exists, not that it
+    covers anything in particular. See the call site for the measured case.
+
+    A half-cell tolerance is allowed on each edge: the clip that follows trims
+    nodata edges anyway, and demanding exact containment would re-fetch on
+    floating-point noise.
+    """
+    try:
+        import rasterio
+
+        with rasterio.open(str(tile_path)) as src:
+            bounds = src.bounds
+            tolerance = max(abs(src.res[0]), abs(src.res[1])) * 0.5
+    except Exception:
+        # Unreadable cached tile: treat it as not covering, so the caller
+        # re-fetches rather than carrying a broken file into the mosaic.
+        return False
+
+    return (
+        bounds.left <= lon_min + tolerance
+        and bounds.right >= lon_max - tolerance
+        and bounds.bottom <= lat_min + tolerance
+        and bounds.top >= lat_max - tolerance
+    )
 
 
 def compute_copdem_tiles(
@@ -329,12 +374,15 @@ def fetch_dem(
     domain_radius_km: float = 60.0,
     cache_dir: Optional[str] = None,
     offline_mode: bool = False,
+    margins_km: Optional[Dict[str, float]] = None,
 ) -> Path:
     """
     Fetch and cache Copernicus DEM for dam-break domain.
 
     Algorithm:
-    1. Compute bounding box: dam ± domain_radius_km (in degrees, roughly)
+    1. Compute bounding box: dam ± domain_radius_km (in degrees, roughly), or
+       an asymmetric box from `margins_km` when the domain is offset from the
+       dam (e.g. biased downstream rather than dam-centred)
     2. Identify Copernicus tiles covering bbox
     3. For each tile:
        - Check cache; if hit, load from cache
@@ -348,9 +396,21 @@ def fetch_dem(
     Args:
         dam_lat: Dam latitude (degrees)
         dam_lon: Dam longitude (degrees)
-        domain_radius_km: Domain radius (km); default 60 km
+        domain_radius_km: Domain radius (km); default 60 km. Ignored when
+            `margins_km` is given.
         cache_dir: Cache root directory; default ./data
         offline_mode: If True, fail on cache miss (no network fetch)
+        margins_km: Optional asymmetric extent as
+            {"west": ..., "east": ..., "south": ..., "north": ...} (all km
+            from the dam). When given, this replaces the symmetric
+            `domain_radius_km` box entirely — used for a domain deliberately
+            biased downstream rather than centred on the dam. The clipped
+            product still saves to the SAME filename convention
+            (dem_{lat:.2f}_{lon:.2f}_clipped.tif) as the symmetric case, so
+            callers that resolve the DEM by lat/lon alone
+            (services/api/jalraksha_service/tasks.py::_resolve_dem) need no
+            change — the wider file simply replaces the narrower one at that
+            path. Only one extent per (lat, lon) can be staged at a time.
 
     Returns:
         Path to cached DEM GeoTIFF in metric CRS
@@ -369,9 +429,14 @@ def fetch_dem(
     # Identity of the finished, clipped domain product. Both the short-circuit
     # check below and the registration at the end key off this.
     clipped_path = cache_dem_dir / f"dem_{dam_lat:.2f}_{dam_lon:.2f}_clipped.tif"
-    product_key = (
-        f"jalraksha://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/r{domain_radius_km:g}km"
-    )
+    if margins_km is not None:
+        extent_tag = (
+            f"w{margins_km['west']:g}_e{margins_km['east']:g}_"
+            f"s{margins_km['south']:g}_n{margins_km['north']:g}km"
+        )
+    else:
+        extent_tag = f"r{domain_radius_km:g}km"
+    product_key = f"jalraksha://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/{extent_tag}"
 
     # A repeat call should skip the whole fetch-mosaic-clip pipeline. Probe with
     # offline_mode=False even when offline: a miss here is not fatal, because the
@@ -390,18 +455,24 @@ def fetch_dem(
     lat_scale = 111.0  # km/degree
     lon_scale = 111.0 * math.cos(math.radians(dam_lat))  # km/degree, adjusted for latitude
 
-    lat_radius = domain_radius_km / lat_scale
-    lon_radius = domain_radius_km / lon_scale
+    if margins_km is not None:
+        lat_min = dam_lat - margins_km["south"] / lat_scale
+        lat_max = dam_lat + margins_km["north"] / lat_scale
+        lon_min = dam_lon - margins_km["west"] / lon_scale
+        lon_max = dam_lon + margins_km["east"] / lon_scale
+    else:
+        lat_radius = domain_radius_km / lat_scale
+        lon_radius = domain_radius_km / lon_scale
 
-    lat_min = dam_lat - lat_radius
-    lat_max = dam_lat + lat_radius
-    lon_min = dam_lon - lon_radius
-    lon_max = dam_lon + lon_radius
+        lat_min = dam_lat - lat_radius
+        lat_max = dam_lat + lat_radius
+        lon_min = dam_lon - lon_radius
+        lon_max = dam_lon + lon_radius
 
     print(
         f"\n[DEM] Fetching DEM for domain:\n"
         f"   Dam: ({dam_lat:.4f} N, {dam_lon:.4f} E)\n"
-        f"   Radius: {domain_radius_km} km\n"
+        f"   Extent: {margins_km if margins_km is not None else f'radius {domain_radius_km} km'}\n"
         f"   BBox: lat in [{lat_min:.2f}, {lat_max:.2f}], lon in [{lon_min:.2f}, {lon_max:.2f}]"
     )
 
@@ -421,6 +492,52 @@ def fetch_dem(
         # Check cache
         hit, cached_path = check_cache(tile_url, cache_dem_dir, offline_mode=offline_mode)
 
+        # Window this tile is fetched for. Widened below to the union with
+        # whatever a previous domain already cached, so a tile only ever grows.
+        tile_lon_min, tile_lat_min = lon_min, lat_min
+        tile_lon_max, tile_lat_max = lon_max, lat_max
+
+        if hit and not _window_covers(cached_path, lon_min, lat_min, lon_max, lat_max):
+            # A CACHE HIT IS NOT COVERAGE.
+            #
+            # _fetch_tile_window stores only the sub-window a previous domain
+            # asked for, under the FULL TILE's URL as its cache key. So a tile
+            # fetched for one dam is a hit for every other dam in the same
+            # 1-degree square, however far away — and the file it returns may not
+            # contain the requested area at all.
+            #
+            # Measured: the cached Copernicus_DSM_COG_10_N30_00_E079_00_DEM.tif
+            # spans lon 79.000-79.105, the eastern sliver of Tehri's 60 km
+            # window. A Rishi Ganga domain at lon 79.70 gets a confident "[OK]
+            # Cache hit" for that file and then dies inside rasterio.mask with
+            # "Input shapes do not overlap raster" — an error that says nothing
+            # about the actual cause.
+            #
+            # Re-fetching the wider window is the fix. The alternative, keying
+            # the cache on the window, would leave the same tile stored many
+            # times over.
+            #
+            # The replacement window is the UNION of what is already cached and
+            # what this domain needs. Fetching only the new window would silently
+            # DESTROY the earlier domain's coverage — Tehri's own tile would stop
+            # containing Tehri — turning a cache miss into a regression for a dam
+            # nobody was running.
+            existing = _tile_bounds(cached_path)
+            if existing is not None:
+                tile_lon_min = min(tile_lon_min, existing[0])
+                tile_lat_min = min(tile_lat_min, existing[1])
+                tile_lon_max = max(tile_lon_max, existing[2])
+                tile_lat_max = max(tile_lat_max, existing[3])
+            print(
+                f"   Cached {tile_name} covers lon "
+                f"{existing[0]:.3f}..{existing[2]:.3f} and does not reach this "
+                f"domain; re-fetching the union, lon {tile_lon_min:.3f}.."
+                f"{tile_lon_max:.3f} lat {tile_lat_min:.3f}..{tile_lat_max:.3f}."
+                if existing
+                else f"   Cached {tile_name} is unreadable; re-fetching."
+            )
+            hit = False
+
         if hit:
             tile_paths.append(cached_path)
             continue
@@ -436,7 +553,12 @@ def fetch_dem(
         print(f"   Fetching {tile_name}...")
         try:
             _fetch_tile_window(
-                tile_url, tile_cache_path, lat_min, lon_min, lat_max, lon_max
+                tile_url,
+                tile_cache_path,
+                tile_lat_min,
+                tile_lon_min,
+                tile_lat_max,
+                tile_lon_max,
             )
         except Exception as e:
             warnings.warn(
@@ -464,7 +586,9 @@ def fetch_dem(
                     "format": "GeoTIFF",
                     "product": "Copernicus DEM GLO-30",
                     "synthetic": tile_name in synthetic_tiles,
-                    "window_bbox": [lon_min, lat_min, lon_max, lat_max],
+                    "window_bbox": [
+                        tile_lon_min, tile_lat_min, tile_lon_max, tile_lat_max
+                    ],
                 },
             )
         except CacheError as e:

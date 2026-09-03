@@ -274,3 +274,82 @@ class TestFetchDemOfflineMode:
         except CacheError as e:
             # Expected if not all tiles are cached
             assert "Offline mode" in str(e) or "not in cache" in str(e)
+
+
+class TestCachedWindowCoverage:
+    """
+    A cache hit on a tile is not proof the tile covers the requested area.
+
+    Tiles are fetched as WINDOWS but cached under the full tile's URL, so a tile
+    fetched for one dam is a hit for every other dam in the same 1-degree square,
+    however far away. Measured: the tile cached for Tehri's 60 km window spanned
+    lon 79.000-79.105, and a Rishi Ganga domain at lon 79.70 got a confident
+    "[OK] Cache hit" followed by rasterio's "Input shapes do not overlap raster"
+    from deep inside the clip — an error naming nothing about the real cause.
+    """
+
+    def _tile(self, path, lon_min, lat_min, lon_max, lat_max, n=32):
+        import numpy as np
+        import rasterio
+        from rasterio.transform import from_bounds
+
+        with rasterio.open(
+            str(path), "w", driver="GTiff", height=n, width=n, count=1,
+            dtype="float32", crs="EPSG:4326",
+            transform=from_bounds(lon_min, lat_min, lon_max, lat_max, n, n),
+        ) as dst:
+            dst.write(np.full((n, n), 1000.0, dtype="float32"), 1)
+        return path
+
+    def test_a_non_covering_cached_window_is_not_treated_as_coverage(self, tmp_path):
+        from jalraksha.dem import _window_covers
+
+        tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
+
+        # The window it was fetched for: covered.
+        assert _window_covers(tile, 79.01, 30.10, 79.09, 30.50) is True
+        # A domain 60 km east in the same tile: NOT covered.
+        assert _window_covers(tile, 79.49, 30.26, 79.91, 30.62) is False
+
+    def test_partial_overlap_is_not_coverage(self, tmp_path):
+        """
+        Overlapping is not containing. A window that straddles the cached edge
+        would clip successfully and return a raster half full of nodata.
+        """
+        from jalraksha.dem import _window_covers
+
+        tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
+        assert _window_covers(tile, 79.05, 30.10, 79.30, 30.50) is False
+
+    def test_an_unreadable_tile_reports_no_coverage(self, tmp_path):
+        from jalraksha.dem import _window_covers
+
+        broken = tmp_path / "broken.tif"
+        broken.write_bytes(b"not a geotiff")
+        assert _window_covers(broken, 79.0, 30.0, 79.1, 30.1) is False
+
+    def test_bounds_of_a_missing_tile_are_none_not_an_exception(self, tmp_path):
+        from jalraksha.dem import _tile_bounds
+
+        assert _tile_bounds(tmp_path / "absent.tif") is None
+
+    def test_the_refetch_window_is_the_union_so_a_tile_only_grows(self, tmp_path):
+        """
+        Re-fetching only the NEW window would destroy the earlier domain's
+        coverage — Tehri's own tile would stop containing Tehri. The union keeps
+        both, at the cost of a larger file.
+        """
+        from jalraksha.dem import _tile_bounds, _window_covers
+
+        tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
+        cached = _tile_bounds(tile)
+        requested = (79.49, 30.26, 79.91, 30.62)
+
+        union = (
+            min(cached[0], requested[0]), min(cached[1], requested[1]),
+            max(cached[2], requested[2]), max(cached[3], requested[3]),
+        )
+        grown = self._tile(tmp_path / "grown.tif", *union)
+
+        assert _window_covers(grown, *requested) is True
+        assert _window_covers(grown, 79.01, 30.10, 79.09, 30.50) is True

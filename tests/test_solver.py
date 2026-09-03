@@ -208,6 +208,56 @@ class TestMassConservation:
         assert mass_error < 1e-3, f"Mass change {mass_error * 100:.4f}% exceeds 0.1%"
 
 
+class TestTransmissiveDrainage:
+    """
+    A blob of water on a tilted, transmissive-boundary plane must actually
+    LEAVE the domain — a real coverage gap the mass-conservation gate above
+    cannot see, since both of its cases use boundary="reflective" by design
+    (walls are the correct choice for testing the discretisation in
+    isolation). Neither test above can distinguish "conserves volume because
+    physics is right" from "conserves volume because nothing can leave"; a
+    dam-break domain uses boundary="transmissive" (solver/core.py's own
+    default), and this was never separately exercised.
+
+    Added after a real production failure: a Khadakwasla run plateaued at
+    ~42% of released volume permanently retained despite transmissive
+    boundaries, because the trapping was upstream of the boundary (an
+    unbreached dam ridge plus unfilled DEM depressions) rather than at it —
+    but that failure mode would have gone unnoticed even longer without a
+    test that actually asserts *some* baseline level of drainage happens.
+    """
+
+    @pytest.mark.blocking
+    def test_water_drains_off_a_tilted_open_plane(self):
+        """A pool on a monotonic downhill slope must mostly drain to <1%."""
+        grid = Grid(nx=60, ny=60, dx=20.0, dy=20.0)
+        xx, _ = grid.cell_centres_2d()
+        # Monotonic slope, high at x=0 down to low at the far edge -- a
+        # single clear downhill path to the boundary, no interior pits.
+        b_init = (xx - grid.x0) * 0.05
+
+        # A pool of water sitting on the HIGH side of the slope.
+        h_init = np.where(xx < grid.x0 + grid.nx * grid.dx * 0.25, 3.0, 0.0)
+
+        state = create_state(grid, h_init, b_init=b_init)
+        volume_init = state.volume * grid.area
+        assert volume_init > 0.0, "initial condition is empty — test is vacuous"
+
+        solver = SWESolver(grid, manning_n=0.03, cfl=0.9, boundary="transmissive")
+        for _ in range(2000):
+            state = solver.step(state)
+
+        volume_final = state.volume * grid.area
+        retained_frac = volume_final / volume_init
+
+        print(f"Transmissive drainage: {retained_frac * 100:.3f}% of volume retained after 2000 steps")
+        assert retained_frac < 0.01, (
+            f"{retained_frac * 100:.2f}% of the pool is still in the domain after "
+            f"2000 steps on an open, monotonic downhill slope with no interior "
+            f"pits -- water that should exit is not exiting."
+        )
+
+
 # ======================================================================
 # Blocking gate 3: dry-bed robustness
 # ======================================================================
