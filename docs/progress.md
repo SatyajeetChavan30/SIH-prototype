@@ -1,4 +1,4 @@
-# Progress checkpoint — 2026-09-03
+# Progress checkpoint — 2026-09-04
 
 Snapshot of what is done, what is running, and what is left, written for
 picking the work back up without re-deriving context.
@@ -72,7 +72,7 @@ Reproduce: `python scripts/validate_against_delft3d.py --case ritter`
    models of still water. Not fixed; the fix is locating the barrier along the
    real impoundment.
 
-Test suite: **435 passed, 4 skipped** (Delft3D + GEE-dependent tests skip
+Test suite at the time of this section: **435 passed, 4 skipped** (Delft3D + GEE-dependent tests skip
 cleanly without those installs).
 
 ## Dashboard integration — DONE (2026-08-29)
@@ -134,7 +134,7 @@ failures. Full record in CLAUDE.md; measurements in `validation_findings.md`
 
 **Verified end to end** through the API on the Rishi Ganga: 25 exports,
 provenance banner, DEM-update panel with stage-storage chart, downloadable
-GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
+GeoTIFF + sidecar + lake mask. All blocking gates pass. Suite now at **600 passed, 4 skipped**.
 
 **Five defects found along the way, none introduced by this work:**
 
@@ -151,6 +151,76 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
    beside it (the ensemble median of `h_max` over members that never arrived).
 5. A steep river mistaken for a hillside town: a 3 km window measures the
    river's own fall, so a point *on* the channel read as 64 m above it.
+
+## Khadakwasla drainage plateau — FIXED (2026-09-03)
+
+A 24 h Khadakwasla run on the old 27 km dam-centred domain (54 x 54 km) did not
+recede. The hazard classification peaked at t ~ 17,876 s and then **plateaued**:
+46 cells stayed SEVERE for the last 7.5 simulated hours, and roughly **42% of the
+released volume was permanently trapped**. The same peak time appeared in both a
+10-member and a 100-member baseline, so it was structural, not an ensemble
+artefact.
+
+Three separate causes, each producing water that had nowhere to go:
+
+| Cause | Fix | Default |
+| :--- | :--- | :--- |
+| The dam ridge is still intact in the DEM. `inject_breach_hydrograph` only ADDS depth at one cell — a source term with no momentum direction — so the fraction spreading back upstream landed in the real closed reservoir bowl and sat there | `run.py::_notch_breach_into_bed` carves a gap through the crest down to the dam-height invert, clamped never to dig below the local terrain floor just outside the notch | `notch_breach=True` |
+| Bilinear downsampling of a narrow channel manufactures spurious local minima along the flow corridor, and the solver's own water pools in them permanently | `terrain/conditioning.py::fill_depressions` — priority-flood seeded from the domain boundary (the only place the transmissive boundary lets water exit), with the raise per cell capped so genuine basins survive | `fill_max_depth_m=3.0` |
+| A dam-centred square spends half its cells on the Western Ghats and the Arabian Sea, and the flood has no downstream to drain into | `load_dem_as_grid(margins_km=...)`, exposed as `RunRequest.domain_margins_km`, gives an asymmetric rectangle biased downstream | none — per-request override only |
+
+**The notch is not a hole in an intact wall.** The invert is the crest elevation
+at the breach cell minus `dam_config["height_m"]` — the one breach-geometry
+number every hydrograph member carries, and the value Froehlich / Von Thun-style
+regressions assume for a full-depth breach. Dam height is a fixed ensemble input,
+not sampled per member, so there is one notch geometry shared by the whole
+ensemble, exactly like the terrain.
+
+**The depression fill is deliberately not "fill everything to guarantee
+drainage."** It computes the full hydrological fill, then caps the raise actually
+applied at the threshold. A one- or two-metre pit (resampling noise) fills
+completely; a real reservoir bowl keeps standing at very nearly its original
+depth, because only its top 3 m is touched. Erasing genuine terrain to make the
+water leave would have hidden the same defect behind a nicer graph.
+
+**Preset defaults are unchanged.** `domain_margins_km` was used as a per-request
+override for this investigation, not written into
+`jalraksha/presets.py::khadakwasla`. Every default Khadakwasla run, the dashboard
+demo included, still gets the same 27 km dam-centred square. The cached DEM at
+`data/dem/dem_18.44_73.77_clipped.tif` was widened to 240 x 188 km (40 km west /
+200 km east / 94 km north and south) to support the wider domain; it is a
+superset of the old 57 x 56 km clip, so nothing that worked before stopped
+working, and `test_domain_radius_does_not_exceed_the_cached_dem` still passes
+with much more headroom.
+
+Covered by `tests/test_terrain.py`:
+`test_fill_depressions_shallow_filled_deep_preserved`,
+`test_fill_depressions_unrestricted_removes_all_local_minima`,
+`test_notch_breach_lowers_bed_and_respects_local_floor`.
+
+**The confirmation run has not completed.** `scripts/run_khadakwasla_drainage_check.py`
+exercises all three fixes together — 240 x 188 km at 300 m, 24 h, 4 members — and
+writes a compact hazard time-series to
+`data/keyframes/khadakwasla_drainage_check/hazard_series.json`. That file does
+not exist yet, so the plateau is **fixed in mechanism but not yet re-measured**.
+The script exists rather than a `POST /runs` because an API-submitted run
+executes in a subprocess spawned by the server and dies with it — that happened
+three times in one session, each time silently discarding hours of compute,
+because `run_ensemble` returns every member at once and writes nothing
+per-member. The script is nobody's child and survives the server coming and
+going.
+
+## Untracked working files
+
+Two files are present but not committed:
+
+- **`scripts/run_khadakwasla_drainage_check.py`** — the standalone verification
+  run described above.
+- **`JalRaksha_MultiHazard_Workflow.drawio`** — an editable draw.io flowchart of
+  the full multi-hazard pipeline: satellite monitoring feedback loop, hazard-type
+  branch (dam breach / river blockage), breach-mode and near-field/far-field
+  splits, validation gate, export engine, storage. Legend marks the satellite and
+  river-blockage lanes as new. Not referenced by any code or doc yet.
 
 ## Still open
 
@@ -186,6 +256,14 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
   timestep as a deep release accelerates down a gorge: 55 m / 0.6 MCM solved
   4 members in ~15 min at 100 m, the 120 m / 26 MCM case took ~40. Pre-compute
   anything large before a live demo.
+- **The Khadakwasla drainage fix is unmeasured.** All three mechanisms are
+  implemented, defaulted on and unit-tested, but the 24 h confirmation run has
+  not finished, so there is no post-fix hazard curve to put beside the plateaued
+  one. Run `python scripts/run_khadakwasla_drainage_check.py` and compare
+  `hazard_series.json` against the ~46 stuck SEVERE cells.
+- **A wide downstream domain is expensive.** The verification run is 240 x 188 km
+  at 300 m — 800 x 627 cells — for 24 simulated hours across 4 members. Budget
+  hours, not minutes, and do not start it during a demo.
 - **Verification-only launch entries** (`api-verify` on :8010,
   `frontend-verify` on :3010) and the git-ignored `frontend/.env.verify.local`
   exist so the dashboard can be driven without colliding with a dev API on
@@ -193,7 +271,13 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
 
 ## Next step, if resuming
 
-Rehearse the full demo script end to end and screenshot each tab — the one
-thing not yet done is running the twelve-step judge walkthrough start to
-finish on a quiet machine. After that, pre-bake a clean set of demo runs (one
-good SWE run per dam) and prune the 29 accumulated test runs from the picker.
+Finish the Khadakwasla drainage measurement — `python
+scripts/run_khadakwasla_drainage_check.py`, then read
+`data/keyframes/khadakwasla_drainage_check/hazard_series.json` and confirm the
+severe-cell count actually falls after the t ~ 17,876 s peak instead of holding
+at 46. That is the one open loop with a number attached to it.
+
+Then rehearse the full demo script end to end and screenshot each tab — the
+twelve-step judge walkthrough has still never been run start to finish on a
+quiet machine. After that, pre-bake a clean set of demo runs (one good SWE run
+per dam) and prune the 29 accumulated test runs from the picker.

@@ -187,6 +187,34 @@ relief), crest height sets the impounded volume steeply:
 > and pre-compute anything larger — the run picker loads a finished run
 > instantly.
 
+### 1c. Drainage controls — when a flood refuses to recede
+
+Three request fields exist because a 24 h Khadakwasla run once peaked and then
+held flat, with 46 cells stuck at SEVERE and ~42% of the released volume trapped.
+All three default to the safe setting; they are documented here because turning
+one off brings the plateau back, and because a wider domain is expensive.
+
+| Field | Default | What it does |
+| :--- | :--- | :--- |
+| `notch_breach` | `true` | Cuts a real gap through the dam crest at the breach cell, down to the dam-height invert. Without it, the breach is only a source term on an intact wall, and water spreading upstream is sealed into the reservoir bowl |
+| `fill_max_depth_m` | `3.0` | Fills depressions shallower than this — pits manufactured by bilinear downsampling of a narrow channel, which trap flood water permanently. Genuine basins deeper than the threshold are left standing. `0` disables it |
+| `domain_margins_km` | unset | `{"west":..,"east":..,"south":..,"north":..}` in km from the dam, for a domain biased downstream instead of centred on it. Overrides the preset's `domain_radius_km` entirely |
+
+```bash
+curl -X POST http://localhost:8000/runs -H "Content-Type: application/json" -d '{"dam_id":"khadakwasla","solver":"swe","ensemble_size":4,"solver_duration_s":86400,"target_resolution":300,"domain_margins_km":{"west":40,"east":200,"south":94,"north":94},"fill_max_depth_m":3.0,"notch_breach":true}'
+```
+
+> **Long runs should not go through the API.** A run submitted to `POST /runs`
+> executes in a subprocess spawned by the server and dies with it — three runs
+> were lost that way in one session, each discarding hours of compute, because
+> the ensemble returns every member at once and writes nothing per-member. For
+> anything measured in hours use a standalone script, which survives the server
+> restarting:
+>
+> ```bash
+> python scripts/run_khadakwasla_drainage_check.py
+> ```
+
 ### 2. Run the CLI Simulation (Tehri Dam Demo)
 Execute a 3-member ensemble run for Tehri Dam:
 ```bash

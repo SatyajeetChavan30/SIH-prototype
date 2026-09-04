@@ -251,15 +251,47 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
         filter(None, [str(repo_root / "services" / "api"), str(repo_root),
                       env.get("PYTHONPATH", "")]))
 
+    # DETACHED, so a long run outlives the server that started it.
+    #
+    # This used to be a plain Popen with no detachment, which made the worker an
+    # ordinary child of uvicorn. Three runs were lost that way in one session —
+    # each discarding hours of compute — because restarting the API reaped the
+    # solver with it, and `run_ensemble` returns every member at once and writes
+    # nothing per-member, so a killed run leaves nothing at all.
+    #
+    # The consequence is that a dashboard-submitted run and a script-launched
+    # one now have the same durability, which is what makes the dashboard usable
+    # for anything longer than a demo.
+    log_path = scratch / f"{run_id}.log"
+    log_handle = open(log_path, "w", encoding="utf-8", buffering=1)
+
+    popen_kwargs = {}
+    if os.name == "nt":
+        # DETACHED_PROCESS gives the child no console; CREATE_NEW_PROCESS_GROUP
+        # keeps a Ctrl-C in the API's console from propagating to it.
+        popen_kwargs["creationflags"] = (
+            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        )
+    else:
+        popen_kwargs["start_new_session"] = True
+
+    # Output goes to a per-run FILE rather than being inherited. It has to: a
+    # detached process has no console to inherit, so inheriting would silently
+    # discard the solver's progress. This is better than the old behaviour
+    # anyway — the log survives the server and is attributable to one run,
+    # instead of being interleaved with every other request in the API's stdout.
     subprocess.Popen(
         [sys.executable, "-m", "jalraksha_service.run_worker", handle.name],
         cwd=str(repo_root),
         env=env,
-        # Inherit stdout/stderr so the solver's own progress printing still
-        # lands in the API log, which is where it has always been read from.
-        stdout=None, stderr=None,
+        stdout=log_handle, stderr=subprocess.STDOUT,
+        **popen_kwargs,
     )
-    print(f"[api] run {run_id} dispatched to a subprocess")
+    # The parent's copy of the descriptor is closed immediately; the child holds
+    # its own. Leaving it open would leak one handle per submitted run.
+    log_handle.close()
+    print(f"[api] run {run_id} dispatched to a detached subprocess "
+          f"(log: {log_path})")
 
 
 def _run_status(run_id: str) -> Dict[str, Any]:
@@ -918,6 +950,29 @@ def gee_blockage(
         recall_of_pre_mask_vs_jrc=detection.get("recall_of_pre_mask_vs_jrc"),
         new_water_fraction=detection.get("new_water_fraction"),
         fraction_near_drainage=detection.get("fraction_near_drainage"),
+        pre_water_fraction=detection.get("pre_water_fraction"),
+        # Radar geometry, size and flatness. These are forwarded rather than
+        # summarised: a detection that survived a 63%-shadow window and one over
+        # open ground are different claims, and collapsing them to a boolean
+        # would hide exactly the distinction the terrain correction exists for.
+        terrain_correction=detection.get("terrain_correction"),
+        terrain_correction_reference=detection.get("terrain_correction_reference"),
+        geometry_valid_fraction=detection.get("geometry_valid_fraction"),
+        geometry_shadow_fraction=detection.get("geometry_shadow_fraction"),
+        geometry_layover_fraction=detection.get("geometry_layover_fraction"),
+        look_azimuth_deg=detection.get("look_azimuth_deg"),
+        look_azimuth_source=detection.get("look_azimuth_source"),
+        dem_for_geometry=detection.get("dem_for_geometry"),
+        orbit_pass=detection.get("orbit_pass"),
+        relative_orbit=detection.get("relative_orbit"),
+        pre_scenes_on_track=detection.get("pre_scenes_on_track"),
+        largest_component_m2=detection.get("largest_component_m2"),
+        min_component_m2=detection.get("min_component_m2"),
+        lake_elevation_spread_m=detection.get("lake_elevation_spread_m"),
+        lake_mean_slope_deg=detection.get("lake_mean_slope_deg"),
+        lake_mean_elevation_m=detection.get("lake_mean_elevation_m"),
+        passes_flatness=detection.get("passes_flatness"),
+        flatness_dem=detection.get("flatness_dem"),
         amplitude_form_fraction=detection.get("amplitude_form_fraction"),
         amplitude_threshold_db=detection.get("amplitude_threshold_db"),
         bbox=detection.get("bbox"),

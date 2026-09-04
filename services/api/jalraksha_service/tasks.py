@@ -1443,23 +1443,17 @@ def run_dam_break_task(
             # arrival. Both used to be dropped here, so the dashboard could only
             # ever show a bare median and a silent blank. An ensemble whose
             # spread is never shown is an ensemble the viewer cannot judge.
-            gauge_depths = _gauge_max_depths(result)
-            for gname, g in (result.get("arrival_times") or {}).items():
-                gauges.append({
-                    "gauge_name": gname,
-                    "distance_km": g.get("distance_km"),
-                    "arrival_time_s": g.get("median"),
-                    "arrival_p05_s": g.get("p05"),
-                    "arrival_p95_s": g.get("p95"),
-                    "max_depth_m": gauge_depths.get(gname),
-                    "note": _minority_arrival_note(g) or g.get("note"),
-                    # Deliberately null. A domain-wide population-at-risk figure
-                    # is computed below from real GHSL counts; dividing it among
-                    # gauges would need a per-gauge catchment radius that no
-                    # source defines, and inventing one is what CLAUDE.md
-                    # forbids. See the population_at_risk export.
-                    "par_estimate": None,
-                })
+            # Shared with the script-launched path (script_runs.py). Two copies
+            # of this mapping would eventually disagree about what a minority
+            # arrival is, and that note is a correctness claim: it is what stops
+            # "1 of 4 members arrived" being read as a confident median.
+            # par_estimate stays deliberately null — a domain-wide
+            # population-at-risk figure cannot be divided among gauges without a
+            # per-gauge catchment radius no source defines. See the
+            # population_at_risk export.
+            from jalraksha_service.script_runs import gauge_rows_from_result
+
+            gauges.extend(gauge_rows_from_result(result))
             # Record export references. run.py::write_export_products has
             # already verified each of these exists on disk; _existing_exports
             # below re-checks the whole list once more before it is persisted.
@@ -1591,23 +1585,22 @@ def run_dam_break_task(
         # already uses, because `result` is discarded the moment this function
         # returns and nothing else persists these numbers. Everything here was
         # already computed; it simply had nowhere to go.
-        run_summary = {
-            "ensemble": _ensemble_summary(result) if isinstance(result, dict) else None,
-            "grid": _grid_summary(result) if isinstance(result, dict) else None,
-            "solver_params": {
+        # Shared writer, so the script path produces a byte-compatible
+        # run_summary.json. Five panels read this one file back.
+        from jalraksha_service.script_runs import write_run_summary
+
+        summary_export = write_run_summary(
+            run_id, result, dam_config,
+            solver_params={
                 "ensemble_size": ensemble_size,
                 "solver_duration_s": solver_duration_s,
                 "target_resolution": target_resolution,
                 "domain_radius_km": dam_config.get("domain_radius_km"),
                 "scenario_type": dam_config.get("scenario_type", "dam_break"),
             },
-            "dem": {
-                "dem_used": dem_path,
-                "dem_update": (
-                    dem_provenance.to_dict() if dem_provenance is not None else None
-                ),
-            },
-        }
+            dem_path=dem_path,
+            dem_provenance=dem_provenance,
+        )
         if dem_provenance is not None:
             # Registered as exports so the updated terrain and its provenance
             # flow into the Downloads panel through the plumbing that already
@@ -1625,21 +1618,7 @@ def run_dam_break_task(
                 exports.append(
                     {"kind": "dem_update_lake", "path_or_url": dem_provenance.lake_mask}
                 )
-        if isinstance(result, dict) and result.get("rapid_estimate"):
-            # The analytic path computes peak outflow, celerity, inundation area
-            # and an economic figure, then dropped all of them.
-            est = result["rapid_estimate"]
-            run_summary["rapid_estimate"] = {
-                k: est.get(k) for k in (
-                    "q_peak_median_m3s", "wave_celerity_ms", "inundation_area_km2",
-                    "affected_population", "economic_loss_crore_inr", "method", "note")
-            }
-        summary_dir = settings.DATA_DIR / "exports" / run_id
-        summary_dir.mkdir(parents=True, exist_ok=True)
-        summary_path = summary_dir / "run_summary.json"
-        summary_path.write_text(json.dumps(run_summary, indent=2, default=str),
-                                encoding="utf-8")
-        exports.append({"kind": "run_summary", "path_or_url": str(summary_path)})
+        exports.append(summary_export)
 
         dam_name = dam_config.get("name", "Dam")
         db.insert_gauge_results(run_id, gauges)

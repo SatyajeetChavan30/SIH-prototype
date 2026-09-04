@@ -179,15 +179,54 @@ artifacts are recorded at times where there is something to see.
 
 ## Phase 8 — Video export
 
-- [ ] `render_animation.py` using `SaveAnimation` → PNG sequence — *needs ParaView*
-- [ ] FFmpeg encode to MP4 — *needs FFmpeg*
-- [ ] **Artifact: `flood_simulation.mp4` with continuously moving water**
+- [x] `render_animation.py` using `SaveAnimation` → PNG sequence. Builds its
+      scene with `render_static.build_scene`, not a copy of it, so a still and
+      the video beside it cannot disagree about exaggeration, depth range,
+      glyph density or camera.
+- [x] FFmpeg encode to MP4 — H.264, `-pix_fmt yuv420p` (the RGB-PNG default of
+      yuv444p plays in almost nothing but VLC), `+faststart`, even-dimension pad.
+- [x] **Artifact: `paraview/artifacts/flood_simulation.mp4`** — 120 frames,
+      1280×720, 5 s. Flooded area reads 0.00 km² at t=0 and 3074.56 km² at
+      t=3600 s, and the SYNTHETIC banner rides every frame because it is driven
+      by the dataset's own `is_synthetic` field.
+- [x] **Artifact: `paraview/artifacts/tehri_flood.mp4`** — the same from the
+      REAL solver dataset (60 timesteps, 49.76 km² at t=10800 s), and correctly
+      carrying no synthetic banner.
+- [x] **Verified on the pixels, not the exit code** — `tests/test_paraview_animation.py`
+      hashes every frame. Two defects were caught this way and neither was
+      visible in the output:
+
+  1. **Frames were duplicates, not motion.** `PlayMode = "Sequence"` moves the
+     clock smoothly, but a reader does NOT interpolate in time — asked for a
+     moment between two stored steps it returns the nearer one. 60 frames over
+     30 timesteps came back as 30 byte-identical PAIRS. ParaView's own
+     `TemporalInterpolator` is the fix (Section 18 forbids hand-written frame
+     interpolation, and this is not that).
+  2. **`frames == timesteps` is NOT a safe case.** The obvious guard — only
+     interpolate when frames exceed timesteps — is wrong. Sequence mode
+     resamples onto EVENLY spaced times while the solver's timesteps are
+     unevenly spaced (adaptive CFL), so 30 frames from 30 steps still collided
+     at index 14/15 and skipped another step entirely. Interpolation therefore
+     defaults on at every frame count; `--no-interpolate` gives raw
+     nearest-step frames and says so in its output.
+  3. **pvpython exited 0xC0000005 after a perfect render.** The timestep-count
+     probe left a second `XDMFReader` alive on the same file, and the access
+     violation landed at interpreter shutdown — after every frame was written
+     and every line printed. Artifacts flawless, exit code 139. `Delete(probe)`
+     fixes it, and a test now asserts the return code.
 
 ## Phase 9 — Optimization
 
-- [ ] Only once Phases 1–8 have artifacts. Section 0 forbids tuning earlier.
+- [x] Phases 1–8 all have artifacts now, so Section 0 no longer forbids tuning.
 - [x] Already in place upstream: DEM downsampled in Python rather than decimated
       in ParaView; HDF5 so only requested timesteps are read; terrain stored once.
+- [ ] **Not done, and deliberately not started**: ParaView interactive LOD
+      tuning. The decimation this phase asks for is the Python-side downsampling
+      above, which already covers the 30/60/120 m matrix through
+      `make_dataset.py --resolution`; adding a second, ParaView-side decimation
+      would mean two independent resolution controls for one quantity. Interactive
+      LOD affects only GUI responsiveness, and the shipped path is headless
+      pvpython. Revisit only if the GUI becomes part of the demo.
 
 ---
 

@@ -74,3 +74,9 @@ tools/sih-presentation/render/
 *.tif
 *.tiff
 frontend/data/
+
+# ParaView animation intermediates. The .mp4 in paraview/artifacts/ is the
+# deliverable; the PNG stack beside it is regenerable with one command and is
+# 120 files per render. Kept on disk (render_animation.py --keep-frames defaults
+# on, so a failed FFmpeg encode is recoverable without re-rendering), not in git.
+paraview/artifacts/*_frames/

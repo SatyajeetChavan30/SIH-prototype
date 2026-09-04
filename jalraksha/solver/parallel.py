@@ -147,10 +147,21 @@ def run_ensemble_member(
             depth_series.append(_snapshot(state, 0.0))
             next_snapshot_idx = 1
 
+        # Volume balance. `released` is measured as the depth the injector
+        # actually adds, not integrated from the hydrograph analytically: the
+        # injector clamps and the two can differ, and the number that matters
+        # for "where did the water go" is what really entered the domain.
+        cell_area_m2 = float(grid.dx) * float(grid.dy)
+        volume_released_m3 = 0.0
+
         while t_sim < solver_duration_s and step_count < max_steps:
+            h_before_inject = float(state.h.sum())
             inject_breach_hydrograph(
                 state, grid, i_breach, j_breach, t_sim, dt_adaptive, q_hydro, t_hydro
             )
+            volume_released_m3 += (
+                float(state.h.sum()) - h_before_inject
+            ) * cell_area_m2
 
             state = solver.step(state)
             t_sim += dt_adaptive
@@ -194,6 +205,14 @@ def run_ensemble_member(
                 f"probably collapsed. Results are truncated, not converged."
             )
 
+        # Retained is the water still standing at the cutoff, counting only
+        # cells at or above the solver's own dry threshold — a domain-wide film
+        # of 1e-9 m is a numerical residue, not trapped water.
+        h_final = state.h
+        volume_retained_m3 = float(
+            h_final[h_final >= solver.h_dry].sum()
+        ) * cell_area_m2
+
         return {
             "sample_id": sample_id,
             "t_arrival": t_arrival,
@@ -202,6 +221,13 @@ def run_ensemble_member(
             "metadata": metadata,
             "depth_series": depth_series,
             "n_steps": step_count,
+            # Volume balance: released should equal exited + retained to within
+            # the scheme's own conservation error. A large retained fraction is
+            # the drainage plateau of docs/validation_findings.md section 8,
+            # measured directly instead of inferred from hazard cell counts.
+            "volume_released_m3": volume_released_m3,
+            "volume_exited_m3": float(solver.volume_exited_m3),
+            "volume_retained_m3": volume_retained_m3,
             "success": True,
         }
     except Exception as e:

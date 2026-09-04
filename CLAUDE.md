@@ -377,6 +377,82 @@ screening pulse and says so.
   nothing to verify a same-day mask against and the detector declines. Do NOT
   widen the threshold. The manual barrier path runs fully offline and is the
   demo's guaranteed floor.
+- **Auto-detection's root cause was radar shadow, and the fix is now built —
+  but NOT re-measured.** Run against the Baige barrier lakes on the Jinsha River
+  (10 Oct and 3 Nov 2018) — a wide channel where JRC maps the river at 0.52%,
+  with the lake plainly visible in cloud-free Sentinel-2 and three S1
+  acquisitions inside its ten-day life — the detector refused, and not for lack
+  of a reference: the pre-event mask classified **63% of the gorge as water**
+  (precision 0.0075, recall 0.92) because VV backscatter cannot separate water
+  from radar shadow on slopes facing away from the sensor.
+  `derive_threshold_from_tiles` was confident while doing it: 17/64 tiles at
+  separability 0.732. **Gate 1 was the symptom, not the limit.**
+
+  `jalraksha/gee/terrain_correction.py` implements the documented remedy — the
+  local incidence angle from Copernicus GLO-30 and the scene's own geometry,
+  with shadow and layover dropped BEFORE any histogram is derived (Small 2011).
+  Both `sar._fetch_live` and `blockage_detect._fetch_live` apply it. **This is
+  the GEOMETRIC half only**: pixels are masked, not radiometrically flattened to
+  gamma-nought, so anything published says "geometry-masked", never
+  "terrain-flattened".
+
+  **IT WAS RE-MEASURED, AND IT DOES NOT RESCUE THE DETECTOR. Do not present it
+  as the fix.** Over Baige the mask excludes 16.6% of the window and moves Gate 1
+  precision from 0.0075 to **0.007** against a 0.5 requirement, while recall
+  falls 0.92 to 0.85. Every case still refuses. The reason is in the geometry
+  itself: **radar shadow is 0.09% of that window**, so shadow was never numerous
+  enough to be the explanation. The mis-classified pixels are on slopes that
+  image perfectly well and are merely dark, which is a RADIOMETRIC problem —
+  the gamma-nought flattening half, not built, and at 140 false positives per
+  true one there is reason to doubt it would suffice either. Full table in
+  `docs/validation_findings.md` §9. The masking stays because excluding layover
+  is correct on its own terms and any radiometric correction needs the same
+  geometry underneath it: a prerequisite that turned out not to be sufficient.
+
+  **`setDefaultProjection` is load-bearing and its absence is invisible.**
+  `ImageCollection.mosaic()` returns EPSG:4326 with the IDENTITY transform — one
+  degree per pixel, nominal scale 111,319 m — and `ee.Algorithms.Terrain`
+  computes slope in its input's own projection. So the first version of this
+  module measured slope 0.000° over a Himalayan gorge, classified nothing,
+  returned `valid_fraction` of exactly 1.0000, and reported that it had terrain
+  corrected the scene. Declaring GLO-30's native 30 m posting gives 30.8° mean /
+  66.0° max on the same window. A no-op and a working correction produced nearly
+  identical detector output, so the precision figures could not distinguish them
+  — only measuring the mask itself could. `test_terrain_correction.py` asserts
+  the projection is declared, in both this module and `blockage_detect`.
+
+  Two supporting facts worth keeping. `local_incidence_angle` returns the
+  UNSIGNED arccos angle, and arccos is even, so it cannot tell a sensor-facing
+  slope from an averted one — a 50° slope facing a 39° look reported +11° where
+  the signed answer is −11°, and layover was therefore never detected at all.
+  Shadow and layover are classified from the SIGNED range-plane slope
+  (`range_slope`) instead. And `blockage_detect` now restricts the pre-event
+  median to the post scene's own pass and relative orbit: an ascending and a
+  descending pass illuminate opposite valley walls, so differencing across
+  tracks puts a shadow-to-lit transition in the "new water" band on every slope
+  in the scene.
+
+  Measurements, imagery and the Gate-1-bypass diagnostic remain in
+  `docs/validation_findings.md` §9. `scripts/detect_blockage_experiment.py`
+  writes ONLY under `data/gee/blockage_experiment/`, never the app's
+  `data/gee/blockage/`, because `detect_new_water` writes a
+  `blockage_manifest.json` that `_read_cache` would later serve back as a
+  genuine observation.
+- **The two dead gates now execute, and the area floor is PER COMPONENT.**
+  `MIN_NEW_WATER_AREA_M2` was declared and never referenced;
+  `score_candidate_flatness` — "the strongest filter and it is free" per the
+  module docstring — was never invoked. Both run now. The area floor is applied
+  to each CONNECTED component (`connectedPixelCount`), not to the window total,
+  and that distinction is the whole point: over Baige a garbage mask cleared a
+  window-total floor by 900× *precisely because* its mis-classified pixels were
+  scattered everywhere, whereas a lake is one patch. Flatness reads GLO-30 from
+  inside the Earth Engine call — not the layering violation row 28 feared, since
+  an EE asset is another EE image and not a call into `jalraksha.terrain` — and
+  both halves decide through one shared `flatness_verdict()` so the tested path
+  and the live path cannot drift. With Gate 1 bypassed for diagnosis, flatness
+  refused every case by **186× on elevation spread** (933–3,258 m vs 5 m) and
+  16× on slope. `MAX_PLAUSIBLE_WATER_FRACTION` is applied here too; it never was.
+  The four threshold VALUES remain unvetted — that is row 25, not row 28.
 - **Rishi Ganga publishes no crest height or width.** Neither is published for
   the 2021 blockage; both are measurable by differencing Zenodo 4554647 against
   4558692 (verification queue row 26). The preset carries a terrain-derived
@@ -419,6 +495,106 @@ screening pulse and says so.
   band and no per-gauge peak depth — those fields did not exist when they were
   written, and they render as blanks. New runs are complete.
 
+## Friction, and a legend that was shifted by one
+
+`terrain/roughness.py` maps ESA WorldCover classes to Manning's *n*. Two
+independent defects were live in it at once, and each hid the other.
+
+- **Every class was labelled as the one below it.** 10 was commented
+  "Shrubland" (it is Tree cover), 40 "Built area" (Cropland), 50 "Bare / rock /
+  sand" (Built-up). So **built-up land — the roughest class, and the one that
+  most shapes an inundation footprint — was assigned n = 0.01**, the value for
+  smooth concrete, while cropland got the urban value. Class 100 (Moss and
+  lichen) was missing entirely. The legend is now ESA's published one.
+  `test_roughness.py` asserts the ORDERING (built-up > bare, trees > grass,
+  ice < grass) rather than the numbers, so a re-shifted legend fails even after
+  the values are revised. The eleven **n values stay UNVETTED** — mid-range
+  transcriptions of Chow (1959) Table 5-6 and Arcement & Schneider (1989) onto a
+  legend both predate, with no published crosswalk cited. Verification row 31.
+- **And nothing read the table anyway.** `assign_manning_from_worldcover`
+  ignored its arguments and returned a uniform 0.03;
+  `preprocess_dem(manning_table=...)` accepted a table, passed it one level down,
+  and dropped it. A caller who built a careful roughness table got a constant,
+  silently. The reprojection is real now (NEAREST NEIGHBOUR always — these are
+  class codes, and interpolating cropland 40 against built-up 50 gives 45, which
+  is not a land cover), and **a `manning_table` passed without a
+  `worldcover_path` now RAISES** rather than being ignored.
+- **The old signature is why it could not have worked.** It asked for
+  `grid_shape`. A shape says how many cells there are and nothing about where
+  they are; land cover cannot be placed on a domain without its transform and
+  CRS. It takes a `Grid` now.
+- **A uniform field is still the default, and says so.**
+  `manning_field_summary` reports `is_uniform` and `fraction_at_default`,
+  because a uniform field wearing a land-cover-derived name is the exact failure
+  this module shipped with. `gee/worldcover.py` fetches the raster (ESA
+  WorldCover v200, CC BY 4.0 — approved) with the same three-states-no-fourth
+  refusal contract as `sar.py`.
+
+## A fatality model was running under another author's name
+
+`impact/fatality.py::estimate_loss_of_life_jonkman` documented
+`F(d,v) = Φ((ln(d·v) − μ)/σ)` — Jonkman's log-normal — and has never computed
+it. The body is a saturating exponential in the depth-velocity product with four
+shape constants and two caps that come from nowhere.
+
+- It is renamed **`estimate_loss_of_life_depth_velocity`**, and returns `model`
+  and `model_is_published: False` so a report cannot misattribute it by reading
+  the key it arrived under. The old name survives as a `DeprecationWarning`
+  alias, because renaming a public function is not worth breaking callers over.
+- The real model is present in SHAPE as `estimate_loss_of_life_jonkman_2008` and
+  **quarantined behind `JONKMAN_2008_VERIFIED = False`**, exactly as
+  `natural_dam.py` quarantines Walder & O'Connor and Peng & Zhang. Each hazard
+  zone has its own (μ, σ); applying the wrong pair changes a casualty estimate
+  by an order of magnitude while still producing a plausible number.
+- **DeKay & McClelland (1993) is absent.** It was cited in the module docstring
+  for a long time and never implemented (verification row 11). The docstring now
+  says so. Quote Graham (1999) for a defensible figure; the depth-velocity form
+  is an ordering of cells by hazard, not a casualty count. Verification row 32.
+
+## Flood water must be able to leave the domain
+
+A 24 h Khadakwasla run once peaked at t ~ 17,876 s and then never receded — 46
+cells stuck at SEVERE for the last 7.5 simulated hours, ~42% of released volume
+permanently trapped. None of it was hydraulics. Three defaults now exist because
+of it, and turning any of them off brings the plateau back. Full measurement in
+`docs/validation_findings.md` §8.
+
+- **`notch_breach=True` — a failed dam must have an actual gap.**
+  `inject_breach_hydrograph` only ADDS depth at one cell: a source term with no
+  momentum direction, on a bed where the DEM's intact crest still stands. Water
+  spreading back upstream lands in the real reservoir bowl and sits there.
+  `run.py::_notch_breach_into_bed` lowers the bed to the dam-height invert
+  (crest minus `height_m` — the one breach-geometry number every member carries,
+  and what Froehlich / Von Thun assume for a full-depth breach), clamped never to
+  dig below the local terrain floor just outside the footprint, so it can only
+  open a path to terrain that already exists. `height_m` is a fixed ensemble
+  input, so there is ONE notch shared by every member, like the terrain itself.
+- **`fill_max_depth_m=3.0` — fills resampling noise, NOT real basins.** Bilinear
+  downsampling of a narrow channel manufactures local minima that exist only in
+  the resampled raster, and the solver's own water pools in them forever. The
+  fill is a priority-flood seeded from the DOMAIN BOUNDARY — the transmissive
+  boundary is the only place water can actually exit, so it is the only valid
+  sea level — with the raise per cell then CAPPED. A one-metre pit fills
+  completely; a reservoir bowl keeps standing at nearly its original depth. Do
+  not raise this to "guarantee drainage": erasing genuine terrain hides the
+  defect behind a nicer graph.
+- **`domain_margins_km` — a dam-centred square is the wrong shape.** A 54 km box
+  on Khadakwasla spends half its cells on the Western Ghats and the Arabian Sea
+  while the flood runs east down the Mutha to the Bhima. The asymmetric extent
+  (`load_dem_as_grid(margins_km=...)`, `RunRequest.domain_margins_km`) biases the
+  domain downstream. It is a PER-REQUEST override — `presets.py` still gives
+  every default Khadakwasla run, dashboard demo included, the same 27 km
+  dam-centred square. The cached DEM was widened to 240 x 188 km as a superset,
+  so nothing that worked before stopped working.
+
+**Long runs belong in `scripts/`, not `POST /runs`.** An API-submitted run
+executes in a subprocess spawned by the server and dies with it — three runs
+were lost that way in one session, each discarding hours of compute, because
+`run_ensemble` returns every member at once and writes nothing per-member.
+`scripts/run_khadakwasla_drainage_check.py` calls the same pipeline directly and
+survives the server restarting. Its 24 h confirmation run has NOT completed, so
+the plateau is fixed in mechanism but not yet re-measured.
+
 ## ParaView Visualization Pipeline — Model/Effort Routing
 
 The ParaView sub-project (`paraview/`, `tools/paraview/`) builds a DEM →
@@ -445,6 +621,22 @@ don't get confused.
 As of this writing: Phase 3 (static water) sign-off is done for both dams —
 `paraview/artifacts/phase3_reservoir.png` (Tehri) and
 `paraview/artifacts/phase3_khadakwasla_reservoir.png` (Khadakwasla) are both
-rendered and confirmed correct. Phase 7 (static export, `render_static.py`)
-is also done and dam-agnostic. Phases 6, 8, and 9 remain unbuilt — see
-`paraview/IMPLEMENTATION_PLAN.md` for the authoritative, per-phase checklist.
+rendered and confirmed correct. Phase 7 (static export, `render_static.py`) is
+done and dam-agnostic. **Phase 8 (video export) is now built** —
+`paraview/render_animation.py`, artifacts `flood_simulation.mp4` (synthetic) and
+`tehri_flood.mp4` (real solver). Phase 9's Python-side decimation was already in
+place upstream and its interactive-GUI LOD half is deliberately not built.
+`paraview/IMPLEMENTATION_PLAN.md` is the authoritative per-phase checklist.
+
+**Two things about the video path are worth not rediscovering.** `PlayMode =
+"Sequence"` moves the animation clock smoothly, but a READER does not
+interpolate in time — asked for a moment between two stored steps it returns the
+nearer one — so 60 frames over 30 timesteps came back as 30 byte-identical
+PAIRS. ParaView's own `TemporalInterpolator` is the fix, so Section 18's ban on
+hand-written frame interpolation still holds. And `frames == timesteps` is NOT
+a safe case: Sequence resamples onto EVENLY spaced times while solver timesteps
+are unevenly spaced under adaptive CFL, so 30 frames from 30 steps still
+collided at index 14/15 and skipped another step. Interpolation therefore
+defaults ON at every frame count. `tests/test_paraview_animation.py` hashes
+frames rather than checking that files exist, which is the only way either
+defect is visible — both produced a complete, playable, wrong video.

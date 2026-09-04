@@ -25,6 +25,10 @@ from scipy.ndimage import gaussian_filter, distance_transform_edt
 from scipy.interpolate import RegularGridInterpolator
 
 from jalraksha.solver.types import Grid, State, create_state
+from jalraksha.terrain.roughness import (
+    DEFAULT_MANNING_N,
+    assign_manning_from_worldcover,
+)
 
 
 def _fill_nodata(elevation: np.ndarray, invalid_mask: np.ndarray) -> np.ndarray:
@@ -295,6 +299,7 @@ def preprocess_dem(
     dam_lat: float = None,
     dam_lon: float = None,
     domain_radius_km: float = 60.0,
+    worldcover_path: str = None,
 ) -> tuple:
     """
     Load and preprocess DEM for solver domain.
@@ -302,9 +307,13 @@ def preprocess_dem(
     Args:
         dem_path: Path to GeoTIFF DEM (from Phase 0 cache)
         target_resolution: Target grid resolution in metres (default 200 m)
-        manning_table: Manning's n lookup table (from roughness.py)
+        manning_table: ESA WorldCover class code -> Manning's n (from
+            roughness.py). Requires worldcover_path; passing it alone raises,
+            because a class-code table cannot be applied with no classes.
         dam_lat, dam_lon: Dam location for domain centering (optional)
         domain_radius_km: Domain extent from dam center (default 60 km)
+        worldcover_path: ESA WorldCover GeoTIFF. When given, the Manning field
+            varies with land cover instead of being a single number.
 
     Returns:
         (grid, state, manning_n_field): Grid in metric CRS, initial State with a
@@ -344,7 +353,9 @@ def preprocess_dem(
             # UTM grid would be wrong twice over — there is no dam location to
             # centre on, and the coordinates are metres already.
             grid, bed_elevation = _grid_from_projected_dem(dem_path, target_resolution)
-            return _finish_domain(grid, bed_elevation)
+            return _finish_domain(
+                grid, bed_elevation, manning_table, worldcover_path
+            )
 
     grid, bed_elevation = load_dem_as_grid(
         dem_path,
@@ -353,7 +364,7 @@ def preprocess_dem(
         target_resolution=target_resolution,
         domain_radius_km=domain_radius_km,
     )
-    return _finish_domain(grid, bed_elevation)
+    return _finish_domain(grid, bed_elevation, manning_table, worldcover_path)
 
 
 def _grid_from_projected_dem(dem_path: str, target_resolution: float) -> tuple:
@@ -396,13 +407,42 @@ def _grid_from_projected_dem(dem_path: str, target_resolution: float) -> tuple:
     return grid, np.ascontiguousarray(np.flipud(destination), dtype=np.float64)
 
 
-def _finish_domain(grid: Grid, bed_elevation: np.ndarray) -> tuple:
-    """Wrap a (grid, bed) pair into the (grid, state, manning) triple."""
+def _finish_domain(
+    grid: Grid,
+    bed_elevation: np.ndarray,
+    manning_table: dict = None,
+    worldcover_path: str = None,
+) -> tuple:
+    """
+    Wrap a (grid, bed) pair into the (grid, state, manning) triple.
 
-    # TODO: UNVETTED — uniform 0.03 until terrain/roughness.py returns a real
-    # ESA WorldCover field; 0.03 is a conventional natural-channel value
-    # (Chow 1959, Table 5-6).
-    manning_n_field = np.full((grid.ny, grid.nx), 0.03, dtype=np.float64)
+    The Manning field is land-cover-derived when a WorldCover raster is given
+    and uniform otherwise. A ``manning_table`` supplied WITHOUT that raster
+    raises: the table maps class codes to roughness, so with no classes to map
+    it cannot change anything, and accepting it silently is exactly the no-op
+    this signature used to have (a table was accepted three call levels up and
+    dropped here).
+    """
+    if manning_table is not None and worldcover_path is None:
+        raise ValueError(
+            "manning_table maps ESA WorldCover class codes to Manning's n, so "
+            "it does nothing without a land-cover raster to read those classes "
+            "from. Pass worldcover_path as well, or omit manning_table and take "
+            f"the uniform default of {DEFAULT_MANNING_N}. This used to be "
+            "accepted and silently ignored, which is why it now raises."
+        )
+
+    if worldcover_path is not None:
+        manning_n_field = assign_manning_from_worldcover(
+            worldcover_path, grid, manning_table=manning_table
+        )
+    else:
+        # Uniform fallback. 0.03 is a conventional natural-channel value
+        # (Chow 1959, Table 5-6) and is honest about being one number for the
+        # whole domain; roughness.MANNING_TABLE_ESA is what varies it.
+        manning_n_field = np.full(
+            (grid.ny, grid.nx), DEFAULT_MANNING_N, dtype=np.float64
+        )
 
     # Dry bed: depth in h, elevation in b.
     state = create_state(
@@ -509,6 +549,7 @@ def build_domain_state(
     grid: Grid,
     dem_path: str,
     manning_table: dict = None,
+    worldcover_path: str = None,
 ) -> tuple:
     """
     High-level wrapper to build domain State from DEM.
@@ -516,7 +557,10 @@ def build_domain_state(
     Args:
         grid: Target grid (from domain.py)
         dem_path: Path to DEM GeoTIFF (from cache)
-        manning_table: Manning's n lookup table
+        manning_table: ESA WorldCover class code -> Manning's n. Requires
+            worldcover_path; this argument was previously accepted here, passed
+            down one level, and discarded.
+        worldcover_path: ESA WorldCover GeoTIFF for a land-cover-derived field.
 
     Returns:
         (state, manning_field): Initial state and Manning's n field for all cells
@@ -525,6 +569,7 @@ def build_domain_state(
         dem_path,
         target_resolution=grid.dx,
         manning_table=manning_table,
+        worldcover_path=worldcover_path,
     )
 
     return state, manning_field

@@ -257,6 +257,51 @@ class TestTransmissiveDrainage:
             f"pits -- water that should exit is not exiting."
         )
 
+        # The solver's own outflow accumulator must AGREE with the volume drop
+        # measured here. Tying the two together is the point: the accumulator is
+        # what a production run reports, and this test is the only place its
+        # answer is checked against an independently computed one.
+        exited = solver.volume_exited_m3
+        assert exited == pytest.approx(volume_init - volume_final, rel=1e-6), (
+            f"solver reports {exited:.3f} m3 exited but the domain lost "
+            f"{volume_init - volume_final:.3f} m3 -- the accumulator and the "
+            f"volume balance disagree."
+        )
+        assert exited / volume_init > 0.99
+
+    @pytest.mark.blocking
+    def test_a_closed_box_reports_no_outflow(self):
+        """
+        The other half of the accumulator's contract, and the one that catches
+        it silently reporting drift as drainage.
+
+        With reflective walls the mass flux through the boundary is identically
+        zero, so volume_exited_m3 must be ~0. If it is not, the accumulator is
+        measuring the scheme's own conservation error and every "X% of volume
+        left the domain" claim built on it is inflated by that amount.
+        """
+        grid = Grid(nx=40, ny=40, dx=20.0, dy=20.0)
+        xx, _ = grid.cell_centres_2d()
+        h_init = np.where(xx < grid.x0 + grid.nx * grid.dx * 0.5, 2.0, 0.5)
+
+        state = create_state(grid, h_init, b_init=np.zeros((grid.ny, grid.nx)))
+        volume_init = state.volume * grid.area
+
+        solver = SWESolver(grid, manning_n=0.03, cfl=0.9, boundary="reflective")
+        for _ in range(500):
+            state = solver.step(state)
+
+        assert float(np.max(state.speed)) > 0.1, "closed-box test did not actually move"
+
+        leaked = abs(solver.volume_exited_m3) / volume_init
+        print(f"Closed box: accumulator reports {leaked * 100:.6f}% of volume 'exited'")
+        assert leaked < 1e-3, (
+            f"A reflective box reports {leaked * 100:.4f}% of its volume leaving "
+            f"through walls that pass identically zero flux. The outflow "
+            f"accumulator is picking up discretisation drift and would overstate "
+            f"drainage in a transmissive run."
+        )
+
 
 # ======================================================================
 # Blocking gate 3: dry-bed robustness

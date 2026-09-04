@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-09-03T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="JalRaksha Multi-Hazard Workflow" id="jalraksha-multihazard">
+    <mxGraphModel dx="2200" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ================= TITLE ================= -->
+        <mxCell id="title" value="JalRaksha — Multi-Hazard Flood Simulation Workflow" style="text;html=1;fontSize=30;fontStyle=1;align=left;verticalAlign=middle;fontColor=#1F3A54;" vertex="1" parent="1">
+          <mxGeometry x="140" y="35" width="1200" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Dam Breach + River Blockage branches with continuous satellite change-detection loop" style="text;html=1;fontSize=15;align=left;verticalAlign=middle;fontColor=#6B7A8A;" vertex="1" parent="1">
+          <mxGeometry x="140" y="80" width="1200" height="26" as="geometry" />
+        </mxCell>
+
+        <!-- ================= STAGE BANDS ================= -->
+        <mxCell id="band1" value="STAGE 1 — TRIGGER &amp; INPUT          |          STAGE 2 — VALIDATION &amp; HAZARD CLASSIFICATION" style="rounded=1;arcSize=3;html=1;fillColor=#F7F9FB;strokeColor=#D6DEE6;dashed=1;verticalAlign=top;align=center;fontSize=13;fontStyle=1;fontColor=#8A98A6;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="150" width="2020" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="band2" value="STAGE 3 — HAZARD-SPECIFIC MODELING          |          STAGE 4 — HYDRAULIC SIMULATION" style="rounded=1;arcSize=3;html=1;fillColor=#F7F9FB;strokeColor=#D6DEE6;dashed=1;verticalAlign=top;align=center;fontSize=13;fontStyle=1;fontColor=#8A98A6;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="700" width="2020" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="band3" value="STAGE 5 — VALIDATION &amp; SATELLITE CROSS-CHECK          |          STAGE 6 — OUTPUT &amp; CONTINUOUS MONITORING" style="rounded=1;arcSize=3;html=1;fillColor=#F7F9FB;strokeColor=#D6DEE6;dashed=1;verticalAlign=top;align=center;fontSize=13;fontStyle=1;fontColor=#8A98A6;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="1300" width="2020" height="470" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 1 — STAGE 1 ================= -->
+        <mxCell id="start" value="START&#10;Simulation Initiated" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=13;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="200" y="330" width="150" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="manualTrigger" value="Manual Trigger&#10;User opens Web Dashboard,&#10;inputs location, hazard type,&#10;domain boundaries." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="400" y="195" width="175" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="satMonitor" value="Satellite Monitoring Service&#10;Continuous background process" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="400" y="430" width="175" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fetchImagery" value="Fetch Imagery&#10;Sentinel-1 SAR / Sentinel-2&#10;via Google Earth Engine." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="630" y="430" width="175" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="changeDetect" value="Change Detection Engine&#10;Compare current scene&#10;against baseline reference." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="860" y="430" width="180" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sigChange" value="Significant&#10;Change?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="420" width="130" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 1 — STAGE 2 ================= -->
+        <mxCell id="api" value="REST API&#10;Receives Request" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="320" width="170" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inputValid" value="Input Valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="300" width="145" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="returnError" value="Return Error&#10;to Dashboard" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1512" y="480" width="140" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hazardType" value="Hazard Type?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1720" y="300" width="155" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 2 — STAGE 3A DAM BREACH ================= -->
+        <mxCell id="fetchDataDam" value="Fetch External Data&#10;Copernicus DEM, ESA&#10;WorldCover, CWC records." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="200" y="770" width="185" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="breachRegression" value="Breach Regression Analysis&#10;Wahl 2004 + Monte Carlo.&#10;Outputs breach width, depth,&#10;formation-time distributions." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="440" y="765" width="195" height="95" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 2 — STAGE 3B RIVER BLOCKAGE (NEW) ================= -->
+        <mxCell id="fetchDataRiver" value="Fetch Data + SAR Imagery&#10;Copernicus DEM for valley&#10;geometry, Sentinel-1 SAR for&#10;blockage extent." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1010" width="185" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="blockageGeom" value="Blockage Geometry Extraction&#10;Detect obstruction footprint,&#10;estimate debris volume via DEM&#10;differencing, classify type." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1010" width="195" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="impoundment" value="Impoundment Growth Model&#10;Upstream accumulation rate,&#10;time-to-overtopping, reservoir&#10;volume at failure threshold." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="690" y="1010" width="195" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="failureMode" value="Blockage&#10;Failure Mode?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="940" y="1000" width="145" height="118" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 2 — STAGE 4 ================= -->
+        <mxCell id="scaleDecision" value="Simulation&#10;Scale?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="855" width="145" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sph" value="3D SPH Solver (Phase 1)&#10;Near-field violent free-surface,&#10;terrain interaction." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="740" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swe" value="2D SWE Solver (Phase 2)&#10;Far-field long-range flood&#10;propagation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="1000" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ensemble" value="Ensemble Engine Aggregation&#10;100 Monte Carlo members,&#10;uncertainty propagation,&#10;p5 / p50 / p95 statistics." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1610" y="865" width="195" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 3 — STAGE 5 ================= -->
+        <mxCell id="validationSuite" value="Validation Suite Check&#10;Ritter RMSE (dry-bed),&#10;Stoker wet-bed validation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1430" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="satCrossCheck" value="Satellite Cross-Check&#10;Post-event SAR flood extent vs&#10;simulated extent. Compute CSI&#10;and F1 agreement metrics." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1425" width="195" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="valPassed" value="Validation&#10;Passed?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="675" y="1418" width="145" height="112" as="geometry" />
+        </mxCell>
+
+        <!-- ================= ROW 3 — STAGE 6 ================= -->
+        <mxCell id="exportEngine" value="Export Engine Processing&#10;GeoTIFF, Shapefile, KML,&#10;XDMF, HDF5." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="875" y="1430" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="impact" value="Impact Assessment&#10;Population at risk (GHSL),&#10;damage estimate, arrival times." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1430" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="storeResults" value="Store Results&#10;Cache to database and&#10;project storage." style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;fontColor=#1A1A1A;boundedLbl=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="1425" width="155" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dashboard" value="Return to Dashboard&#10;2D map (Leaflet), 3D globe&#10;(Cesium), time animation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="1430" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="contMonitor" value="Continuous&#10;Monitoring&#10;Enabled?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1760" y="1418" width="155" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end" value="END&#10;Simulation Complete" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=13;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="1970" y="1440" width="155" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LEGEND ================= -->
+        <mxCell id="legendBox" value="" style="rounded=1;arcSize=3;html=1;fillColor=#FFFFFF;strokeColor=#D6DEE6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="1840" width="1320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTitle" value="LEGEND" style="text;html=1;fontSize=12;fontStyle=1;fontColor=#6B7A8A;align=left;" vertex="1" parent="1">
+          <mxGeometry x="160" y="1850" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" value="Core pipeline" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="160" y="1880" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="Satellite / monitoring (NEW)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1880" width="170" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="River blockage branch (NEW)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1880" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" value="Decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1878" width="120" height="49" as="geometry" />
+        </mxCell>
+        <mxCell id="lg5" value="Start / End / Storage" style="rounded=1;arcSize=40;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1880" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lg6" value="- - -   Automated feedback loop" style="text;html=1;fontSize=10;fontColor=#7B5EA7;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="1880" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lg7" value="Rows read left to right, top to bottom" style="text;html=1;fontSize=10;fontColor=#8A98A6;align=left;verticalAlign=middle;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1880" width="200" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EDGES — ROW 1 ================= -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="start" target="manualTrigger">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="start" target="satMonitor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="manualTrigger" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B8942E;strokeWidth=1.5;" edge="1" parent="1" source="satMonitor" target="fetchImagery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B8942E;strokeWidth=1.5;" edge="1" parent="1" source="fetchImagery" target="changeDetect">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B8942E;strokeWidth=1.5;" edge="1" parent="1" source="changeDetect" target="sigChange">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="No — keep watching" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#B8942E;strokeColor=#B8942E;dashed=1;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="sigChange" target="satMonitor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1155" y="580" />
+              <mxPoint x="487" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="Yes — auto-request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#B8942E;strokeColor=#B8942E;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" edge="1" parent="1" source="sigChange" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="api" target="inputValid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#B85450;strokeColor=#B85450;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="inputValid" target="returnError">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B85450;strokeWidth=1.5;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="returnError" target="manualTrigger">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1250" y="512" />
+              <mxPoint x="1250" y="170" />
+              <mxPoint x="487" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#D79B00;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="inputValid" target="hazardType">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ ROW 1 → ROW 2 WRAP CONNECTORS ============ -->
+        <mxCell id="e13" value="Dam Breach" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;fontStyle=1;fontColor=#6C8EBF;strokeColor=#6C8EBF;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hazardType" target="fetchDataDam">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2100" y="355" />
+              <mxPoint x="2100" y="645" />
+              <mxPoint x="175" y="645" />
+              <mxPoint x="175" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="River Blockage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;fontStyle=1;fontColor=#9673A6;strokeColor=#9673A6;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hazardType" target="fetchDataRiver">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1797" y="678" />
+              <mxPoint x="160" y="678" />
+              <mxPoint x="160" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ================= EDGES — ROW 2 ================= -->
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6C8EBF;strokeWidth=1.5;" edge="1" parent="1" source="fetchDataDam" target="breachRegression">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6C8EBF;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="breachRegression" target="scaleDecision">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1222" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673A6;strokeWidth=1.5;" edge="1" parent="1" source="fetchDataRiver" target="blockageGeom">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673A6;strokeWidth=1.5;" edge="1" parent="1" source="blockageGeom" target="impoundment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673A6;strokeWidth=1.5;" edge="1" parent="1" source="impoundment" target="failureMode">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="Overtopping / Piping" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#9673A6;strokeColor=#9673A6;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="failureMode" target="scaleDecision">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1222" y="1059" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" value="Stable — flag as monitored hazard,&#10;skip simulation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#9673A6;strokeColor=#9673A6;strokeWidth=1.5;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="failureMode" target="exportEngine">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1012" y="1180" />
+              <mxPoint x="965" y="1180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e22" value="Near-field" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#D79B00;strokeColor=#4D6B84;strokeWidth=1.5;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="scaleDecision" target="sph">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" value="Far-field" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#D79B00;strokeColor=#4D6B84;strokeWidth=1.5;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="scaleDecision" target="swe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="sph" target="ensemble">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="swe" target="ensemble">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ ROW 2 → ROW 3 WRAP CONNECTOR ============ -->
+        <mxCell id="e26" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ensemble" target="validationSuite">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2100" y="915" />
+              <mxPoint x="2100" y="1265" />
+              <mxPoint x="175" y="1265" />
+              <mxPoint x="175" y="1475" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ================= EDGES — ROW 3 ================= -->
+        <mxCell id="e27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="validationSuite" target="satCrossCheck">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="satCrossCheck" target="valPassed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" value="No — re-run with&#10;adjusted parameters" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#B85450;strokeColor=#B85450;strokeWidth=1.5;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="valPassed" target="breachRegression">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="747" y="1330" />
+              <mxPoint x="410" y="1330" />
+              <mxPoint x="410" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e30" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#D79B00;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="valPassed" target="exportEngine">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="exportEngine" target="impact">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e32" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="impact" target="storeResults">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e33" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="storeResults" target="dashboard">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e34" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="dashboard" target="contMonitor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e35" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;fontColor=#D79B00;strokeColor=#4D6B84;strokeWidth=1.5;" edge="1" parent="1" source="contMonitor" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CLOSED-LOOP FEEDBACK ============ -->
+        <mxCell id="e36" value="Yes — register scene for continuous satellite monitoring (closed loop)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;fontStyle=1;fontColor=#7B5EA7;strokeColor=#7B5EA7;strokeWidth=2.5;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="contMonitor" target="satMonitor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1837" y="1800" />
+              <mxPoint x="70" y="1800" />
+              <mxPoint x="70" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

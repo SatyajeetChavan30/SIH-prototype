@@ -69,6 +69,11 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 
 from jalraksha.gee.auth import gee_status
+from jalraksha.gee.terrain_correction import (
+    describe_refusal as describe_geometry_refusal,
+    earth_engine_validity_mask,
+    geometry_provenance,
+)
 
 #: Sentinel-1 Ground Range Detected, the analysis-ready EE collection.
 S1_COLLECTION = "COPERNICUS/S1_GRD"
@@ -227,9 +232,15 @@ JRC_PERMANENT_OCCURRENCE_PCT = 80
 #:
 #: TODO: UNVETTED — 0.5 separates the two measured cases (0.010 vs 0.77) with
 #: wide margin, but it is a working threshold, not one taken from a publication.
-#: Terrain-corrected local-incidence-angle masking (Small 2011) is the
-#: documented way to make steep terrain workable and is not implemented here.
 #: Spec section 17 verification queue.
+#:
+#: The gate now runs AFTER terrain correction, not instead of it. Shadow and
+#: layover pixels are excluded by `terrain_correction.earth_engine_validity_mask`
+#: before any histogram is derived, which removes the mechanism that produced
+#: the 0.010 measurement (dark sensor-averted slopes entering the water class).
+#: This threshold stays, because geometry masking does not make a mask correct —
+#: it removes one known way of being wrong — and an independent reference check
+#: is still the thing that decides whether a mask is published.
 MIN_JRC_PRECISION = 0.5
 
 
@@ -402,7 +413,21 @@ def _fetch_live(reach: str, bbox: Tuple[float, float, float, float],
         acquired_ms / 1000.0, tz=_dt.timezone.utc).isoformat()
     scene_id = scene.get("system:index").getInfo()
 
-    vv = scene.select("VV").clip(region)
+    vv_raw = scene.select("VV").clip(region)
+
+    # TERRAIN CORRECTION FIRST. A slope facing away from the sensor is dark for
+    # a geometric reason, and a histogram that contains it cannot tell that
+    # darkness from water — measured at 63% of the Baige gorge classified as
+    # water, and precision 0.010 over Tehri. Excluding shadow and layover before
+    # the histogram is derived is the documented remedy (Small 2011, geometric
+    # half). See jalraksha/gee/terrain_correction.py and VERIFICATION_LOG row 29.
+    geometry = earth_engine_validity_mask(scene, region, scale_m)
+    if not geometry["passes_geometry"]:
+        raise SarUnavailableError(describe_geometry_refusal(geometry, reach))
+
+    # Everything downstream sees only the interpretable pixels: the histogram
+    # the threshold comes from, the mask it produces, and the raster delivered.
+    vv = vv_raw.updateMask(geometry["valid"])
 
     # Split-based threshold: per-tile histograms, then Otsu only on the tiles
     # that are genuinely bimodal. See the module docstring for why the
@@ -444,7 +469,14 @@ def _fetch_live(reach: str, bbox: Tuple[float, float, float, float],
         ) from exc
     threshold_db = derivation["threshold_db"]
 
-    water = vv.lt(threshold_db).rename("water").toByte().clip(region)
+    # updateMask again rather than relying on vv carrying it: toByte() on a
+    # masked image yields 0 outside the mask, and an unmasked 0 would be
+    # published as "observed land" over ground that was never observed.
+    water = (
+        vv.lt(threshold_db)
+        .updateMask(geometry["valid"])
+        .rename("water").toByte().clip(region)
+    )
 
     fraction = water.reduceRegion(
         reducer=ee.Reducer.mean(), geometry=region, scale=scale_m,
@@ -534,6 +566,7 @@ def _fetch_live(reach: str, bbox: Tuple[float, float, float, float],
         "bbox": list(bbox),
         "scale_m": scale_m,
         "orbit_pass": properties.get("orbitProperties_pass"),
+        **geometry_provenance(geometry),
         "geotiff_path": str(geotiff),
         "png_path": str(png),
         "fetched_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),

@@ -658,6 +658,49 @@ function DetectionResult({ detection, onUseManual }) {
             window, {(detection.fraction_near_drainage * 100)?.toFixed(0)}% of it
             on a watercourse
           </div>
+          {detection.largest_component_m2 != null && (
+            <div>
+              Largest connected patch:{" "}
+              {(detection.largest_component_m2 / 1e6).toFixed(2)} km&sup2;
+              {detection.lake_mean_slope_deg != null && (
+                <> · ground beneath it: {detection.lake_elevation_spread_m?.toFixed(1)} m
+                  spread at {detection.lake_mean_slope_deg?.toFixed(1)}&deg; mean slope</>
+              )}
+            </div>
+          )}
+          {/*
+            The terrain correction is stated, not assumed. A mask derived over a
+            window that was 60% radar shadow and one derived over open ground are
+            different claims, and the whole reason this detector refused every
+            mountain reach was that nothing distinguished them. "Geometry-masked"
+            is deliberate wording: shadow and layover pixels are EXCLUDED, not
+            radiometrically flattened to gamma-nought, and the label must not
+            imply the half that is not built.
+          */}
+          {detection.terrain_correction && (
+            <div style={{ marginTop: 3, opacity: 0.85 }}>
+              Geometry-masked (not terrain-flattened):{" "}
+              {((detection.geometry_valid_fraction ?? 0) * 100).toFixed(0)}% of the
+              window usable —{" "}
+              {((detection.geometry_shadow_fraction ?? 0) * 100).toFixed(0)}% radar
+              shadow,{" "}
+              {((detection.geometry_layover_fraction ?? 0) * 100).toFixed(0)}%
+              layover, at {detection.look_azimuth_deg?.toFixed(0)}&deg; look
+              azimuth
+              {detection.look_azimuth_source === "nominal_from_orbit_pass"
+                ? " (nominal for the orbit pass)"
+                : " (from the scene)"}
+              .
+              {detection.orbit_pass && (
+                <> Pre and post both on {detection.orbit_pass.toLowerCase()} orbit{" "}
+                  {detection.relative_orbit}
+                  {detection.pre_scenes_on_track != null &&
+                    ` (${detection.pre_scenes_on_track} pre-event scene${
+                      detection.pre_scenes_on_track === 1 ? "" : "s"} on that track)`}
+                  .</>
+              )}
+            </div>
+          )}
           <div style={{ marginTop: 3 }}>
             Confirm the barrier position below — nothing is auto-selected.
           </div>

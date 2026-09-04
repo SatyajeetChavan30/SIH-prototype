@@ -104,15 +104,33 @@ class TestDEMProcessing:
 
 
 class TestManningAssignment:
-    """Test Manning's n lookup table."""
+    """
+    Manning's n lookup, against ESA WorldCover v200's PUBLISHED legend.
 
-    def test_manning_lookup(self):
-        """Get Manning's n for ESA WorldCover class."""
-        # Test a few classes
-        assert get_manning_value(10) == 0.08  # Shrub
-        assert get_manning_value(40) == 0.06  # Urban
-        assert get_manning_value(50) == 0.01  # Bare rock
-        assert get_manning_value(70) == 0.08  # Forest
+    These assertions used to encode a legend shifted by one class — 10 as
+    "Shrub" (it is Tree cover), 40 as "Urban" (it is Cropland), 50 as "Bare
+    rock" (it is Built-up). They passed, because the table under test was
+    shifted the same way. The consequence was that built-up land, where
+    roughness is highest and matters most to an inundation footprint, was
+    assigned n = 0.01 — the value for a smooth concrete surface.
+    """
+
+    def test_manning_lookup_matches_the_published_legend(self):
+        """ESA WorldCover 10 m 2021 v200 Product User Manual, table 3."""
+        assert get_manning_value(10) == 0.100   # Tree cover
+        assert get_manning_value(30) == 0.035   # Grassland
+        assert get_manning_value(40) == 0.040   # Cropland
+        assert get_manning_value(80) == 0.030   # Permanent water bodies
+
+    def test_built_up_is_rougher_than_bare_ground(self):
+        """
+        THE DEFECT THIS PINS. Class 50 is Built-up, not bare rock. Obstructed
+        urban flow cannot be smoother than open ground, and asserting the
+        ordering catches a re-shifted legend even if the values are revised.
+        """
+        assert get_manning_value(50) > get_manning_value(60)   # built-up > bare
+        assert get_manning_value(10) > get_manning_value(30)   # trees > grass
+        assert get_manning_value(70) < get_manning_value(30)   # ice < grass
 
     def test_manning_default(self):
         """Unknown class returns default value."""
@@ -120,11 +138,17 @@ class TestManningAssignment:
         assert get_manning_value(99) == 0.03
 
     def test_manning_table_completeness(self):
-        """All ESA classes have Manning's n values."""
-        for class_code in [10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
+        """
+        Every published class has a value, INCLUDING 100 (moss and lichen),
+        which the shifted table omitted entirely.
+        """
+        for class_code in [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100]:
             value = get_manning_value(class_code)
             assert isinstance(value, (int, float))
             assert 0 < value < 0.5  # Reasonable range
+            assert value != 0.03 or class_code in (80, 100), (
+                f"class {class_code} silently fell through to the default"
+            )
 
 
 class TestDomainBuilder:

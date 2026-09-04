@@ -423,6 +423,50 @@ screening pulse and says so.
   band and no per-gauge peak depth — those fields did not exist when they were
   written, and they render as blanks. New runs are complete.
 
+## Flood water must be able to leave the domain
+
+A 24 h Khadakwasla run once peaked at t ~ 17,876 s and then never receded — 46
+cells stuck at SEVERE for the last 7.5 simulated hours, ~42% of released volume
+permanently trapped. None of it was hydraulics. Three defaults now exist because
+of it, and turning any of them off brings the plateau back. Full measurement in
+`docs/validation_findings.md` §8.
+
+- **`notch_breach=True` — a failed dam must have an actual gap.**
+  `inject_breach_hydrograph` only ADDS depth at one cell: a source term with no
+  momentum direction, on a bed where the DEM's intact crest still stands. Water
+  spreading back upstream lands in the real reservoir bowl and sits there.
+  `run.py::_notch_breach_into_bed` lowers the bed to the dam-height invert
+  (crest minus `height_m` — the one breach-geometry number every member carries,
+  and what Froehlich / Von Thun assume for a full-depth breach), clamped never to
+  dig below the local terrain floor just outside the footprint, so it can only
+  open a path to terrain that already exists. `height_m` is a fixed ensemble
+  input, so there is ONE notch shared by every member, like the terrain itself.
+- **`fill_max_depth_m=3.0` — fills resampling noise, NOT real basins.** Bilinear
+  downsampling of a narrow channel manufactures local minima that exist only in
+  the resampled raster, and the solver's own water pools in them forever. The
+  fill is a priority-flood seeded from the DOMAIN BOUNDARY — the transmissive
+  boundary is the only place water can actually exit, so it is the only valid
+  sea level — with the raise per cell then CAPPED. A one-metre pit fills
+  completely; a reservoir bowl keeps standing at nearly its original depth. Do
+  not raise this to "guarantee drainage": erasing genuine terrain hides the
+  defect behind a nicer graph.
+- **`domain_margins_km` — a dam-centred square is the wrong shape.** A 54 km box
+  on Khadakwasla spends half its cells on the Western Ghats and the Arabian Sea
+  while the flood runs east down the Mutha to the Bhima. The asymmetric extent
+  (`load_dem_as_grid(margins_km=...)`, `RunRequest.domain_margins_km`) biases the
+  domain downstream. It is a PER-REQUEST override — `presets.py` still gives
+  every default Khadakwasla run, dashboard demo included, the same 27 km
+  dam-centred square. The cached DEM was widened to 240 x 188 km as a superset,
+  so nothing that worked before stopped working.
+
+**Long runs belong in `scripts/`, not `POST /runs`.** An API-submitted run
+executes in a subprocess spawned by the server and dies with it — three runs
+were lost that way in one session, each discarding hours of compute, because
+`run_ensemble` returns every member at once and writes nothing per-member.
+`scripts/run_khadakwasla_drainage_check.py` calls the same pipeline directly and
+survives the server restarting. Its 24 h confirmation run has NOT completed, so
+the plateau is fixed in mechanism but not yet re-measured.
+
 ## ParaView Visualization Pipeline — Model/Effort Routing
 
 The ParaView sub-project (`paraview/`, `tools/paraview/`) builds a DEM →
