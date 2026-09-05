@@ -220,7 +220,7 @@ function HazardSection({ hazard }) {
       <div style={{ height: 180, marginTop: 10 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }}
                    label={{ value: "% of flooded area", angle: -90, position: "insideLeft", fontSize: 11 }} />
@@ -309,21 +309,21 @@ function num(v) {
 const S = {
   page: { padding: 16, overflowY: "auto", height: "100%" },
   h3: { margin: "0 0 12px" },
-  h4: { margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" },
+  h4: { margin: "0 0 8px", fontSize: 13, color: "#555" },
   section: { marginBottom: 22 },
   row: { display: "flex", gap: 10, flexWrap: "wrap" },
-  tile: { flex: "1 1 160px", border: "1px solid var(--border)", borderRadius: 4,
-          padding: "10px 12px", background: "var(--surface-sunken)" },
-  tileEmphasis: { borderColor: "var(--data)", background: "var(--data-soft)" },
-  tileLabel: { fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 },
+  tile: { flex: "1 1 160px", border: "1px solid #ddd", borderRadius: 4,
+          padding: "10px 12px", background: "#fafafa" },
+  tileEmphasis: { borderColor: "#1565C0", background: "#f3f8fd" },
+  tileLabel: { fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: 0.4 },
   tileValue: { fontWeight: 700, marginTop: 4 },
-  tileSub: { fontSize: 10, color: "var(--text-faint)", marginTop: 3 },
-  provenance: { fontSize: 10, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.45, maxWidth: 760 },
-  warn: { padding: "8px 10px", fontSize: 11, border: "2px solid var(--warn-border)",
-          background: "var(--warn-bg)", borderRadius: 4, color: "var(--warn-fg)" },
-  warnInline: { fontSize: 10, color: "var(--warn-fg)", marginTop: 6 },
-  gap: { padding: "8px 10px", fontSize: 11, border: "1px dashed var(--text-faint)",
-         background: "var(--surface-sunken)", borderRadius: 4, color: "var(--text-muted)",
+  tileSub: { fontSize: 10, color: "#777", marginTop: 3 },
+  provenance: { fontSize: 10, color: "#777", marginTop: 8, lineHeight: 1.45, maxWidth: 760 },
+  warn: { padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
+          background: "#fff4e5", borderRadius: 4, color: "#7a3e00" },
+  warnInline: { fontSize: 10, color: "#7a3e00", marginTop: 6 },
+  gap: { padding: "8px 10px", fontSize: 11, border: "1px dashed #999",
+         background: "#fafafa", borderRadius: 4, color: "#555",
          maxWidth: 760, lineHeight: 1.5 },
-  empty: { fontSize: 12, color: "var(--text-faint)", padding: "8px 0", maxWidth: 700, lineHeight: 1.5 },
+  empty: { fontSize: 12, color: "#777", padding: "8px 0", maxWidth: 700, lineHeight: 1.5 },
 };

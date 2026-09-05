@@ -1,31 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, ImageOverlay, CircleMarker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, ImageOverlay, CircleMarker, Tooltip } from "react-leaflet";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { DAM, GAUGES } from "../data/entities.js";
 import { getSar, resolveApiUrl } from "../api.js";
-
-/**
- * Re-measure the map when its CONTAINER changes size, not just the window.
- *
- * Leaflet installs a window-resize listener of its own, so dragging the browser
- * window has always worked. Nothing watched the container, though — and the
- * layout controls in the header (collapsing the sidebar, switching between the
- * split view and map-only) change the container while the window stays exactly
- * the same size. Without this the map keeps drawing at its old width: grey
- * bands down one side, and clicks landing at the wrong latitude because
- * Leaflet's pixel-to-coordinate transform still uses the stale size.
- */
-function ContainerResizeWatcher() {
-  const map = useMap();
-  useEffect(() => {
-    const container = map.getContainer();
-    if (!container || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => map.invalidateSize({ animate: false }));
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map]);
-  return null;
-}
 
 /**
  * 2D panel — Leaflet map consuming the SAME inundation polygons / keyframe PNGs
@@ -69,8 +46,6 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
         zoom={11}
         style={{ height: "100%", width: "100%" }}
       >
-        <ContainerResizeWatcher />
-
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
 
         {/* Observed water FIRST, so the simulated flood draws on top of it. */}
@@ -107,7 +82,7 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
           // inside Khadakwasla's domain but off its river, and a viewer reading
           // "no arrival" there deserves to see why.
           <CircleMarker key={g.name} center={[g.lat, g.lon]} radius={6}
-                        pathOptions={{ color: g.note ? "var(--warn-border)" : "blue" }}>
+                        pathOptions={{ color: g.note ? "#e65100" : "blue" }}>
             <Tooltip>
               {g.name} — {g.distance_km} km{g.river ? ` (${g.river})` : ""}
               {g.note ? <div style={{ maxWidth: 260 }}>⚠ {g.note}</div> : null}
@@ -184,27 +159,24 @@ function HazardLegend({ hazard, grid }) {
   return (
     <div style={{
       position: "absolute", bottom: 20, left: 8, zIndex: 1000,
-      // Over-map tokens, not theme tokens: this legend sits on the basemap,
-      // which is light whatever theme the app is in.
-      background: "var(--map-card-bg)", border: "1px solid var(--border-strong)",
-      color: "var(--map-card-fg)",
+      background: "rgba(255,255,255,0.94)", border: "1px solid #bbb",
       borderRadius: 4, padding: "7px 9px", fontSize: 10, lineHeight: 1.5,
       minWidth: 150,
     }}>
       <div style={{ fontWeight: 700 }}>Flood hazard (FD2320)</div>
-      <div style={{ color: "var(--map-card-muted)", marginBottom: 4 }}>share of flooded area</div>
+      <div style={{ color: "#777", marginBottom: 4 }}>share of flooded area</div>
       {rows.map((r) => (
         <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, background: r.color,
-                         border: "1px solid var(--text-faint)", flexShrink: 0 }} />
+                         border: "1px solid #999", flexShrink: 0 }} />
           <span style={{ flex: 1, textTransform: "capitalize" }}>{r.name}</span>
-          <span style={{ color: "var(--map-card-muted)" }}>
+          <span style={{ color: "#666" }}>
             {r.share < 0.5 ? "<1%" : `${Math.round(r.share)}%`}
           </span>
         </div>
       ))}
-      <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid var(--border-strong)",
-                    color: "var(--map-card-muted)" }}>
+      <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid #eee",
+                    color: "#555" }}>
         {floodedKm2 != null && (
           <div>Flooded <strong>{floodedKm2.toFixed(2)} km²</strong>
             {domainShare != null ? ` — ${domainShare.toFixed(1)}% of domain` : ""}
@@ -246,8 +218,8 @@ export function SarStatus({ sar, show, onToggle }) {
         style={{
           position: "absolute", top: 8, right: 8, zIndex: 1000,
           padding: "4px 9px", borderRadius: 4, cursor: "pointer",
-          background: "var(--map-card-bg)", border: "1px solid var(--warn-border)",
-          fontSize: 11, color: "var(--map-card-warn)", maxWidth: 260,
+          background: "rgba(255,255,255,0.94)", border: "1px solid #b0863a",
+          fontSize: 11, color: "#7a3e00", maxWidth: 260,
         }}
       >
         Sentinel-1: no usable mask for this reach ⓘ
@@ -261,9 +233,8 @@ export function SarStatus({ sar, show, onToggle }) {
       style={{
         position: "absolute", top: 8, right: 8, zIndex: 1000,
         maxWidth: 340, padding: "8px 10px", borderRadius: 4,
-        background: "var(--map-card-bg)",
-        color: "var(--map-card-fg)",
-        border: `2px solid ${unavailable ? "var(--warn-border)" : cached ? "var(--warn-border)" : "var(--data)"}`,
+        background: "rgba(255,255,255,0.94)",
+        border: `2px solid ${unavailable ? "#e65100" : cached ? "#f9a825" : "#1565C0"}`,
         fontSize: 11, lineHeight: 1.35,
       }}
     >
@@ -276,7 +247,7 @@ export function SarStatus({ sar, show, onToggle }) {
       </div>
 
       {unavailable ? (
-        <div style={{ color: "var(--map-card-warn)" }}>{sar.reason}</div>
+        <div style={{ color: "#7a3e00" }}>{sar.reason}</div>
       ) : (
         <>
           <div>
@@ -290,12 +261,12 @@ export function SarStatus({ sar, show, onToggle }) {
               ? ` · ${(sar.water_fraction * 100).toFixed(1)}% water`
               : ""}
           </div>
-          <div style={{ marginTop: 4, color: "var(--map-card-muted)" }}>
+          <div style={{ marginTop: 4, color: "#555" }}>
             This is observed <strong>water</strong> — reservoir and river included —
             not a detected flood.
           </div>
           {cached && sar.reason && (
-            <div style={{ marginTop: 4, color: "var(--map-card-warn)" }}>{sar.reason}</div>
+            <div style={{ marginTop: 4, color: "#7a5c00" }}>{sar.reason}</div>
           )}
           <label style={{ display: "block", marginTop: 6 }}>
             <input type="checkbox" checked={show} onChange={onToggle} /> Show observed layer

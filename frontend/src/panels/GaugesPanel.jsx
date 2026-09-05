@@ -111,12 +111,12 @@ export default function GaugesPanel({ result, dam }) {
  */
 function hazardClass(depth) {
   if (depth == null) return null;
-  if (depth < 0.1) return { label: "dry", bg: "var(--border)", fg: "var(--text-muted)" };
-  if (depth < 0.5) return { label: "low", bg: "var(--haz-low-bg)", fg: "var(--ok-fg)" };
-  if (depth < 2.0) return { label: "moderate", bg: "var(--haz-mod-bg)", fg: "var(--haz-mod-fg)" };
-  if (depth < 5.0) return { label: "significant", bg: "var(--haz-sig-bg)", fg: "var(--warn-fg)" };
-  if (depth < 10.0) return { label: "severe", bg: "var(--danger-bg)", fg: "var(--danger-fg)" };
-  return { label: "extreme", bg: "var(--haz-ext-bg)", fg: "var(--haz-ext-fg)" };
+  if (depth < 0.1) return { label: "dry", bg: "#eee", fg: "#555" };
+  if (depth < 0.5) return { label: "low", bg: "#e6f4e6", fg: "#1b5e20" };
+  if (depth < 2.0) return { label: "moderate", bg: "#fff8e1", fg: "#7a5b00" };
+  if (depth < 5.0) return { label: "significant", bg: "#ffe9d6", fg: "#7a3e00" };
+  if (depth < 10.0) return { label: "severe", bg: "#fdecea", fg: "#7f1d1d" };
+  return { label: "extreme", bg: "#f3e5f5", fg: "#4a148c" };
 }
 
 function fmtKm(v) {
@@ -142,7 +142,7 @@ function Td({ children, align = "left", strong, muted }) {
         ...S.td,
         textAlign: align,
         fontWeight: strong ? 700 : 400,
-        color: strong ? "var(--data)" : muted ? "var(--text-faint)" : "var(--text)",
+        color: strong ? "#1565C0" : muted ? "#888" : "#222",
       }}
     >
       {children}
@@ -153,17 +153,17 @@ function Td({ children, align = "left", strong, muted }) {
 const S = {
   page: { padding: 16, overflowY: "auto", height: "100%" },
   h3: { margin: "0 0 8px" },
-  lede: { fontSize: 12, color: "var(--text-faint)", marginBottom: 10 },
+  lede: { fontSize: 12, color: "#777", marginBottom: 10 },
   table: { width: "100%", maxWidth: 900, borderCollapse: "collapse", fontSize: 13 },
-  th: { fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-muted)",
-        borderBottom: "2px solid var(--border)", padding: "6px 8px", whiteSpace: "nowrap" },
+  th: { fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4, color: "#666",
+        borderBottom: "2px solid #ddd", padding: "6px 8px", whiteSpace: "nowrap" },
   td: { padding: "8px", verticalAlign: "top" },
-  tr: { borderBottom: "1px solid var(--border-soft)" },
-  river: { color: "var(--text-faint)", fontWeight: 400, fontSize: 11 },
-  note: { fontSize: 10, color: "var(--warn-fg)", marginTop: 3, maxWidth: 320, lineHeight: 1.4 },
+  tr: { borderBottom: "1px solid #f0f0f0" },
+  river: { color: "#888", fontWeight: 400, fontSize: 11 },
+  note: { fontSize: 10, color: "#7a3e00", marginTop: 3, maxWidth: 320, lineHeight: 1.4 },
   badge: { fontSize: 10, fontWeight: 700, borderRadius: 3, padding: "2px 7px" },
-  warn: { marginTop: 12, padding: "8px 10px", fontSize: 11, border: "2px solid var(--warn-border)",
-          background: "var(--warn-bg)", borderRadius: 4, color: "var(--warn-fg)", maxWidth: 760 },
-  footnote: { fontSize: 11, color: "var(--text-faint)", marginTop: 14, maxWidth: 760, lineHeight: 1.45 },
-  empty: { padding: 16, fontSize: 12, color: "var(--text-faint)" },
+  warn: { marginTop: 12, padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
+          background: "#fff4e5", borderRadius: 4, color: "#7a3e00", maxWidth: 760 },
+  footnote: { fontSize: 11, color: "#777", marginTop: 14, maxWidth: 760, lineHeight: 1.45 },
+  empty: { padding: 16, fontSize: 12, color: "#777" },
 };

@@ -147,7 +147,7 @@ export default function EnsemblePanel({ result }) {
         <div style={{ height: 260 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 40, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
               <XAxis
                 dataKey="name"
                 tick={{ fontSize: 11 }}
@@ -161,8 +161,8 @@ export default function EnsemblePanel({ result }) {
               />
               <Tooltip formatter={(v) => `${Number(v).toFixed(1)} min`} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="median" name="Median arrival" fill="var(--data)">
-                <ErrorBar dataKey="err" width={4} strokeWidth={1.5} stroke="var(--warn-fg)" />
+              <Bar dataKey="median" name="Median arrival" fill="#1565C0">
+                <ErrorBar dataKey="err" width={4} strokeWidth={1.5} stroke="#7a3e00" />
                 {chartData.map((entry) => (
                   <Cell key={entry.name} />
                 ))}
@@ -229,22 +229,22 @@ function Empty({ children }) {
 const S = {
   page: { padding: 16, overflowY: "auto", height: "100%" },
   h3: { margin: "0 0 12px" },
-  h4: { margin: "20px 0 8px", fontSize: 13, color: "var(--text-muted)" },
+  h4: { margin: "20px 0 8px", fontSize: 13, color: "#555" },
   row: { display: "flex", gap: 12, flexWrap: "wrap" },
   card: {
-    flex: "1 1 220px", border: "1px solid var(--border)", borderRadius: 4,
-    padding: "10px 12px", background: "var(--surface-sunken)",
+    flex: "1 1 220px", border: "1px solid #ddd", borderRadius: 4,
+    padding: "10px 12px", background: "#fafafa",
   },
-  cardTitle: { fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 },
+  cardTitle: { fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: 0.4 },
   cardValue: { fontSize: 26, fontWeight: 700, marginTop: 4 },
-  cardUnit: { fontSize: 13, fontWeight: 400, color: "var(--text-muted)" },
-  cardBand: { fontSize: 12, color: "var(--data)", marginTop: 2 },
-  cardHint: { fontSize: 10, color: "var(--text-faint)", marginTop: 6 },
-  meta: { fontSize: 12, color: "var(--text-muted)", marginTop: 10 },
-  note: { fontSize: 11, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.45, maxWidth: 760 },
+  cardUnit: { fontSize: 13, fontWeight: 400, color: "#666" },
+  cardBand: { fontSize: 12, color: "#1565C0", marginTop: 2 },
+  cardHint: { fontSize: 10, color: "#888", marginTop: 6 },
+  meta: { fontSize: 12, color: "#555", marginTop: 10 },
+  note: { fontSize: 11, color: "#777", marginTop: 8, lineHeight: 1.45, maxWidth: 760 },
   warn: {
-    padding: "8px 10px", fontSize: 11, border: "2px solid var(--warn-border)",
-    background: "var(--warn-bg)", borderRadius: 4, color: "var(--warn-fg)", marginBottom: 12,
+    padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
+    background: "#fff4e5", borderRadius: 4, color: "#7a3e00", marginBottom: 12,
   },
-  empty: { fontSize: 12, color: "var(--text-faint)", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
+  empty: { fontSize: 12, color: "#777", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
 };

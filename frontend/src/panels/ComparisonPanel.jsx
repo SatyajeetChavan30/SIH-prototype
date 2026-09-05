@@ -63,10 +63,10 @@ export default function ComparisonPanel({ runId }) {
 
       {hasComparison && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "12px 0" }}>
-          <MetricCard label="Depth Field RMSE" value={`${metrics.rmse_m?.toFixed?.(3) ?? metrics.rmse_m} m`} color="var(--chart-1)" />
-          <MetricCard label="Mass Balance Bias" value={`${metrics.bias_m} m`} color="var(--chart-2)" />
-          <MetricCard label="Critical Success Index (CSI)" value={metrics.csi} color="var(--chart-3)" />
-          <MetricCard label="Inundation Grid Overlap" value={`${metrics.overlap_pct}%`} color="var(--chart-4)" />
+          <MetricCard label="Depth Field RMSE" value={`${metrics.rmse_m?.toFixed?.(3) ?? metrics.rmse_m} m`} color="#2196f3" />
+          <MetricCard label="Mass Balance Bias" value={`${metrics.bias_m} m`} color="#ff9800" />
+          <MetricCard label="Critical Success Index (CSI)" value={metrics.csi} color="#4caf50" />
+          <MetricCard label="Inundation Grid Overlap" value={`${metrics.overlap_pct}%`} color="#9c27b0" />
         </div>
       )}
 
@@ -74,14 +74,14 @@ export default function ComparisonPanel({ runId }) {
         <>
           <h4>🌊 Near-Field SPH — what the particle run actually measured</h4>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0" }}>
-            <MetricCard label="Surge front speed" value={fmt(nearField.front_speed_m_s, "m/s")} color="var(--chart-1)" />
-            <MetricCard label="Front advance" value={fmt(nearField.front_advance_m, "m")} color="var(--chart-1)" />
-            <MetricCard label="Max near-field depth" value={fmt(nearField.max_depth_m, "m")} color="var(--chart-5)" />
-            <MetricCard label="Max near-field speed" value={fmt(nearField.max_speed_m_s, "m/s")} color="var(--chart-5)" />
-            <MetricCard label="Fluid particles" value={nearField.n_fluid?.toLocaleString?.() ?? "—"} color="var(--chart-4)" />
-            <MetricCard label="Particle spacing" value={fmt(nearField.particle_spacing_m, "m")} color="var(--chart-4)" />
+            <MetricCard label="Surge front speed" value={fmt(nearField.front_speed_m_s, "m/s")} color="#0288d1" />
+            <MetricCard label="Front advance" value={fmt(nearField.front_advance_m, "m")} color="#0288d1" />
+            <MetricCard label="Max near-field depth" value={fmt(nearField.max_depth_m, "m")} color="#00796b" />
+            <MetricCard label="Max near-field speed" value={fmt(nearField.max_speed_m_s, "m/s")} color="#00796b" />
+            <MetricCard label="Fluid particles" value={nearField.n_fluid?.toLocaleString?.() ?? "—"} color="#5e35b1" />
+            <MetricCard label="Particle spacing" value={fmt(nearField.particle_spacing_m, "m")} color="#5e35b1" />
           </div>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 820 }}>
+          <p style={{ fontSize: 12, color: "#555", maxWidth: 820 }}>
             {fmt(nearField.duration_s, "s")} of simulated time over a{" "}
             {fmt(nearField.domain_length_m, "m")} window, computed in{" "}
             {fmt(nearField.wall_clock_s, "s")}. Coupling:{" "}
@@ -111,7 +111,7 @@ export default function ComparisonPanel({ runId }) {
         <thead>
           <tr>
             {["Gauge", "SPH Arrival (min)", "Delft3D Arrival (min)", "Δ (min)", "Δ (%)", "Distance (km)"].map((h) => (
-              <th key={h} style={{ textAlign: "left", borderBottom: "1px solid var(--border-strong)", padding: 4 }}>{h}</th>
+              <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 4 }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -129,7 +129,7 @@ export default function ComparisonPanel({ runId }) {
         </tbody>
       </table>
 
-      <p style={{ fontSize: 12, marginTop: 8, color: "var(--warn-fg)" }}>
+      <p style={{ fontSize: 12, marginTop: 8, color: "#8a5a00" }}>
         ⚠ The <strong>SPH arrival column is empty by construction</strong>, not
         by omission. The near-field particle run covers a few hundred metres over
         tens of seconds; the nearest gauge is 13&nbsp;km downstream, so it cannot
@@ -139,7 +139,7 @@ export default function ComparisonPanel({ runId }) {
       </p>
 
       {data.metrics?.gauge_arrival_method === "ritter_celerity_estimate" && (
-        <p style={{ fontSize: 12, marginTop: 8, color: "var(--warn-fg)" }}>
+        <p style={{ fontSize: 12, marginTop: 8, color: "#8a5a00" }}>
           ⚠ The Delft3D-side arrival times above are a <strong>Ritter celerity
           estimate</strong> (t = distance ÷ 0.5√(gH)), not readings taken from the
           simulation. The comparison domain is 1.2 km across; the nearest gauge is
@@ -149,7 +149,7 @@ export default function ComparisonPanel({ runId }) {
       )}
 
       {data.metrics?.sph_engine && (
-        <p style={{ fontSize: 12, marginTop: 12, color: "var(--text-muted)" }}>
+        <p style={{ fontSize: 12, marginTop: 12, color: "#555" }}>
           SPH engine: <code>{data.metrics.sph_engine}</code>.
         </p>
       )}
@@ -179,9 +179,9 @@ export function SphBanner({ error, engine, nearField }) {
     <div
       role="status"
       style={{
-        border: `2px solid ${ok ? "var(--ok-border)" : "var(--warn-border)"}`,
-        background: ok ? "var(--ok-bg)" : "var(--warn-bg)",
-        color: ok ? "var(--ok-fg)" : "var(--warn-fg)",
+        border: `2px solid ${ok ? "#2e7d32" : "#e65100"}`,
+        background: ok ? "#edf7ed" : "#fff4e5",
+        color: ok ? "#1b5e20" : "#7a3e00",
         borderRadius: 4,
         padding: "10px 14px",
         margin: "12px 0",
@@ -224,9 +224,9 @@ export function SphBanner({ error, engine, nearField }) {
 export function EngineBanner({ binaryUsed, label, reason }) {
   const ok = binaryUsed === true;
   const style = {
-    border: `2px solid ${ok ? "var(--ok-border)" : "var(--warn-border)"}`,
-    background: ok ? "var(--ok-bg)" : "var(--warn-bg)",
-    color: ok ? "var(--ok-fg)" : "var(--warn-fg)",
+    border: `2px solid ${ok ? "#2e7d32" : "#e65100"}`,
+    background: ok ? "#edf7ed" : "#fff4e5",
+    color: ok ? "#1b5e20" : "#7a3e00",
     borderRadius: 4,
     padding: "10px 14px",
     margin: "12px 0",
@@ -275,5 +275,5 @@ function MetricCard({ label, value, color }) {
 }
 
 function Empty({ text }) {
-  return <div style={{ padding: 24, color: "var(--text-faint)" }}>{text}</div>;
+  return <div style={{ padding: 24, color: "#777" }}>{text}</div>;
 }

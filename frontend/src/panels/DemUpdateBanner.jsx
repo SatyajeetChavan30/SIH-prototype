@@ -30,10 +30,10 @@ export default function DemUpdateBanner({ demUpdate }) {
         // Full-width strip, not a card: it qualifies everything below it,
         // including the 3D globe, so it reads as a property of the view rather
         // than as one more note inside a panel.
-        borderBottom: "1px solid var(--warn-border)",
+        borderBottom: "1px solid #e0b070",
         borderLeft: "4px solid var(--warn-border)",
         background: "var(--warn-bg)",
-        color: "var(--warn-fg)",
+        color: "#5c3000",
         fontSize: 11,
         lineHeight: 1.5,
         flex: "0 0 auto",

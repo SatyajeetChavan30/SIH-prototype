@@ -132,7 +132,7 @@ export default function DownloadsPanel({ result }) {
   return (
     <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
       <h3>Downloads — {result.dam_name}</h3>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 680 }}>
+      <p style={{ fontSize: 12, color: "#555", maxWidth: 680 }}>
         {exports.length} products for run <code>{result.run_id}</code>. All
         coordinates are metric UTM except the KML/KMZ, which are WGS84 as the
         format requires. Tier-1 screening outputs from 30&nbsp;m Copernicus
@@ -143,15 +143,15 @@ export default function DownloadsPanel({ result }) {
       {grouped.map((group) => (
         <section key={group.id} style={{ marginTop: 20 }}>
           <h4 style={{ marginBottom: 4 }}>{group.title}</h4>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 680, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: "#666", maxWidth: 680, marginBottom: 8 }}>
             {group.blurb}
           </div>
           <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 680 }}>
             <tbody>
               {group.items.map((e) => (
-                <tr key={e.kind} style={{ borderBottom: "1px solid var(--border)" }}>
+                <tr key={e.kind} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "6px 8px 6px 0" }}>{label(e.kind)}</td>
-                  <td style={{ padding: "6px 8px", fontSize: 11, color: "var(--text-faint)" }}>
+                  <td style={{ padding: "6px 8px", fontSize: 11, color: "#888" }}>
                     {filename(e.path_or_url)}
                   </td>
                   <td style={{ padding: "6px 0", textAlign: "right" }}>
@@ -173,5 +173,5 @@ export default function DownloadsPanel({ result }) {
 }
 
 function Empty({ text }) {
-  return <div style={{ padding: 24, color: "var(--text-faint)", maxWidth: 620 }}>{text}</div>;
+  return <div style={{ padding: 24, color: "#777", maxWidth: 620 }}>{text}</div>;
 }

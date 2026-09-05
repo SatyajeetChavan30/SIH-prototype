@@ -23,7 +23,7 @@ const TARGET_RESOLUTION_M = 100;
  * disagreeing. Anything unrecognised counts as work in progress, which is the
  * safe reading: it never paints an unfinished run green.
  */
-export function statusTone(status = "") {
+function statusTone(status = "") {
   const s = status.toLowerCase();
   if (s.includes("failed") || s.startsWith("load failed")) return "status--failed";
   if (s.startsWith("done") || s.startsWith("loaded")) return "status--done";
@@ -37,7 +37,7 @@ export function statusTone(status = "") {
  * toggle, export buttons. On submit it enqueues a run and, once done, loads the
  * keyframe manifest into the shared SimulationClock so both panels animate.
  */
-export default function ControlPanel({ onRunLoaded, onDamChange, onStatusChange, result }) {
+export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   const clock = useSimulationClock();
   const [dams, setDams] = useState([]);
   // No hardcoded "tehri" default: it disagreed with the backend's own
@@ -78,12 +78,6 @@ export default function ControlPanel({ onRunLoaded, onDamChange, onStatusChange,
   // way to load a previous run used to be typing a 32-character hex id.
   const [runs, setRuns] = useState([]);
   const [gee, setGee] = useState(null);
-
-  // Report the run status upward so the header can show it too. The pill lives
-  // in this panel, and the panel can be collapsed — which is exactly what a
-  // presenter does while a run solves, and then there is nothing on screen
-  // saying whether it is still going.
-  React.useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
   React.useEffect(() => {
     listDams()
@@ -597,7 +591,7 @@ function BlockageControls({
         </label>
         <label style={{
           display: "flex", gap: 4, alignItems: "center",
-          color: geeReady ? "inherit" : "var(--text-faint)",
+          color: geeReady ? "inherit" : "#999",
         }}
           title={geeReady ? "" : (gee?.reason || "Earth Engine is not configured.")}>
           <input type="radio" checked={source === "detect"} disabled={!geeReady}
@@ -857,7 +851,7 @@ function GaugeArrivals({ gauges, damGauges }) {
               </td>
               <td className="num" style={{ paddingLeft: 8,
                            fontWeight: row.arrival_time_s != null ? 700 : 400,
-                           color: row.arrival_time_s != null ? "var(--data)" : "var(--text-faint)" }}>
+                           color: row.arrival_time_s != null ? "#1565C0" : "var(--text-faint)" }}>
                 {arrival(row.arrival_time_s)}
               </td>
             </tr>
@@ -949,14 +943,6 @@ function PlaybackControls() {
       <div className="field-head" style={{ marginTop: 2, marginBottom: 0 }}>
         <span>t = {keyframes[index]?.time_s?.toFixed(0)} s</span>
         <span className="field-value">{index + 1}/{keyframes.length}</span>
-      </div>
-      {/* The shortcuts are handled globally in App.jsx; they are advertised
-          here because playback is the only place they are useful, and an
-          undiscoverable shortcut is the same as no shortcut. */}
-      <div className="shortcut-row">
-        <span><kbd>space</kbd> play</span>
-        <span><kbd>←</kbd><kbd>→</kbd> step</span>
-        <span><kbd>1</kbd>–<kbd>9</kbd> tabs</span>
       </div>
     </div>
   );
