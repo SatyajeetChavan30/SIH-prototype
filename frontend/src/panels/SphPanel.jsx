@@ -112,7 +112,7 @@ export default function SphPanel({ result }) {
         <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={frontRows} margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="t" type="number" tick={{ fontSize: 11 }}
                      tickFormatter={(v) => v.toFixed(1)}
                      label={{ value: "time (s)", position: "insideBottom",
@@ -124,7 +124,7 @@ export default function SphPanel({ result }) {
                        labelFormatter={(v) => `t = ${Number(v).toFixed(2)} s`} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line type="monotone" dataKey="position" name="Surge front"
-                    stroke="#1565C0" strokeWidth={2} dot={false}
+                    stroke="var(--data)" strokeWidth={2} dot={false}
                     isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -145,7 +145,7 @@ export default function SphPanel({ result }) {
         <div style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
                      label={{ value: "across flow (m)", position: "insideBottom",
                               offset: -14, fontSize: 11 }} />
@@ -155,7 +155,7 @@ export default function SphPanel({ result }) {
               <ZAxis dataKey="z" range={[6, 6]} />
               <Tooltip cursor={{ strokeDasharray: "3 3" }}
                        formatter={(v) => `${Number(v).toFixed(1)} m`} />
-              <Scatter data={particles} fill="#1565C0" fillOpacity={0.45}
+              <Scatter data={particles} fill="var(--data)" fillOpacity={0.45}
                        isAnimationActive={false} />
             </ScatterChart>
           </ResponsiveContainer>
@@ -190,20 +190,20 @@ function fmt(v, digits) {
 const S = {
   page: { padding: 16, overflowY: "auto", height: "100%" },
   h3: { margin: "0 0 10px" },
-  h4: { margin: "22px 0 6px", fontSize: 13, color: "#555" },
+  h4: { margin: "22px 0 6px", fontSize: 13, color: "var(--text-muted)" },
   row: { display: "flex", gap: 10, flexWrap: "wrap" },
-  scope: { padding: "8px 10px", fontSize: 11, border: "1px solid #1565C0",
-           background: "#f3f8fd", borderRadius: 4, color: "#0d47a1",
+  scope: { padding: "8px 10px", fontSize: 11, border: "1px solid var(--data)",
+           background: "var(--data-soft)", borderRadius: 4, color: "var(--data)",
            marginBottom: 12, maxWidth: 820, lineHeight: 1.5 },
-  tile: { flex: "1 1 140px", border: "1px solid #ddd", borderRadius: 4,
-          padding: "9px 11px", background: "#fafafa" },
-  tileEmphasis: { borderColor: "#1565C0", background: "#f3f8fd" },
-  tileLabel: { fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: 0.4 },
+  tile: { flex: "1 1 140px", border: "1px solid var(--border)", borderRadius: 4,
+          padding: "9px 11px", background: "var(--surface-sunken)" },
+  tileEmphasis: { borderColor: "var(--data)", background: "var(--data-soft)" },
+  tileLabel: { fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 },
   tileValue: { fontWeight: 700, marginTop: 3 },
-  tileSub: { fontSize: 10, color: "#777", marginTop: 2 },
-  provenance: { fontSize: 10, color: "#777", marginTop: 8, lineHeight: 1.45, maxWidth: 820 },
-  note: { fontSize: 11, color: "#777", maxWidth: 820, lineHeight: 1.45, marginTop: 0 },
-  warn: { marginTop: 10, padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
-          background: "#fff4e5", borderRadius: 4, color: "#7a3e00", maxWidth: 820 },
-  empty: { fontSize: 12, color: "#777", padding: 16, maxWidth: 720, lineHeight: 1.5 },
+  tileSub: { fontSize: 10, color: "var(--text-faint)", marginTop: 2 },
+  provenance: { fontSize: 10, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.45, maxWidth: 820 },
+  note: { fontSize: 11, color: "var(--text-faint)", maxWidth: 820, lineHeight: 1.45, marginTop: 0 },
+  warn: { marginTop: 10, padding: "8px 10px", fontSize: 11, border: "2px solid var(--warn-border)",
+          background: "var(--warn-bg)", borderRadius: 4, color: "var(--warn-fg)", maxWidth: 820 },
+  empty: { fontSize: 12, color: "var(--text-faint)", padding: 16, maxWidth: 720, lineHeight: 1.5 },
 };

@@ -8,18 +8,20 @@
  * projector.
  *
  * 1. On a machine set to dark mode the page inverted HALFWAY. Form controls
- *    followed the OS, while the ~40 hardcoded light-theme colours scattered
+ *    followed the OS, while the hardcoded light-theme colours scattered
  *    through the panels (#fff4e5 warning backgrounds, #7a3e00 caveat text,
  *    #edf7ed "Earth Engine connected") did not — so the control panel rendered
- *    dark text on a dark ground and the sidebar was unreadable. `color-scheme:
- *    light` below pins the browser to the theme the panels are actually
- *    written for. That is a deliberate single-theme commitment, not an
- *    oversight: a real dark theme means re-deriving every one of those
- *    literals, and a half-inverted dashboard in front of judges is the worse
- *    failure.
+ *    dark text on a dark ground and the sidebar was unreadable.
  *
  * 2. Labels, sliders and selects ran together into one wrapped paragraph,
  *    because a <label> is inline and nothing gave the inputs any block layout.
+ *
+ * The first fix was to pin the browser to light. That has since been replaced
+ * by the real one: those 127 literals were named as tokens, the panels now
+ * reference them, and BOTH themes are complete. `color-scheme` is declared per
+ * theme so native controls follow, and the theme is chosen explicitly rather
+ * than inferred — an operator on a projector wants the theme they picked, not
+ * the one their laptop happened to be in.
  *
  * Panels keep their own inline style objects; these are the defaults beneath
  * them. Nothing here touches the flex/grid sizing in App.jsx — Leaflet and
@@ -27,13 +29,30 @@
  * those boxes is how a map ends up rendering into a 0x0 canvas.
  */
 
+/*
+ * TOKENS
+ * ------
+ * Two complete themes. Every colour a panel uses is named here and nowhere
+ * else — the panels' inline style objects reference `var(--…)`, so a theme is
+ * a token swap rather than 127 edits. That count is literal: it is how many
+ * hardcoded hex literals were in the panels before this file existed, and it
+ * is exactly why the app could not have a dark theme.
+ *
+ * Theme selection arrives as `data-theme` on <html>, written by state/theme.js
+ * — which resolves the user's "system" choice to a concrete light or dark
+ * itself, so there is exactly ONE dark block here rather than an attribute rule
+ * plus a duplicate under `prefers-color-scheme`. Two copies of a palette this
+ * size drift. Never write a colour outside these two blocks.
+ */
 :root {
   color-scheme: light;
 
   --bg: #eef2f7;
   --surface: #ffffff;
   --surface-sunken: #f6f8fb;
+  --surface-raised: #ffffff;
   --border: #dbe3ec;
+  --border-soft: #eef2f6;
   --border-strong: #c3cfdd;
 
   --text: #16202c;
@@ -46,6 +65,10 @@
   --accent-strong: #095681;
   --accent-deep: #074a6f;
   --accent-soft: #e8f2f9;
+  /* The blue that means "this number came from the solver". Distinct from
+     --accent, which means "this control is interactive". */
+  --data: #1565c0;
+  --data-soft: #f3f8fd;
 
   --ok-fg: #1b5e20;
   --ok-bg: #edf7ed;
@@ -57,14 +80,119 @@
 
   --danger-fg: #b00020;
   --danger-bg: #fdecef;
+  --danger-border: #c62828;
+  --danger-solid: #7a1f1f;
+
+  /*
+   * Depth-hazard scale. Ordered low → extreme, and the ORDER is the meaning:
+   * these classes are read side by side in the gauge table, so each step must
+   * be distinguishable from its neighbours in both themes.
+   */
+  --haz-low-bg: #e6f4e6;      --haz-low-fg: #1b5e20;
+  --haz-mod-bg: #fff8e1;      --haz-mod-fg: #7a5b00;
+  --haz-sig-bg: #ffe9d6;      --haz-sig-fg: #7a3e00;
+  --haz-sev-bg: #fdecea;      --haz-sev-fg: #b00020;
+  --haz-ext-bg: #f3e5f5;      --haz-ext-fg: #4a148c;
+
+  /* Chart series. Used by recharts through var(), so they follow the theme. */
+  --chart-1: #1565c0;
+  --chart-2: #ef6c00;
+  --chart-3: #2e7d32;
+  --chart-4: #6a1b9a;
+  --chart-5: #00838f;
+  --chart-6: #c62828;
+  --chart-grid: #e3e9f0;
+  --chart-axis: #7d8b9a;
 
   --radius: 6px;
   --radius-sm: 4px;
   --shadow-1: 0 1px 2px rgba(20, 35, 55, 0.06);
+  --shadow-2: 0 6px 20px rgba(20, 35, 55, 0.12);
+
+  /*
+   * Chrome that floats ON TOP OF THE MAP. Deliberately NOT re-declared in the
+   * dark theme: the basemap tiles and the satellite imagery under these cards
+   * are light in both themes, so a card that followed the theme would put pale
+   * text on a white ground and become unreadable exactly where it matters —
+   * the SAR refusal notice and the camera presets.
+   */
+  --map-card-bg: rgba(255, 255, 255, 0.94);
+  --map-card-fg: #16202c;
+  --map-card-muted: #5d6e80;
+  --map-card-warn: #7a3e00;
+
+  --header-from: #123049;
+  --header-to: #0d2436;
+  --header-text: #eaf2f8;
+  --header-sub: #8fb3cc;
 
   --font: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Roboto,
           "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, "SF Mono", monospace;
+}
+
+/*
+ * Dark theme. Not an inversion — the greys are re-picked so that the caveat
+ * colours keep their meaning: a warning has to read as a warning on a dark
+ * ground, which a lightened #fff4e5 does not.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b1219;
+  --surface: #121b24;
+  --surface-sunken: #172230;
+  --surface-raised: #18242f;
+  --border: #24323f;
+  --border-soft: #1c2732;
+  --border-strong: #334554;
+
+  --text: #e6edf3;
+  --text-muted: #a6b6c6;
+  --text-faint: #7d8fa0;
+
+  --accent: #3aa0dd;
+  --accent-strong: #6ec4f2;
+  --accent-deep: #2b86bd;
+  --accent-soft: #10293a;
+  --data: #6ab7f5;
+  --data-soft: #12283a;
+
+  --ok-fg: #86d992;
+  --ok-bg: #10241a;
+  --ok-border: #3c8f45;
+
+  --warn-fg: #ffcf94;
+  --warn-bg: #2a1d10;
+  --warn-border: #d97a26;
+
+  --danger-fg: #ff9aa5;
+  --danger-bg: #2b1218;
+  --danger-border: #c1454f;
+  --danger-solid: #8f2733;
+
+  --haz-low-bg: #10241a;      --haz-low-fg: #86d992;
+  --haz-mod-bg: #2a2410;      --haz-mod-fg: #f0d089;
+  --haz-sig-bg: #2c1d10;      --haz-sig-fg: #f5b782;
+  --haz-sev-bg: #2b1218;      --haz-sev-fg: #ff9aa5;
+  --haz-ext-bg: #241432;      --haz-ext-fg: #d9a8f0;
+
+  --chart-1: #6ab7f5;
+  --chart-2: #f0a355;
+  --chart-3: #7cc98a;
+  --chart-4: #c194e8;
+  --chart-5: #56c4cf;
+  --chart-6: #f08a92;
+  --chart-grid: #24323f;
+  --chart-axis: #8598a8;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  --header-from: #0a1a27;
+  --header-to: #07131d;
+  --header-text: #dce8f2;
+  --header-sub: #7fa3bd;
 }
 
 * { box-sizing: border-box; }
@@ -102,9 +230,9 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
   align-items: center;
   gap: 10px;
   padding: 8px 14px;
-  background: linear-gradient(180deg, #123049 0%, #0d2436 100%);
-  color: #eaf2f8;
-  border-bottom: 1px solid #08192a;
+  background: linear-gradient(180deg, var(--header-from) 0%, var(--header-to) 100%);
+  color: var(--header-text);
+  border-bottom: 1px solid var(--header-to);
   flex: 0 0 auto;
 }
 
@@ -123,7 +251,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
 
 .brand-tag {
   font-size: 10.5px;
-  color: #8fb3cc;
+  color: var(--header-sub);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -138,7 +266,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #cfe2ef;
+  color: var(--header-text);
   white-space: nowrap;
 }
 
@@ -195,7 +323,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
   font-weight: 700;
   background: var(--accent-soft);
   color: var(--accent-strong);
-  border: 1px solid #cbe0ee;
+  border: 1px solid var(--border);
 }
 .tab[aria-selected="true"] .tab-badge {
   background: var(--accent);
@@ -298,7 +426,7 @@ input:not([type]) {
 
 select:hover,
 input[type="text"]:hover,
-input[type="number"]:hover { border-color: #a9bbcd; }
+input[type="number"]:hover { border-color: var(--text-faint); }
 
 select:focus,
 input[type="text"]:focus,
@@ -353,8 +481,8 @@ button {
   cursor: pointer;
   transition: background 80ms ease, border-color 80ms ease;
 }
-button:hover:not(:disabled) { background: var(--surface-sunken); border-color: #a9bbcd; }
-button:active:not(:disabled) { background: #eaeff5; }
+button:hover:not(:disabled) { background: var(--surface-sunken); border-color: var(--text-faint); }
+button:active:not(:disabled) { background: var(--border-soft); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
@@ -374,7 +502,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   border-color: var(--accent-strong);
 }
 .btn-primary:active:not(:disabled) { background: var(--accent-deep); }
-.btn-primary:disabled { background: #9fb6c6; border-color: #9fb6c6; color: #f2f6f9; }
+.btn-primary:disabled { background: var(--border-strong); border-color: var(--border-strong); color: var(--surface); }
 
 .btn-block { width: 100%; }
 .btn-sm { font-size: 11px; padding: 3px 8px; }
@@ -390,11 +518,12 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   gap: 4px;
 }
 .map-overlay button {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--map-card-bg);
+  color: var(--map-card-fg);
   border-color: rgba(20, 35, 55, 0.28);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
-.map-overlay button:hover:not(:disabled) { background: #fff; }
+.map-overlay button:hover:not(:disabled) { background: #fff; color: var(--map-card-fg); }
 /* The camera preset you are already looking at. */
 .map-overlay button[aria-pressed="true"] {
   background: var(--accent);
@@ -433,10 +562,20 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   background: currentColor;
   flex: 0 0 auto;
 }
-.status--busy { color: var(--accent-strong); background: var(--accent-soft); border-color: #bcd9ea; }
+.status--busy { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent); }
 .status--busy::before { animation: jr-pulse 1.1s ease-in-out infinite; }
-.status--done { color: var(--ok-fg); background: var(--ok-bg); border-color: #bcdcbd; }
-.status--failed { color: var(--danger-fg); background: var(--danger-bg); border-color: #f0c2ca; }
+.status--done { color: var(--ok-fg); background: var(--ok-bg); border-color: var(--ok-border); }
+.status--failed { color: var(--danger-fg); background: var(--danger-bg); border-color: var(--danger-border); }
+
+/* The same pill in the header bar, where the surrounding ground is dark in
+   both themes and the default margin would push it out of line. */
+.status--header {
+  margin-top: 0;
+  max-width: 260px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 @keyframes jr-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
@@ -484,7 +623,7 @@ table { border-collapse: collapse; }
   padding: 3px 0;
   border-bottom: 1px solid var(--border);
 }
-.data-table td { padding: 4px 0; border-bottom: 1px solid #eef2f6; }
+.data-table td { padding: 4px 0; border-bottom: 1px solid var(--border-soft); }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td { background: var(--surface-sunken); }
 
@@ -506,9 +645,185 @@ table { border-collapse: collapse; }
 
 .sidebar::-webkit-scrollbar { width: 10px; }
 .sidebar::-webkit-scrollbar-thumb {
-  background: #cbd6e2;
+  background: var(--border-strong);
   border: 3px solid var(--surface);
   border-radius: 999px;
 }
-.sidebar::-webkit-scrollbar-thumb:hover { background: #adbccd; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
+
+/* -------------------------------------------------------------- KPI bar -- */
+
+/*
+ * The headline numbers of the loaded run, above the tabs.
+ *
+ * Every one of these already existed somewhere — arrival time in the Gauges
+ * table, peak outflow in Ensemble, population at risk in Impact — but reading
+ * them meant visiting three tabs, and a viewer who never left the first tab saw
+ * none of them. The strip is derived, never computed: each tile is a projection
+ * of a field already in the result, so it cannot disagree with the panel it
+ * came from.
+ */
+.kpi-bar {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.kpi {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: 7px 14px;
+  border-right: 1px solid var(--border);
+}
+.kpi:last-child { border-right: none; }
+
+.kpi-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A number the solver produced, as opposed to a label or a count. */
+.kpi-value--data { color: var(--data); }
+/* No figure, and that is the finding — never styled like a result. */
+.kpi-value--none { color: var(--text-faint); font-weight: 550; font-size: 13px; }
+/* A name rather than a measurement: engine labels are long and are read, not
+   compared, so they get prose sizing instead of the numeric display size. */
+.kpi-value--text { font-family: var(--font); font-size: 13.5px; font-weight: 650; }
+
+.kpi-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-sub--warn { color: var(--warn-fg); }
+
+/* --------------------------------------------------------- theme toggle -- */
+
+.theme-toggle {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.theme-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--header-sub);
+  padding: 1px 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  border-radius: 999px;
+}
+.theme-toggle button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.10); color: var(--header-text); }
+.theme-toggle button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.90);
+  color: #10222f;
+  font-weight: 650;
+}
+
+/* Header-level control that is neither a chip nor a theme switch. */
+.header-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--header-sub);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.header-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--header-text);
+}
+.header-icon-btn[aria-pressed="true"] { color: var(--header-text); }
+
+/* ------------------------------------------------------------- keyboard -- */
+
+kbd, .kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  background: var(--surface);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.shortcut-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* -------------------------------------------------------------- charts -- */
+
+/*
+ * recharts writes its axis text, legend and tooltip colours inline from its own
+ * defaults, which are fixed light-theme greys. They are overridden here rather
+ * than passed per chart: there are five chart panels and a per-chart prop would
+ * have to be remembered every time a new one is added.
+ */
+.recharts-cartesian-axis-tick text,
+.recharts-label,
+.recharts-legend-item-text {
+  fill: var(--chart-axis);
+  color: var(--chart-axis) !important;
+}
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line { stroke: var(--border-strong); }
+.recharts-cartesian-grid line { stroke: var(--chart-grid); }
+.recharts-default-tooltip {
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+  color: var(--text) !important;
+}
+.recharts-tooltip-label { color: var(--text) !important; }
+
+/* ---------------------------------------------------------------- misc -- */
+
+/* Leaflet's own chrome is authored for a light ground; in the dark theme its
+   controls and attribution keep that ground rather than being tinted, because
+   the map tiles underneath are light either way. Only the popup shell follows
+   the theme, since its text is ours. */
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+::selection { background: var(--accent); color: #fff; }

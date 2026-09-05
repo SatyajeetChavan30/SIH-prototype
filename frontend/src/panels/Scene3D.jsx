@@ -171,6 +171,22 @@ export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
     viewer.clock.currentTime = jd;
   }, [currentTimeS]);
 
+  // Cesium sizes its canvas from a window-resize listener, so a container that
+  // changes width on its own — the sidebar collapsing, or the layout switching
+  // to globe-only — leaves the canvas at its old size, stretched by CSS. The
+  // observer calls the Viewer's own resize so the render target matches.
+  const shellRef = useRef(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (viewer && !viewer.isDestroyed?.()) viewer.resize();
+    });
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, []);
+
   // Derived per dam, so the fly-to list names the towns actually on screen.
   const cameras = React.useMemo(() => camerasFor(dam, gauges), [dam, gauges]);
   const preset = cameras.find((p) => p.id === selected) || cameras[0];
@@ -232,7 +248,8 @@ export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
     // and keeps the Cesium canvas inside this pane — resium's `full` prop makes
     // the viewer fill the whole window, which covers the control panel and
     // swallows its clicks.
-    <div style={{ height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
+    <div ref={shellRef}
+         style={{ height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
       {/* Floating over satellite imagery, so the buttons carry their own
           shadow — a flat white button on a bright snowfield has no edge. */}
       <div className="map-overlay" style={{ position: "absolute", zIndex: 10,
@@ -247,7 +264,7 @@ export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
       {terrainWarning && (
         <div style={{
           position: "absolute", zIndex: 10, bottom: 30, left: 8, right: 8,
-          background: "#7a1f1f", color: "white", padding: "6px 10px",
+          background: "var(--danger-solid)", color: "white", padding: "6px 10px",
           fontSize: 12, borderRadius: 4,
         }}>
           ⚠ {terrainWarning}

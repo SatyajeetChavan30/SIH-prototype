@@ -184,11 +184,11 @@ function DemUpdateSection({ demUpdate }) {
         <tbody>
           {rows.map(([key, value]) => (
             <tr key={key}>
-              <td style={{ padding: "3px 12px 3px 0", color: "#666",
+              <td style={{ padding: "3px 12px 3px 0", color: "var(--text-muted)",
                            verticalAlign: "top", whiteSpace: "nowrap" }}>
                 {key}
               </td>
-              <td style={{ padding: "3px 0", color: "#222", wordBreak: "break-all" }}>
+              <td style={{ padding: "3px 0", color: "var(--text)", wordBreak: "break-all" }}>
                 {value ?? "—"}
               </td>
             </tr>
@@ -218,9 +218,9 @@ function DemUpdateSection({ demUpdate }) {
                          labelFormatter={(v) => `${Number(v).toFixed(1)} m`} />
                 <Legend verticalAlign="top" height={24} />
                 <Line type="monotone" dataKey="volume_mm3" name="storage (MCM)"
-                      stroke="#1565C0" dot={false} strokeWidth={2} />
+                      stroke="var(--data)" dot={false} strokeWidth={2} />
                 <Line type="monotone" dataKey="area_km2" name="surface area (km²)"
-                      stroke="#e65100" dot={false} strokeWidth={1} />
+                      stroke="var(--warn-border)" dot={false} strokeWidth={1} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -280,7 +280,7 @@ function RitterChart({ series }) {
     <div style={{ height: 320 }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={rows} margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="x"
             type="number"
@@ -297,12 +297,12 @@ function RitterChart({ series }) {
           <Legend wrapperStyle={{ fontSize: 11 }} />
           {/* Analytical drawn thickest and first so the engines overlay it. */}
           <Line type="monotone" dataKey="analytical" name="Exact (Ritter)"
-                stroke="#111" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                stroke="var(--text)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
           <Line type="monotone" dataKey="jalraksha" name="JalRaksha 2D SWE"
-                stroke="#1565C0" strokeWidth={1.6} dot={false} isAnimationActive={false} />
+                stroke="var(--data)" strokeWidth={1.6} dot={false} isAnimationActive={false} />
           {hasDelft3d && (
             <Line type="monotone" dataKey="delft3d" name="Delft3D FM"
-                  stroke="#e65100" strokeWidth={1.6} strokeDasharray="5 3"
+                  stroke="var(--warn-border)" strokeWidth={1.6} strokeDasharray="5 3"
                   dot={false} isAnimationActive={false} />
           )}
         </LineChart>
@@ -328,21 +328,21 @@ function fmtNum(v) {
 const S = {
   page: { padding: 16, overflowY: "auto", height: "100%" },
   h3: { margin: "0 0 6px" },
-  h4: { margin: "22px 0 6px", fontSize: 13, color: "#555" },
-  lede: { fontSize: 12, color: "#555", maxWidth: 760, lineHeight: 1.5, marginTop: 0 },
-  note: { fontSize: 11, color: "#777", maxWidth: 760, lineHeight: 1.45 },
-  muted: { fontSize: 11, color: "#888" },
-  check: { border: "1px solid #ddd", borderRadius: 4, padding: "10px 12px", marginBottom: 8 },
-  detail: { fontSize: 12, color: "#444", marginTop: 6, lineHeight: 1.45 },
+  h4: { margin: "22px 0 6px", fontSize: 13, color: "var(--text-muted)" },
+  lede: { fontSize: 12, color: "var(--text-muted)", maxWidth: 760, lineHeight: 1.5, marginTop: 0 },
+  note: { fontSize: 11, color: "var(--text-faint)", maxWidth: 760, lineHeight: 1.45 },
+  muted: { fontSize: 11, color: "var(--text-faint)" },
+  check: { border: "1px solid var(--border)", borderRadius: 4, padding: "10px 12px", marginBottom: 8 },
+  detail: { fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.45 },
   metrics: { display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 },
-  metric: { fontSize: 10, color: "#666" },
-  pass: { background: "#edf7ed", color: "#1b5e20", border: "1px solid #2e7d32",
+  metric: { fontSize: 10, color: "var(--text-muted)" },
+  pass: { background: "var(--ok-bg)", color: "var(--ok-fg)", border: "1px solid var(--ok-border)",
           borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  fail: { background: "#fdecea", color: "#7f1d1d", border: "1px solid #c62828",
+  fail: { background: "var(--danger-bg)", color: "var(--danger-fg)", border: "1px solid var(--danger-border)",
           borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  errBadge: { background: "#fff4e5", color: "#7a3e00", border: "1px solid #e65100",
+  errBadge: { background: "var(--warn-bg)", color: "var(--warn-fg)", border: "1px solid var(--warn-border)",
               borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  err: { padding: "8px 10px", fontSize: 12, border: "2px solid #c62828",
-         background: "#fdecea", borderRadius: 4, color: "#7f1d1d", marginBottom: 12 },
-  empty: { fontSize: 12, color: "#777", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
+  err: { padding: "8px 10px", fontSize: 12, border: "2px solid var(--danger-border)",
+         background: "var(--danger-bg)", borderRadius: 4, color: "var(--danger-fg)", marginBottom: 12 },
+  empty: { fontSize: 12, color: "var(--text-faint)", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
 };
