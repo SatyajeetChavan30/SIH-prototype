@@ -82,11 +82,40 @@ function Workspace() {
       <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
         <ControlPanel onRunLoaded={onRunLoaded} onDamChange={setSelectedDam} result={result} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <div style={{ borderBottom: "1px solid #ddd", padding: "4px 8px",
-                        display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {/*
+            A title bar, so the window says what is on screen and which run is
+            loaded. The run id was previously visible only as a fragment inside
+            the sidebar's status line, which scrolls away — and "which run am I
+            looking at" is the first question asked of any figure here.
+          */}
+          <header className="app-header">
+            <div className="brand">
+              <span className="brand-name">JalRaksha</span>
+              <span className="brand-tag">
+                Dam-break &amp; river-blockage screening · Tier-1
+              </span>
+            </div>
+            <div className="header-spacer" />
+            {dam?.name && <span className="header-chip">{dam.name}</span>}
+            {runId && <span className="header-chip">run {runId.slice(0, 8)}</span>}
+          </header>
+
+          {/*
+            role="tablist" with aria-selected, NOT `disabled` on the active tab.
+            Disabling it greyed out the one tab you were looking at and made the
+            current view read as the unavailable one.
+          */}
+          <div className="tabbar" role="tablist" aria-label="Result views">
             {tabs.map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)} disabled={tab === t.id}>
-                {t.label}{t.badge ? ` (${t.badge})` : ""}
+              <button
+                key={t.id}
+                className="tab"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+                {t.badge ? <span className="tab-badge">{t.badge}</span> : null}
               </button>
             ))}
           </div>
@@ -111,13 +140,14 @@ function Workspace() {
             whose default min-height:auto lets a self-sizing widget (Cesium)
             grow its container without bound.
           */}
-          <div style={{ flex: 1, position: "relative", minHeight: 0, minWidth: 0 }}>
+          <div style={{ flex: 1, position: "relative", minHeight: 0, minWidth: 0,
+                        background: "var(--surface)" }}>
             <Pane active={tab === "workspace"}>
               <div style={{ height: "100%", display: "grid",
                             gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr",
                             minHeight: 0 }}>
-                <div style={{ borderRight: "1px solid #ddd", minWidth: 0, minHeight: 0,
-                              overflow: "hidden" }}>
+                <div style={{ borderRight: "1px solid var(--border)", minWidth: 0,
+                              minHeight: 0, overflow: "hidden" }}>
                   <Map2D dam={dam} gauges={gauges} result={result} />
                 </div>
                 <div style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
@@ -163,6 +193,7 @@ function Workspace() {
 function Pane({ active, children }) {
   return (
     <div
+      role="tabpanel"
       aria-hidden={!active}
       style={{
         position: "absolute", inset: 0, minHeight: 0, minWidth: 0,

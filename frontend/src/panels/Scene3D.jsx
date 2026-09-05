@@ -233,9 +233,13 @@ export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
     // the viewer fill the whole window, which covers the control panel and
     // swallows its clicks.
     <div style={{ height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", zIndex: 10, top: 8, left: 8 }}>
+      {/* Floating over satellite imagery, so the buttons carry their own
+          shadow — a flat white button on a bright snowfield has no edge. */}
+      <div className="map-overlay" style={{ position: "absolute", zIndex: 10,
+                                            top: 8, left: 8, right: 44 }}>
         {cameras.map((p) => (
-          <button key={p.id} onClick={() => flyToPreset(p.id)} style={{ marginRight: 4 }}>
+          <button key={p.id} className="btn-sm" onClick={() => flyToPreset(p.id)}
+                  aria-pressed={p.id === selected}>
             {p.label}
           </button>
         ))}
