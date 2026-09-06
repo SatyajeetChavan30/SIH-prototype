@@ -529,6 +529,54 @@ class BlockageDetectionResponse(BaseModel):
     recall_of_pre_mask_vs_jrc: Optional[float] = None
     new_water_fraction: Optional[float] = None
     fraction_near_drainage: Optional[float] = None
+    # The pre-event mask's own water fraction, against MAX_PLAUSIBLE_WATER_FRACTION.
+    # A mask past that bound has had its threshold cut through the land
+    # distribution, and every number downstream of it describes noise.
+    pre_water_fraction: Optional[float] = None
+
+    # RADAR GEOMETRY (Small 2011, geometric half). A slope facing away from the
+    # sensor is dark for a reason that has nothing to do with what is on it, and
+    # no thresholding can tell that darkness from water — measured at 63% of the
+    # Baige gorge classified as water. These say how much of the window was
+    # excluded before any histogram was derived, so a reader can tell a mask
+    # over interpretable ground from one over a shadowed valley wall.
+    #
+    # "geometry_masked", NEVER "terrain_flattened": pixels are excluded, not
+    # radiometrically normalised to gamma-nought.
+    terrain_correction: Optional[str] = None
+    terrain_correction_reference: Optional[str] = None
+    geometry_valid_fraction: Optional[float] = None
+    geometry_shadow_fraction: Optional[float] = None
+    geometry_layover_fraction: Optional[float] = None
+    look_azimuth_deg: Optional[float] = None
+    # Whether the look azimuth came from the scene's own platform_heading or
+    # from the nominal heading for its orbit pass. A nominal one is good to a
+    # couple of degrees; a measured one is exact, and the difference belongs in
+    # the provenance rather than being flattened away.
+    look_azimuth_source: Optional[str] = None
+    dem_for_geometry: Optional[str] = None
+
+    # The pair of acquisitions must share a track. Ascending and descending
+    # passes illuminate opposite valley walls, so differencing across them puts
+    # a shadow-to-lit transition in the "new water" band on every slope.
+    orbit_pass: Optional[str] = None
+    relative_orbit: Optional[int] = None
+    pre_scenes_on_track: Optional[int] = None
+
+    # SIZE AND FLATNESS, the two gates that were declared and never executed.
+    # The area floor is PER CONNECTED COMPONENT, not per window: a scatter of
+    # mis-classified pixels can clear a window-total floor by 900x precisely
+    # because it is scattered, whereas a lake is one patch.
+    largest_component_m2: Optional[float] = None
+    min_component_m2: Optional[float] = None
+    # Standing water has a level surface. Measured against Copernicus GLO-30
+    # inside the Earth Engine call.
+    lake_elevation_spread_m: Optional[float] = None
+    lake_mean_slope_deg: Optional[float] = None
+    lake_mean_elevation_m: Optional[float] = None
+    passes_flatness: Optional[bool] = None
+    flatness_dem: Optional[str] = None
+
     # An independent construction of the same quantity, reported for comparison
     # rather than enforced.
     amplitude_form_fraction: Optional[float] = None

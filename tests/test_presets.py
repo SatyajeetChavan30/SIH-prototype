@@ -604,3 +604,166 @@ class TestBlockagePresets:
         assert record["height_m"] is None
         assert record["storage_mm3"] is None
         assert record["dam_type"] is None
+
+
+class TestMuthaBlockageSite:
+    """
+    The Pune-basin blockage site, which differs from Rishi Ganga in the one way
+    that matters most: nothing about it has been observed.
+
+    Rishi Ganga models a REAL 2021 blockage whose geometry is merely unmeasured.
+    No landslide dam has been recorded on the Mutha at all, so every number in
+    this preset is a scenario input. The tests below pin the labels that say so,
+    because a hypothetical site whose provenance line has been tidied away is
+    indistinguishable from a reconstruction.
+    """
+
+    def test_the_site_is_labelled_hypothetical(self):
+        from jalraksha.presets import MUTHA_TEMGHAR
+
+        assert "HYPOTHETICAL" in MUTHA_TEMGHAR.barrier_source.upper()
+        assert MUTHA_TEMGHAR.event_date is None
+
+    def test_no_detection_window_is_offered(self):
+        """
+        Detect dates would point the Sentinel-1 detector at a barrier that never
+        existed, and a refusal from it would then read as evidence about a real
+        event rather than about an imaginary one.
+        """
+        from jalraksha.presets import MUTHA_TEMGHAR
+
+        assert MUTHA_TEMGHAR.detect_date_pre is None
+        assert MUTHA_TEMGHAR.detect_date_post is None
+
+    def test_it_publishes_no_storage_crest_or_width(self):
+        from jalraksha.presets import MUTHA_TEMGHAR
+
+        config = MUTHA_TEMGHAR.to_dam_config()
+
+        assert config["scenario_type"] == "river_blockage"
+        assert config["storage_source"] == "hypsometric_fill_pending"
+        assert "storage_mm3" not in config
+        assert "height_m" not in config
+        assert "blockage_crest_height_m" not in config
+        assert "blockage_width_m" not in config
+
+    def test_the_note_carries_both_constraints_that_shape_every_result(self):
+        """
+        Temghar upstream caps the crest; Khadakwasla downstream absorbs the
+        release. Reporting an outburst from this site without either would
+        present an attenuated result as a modelling outcome rather than as the
+        consequence of an 85.31 MCM reservoir sitting in the way.
+        """
+        from jalraksha.presets import MUTHA_TEMGHAR
+
+        note = MUTHA_TEMGHAR.note
+        assert "Temghar" in note
+        assert "85.31 MCM" in note
+        assert "ATTENUATION IS THE EXPECTED RESULT" in note
+
+    def test_domain_radius_does_not_exceed_the_cached_dem(self):
+        """
+        The diagonal rule, as for Rishi Ganga: a square domain of half-width R
+        reaches R*sqrt(2) at its corners, and load_dem_as_grid fills whatever
+        falls outside the clip by nearest neighbour without complaining.
+        """
+        import math
+        from pathlib import Path
+
+        import pytest
+        import rasterio
+
+        from jalraksha.presets import MUTHA_TEMGHAR
+
+        dem = Path("data/dem") / MUTHA_TEMGHAR.dem_filename()
+        if not dem.exists():
+            pytest.skip(f"{dem} is not staged; run fetch_dem before the demo.")
+
+        with rasterio.open(dem) as src:
+            bounds = src.bounds
+
+        width_km = (bounds.right - bounds.left) * 111.32 * math.cos(
+            math.radians(MUTHA_TEMGHAR.lat)
+        )
+        height_km = (bounds.top - bounds.bottom) * 110.57
+        usable_radius_km = min(width_km, height_km) / 2.0
+        cell_km = 30.0 / 1000.0
+
+        required_km = MUTHA_TEMGHAR.domain_radius_km * math.sqrt(2.0)
+        assert required_km <= usable_radius_km + cell_km, (
+            f"A square domain of half-width {MUTHA_TEMGHAR.domain_radius_km} km "
+            f"reaches {required_km:.1f} km at its corners, but the cached DEM "
+            f"only covers {usable_radius_km:.1f} km."
+        )
+
+    def test_every_gauge_lies_inside_the_default_domain(self):
+        """
+        The Baramati failure: a gauge 91.7 km downstream of a 30 km domain
+        reports no arrival for a reason that has nothing to do with the flood.
+
+        The Mutha corridor is deliberately asymmetric, so the check is against
+        the script's own margins rather than a radius.
+        """
+        import math
+
+        from jalraksha.presets import MUTHA_TEMGHAR, get_gauges
+
+        margins = {"west": 15.0, "east": 42.0, "south": 20.0, "north": 20.0}
+        km_per_deg_lon = 111.0 * math.cos(math.radians(MUTHA_TEMGHAR.lat))
+
+        for gauge in get_gauges("mutha_temghar"):
+            east = (gauge.lon - MUTHA_TEMGHAR.lon) * km_per_deg_lon
+            north = (gauge.lat - MUTHA_TEMGHAR.lat) * 111.0
+            assert -margins["west"] <= east <= margins["east"], (
+                f"{gauge.name} is {east:.1f} km east of the barrier, outside "
+                f"the default domain."
+            )
+            assert -margins["south"] <= north <= margins["north"], (
+                f"{gauge.name} is {north:.1f} km north of the barrier, outside "
+                f"the default domain."
+            )
+
+    def test_town_gauges_state_their_height_above_the_channel(self):
+        """
+        The check that condemned Rishi Ganga's town gauges (79-1,319 m above the
+        nearest bed). Pune's pass at 5.0-20.5 m, and the measurement is recorded
+        in each note so the next person does not have to re-derive it before
+        trusting the point.
+        """
+        from jalraksha.presets import get_gauges
+
+        towns = {"Deccan Gymkhana", "Shivajinagar", "Hadapsar"}
+        found = set()
+        for gauge in get_gauges("mutha_temghar"):
+            if gauge.name in towns:
+                found.add(gauge.name)
+                assert "above the lowest bed within 600 m" in gauge.note
+
+        assert found == towns
+
+    def test_loni_kalbhor_is_not_propagated_from_the_khadakwasla_corridor(self):
+        """
+        Its published coordinate reads 660.7 m against a river at about 540 m --
+        roughly 120 m above the channel. It is listed for Khadakwasla; copying
+        it here would repeat the failure the corridor comment warns about.
+        """
+        from jalraksha.presets import get_gauges
+
+        names = {g.name for g in get_gauges("mutha_temghar")}
+        assert "Loni Kalbhor" not in names
+
+    def test_the_site_is_registered_as_a_blockage_in_the_service(self):
+        import sys
+
+        sys.path.insert(0, "services/api")
+        from jalraksha_service.config import settings
+
+        record = next(d for d in settings.DEMO_DAMS if d["id"] == "mutha_temghar")
+
+        assert record["record_type"] == "blockage"
+        assert record["scenario_types"] == ["river_blockage"]
+        assert record["height_m"] is None
+        assert record["storage_mm3"] is None
+        assert record["dam_type"] is None
+        assert record["blockage_crest_height_m"] is None
+        assert record["blockage_width_m"] is None

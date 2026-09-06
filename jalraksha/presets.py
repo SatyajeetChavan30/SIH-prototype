@@ -548,8 +548,76 @@ RISHI_GANGA = BlockagePreset(
     ),
 )
 
+MUTHA_TEMGHAR = BlockagePreset(
+    site_id="mutha_temghar",
+    name="Mutha River below Temghar, Pune",
+    # Reach centre AND the terrain-derived barrier position — they coincide
+    # here, unlike Rishi Ganga where the reach centre is a separate point.
+    # Measured on dem_18.44_73.77_clipped.tif: bed 617 m, cross-valley relief
+    # 360 m within 1.2 km, valley 1,380 m wide at bed+50 m. Verified a real
+    # channel and not a reservoir surface — 11 cells sit within 1 m of the
+    # local minimum, against 216 at the Khadakwasla backwater, which is the
+    # signature GLO-30 leaves where it has baked in a pool.
+    lat=18.4489,
+    lon=73.5878,
+    river="Mutha",
+    state="Maharashtra",
+    region="Mutha River Basin, Pune, Maharashtra",
+    # Sizes the DEM-UPDATE / lake-measurement window, not the solver domain:
+    # write_observation_conditioned_dem delta-adds onto the source raster and
+    # the updated file keeps the source's full extent. 12 km contains the ~4 km
+    # lake a default barrier impounds, and 12*sqrt(2) = 17.0 km fits inside the
+    # 21.0 km clearance to the cached clip's western edge (lon 73.389).
+    #
+    # The solver domain is asymmetric and comes from margins_km — a
+    # dam-centred square would spend half its cells on the Ghats while the
+    # flood runs east down the Mutha through Pune.
+    domain_radius_km=12.0,
+    epsg=32643,
+    # NO EVENT DATE, and no detection window. Rishi Ganga models a REAL 2021
+    # blockage whose geometry is merely unmeasured; nothing of the kind has
+    # been recorded on this reach. Offering detect dates would invite the
+    # Sentinel-1 detector to look for a barrier that never existed.
+    event_date=None,
+    detect_date_pre=None,
+    detect_date_post=None,
+    barrier_crest_height_m=None,
+    barrier_width_m=None,
+    barrier_source=(
+        "HYPOTHETICAL. No landslide dam has been recorded on this reach of the "
+        "Mutha; this site exists to model what one would do, not to reconstruct "
+        "an observed deposit. Crest height and width are entirely "
+        "operator-supplied, and nothing published from a run of this site may "
+        "describe them as measured."
+    ),
+    suggested_barrier_lat=18.4489,
+    suggested_barrier_lon=73.5878,
+    # Khadakwasla's value, NOT Rishi Ganga's (5, 12). The Khadakwasla preset
+    # records that a small-radius annulus finds a spurious bearing from micro
+    # relief in this basin; the terrain here is the same.
+    direction_search_radius_cells=(20, 40),
+    # Khadakwasla's ParaView preset: same basin, same relief scale.
+    vertical_exaggeration=2.0,
+    nominal_depth_m=18.5,
+    note=(
+        "HYPOTHETICAL landslide dam on the Mutha, 3.9 km below the edge of "
+        "Temghar's reservoir. TWO THINGS SHAPE EVERY RESULT FROM THIS SITE. "
+        "(1) HEADROOM: the bed climbs from 617 m here to Temghar's dam toe at "
+        "about 700 m, so a crest above roughly 80 m backs water into Temghar's "
+        "own pool and the hypsometric fill would then count an existing "
+        "reservoir as impounded volume. 45 m is the default for that reason. "
+        "(2) THE RESERVOIR DOWNSTREAM: the release enters Khadakwasla "
+        "reservoir (85.31 MCM gross, pool baked into GLO-30 at 580.0 m) about "
+        "26 km along the channel, so ATTENUATION IS THE EXPECTED RESULT and "
+        "whether Pune sees anything depends on a freeboard this model does not "
+        "set. The valley is also an order of magnitude gentler than Rishi "
+        "Ganga's — 4.2 m/km against 22-27 m/km — so the barrier must be "
+        "1,400-1,900 m wide to span it and the release is slow."
+    ),
+)
+
 BLOCKAGE_PRESETS: Dict[str, BlockagePreset] = {
-    p.site_id: p for p in (RISHI_GANGA,)
+    p.site_id: p for p in (RISHI_GANGA, MUTHA_TEMGHAR)
 }
 
 
@@ -713,6 +781,89 @@ GAUGES: Dict[str, Tuple[GaugePoint, ...]] = {
                 "TERRAIN-DERIVED channel point, not a surveyed gauge and not a "
                 "town. Bed 1,271 m, traced 15.1 km down the thalweg -- the "
                 "furthest the trace reaches inside this domain."
+            ),
+        ),
+    ),
+    # The Mutha corridor from the hypothetical barrier below Temghar, east
+    # through Khadakwasla reservoir and into Pune.
+    #
+    # Distances are ALONG THE CHANNEL, traced on dem_18.44_73.77_clipped.tif by
+    # following the minimum-elevation cell eastward within a 800 m latitude
+    # band: bed 614 m -> 596 m -> 580 m (the baked-in reservoir surface) over
+    # 9.7 km, then across the pool to the dam at 26.0 km, where the trace passes
+    # 0.37 km from the published dam coordinate. Past the dam the Mula and the
+    # Mutha converge and the trace can no longer tell them apart, so the three
+    # city distances are the traced 26.0 km plus the Khadakwasla corridor's own
+    # published dam-relative spacing rather than a continued trace.
+    #
+    # THE TOWN POINTS CARRY THEIR HEIGHT ABOVE THE LOCAL CHANNEL, measured the
+    # way the Rishi Ganga town gauges were condemned (they stood 79-1,319 m
+    # above the nearest bed and answered a different question from the one a
+    # gauge asks). These pass -- 5.0 m, 20.5 m and 12.9 m above the lowest bed
+    # within 600 m -- and recording the number is what stops the next person
+    # having to re-derive it.
+    #
+    # LONI KALBHOR IS DELIBERATELY ABSENT even though the Khadakwasla corridor
+    # lists it: its published coordinate (18.48, 74.02) reads 660.7 m against a
+    # river at about 540 m, roughly 120 m above the channel. Propagating it here
+    # would repeat the failure the note above describes.
+    "mutha_temghar": (
+        GaugePoint(
+            "Mutha channel +5 km", 5.0, 18.4436, 73.6322,
+            river="Mutha",
+            note=(
+                "TERRAIN-DERIVED channel point, not a surveyed gauge and not a "
+                "town. Bed 596 m, traced 5.0 km down the thalweg from the "
+                "suggested barrier."
+            ),
+        ),
+        GaugePoint(
+            "Khadakwasla reservoir head", 9.7, 18.4153, 73.6628,
+            river="Mutha",
+            note=(
+                "TERRAIN-DERIVED. The first traced cell at 580.0 m, which is "
+                "the Khadakwasla pool surface baked into GLO-30 -- i.e. where "
+                "the release stops being a river flood and starts filling a "
+                "reservoir."
+            ),
+        ),
+        GaugePoint(
+            "Khadakwasla Dam", 26.0, 18.4436, 73.7686,
+            river="Mutha",
+            note=(
+                "The real structure, 4.5 m above its local channel. An arrival "
+                "here is an arrival at a reservoir holding 85.31 MCM gross, "
+                "NOT at an open channel: what the city downstream sees depends "
+                "on freeboard this model does not set."
+            ),
+        ),
+        GaugePoint(
+            "Deccan Gymkhana", 36.5, 18.51, 73.84,
+            river="Mutha",
+            note=(
+                "Town centre, 5.0 m above the lowest bed within 600 m. "
+                "Distance is 26.0 km of traced channel to Khadakwasla Dam plus "
+                "the dam-relative 10.5 km published for the Khadakwasla "
+                "corridor."
+            ),
+        ),
+        GaugePoint(
+            "Shivajinagar", 38.1, 18.52, 73.85,
+            river="Mutha",
+            note=(
+                "Town centre, 20.5 m above the lowest bed within 600 m -- the "
+                "highest of the three above its channel, so treat a no-arrival "
+                "here as weaker evidence than one at Deccan Gymkhana."
+            ),
+        ),
+        GaugePoint(
+            "Hadapsar", 44.6, 18.51, 73.93,
+            river="Mula-Mutha",
+            note=(
+                "Town centre, 12.9 m above the lowest bed within 600 m. The "
+                "furthest point in this corridor and 36.1 km straight-line east "
+                "of the barrier, so it sits inside the default domain but "
+                "behind the whole of Khadakwasla reservoir."
             ),
         ),
     ),

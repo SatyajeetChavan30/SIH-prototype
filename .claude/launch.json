@@ -5,11 +5,10 @@
       "name": "api",
       "runtimeExecutable": "python",
       "runtimeArgs": [
-        "scripts/run_api.py",
-        "--port",
-        "8000"
+        "scripts/run_api.py"
       ],
-      "port": 8000
+      "port": 8000,
+      "autoPort": true
     },
     {
       "name": "frontend",

@@ -11,7 +11,8 @@ from real Copernicus GLO-30 DEM and a validated shallow-water solver.
 | Data layer — DEM → XDMF+HDF5 time series | **working and verified** |
 | ParaView layer — static render (`render_static.py`) | **working** — ParaView 6.2.0, FFmpeg installed |
 | ParaView layer — overlays, terrain block, cameras, saved state | **working** (spec Phases 2/5/6/7) |
-| ParaView layer — video export, optimization | not built (spec Phases 8/9) |
+| ParaView layer — video export (spec Phase 8) | **built** — `render_animation.py`, artifacts `flood_simulation.mp4` (synthetic) and `tehri_flood.mp4` (real solver) |
+| ParaView layer — optimization (spec Phase 9) | Python-side decimation done upstream; interactive GUI LOD deliberately not built — see IMPLEMENTATION_PLAN.md |
 | Dashboard → ParaView desktop launch | **working** (local host only) |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for format/CRS decisions and

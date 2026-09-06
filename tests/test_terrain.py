@@ -104,15 +104,33 @@ class TestDEMProcessing:
 
 
 class TestManningAssignment:
-    """Test Manning's n lookup table."""
+    """
+    Manning's n lookup, against ESA WorldCover v200's PUBLISHED legend.
 
-    def test_manning_lookup(self):
-        """Get Manning's n for ESA WorldCover class."""
-        # Test a few classes
-        assert get_manning_value(10) == 0.08  # Shrub
-        assert get_manning_value(40) == 0.06  # Urban
-        assert get_manning_value(50) == 0.01  # Bare rock
-        assert get_manning_value(70) == 0.08  # Forest
+    These assertions used to encode a legend shifted by one class — 10 as
+    "Shrub" (it is Tree cover), 40 as "Urban" (it is Cropland), 50 as "Bare
+    rock" (it is Built-up). They passed, because the table under test was
+    shifted the same way. The consequence was that built-up land, where
+    roughness is highest and matters most to an inundation footprint, was
+    assigned n = 0.01 — the value for a smooth concrete surface.
+    """
+
+    def test_manning_lookup_matches_the_published_legend(self):
+        """ESA WorldCover 10 m 2021 v200 Product User Manual, table 3."""
+        assert get_manning_value(10) == 0.100   # Tree cover
+        assert get_manning_value(30) == 0.035   # Grassland
+        assert get_manning_value(40) == 0.040   # Cropland
+        assert get_manning_value(80) == 0.030   # Permanent water bodies
+
+    def test_built_up_is_rougher_than_bare_ground(self):
+        """
+        THE DEFECT THIS PINS. Class 50 is Built-up, not bare rock. Obstructed
+        urban flow cannot be smoother than open ground, and asserting the
+        ordering catches a re-shifted legend even if the values are revised.
+        """
+        assert get_manning_value(50) > get_manning_value(60)   # built-up > bare
+        assert get_manning_value(10) > get_manning_value(30)   # trees > grass
+        assert get_manning_value(70) < get_manning_value(30)   # ice < grass
 
     def test_manning_default(self):
         """Unknown class returns default value."""
@@ -120,11 +138,17 @@ class TestManningAssignment:
         assert get_manning_value(99) == 0.03
 
     def test_manning_table_completeness(self):
-        """All ESA classes have Manning's n values."""
-        for class_code in [10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
+        """
+        Every published class has a value, INCLUDING 100 (moss and lichen),
+        which the shifted table omitted entirely.
+        """
+        for class_code in [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100]:
             value = get_manning_value(class_code)
             assert isinstance(value, (int, float))
             assert 0 < value < 0.5  # Reasonable range
+            assert value != 0.03 or class_code in (80, 100), (
+                f"class {class_code} silently fell through to the default"
+            )
 
 
 class TestDomainBuilder:
@@ -411,3 +435,95 @@ def test_terrain_gate_lake_at_rest(mock_dem_geotiff):
     assert v_max >= 0, "Negative velocity magnitude"
 
     print(f"[INFO] Phase 1 solver on conditioned terrain: max u={u_max:.3f}, max v={v_max:.3f} (spurious velocities expected on complex terrain)")
+
+
+class TestCorridorConditioning:
+    """
+    Filling the flow corridor must NOT erase upland basins.
+
+    CLAUDE.md forbids raising `fill_max_depth_m` to "guarantee drainage",
+    because erasing genuine terrain hides the defect behind a nicer graph. The
+    corridor mask is what makes conditioning defensible instead: measured on
+    the Khadakwasla 117 x 90 km domain at 200 m, a 10 m corridor takes closed
+    capacity inside the corridor from 1,686 MCM to 0 while leaving 3,172 MCM
+    outside untouched, altering 1.03% of the domain.
+
+    These tests pin that separation on a bed whose answer is known exactly,
+    because on real terrain "it drained" and "it was flattened" look alike.
+    """
+
+    def _bed_with_two_pits(self):
+        """A tilted plane with a deep pit ON the corridor and one off it."""
+        ny = nx = 60
+        yy, xx = np.mgrid[0:ny, 0:nx]
+        # Gentle slope down to the east, plus a ridge to the north so the
+        # northern pit sits well above its local valley floor.
+        bed = 100.0 - xx * 0.5 + np.where(yy > 40, 60.0, 0.0)
+        bed = bed.astype(np.float64)
+        bed[20:24, 20:24] -= 25.0     # corridor pit — on the valley floor
+        bed[46:50, 20:24] -= 25.0     # upland pit  — up on the ridge
+        return bed
+
+    def test_corridor_pit_is_filled_and_upland_pit_is_not(self):
+        from jalraksha.terrain.conditioning import (
+            fill_depressions, height_above_valley_floor,
+        )
+
+        bed = self._bed_with_two_pits()
+        corridor = height_above_valley_floor(bed, 200.0, window_m=4000.0) <= 10.0
+
+        filled, stats = fill_depressions(bed, 3.0, corridor_mask=corridor)
+
+        corridor_raise = (filled - bed)[20:24, 20:24].max()
+        upland_raise = (filled - bed)[46:50, 20:24].max()
+
+        assert corridor in (corridor,)  # mask is boolean, not None
+        assert corridor[22, 22], "the corridor pit is not inside the corridor mask"
+        assert not corridor[48, 22], "the upland pit was classed as corridor"
+
+        # The corridor pit is 25 m deep and must be fully removed.
+        assert corridor_raise > 20.0, (
+            f"corridor pit raised only {corridor_raise:.1f} m — it will still "
+            f"trap water"
+        )
+        # The upland pit must keep the ordinary 3 m cap.
+        assert upland_raise <= 3.0 + 1e-6, (
+            f"upland pit raised {upland_raise:.1f} m — genuine terrain is being "
+            f"erased, which is exactly what the cap exists to prevent"
+        )
+
+    def test_stats_report_the_alteration(self):
+        """
+        A conditioned bed that does not SAY it was conditioned is the failure
+        mode. The stats are what a run summary quotes.
+        """
+        from jalraksha.terrain.conditioning import (
+            fill_depressions, height_above_valley_floor,
+        )
+
+        bed = self._bed_with_two_pits()
+        corridor = height_above_valley_floor(bed, 200.0, window_m=4000.0) <= 10.0
+        _, stats = fill_depressions(bed, 3.0, corridor_mask=corridor)
+
+        assert stats["corridor_conditioned"] is True
+        assert stats["n_corridor_cells"] > 0
+        assert stats["n_filled_corridor"] > 0
+        assert stats["corridor_raise_sum_m"] > 0.0
+        # Pits left standing outside the corridor are reported separately, so a
+        # reader can see what was preserved as well as what was changed.
+        assert stats["n_unfilled_deep_outside"] > 0
+
+    def test_no_mask_is_byte_identical_to_before(self):
+        """
+        The option defaults off, and off must change nothing. Every existing run
+        and the dashboard demo depend on this.
+        """
+        from jalraksha.terrain.conditioning import fill_depressions
+
+        bed = self._bed_with_two_pits()
+        a, sa = fill_depressions(bed, 3.0)
+        b, sb = fill_depressions(bed, 3.0, corridor_mask=None)
+
+        assert np.array_equal(a, b)
+        assert sa == sb
+        assert "corridor_conditioned" not in sa

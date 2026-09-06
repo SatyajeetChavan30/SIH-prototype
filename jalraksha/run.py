@@ -710,6 +710,56 @@ def inject_breach_hydrograph(
     state.h[j_breach, i_breach] += delta_h
 
 
+def _summarize_volume_balance(members: List[Dict]) -> Dict:
+    """
+    Median volume balance across ensemble members.
+
+    Answers "did the water get out?" with a number instead of an inference.
+    A 24 h Khadakwasla run once plateaued with roughly 42% of released volume
+    permanently trapped, and the only evidence available at the time was hazard
+    cell counts — which cannot tell water draining away from water sitting
+    still (docs/validation_findings.md section 8).
+
+    Median rather than mean: one member that failed to release (a degenerate
+    breach sample) would drag a mean toward zero and make a healthy ensemble
+    look retentive.
+
+    Returns:
+        Dict with median released/exited/retained in m^3 and MCM, the retained
+        and exited FRACTIONS, and ``closure_error`` — how far released is from
+        exited + retained, as a fraction. A large closure error means the
+        balance itself is not trustworthy and the fractions should not be
+        quoted.
+    """
+    released = [m["released_m3"] for m in members if m.get("released_m3") is not None]
+    exited = [m["exited_m3"] for m in members if m.get("exited_m3") is not None]
+    retained = [m["retained_m3"] for m in members if m.get("retained_m3") is not None]
+
+    if not released:
+        # Older members, or a run where every member failed. Absent rather than
+        # zero: a zero here would read as "nothing was released".
+        return {"available": False, "reason": "no member reported a volume balance"}
+
+    med_released = float(np.median(released))
+    med_exited = float(np.median(exited)) if exited else 0.0
+    med_retained = float(np.median(retained)) if retained else 0.0
+
+    denominator = med_released if med_released > 0 else float("nan")
+    return {
+        "available": True,
+        "n_members": len(released),
+        "released_m3": med_released,
+        "exited_m3": med_exited,
+        "retained_m3": med_retained,
+        "released_mcm": med_released / 1.0e6,
+        "exited_mcm": med_exited / 1.0e6,
+        "retained_mcm": med_retained / 1.0e6,
+        "retained_fraction": med_retained / denominator,
+        "exited_fraction": med_exited / denominator,
+        "closure_error": abs(med_released - (med_exited + med_retained)) / denominator,
+    }
+
+
 def run_dam_break_ensemble(
     dam_config: Dict,
     dem_path: str,
@@ -725,6 +775,7 @@ def run_dam_break_ensemble(
     progress_cb: Optional[Callable[[float, str], None]] = None,
     margins_km: Optional[Dict[str, float]] = None,
     fill_max_depth_m: float = 3.0,
+    condition_corridor_m: float = 0.0,
     notch_breach: bool = True,
 ) -> Dict:
     """
@@ -763,6 +814,10 @@ def run_dam_break_ensemble(
             {"west":.., "east":.., "south":.., "north":..} (km from the dam),
             for a domain biased downstream instead of dam-centred. See
             terrain/domain.py::build_domain.
+        condition_corridor_m: > 0 conditions the flow corridor to drain by
+            filling depressions within this height of the valley floor
+            completely. Default 0 (off) — with it off a run is unchanged.
+            The resulting bed is MODIFIED TERRAIN and must be labelled.
         fill_max_depth_m: Threshold-limited depression fill applied to the
             bed (metres); see terrain/conditioning.py::fill_depressions. 0
             disables it.
@@ -833,6 +888,7 @@ def run_dam_break_ensemble(
             use_synthetic_terrain=use_synthetic_terrain,
             margins_km=margins_km,
             fill_max_depth_m=fill_max_depth_m,
+            condition_corridor_m=condition_corridor_m,
         )
         print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m")
         print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")
@@ -901,6 +957,7 @@ def run_dam_break_ensemble(
     h_max_ensemble = []
     v_max_ensemble = []
     depth_series: List[Dict] = []
+    volume_balance_members: List[Dict] = []
 
     # Pick the member whose peak outflow is closest to the ensemble median as
     # the "representative" member to snapshot for keyframe export (§5.3 of the
@@ -958,6 +1015,12 @@ def run_dam_break_ensemble(
         })
         h_max_ensemble.append(member["h_max"])
         v_max_ensemble.append(member["v_max"])
+        volume_balance_members.append({
+            "sample_id": sample_id,
+            "released_m3": member.get("volume_released_m3"),
+            "exited_m3": member.get("volume_exited_m3"),
+            "retained_m3": member.get("volume_retained_m3"),
+        })
         if member.get("depth_series"):
             depth_series = member["depth_series"]
 
@@ -1047,6 +1110,13 @@ def run_dam_break_ensemble(
             "p95": float(np.nanmax(h_max_p95)),
         },
         "raster_paths": raster_paths,
+        # WHERE THE WATER WENT. Median across members of the per-member volume
+        # balance, plus the retained fraction that is the actual verdict on
+        # drainage. The recorded pre-fix baseline is ~42% retained
+        # (docs/validation_findings.md section 8); hazard cell counts alone
+        # could not distinguish that plateau from genuine recession, which is
+        # why this exists.
+        "volume_balance": _summarize_volume_balance(volume_balance_members),
         "num_completed": len(results_ensemble),
         "num_ensemble": ensemble_size,
         "gauges": gauges,

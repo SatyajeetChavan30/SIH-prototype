@@ -282,6 +282,21 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
 WARNING_LEAD_TIME_S = 1800.0
 
 
+def _grid_cache_dir(product: str, grid: Dict[str, Any], crs_epsg: int) -> Path:
+    """
+    Cache directory for a raster fetched onto one run's grid.
+
+    Content-addressed by the domain itself, so two runs over the same grid
+    share a fetch and two different grids cannot collide. The ``int()``
+    truncation of the origin is the EXISTING convention — the ten directories
+    already on disk under ``data/gee/ghsl`` are named this way, and changing
+    the format would miss every one of them and send a demo to the network.
+    """
+    return (settings.DATA_DIR / "gee" / product /
+            f"epsg{crs_epsg}_{int(grid['x0'])}_{int(grid['y0'])}"
+            f"_{grid['nx']}x{grid['ny']}")
+
+
 def _population_at_risk(run_id: str, result: Dict[str, Any],
                         dam_config: Dict[str, Any]) -> Dict[str, Any] | None:
     """
@@ -318,8 +333,7 @@ def _population_at_risk(run_id: str, result: Dict[str, Any],
         crs_epsg = epsg_from_crs(grid.get("crs"))
         population = fetch_population_on_grid(
             grid_dict=grid, crs_epsg=crs_epsg,
-            cache_dir=settings.DATA_DIR / "gee" / "ghsl" / f"epsg{crs_epsg}"
-                      f"_{int(grid['x0'])}_{int(grid['y0'])}_{grid['nx']}x{grid['ny']}",
+            cache_dir=_grid_cache_dir("ghsl", grid, crs_epsg),
         )
     except PopulationUnavailableError as exc:
         print(f"[impact] run {run_id}: no population grid — {exc}")
@@ -356,6 +370,208 @@ def _population_at_risk(run_id: str, result: Dict[str, Any],
             "source defines."
         ),
     }
+
+
+def _damage_estimate(run_id: str, result: Dict[str, Any],
+                     dam_config: Dict[str, Any]) -> Dict[str, Any] | None:
+    """
+    Economic damage from real exposure rasters over this run's own flood field.
+
+    Nothing computed a damage figure before this. `impact/damage.py` existed but
+    was reachable only from tests, and its asset values were three constants
+    identical for every dam in the country — while `main.py` had been reading an
+    export of kind "impact" that nothing has ever written. This is the number
+    that makes the "loss and damage" half of the problem statement real.
+
+    THREE STATES PER SECTOR, NOT PER PAYLOAD. Built-up surface can be available
+    while cropland is not. Refusing the whole payload because one sector failed
+    would suppress a perfectly good buildings figure; totalling with agriculture
+    silently zero would publish a fabricated number that reads as "no
+    agricultural damage". So each sector carries its own availability and
+    reason, and the TOTAL is emitted only when every attempted sector succeeded
+    — otherwise it is null beside a `missing_sectors` list.
+
+    Returns:
+        A dict of damage figures with provenance, or None when this run has no
+        aggregated fields to work from.
+    """
+    from jalraksha.export.georef import epsg_from_crs
+    from jalraksha.impact.damage import estimate_sector_damage
+
+    grid = result.get("grid") or {}
+    h_max = result.get("h_max_median")
+    if h_max is None or not grid:
+        print(f"[impact] run {run_id}: no aggregated fields; skipping damage.")
+        return None
+
+    crs_epsg = epsg_from_crs(grid.get("crs"))
+    cell_area_m2 = float(grid["dx"]) * float(grid["dy"])
+
+    sectors: Dict[str, Any] = {}
+    missing: List[str] = []
+    provenance: Dict[str, Any] = {}
+
+    # Built-up surface: residential and non-residential come from one fetch.
+    built = None
+    try:
+        from jalraksha.gee.built_up import (
+            BuiltUpUnavailableError, fetch_built_up_on_grid,
+        )
+        built = fetch_built_up_on_grid(
+            grid_dict=grid, crs_epsg=crs_epsg,
+            cache_dir=_grid_cache_dir("ghs_built", grid, crs_epsg),
+        )
+    except BuiltUpUnavailableError as exc:
+        reason = str(exc)
+        print(f"[impact] run {run_id}: no built-up grid - {exc}")
+        for sector in ("residential", "non_residential"):
+            sectors[sector] = {"available": False, "reason": reason}
+            missing.append(sector)
+    except Exception as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        print(f"[impact] run {run_id}: built-up fetch failed - {reason}")
+        for sector in ("residential", "non_residential"):
+            sectors[sector] = {"available": False, "reason": reason}
+            missing.append(sector)
+
+    if built is not None:
+        provenance["built_up"] = {
+            "source": built.get("source"),
+            "collection": built.get("collection"),
+            "epoch": built.get("epoch"),
+            "aggregation": built.get("aggregation"),
+            "attribution": built.get("attribution"),
+            "reason": built.get("reason"),
+            "total_built_surface_km2":
+                float(built["built_surface_m2"].sum()) / 1.0e6,
+            "total_non_residential_km2":
+                float(built["built_surface_nres_m2"].sum()) / 1.0e6,
+            # A large count means the two published bands disagree and the
+            # residential share below is not trustworthy. It travels with the
+            # figure rather than being clipped away silently.
+            "nres_exceeded_total_cells": built.get("nres_exceeded_total_cells"),
+        }
+        # GHS-BUILT-S posts m2 of built-up surface INSIDE each cell, so this is
+        # already an area and must NOT be multiplied by the cell area.
+        for sector, key in (("residential", "built_surface_res_m2"),
+                            ("non_residential", "built_surface_nres_m2")):
+            sectors[sector] = {
+                "available": True,
+                **estimate_sector_damage(h_max, built[key], sector),
+            }
+
+    # Cropland comes back as a FRACTION, so it becomes an area only here.
+    cropland = None
+    try:
+        from jalraksha.gee.worldcover import fetch_cropland_fraction_on_grid
+        from jalraksha.terrain.roughness import LandCoverUnavailableError
+        cropland = fetch_cropland_fraction_on_grid(
+            grid_dict=grid, crs_epsg=crs_epsg,
+            cache_dir=_grid_cache_dir("worldcover_grid", grid, crs_epsg),
+        )
+    except LandCoverUnavailableError as exc:
+        sectors["agricultural"] = {"available": False, "reason": str(exc)}
+        missing.append("agricultural")
+        print(f"[impact] run {run_id}: no cropland grid - {exc}")
+    except Exception as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        sectors["agricultural"] = {"available": False, "reason": reason}
+        missing.append("agricultural")
+        print(f"[impact] run {run_id}: cropland fetch failed - {reason}")
+
+    if cropland is not None:
+        cropland_m2 = cropland["cropland_fraction"] * cell_area_m2
+        provenance["cropland"] = {
+            "source": cropland.get("source"),
+            "collection": cropland.get("collection"),
+            "aggregation": cropland.get("aggregation"),
+            "attribution": cropland.get("attribution"),
+            "licence": cropland.get("licence"),
+            "reason": cropland.get("reason"),
+            "total_cropland_km2": float(cropland_m2.sum()) / 1.0e6,
+        }
+        sectors["agricultural"] = {
+            "available": True,
+            **estimate_sector_damage(h_max, cropland_m2, "agricultural"),
+        }
+
+    available = {name: block for name, block in sectors.items()
+                 if block.get("available")}
+    if available and not missing:
+        total = sum(block["damage_crore_inr"] for block in available.values())
+        total_lower = sum(block["damage_lower_crore_inr"]
+                          for block in available.values())
+        total_upper = sum(block["damage_upper_crore_inr"]
+                          for block in available.values())
+    else:
+        total = total_lower = total_upper = None
+
+    return {
+        "available": bool(available),
+        "dam_name": dam_config.get("name", "Dam"),
+        "damage": {
+            "total_crore_inr": total,
+            "total_lower_crore_inr": total_lower,
+            "total_upper_crore_inr": total_upper,
+            "missing_sectors": missing,
+            "sectors": sectors,
+            "cell_area_m2": cell_area_m2,
+            "model_is_published": False,
+        },
+        "exposure_provenance": provenance,
+        "note": (
+            "Exposure is fetched onto this run's own grid: GHS-BUILT-S built-up "
+            "SURFACE (m2 per cell, residential = total minus non-residential) "
+            "and ESA WorldCover cropland fraction. The depth-damage curve is an "
+            "unpublished saturating exponential and the unit costs are UNVETTED "
+            "placeholders, both echoed per sector so the figure can be "
+            "rescaled. A sector whose exposure could not be fetched reports its "
+            "reason and NO figure; the total is withheld entirely unless every "
+            "sector succeeded, because a total silently missing a sector reads "
+            "as a complete one. Built-up surface is not a building count — "
+            "Google Open Buildings is not wired into this build. "
+            "docs/VERIFICATION_LOG.md rows 10, 35 and 36."
+        ),
+    }
+
+
+def impact_exports(run_id: str, result: Dict[str, Any],
+                   dam_config: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Write the population-at-risk and damage artifacts; return their export rows.
+
+    SHARED with the script-launched path (``script_runs.py``) rather than
+    copied, for the same reason ``gauge_rows_from_result`` and
+    ``write_run_summary`` are shared: two copies would eventually disagree about
+    what an unavailable sector looks like, and that per-sector reason is what
+    stops a withheld figure reading as a zero. Script-launched runs wrote
+    neither artifact until this existed.
+    """
+    rows: List[Dict[str, str]] = []
+    out_dir = settings.DATA_DIR / "exports" / run_id
+
+    for kind, filename, builder in (
+        ("population_at_risk", "population_at_risk.json", _population_at_risk),
+        ("impact", "impact.json", _damage_estimate),
+    ):
+        try:
+            payload = builder(run_id, result, dam_config)
+        except Exception as exc:
+            # An impact artifact is not worth failing a solved run over: the
+            # hours of compute are already spent and every other product is
+            # written. Record why and carry on.
+            print(f"[impact] run {run_id}: {kind} could not be built - "
+                  f"{type(exc).__name__}: {exc}")
+            traceback.print_exc()
+            continue
+        if payload is None:
+            continue
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / filename
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        rows.append({"kind": kind, "path_or_url": str(path)})
+
+    return rows
 
 
 def _delft3d_only_comparison(d3d_res: Dict[str, Any], gauges_list: List[Dict[str, Any]],
@@ -1443,41 +1659,30 @@ def run_dam_break_task(
             # arrival. Both used to be dropped here, so the dashboard could only
             # ever show a bare median and a silent blank. An ensemble whose
             # spread is never shown is an ensemble the viewer cannot judge.
-            gauge_depths = _gauge_max_depths(result)
-            for gname, g in (result.get("arrival_times") or {}).items():
-                gauges.append({
-                    "gauge_name": gname,
-                    "distance_km": g.get("distance_km"),
-                    "arrival_time_s": g.get("median"),
-                    "arrival_p05_s": g.get("p05"),
-                    "arrival_p95_s": g.get("p95"),
-                    "max_depth_m": gauge_depths.get(gname),
-                    "note": _minority_arrival_note(g) or g.get("note"),
-                    # Deliberately null. A domain-wide population-at-risk figure
-                    # is computed below from real GHSL counts; dividing it among
-                    # gauges would need a per-gauge catchment radius that no
-                    # source defines, and inventing one is what CLAUDE.md
-                    # forbids. See the population_at_risk export.
-                    "par_estimate": None,
-                })
+            # Shared with the script-launched path (script_runs.py). Two copies
+            # of this mapping would eventually disagree about what a minority
+            # arrival is, and that note is a correctness claim: it is what stops
+            # "1 of 4 members arrived" being read as a confident median.
+            # par_estimate stays deliberately null — a domain-wide
+            # population-at-risk figure cannot be divided among gauges without a
+            # per-gauge catchment radius no source defines. See the
+            # population_at_risk export.
+            from jalraksha_service.script_runs import gauge_rows_from_result
+
+            gauges.extend(gauge_rows_from_result(result))
             # Record export references. run.py::write_export_products has
             # already verified each of these exists on disk; _existing_exports
             # below re-checks the whole list once more before it is persisted.
             for kind, path in (result.get("raster_paths") or {}).items():
                 exports.append({"kind": kind, "path_or_url": path})
 
-            # Population at risk, from real GHSL counts over this run's grid.
-            # Written as its own artifact so /runs/{id}/result can read it back,
-            # mirroring how hazard_summary is read from the keyframe manifest.
-            par_summary = _population_at_risk(run_id, result, dam_config)
-            if par_summary is not None:
-                par_dir = settings.DATA_DIR / "exports" / run_id
-                par_dir.mkdir(parents=True, exist_ok=True)
-                par_path = par_dir / "population_at_risk.json"
-                par_path.write_text(json.dumps(par_summary, indent=2),
-                                    encoding="utf-8")
-                exports.append({"kind": "population_at_risk",
-                                "path_or_url": str(par_path)})
+            # Population at risk and economic damage, both from real fetched
+            # exposure over this run's own grid. Written as their own artifacts
+            # so /runs/{id}/result can read them back, mirroring how
+            # hazard_summary is read from the keyframe manifest. Shared with the
+            # script-launched path (script_runs.py) — that path wrote NEITHER,
+            # which is why the flagship run e2e09ea3 has no impact artifacts.
+            exports.extend(impact_exports(run_id, result, dam_config))
 
             if solver == "sph":
                 report(95.0, "Near-field SPH")
@@ -1591,23 +1796,22 @@ def run_dam_break_task(
         # already uses, because `result` is discarded the moment this function
         # returns and nothing else persists these numbers. Everything here was
         # already computed; it simply had nowhere to go.
-        run_summary = {
-            "ensemble": _ensemble_summary(result) if isinstance(result, dict) else None,
-            "grid": _grid_summary(result) if isinstance(result, dict) else None,
-            "solver_params": {
+        # Shared writer, so the script path produces a byte-compatible
+        # run_summary.json. Five panels read this one file back.
+        from jalraksha_service.script_runs import write_run_summary
+
+        summary_export = write_run_summary(
+            run_id, result, dam_config,
+            solver_params={
                 "ensemble_size": ensemble_size,
                 "solver_duration_s": solver_duration_s,
                 "target_resolution": target_resolution,
                 "domain_radius_km": dam_config.get("domain_radius_km"),
                 "scenario_type": dam_config.get("scenario_type", "dam_break"),
             },
-            "dem": {
-                "dem_used": dem_path,
-                "dem_update": (
-                    dem_provenance.to_dict() if dem_provenance is not None else None
-                ),
-            },
-        }
+            dem_path=dem_path,
+            dem_provenance=dem_provenance,
+        )
         if dem_provenance is not None:
             # Registered as exports so the updated terrain and its provenance
             # flow into the Downloads panel through the plumbing that already
@@ -1625,21 +1829,7 @@ def run_dam_break_task(
                 exports.append(
                     {"kind": "dem_update_lake", "path_or_url": dem_provenance.lake_mask}
                 )
-        if isinstance(result, dict) and result.get("rapid_estimate"):
-            # The analytic path computes peak outflow, celerity, inundation area
-            # and an economic figure, then dropped all of them.
-            est = result["rapid_estimate"]
-            run_summary["rapid_estimate"] = {
-                k: est.get(k) for k in (
-                    "q_peak_median_m3s", "wave_celerity_ms", "inundation_area_km2",
-                    "affected_population", "economic_loss_crore_inr", "method", "note")
-            }
-        summary_dir = settings.DATA_DIR / "exports" / run_id
-        summary_dir.mkdir(parents=True, exist_ok=True)
-        summary_path = summary_dir / "run_summary.json"
-        summary_path.write_text(json.dumps(run_summary, indent=2, default=str),
-                                encoding="utf-8")
-        exports.append({"kind": "run_summary", "path_or_url": str(summary_path)})
+        exports.append(summary_export)
 
         dam_name = dam_config.get("name", "Dam")
         db.insert_gauge_results(run_id, gauges)

@@ -197,6 +197,27 @@ class SWESolver:
         # Reported by describe() so a run cannot silently lean on the cap.
         self.n_velocity_capped = 0
 
+        # Cumulative volume that has left through the boundary, m^3.
+        #
+        # WHY THIS EXISTS. mass_error alone cannot answer "did the water get
+        # out?", and that question was unanswerable when a 24 h Khadakwasla run
+        # plateaued with ~42% of released volume trapped: the only evidence was
+        # hazard cell counts, which cannot distinguish water draining away from
+        # water sitting still (docs/validation_findings.md section 8).
+        #
+        # Measured as the per-step drop in total volume rather than by
+        # integrating flux across the ghost ring. step() applies no source term
+        # — the breach hydrograph is injected by run.py BETWEEN steps — so over
+        # a single _advance the only way volume can leave is through the
+        # boundary, and (volume_before - volume_after) is exactly that.
+        #
+        # This deliberately also absorbs any non-conservation in the scheme
+        # itself. That is the honest attribution for a drainage question: the
+        # reflective-wall mass-conservation gate already pins the discretisation
+        # separately (< 0.1% over 1000 steps), so a large number here over a
+        # transmissive boundary is outflow, not drift.
+        self.volume_exited_m3 = 0.0
+
     # ------------------------------------------------------------------
     # Setup helpers
     # ------------------------------------------------------------------
@@ -462,6 +483,13 @@ class SWESolver:
             self.h_dry,
             self.velocity_max,
         )
+
+        # Boundary outflow for this step. No source term is applied inside
+        # _advance, so the drop in total volume is what left through the ghost
+        # ring. Accumulated unconditionally — a reflective run must report ~0,
+        # which is what makes this checkable rather than merely plausible.
+        cell_area = self.dx * self.dy
+        self.volume_exited_m3 += float(h_old.sum() - h_new.sum()) * cell_area
 
         self.n_steps += 1
         self.dt_last = dt

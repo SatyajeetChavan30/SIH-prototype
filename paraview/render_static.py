@@ -52,6 +52,7 @@ from paraview.simple import (
     SaveScreenshot,
     SaveState,
     Show,
+    TemporalInterpolator,
     Threshold,
     WarpByScalar,
     XDMFReader,
@@ -79,23 +80,44 @@ DRY_DEPTH_M = 0.01
 TARGET_GLYPH_COUNT = 400
 
 
-def build_terrain(xdmf_path: str, vertical_exaggeration: float):
+def build_terrain(xdmf_path: str, vertical_exaggeration: float,
+                  interpolate: bool = False):
     """
-    Reader -> Warp By Scalar on terrain_elevation.
+    Reader -> (optional Temporal Interpolator) -> Warp By Scalar on terrain_elevation.
 
     Section 4's required chain. Vertical exaggeration is the Warp filter's Scale
     Factor — a pipeline parameter, never baked into the data (see
     ARCHITECTURE.md section 4) — so it can be changed here without touching a
     single file under data/simulation/.
+
+    WHY THE INTERPOLATOR EXISTS, AND WHY IT IS OFF BY DEFAULT. A reader does not
+    interpolate in time: asked for a moment between two stored timesteps it
+    returns the NEARER one. Sequence-mode playback therefore moves the clock
+    smoothly while the data jumps, and asking for more frames than the dataset
+    has timesteps produces duplicates rather than motion — measured on the
+    30-step synthetic dataset, 60 frames came back as 30 byte-identical PAIRS.
+    ``TemporalInterpolator`` is ParaView's own filter for this, so Section 18's
+    ban on hand-written frame interpolation is respected.
+
+    It is opt-in because it changes what is displayed: an interpolated frame is
+    a linear blend of two solver states, not a solver state. For a still that
+    would be a misrepresentation at no benefit, so ``render_static`` never asks
+    for it; for an animation it is the difference between motion and a
+    stutter, and ``render_animation`` labels the output accordingly.
     """
     reader = XDMFReader(FileNames=[xdmf_path])
     reader.PointArrayStatus = [
         "terrain_elevation", "water_depth", "velocity", "velocity_magnitude"]
 
-    warp = WarpByScalar(Input=reader)
+    source = TemporalInterpolator(Input=reader) if interpolate else reader
+
+    warp = WarpByScalar(Input=source)
     warp.Scalars = ["POINTS", "terrain_elevation"]
     warp.ScaleFactor = vertical_exaggeration
-    return reader, warp
+    # `reader` is returned alongside `source` so callers can report the DATASET's
+    # own timestep count. Everything that renders must attach to `source`, or it
+    # silently bypasses the interpolator and stutters while the terrain does not.
+    return reader, source, warp
 
 
 def add_water(reader, vertical_exaggeration: float, dry_threshold: float = DRY_DEPTH_M):
@@ -206,7 +228,15 @@ def _dataset_path(value: str) -> Path:
     return Path(value).expanduser().resolve()
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """
+    Every rendering flag, in one place.
+
+    Shared with render_animation.py, which adds its own frame/encode flags
+    on top. Duplicating this list would let a still and the video it is
+    supposed to represent drift apart in exaggeration, depth range or
+    camera — differences a viewer would read as a change in the physics.
+    """
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--xdmf", required=True, type=_dataset_path,
@@ -306,14 +336,33 @@ def main() -> None:
     parser.add_argument("--save-state-frames", type=int, default=60,
                         help="NumberOfFrames for the saved state's Sequence "
                              "mode animation (default 60).")
-    args = parser.parse_args()
-    if args.out is None and args.save_state is None:
-        raise SystemExit(
-            "Nothing to produce: pass --out for a screenshot, --save-state for a "
-            "ParaView state file, or both."
-        )
+    return parser
 
-    reader, warp = build_terrain(str(args.xdmf), args.exaggeration)
+
+def build_scene(args, view=None):
+    """
+    Construct the full ParaView scene from parsed arguments.
+
+    Everything up to and including the camera: terrain, optional base block,
+    water, glyphs, scalar bars, the synthetic-data banner, the time and area
+    annotations. Extracted from main() unchanged so a still and an animation
+    are the SAME scene, differing only in what they do with it afterwards.
+
+    Args:
+        args: Namespace from build_parser().
+        view: Existing render view to build into. A new one is created when
+            omitted, which is what the still path does.
+
+    Returns:
+        (view, scene, reader, source, warp, water). `reader` is the raw XDMF
+        reader, kept for its own TimestepValues; `source` is what everything
+        renders from (the reader, or the temporal interpolator wrapping it);
+        `warp` is the warped terrain and `water` the water surface or None.
+    """
+    reader, source, warp = build_terrain(
+        str(args.xdmf), args.exaggeration,
+        interpolate=getattr(args, "interpolate", False),
+    )
 
     # Geometry facts both the glyph auto-scaling and the flooded-area readout
     # need, taken from the reader's own grid rather than assumed or hardcoded.
@@ -335,7 +384,8 @@ def main() -> None:
         last = values[-1] if hasattr(values, "__getitem__") else values
         scene.AnimationTime = last
 
-    view = GetActiveView()
+    if view is None:
+        view = GetActiveView()
     if view is None:
         from paraview.simple import CreateView
         view = CreateView("RenderView")
@@ -412,7 +462,7 @@ def main() -> None:
 
     water = None
     if args.with_water:
-        water = add_water(reader, args.exaggeration)
+        water = add_water(source, args.exaggeration)
         water_display = Show(water, view)
         if args.water_solid:
             ColorBy(water_display, None)          # drop scalar colouring entirely
@@ -469,7 +519,7 @@ def main() -> None:
     # FieldData — proven by tests/test_xdmf_export.py's own reader round-trip
     # test), so this banner cannot be silently dropped by forgetting a flag;
     # it is driven by the data itself.
-    synthetic_annotation = PythonAnnotation(Input=reader)
+    synthetic_annotation = PythonAnnotation(Input=source)
     synthetic_annotation.ArrayAssociation = "Field Data"
     synthetic_annotation.Expression = (
         "'SYNTHETIC DATA — NOT A PHYSICAL SIMULATION' "
@@ -497,7 +547,7 @@ def main() -> None:
         # literal) and baked into the expression as a literal number — more
         # robust than trying to introspect spacing from inside a
         # PythonAnnotation's sandboxed expression evaluator.
-        area_annotation = PythonAnnotation(Input=reader)
+        area_annotation = PythonAnnotation(Input=source)
         area_annotation.ArrayAssociation = "Point Data"
         area_annotation.Expression = (
             f"'Flooded area: %.2f km^2' % "
@@ -528,6 +578,19 @@ def main() -> None:
                  azimuth_deg=preset.azimuth_deg, zoom=args.zoom,
                  pad=preset.pad, view_up=preset.view_up)
     RenderAllViews()
+    return view, scene, reader, source, warp, water
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    if args.out is None and args.save_state is None:
+        raise SystemExit(
+            "Nothing to produce: pass --out for a screenshot, --save-state for a "
+            "ParaView state file, or both."
+        )
+
+    view, scene, reader, source, warp, water = build_scene(args)
+
     if args.out is not None:
         SaveScreenshot(args.out, view, ImageResolution=[args.width, args.height])
 
@@ -557,6 +620,8 @@ def main() -> None:
     print(f"  exaggeration     : {args.exaggeration}x")
     print(f"  camera           : {args.camera}")
     print(f"  with_water       : {args.with_water}")
+
+
 
 
 def setup_camera(view, source, elevation_deg: float = 32.0, azimuth_deg: float = 235.0,

@@ -6,7 +6,7 @@
 >
 > **Since then — see `docs/progress.md` for the live checkpoint:**
 >
-> * **Tests: 590 passing** (this page says 235/239).
+> * **Tests: 600 passing, 4 skipped** (this page says 235/239).
 > * **Dashboard integration** — eight tabs, run picker, live Earth Engine,
 >   real Delft3D FM. `docs/dashboard_integration.md`.
 > * **River blockage (landslide dam) scenario and the observation-conditioned
@@ -14,7 +14,11 @@
 >   the barrier is burned into the terrain, proven to span the valley, and its
 >   impounded volume measured rather than supplied. `CLAUDE.md` and
 >   `docs/validation_findings.md` §5–7.
-> * **Verification queue grew to 26 rows** (`docs/VERIFICATION_LOG.md`).
+> * **Khadakwasla drainage plateau fixed** — a 24 h run held 46 cells at SEVERE
+>   for its last 7.5 simulated hours with ~42% of released volume trapped. Three
+>   causes: an unbreached dam ridge in the DEM, resampling pits, and a domain
+>   with no downstream to drain into. `docs/validation_findings.md` §8.
+> * **Verification queue grew to 27 rows** (`docs/VERIFICATION_LOG.md`).
 
 ## Summary
 - **Phases Completed:** All 18 Phases Complete! (Phases 0–18 ✅)

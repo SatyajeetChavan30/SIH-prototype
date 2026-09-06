@@ -12,14 +12,24 @@ followed unconditionally by an `np.random.uniform` "population" field labelled
 numbers. The synthetic generator survives here only behind an explicit
 `allow_synthetic=True` used by tests.
 
-COUNTS AGGREGATE BY SUM, NOT MEAN. GHSL P2023A posts population COUNT per
-100 m cell. The solver grid is coarser (200-400 m), so moving GHSL onto it must
-SUM the contributing cells. Resampling counts with a mean — which is what every
-default resampler does, because it assumes an intensive quantity — divides the
-population by the cell-count ratio: at 400 m over a 100 m source that is a
-sixteen-fold undercount, silently, in the number that says how many people are
-at risk. `reduceResolution(ee.Reducer.sum())` is therefore not an optimisation
-here, it is the difference between right and wrong.
+COUNTS ARE EXTENSIVE, AND `ee.Reducer.sum()` DOES NOT SUM THEM. GHSL P2023A
+posts population COUNT per 100 m cell, so moving it onto a coarser solver grid
+must preserve the total. This module used to do that with
+`reduceResolution(ee.Reducer.sum())` and documented at length why a mean would
+be wrong — while producing exactly the mean it warned about. Earth Engine
+weights each contributing pixel by the fraction of the OUTPUT pixel it covers,
+and those weights sum to one, so a weighted sum IS an average. Measured over a
+480x376 domain at 500 m: 741,659 people where the native-resolution total is
+18,543,954, short by 25.003x — precisely (500/100)^2. Every population-at-risk
+figure this project published before that was found was low by the square of
+the ratio between the solver grid and 100 m.
+
+The correction lives in `grid_fetch.fetch_image_on_grid(extensive=True)`: the
+count becomes a density per m2, is aggregated as the intensive quantity it then
+is, and is multiplied back by the solver cell area. See that module's docstring
+for the measurements. THE OLD CACHE IS NOT REUSABLE — every `ghsl_manifest.json`
+written before this fix points at a raster that is low by the cell-area ratio,
+so the manifest name is versioned and the old ones are simply never read again.
 
 References:
   - Schiavina, M., Freire, S., MacManus, K. (2023) "GHS-POP R2023A - GHS
@@ -59,8 +69,16 @@ class PopulationUnavailableError(RuntimeError):
     """
 
 
+#: Cache manifest name. VERSIONED: v1 manifests point at rasters aggregated
+#: with the weighted `sum()` that is really a mean, so they are low by the
+#: cell-area ratio. Bumping the name retires them rather than leaving a
+#: silently wrong raster reachable — there is no in-place migration that could
+#: recover the lost counts.
+_MANIFEST_NAME = "ghsl_manifest_v2.json"
+
+
 def _cache_manifest(cache_dir: Path) -> Path:
-    return Path(cache_dir) / "ghsl_manifest.json"
+    return Path(cache_dir) / _MANIFEST_NAME
 
 
 def _read_cache(cache_dir: Path) -> Optional[Dict]:
@@ -154,17 +172,8 @@ def _fetch_ghsl_live(grid_dict: Dict, crs_epsg: int, cache_dir: Path,
                      epoch: int) -> Dict:
     """Download GHSL aligned to the solver grid, aggregating counts by SUM."""
     import ee
-    import rasterio
-    import requests
 
-    from jalraksha.export.georef import grid_affine, to_north_up
-
-    nx, ny = int(grid_dict["nx"]), int(grid_dict["ny"])
-    affine = grid_affine(grid_dict)
-    # Earth Engine's crsTransform is [xScale, xShear, xTranslate,
-    # yShear, yScale, yTranslate] — the same six numbers as a GDAL/Affine
-    # transform in the same order.
-    crs_transform = [affine.a, affine.b, affine.c, affine.d, affine.e, affine.f]
+    from jalraksha.gee.grid_fetch import fetch_image_on_grid
 
     collection = ee.ImageCollection(GHSL_COLLECTION)
     image = collection.filter(
@@ -175,53 +184,25 @@ def _fetch_ghsl_live(grid_dict: Dict, crs_epsg: int, cache_dir: Path,
         image = collection.sort("system:time_start", False).first()
     resolved_epoch = image.get("system:index").getInfo()
 
-    # CLIP FIRST. reduceResolution on the unclipped global GHSL image makes
-    # Earth Engine try to load the whole planet at 100 m to aggregate it, and
-    # the request dies with "Number of pixels requested from Image.load exceeds
-    # the maximum allowed (2^31)". Clipping to the run's own footprint before
-    # aggregating is what keeps the work proportional to the domain.
-    region = ee.Geometry.Rectangle(
-        [affine.c, affine.f + affine.e * ny, affine.c + affine.a * nx, affine.f],
-        proj=ee.Projection(f"EPSG:{crs_epsg}"), geodesic=False,
-    )
-    population = image.select(GHSL_BAND).clip(region)
-
-    # SUM, not mean — see the module docstring. reduceResolution aggregates the
-    # 100 m source cells that fall inside each solver cell before reprojection.
-    aggregated = (
-        population
-        .reduceResolution(reducer=ee.Reducer.sum(), maxPixels=1024)
-        .reproject(crs=f"EPSG:{crs_epsg}", crsTransform=crs_transform)
-    )
-
-    # crsTransform + dimensions, NOT region + scale. The latter returns a grid
-    # one cell larger with its own origin (241x241 starting at 197500 rather
-    # than 240x240 at 197736), which would put the population raster half a cell
-    # off the depth raster it is about to be intersected with.
-    url = aggregated.getDownloadURL({
-        "format": "GEO_TIFF",
-        "crsTransform": crs_transform,
-        "dimensions": [nx, ny],
-    })
-
+    # extensive=True — a population COUNT per source cell, not a density. See
+    # grid_fetch's module docstring for why `ee.Reducer.sum()` is the wrong
+    # tool for that and what it cost here. Clipping, the crsTransform +
+    # dimensions download and the shape refusal all live there too, so this
+    # module and the built-up / land-cover fetches cannot drift apart on cell
+    # alignment.
     cache_dir.mkdir(parents=True, exist_ok=True)
-    destination = cache_dir / f"ghsl_pop_{resolved_epoch}_epsg{crs_epsg}.tif"
-    response = requests.get(url, timeout=300)
-    response.raise_for_status()
-    destination.write_bytes(response.content)
+    destination = (cache_dir /
+                   f"ghsl_pop_{resolved_epoch}_epsg{crs_epsg}_areacorrected.tif")
 
-    with rasterio.open(destination) as src:
-        raster = src.read(1)
-        raster_crs = src.crs.to_epsg()
-
-    if (raster.shape[0], raster.shape[1]) != (ny, nx):
-        raise PopulationUnavailableError(
-            f"GHSL download came back {raster.shape} but the solver grid is "
-            f"({ny}, {nx}). Refusing to use a misaligned population grid."
-        )
-
-    grid = to_north_up(raster).astype(np.float32)   # north-up raster -> south-up solver
-    grid = np.nan_to_num(grid, nan=0.0, posinf=0.0, neginf=0.0)
+    stack, meta = fetch_image_on_grid(
+        image=image,
+        bands=[GHSL_BAND],
+        grid_dict=grid_dict,
+        crs_epsg=crs_epsg,
+        destination=destination,
+        extensive=True,
+    )
+    grid = stack[0]
 
     return {
         "population_grid": grid,
@@ -229,9 +210,9 @@ def _fetch_ghsl_live(grid_dict: Dict, crs_epsg: int, cache_dir: Path,
         "source": "GHSL_P2023A",
         "collection": GHSL_COLLECTION,
         "epoch": resolved_epoch,
-        "crs_epsg": raster_crs,
-        "aggregation": "sum over contributing 100 m cells",
-        "geotiff_path": str(destination),
+        "crs_epsg": meta["crs_epsg"],
+        "aggregation": meta["aggregation"],
+        "geotiff_path": meta["geotiff_path"],
         "fetched_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
     }
 

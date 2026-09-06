@@ -16,7 +16,12 @@ import {
  *                        buckets. Shown as a range across warning assumptions,
  *                        never as a single number.
  *   Hazard classes       FD2320 classification of the final keyframe.
- *   Buildings            no data source is integrated. Stated, not estimated.
+ *   Buildings            GHS-BUILT-S built-up SURFACE over this run's grid.
+ *                        Not a building count — no footprint dataset is wired.
+ *   Economic damage      that surface and WorldCover cropland, through an
+ *                        UNPUBLISHED depth-damage curve on UNVETTED unit
+ *                        costs. Per sector, and a sector that could not be
+ *                        fetched shows its reason and no figure.
  *
  * A headcount under a "people at risk" headline is the single worst thing in
  * this project to invent, which is why the empty states here are deliberate
@@ -36,9 +41,9 @@ export default function ImpactPanel({ result }) {
       <h3 style={S.h3}>Impact assessment</h3>
 
       <PopulationSection par={par} />
-      <FatalitySection par={par} impact={impact} />
+      <FatalitySection par={par} />
       <HazardSection hazard={hazard} />
-      <BuildingsSection />
+      <BuildingsSection impact={impact} />
       <DamageSection impact={impact} />
     </div>
   );
@@ -107,7 +112,7 @@ const GRAHAM_RATES = {
   low: [0.01, 0.002, 0.0002],
 };
 
-function FatalitySection({ par, impact }) {
+function FatalitySection({ par }) {
   if (!par?.available) {
     return (
       <section style={S.section}>
@@ -151,11 +156,6 @@ function FatalitySection({ par, impact }) {
           />
         ))}
       </div>
-      {impact?.jonkman != null && (
-        <div style={S.provenance}>
-          Jonkman method, for comparison: <strong>{num(impact.jonkman)}</strong>
-        </div>
-      )}
       <div style={S.provenance}>
         A range, never a point value. The severity band is not determined by
         this run — it depends on flood depth, velocity and building type at each
@@ -237,50 +237,146 @@ function HazardSection({ hazard }) {
   );
 }
 
-function BuildingsSection() {
+const SECTOR_LABEL = {
+  residential: "Residential",
+  non_residential: "Non-residential",
+  agricultural: "Cropland",
+};
+
+function BuildingsSection({ impact }) {
+  const built = impact?.exposure_provenance?.built_up;
   return (
     <section style={S.section}>
-      <h4 style={S.h4}>Buildings affected</h4>
-      <div style={S.gap}>
-        <strong>No data source integrated.</strong>
-        <div style={{ marginTop: 4 }}>
-          No building footprint dataset is wired into this build. Google Open
-          Buildings (CC BY 4.0) is licence-compatible and is the intended
-          source. A count derived from population density and flooded area
-          would be a number invented from another number, so none is shown.
+      <h4 style={S.h4}>Built-up exposure</h4>
+      {built ? (
+        <>
+          <div style={S.row}>
+            <Tile
+              label="Built-up surface in domain"
+              value={`${num(built.total_built_surface_km2)} km²`}
+              sub={`${built.source} ${built.epoch}`}
+            />
+            <Tile
+              label="of which non-residential"
+              value={`${num(built.total_non_residential_km2)} km²`}
+              sub="published band, not an assumed share"
+            />
+          </div>
+          <div style={S.gap}>
+            <strong>Surface area, not a building count.</strong>
+            <div style={{ marginTop: 4 }}>
+              GHS-BUILT-S posts built-up <em>surface</em> in m² per 100 m cell —
+              roofprint area, not footprints and not a number of buildings.
+              Residential is the published total minus the published
+              non-residential band. A count would need Google Open Buildings
+              (CC BY 4.0), which is licence-compatible and is not wired into
+              this build, so none is shown.
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={S.gap}>
+          <strong>Not fetched for this run.</strong>
+          <div style={{ marginTop: 4 }}>
+            GHS-BUILT-S is the asset layer; without it there is no exposure and
+            no damage figure. Runs predating this feature have no built-up
+            artifact at all.
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
 
 function DamageSection({ impact }) {
-  if (!impact?.damage) {
+  const damage = impact?.damage;
+
+  if (!damage) {
     return (
       <section style={S.section}>
         <h4 style={S.h4}>Economic damage</h4>
         <div style={S.gap}>
           <strong>Not computed for this run.</strong>
           <div style={{ marginTop: 4 }}>
-            The depth–damage module exists but its asset values are fixed
-            constants (125 / 85 / 45 crore per category) rather than anything
-            derived from this catchment, so a rupee figure here would carry
-            more authority than its inputs support.
+            No impact artifact was written. Runs that finished before the damage
+            estimate existed have none, and no figure is reconstructed for them.
           </div>
         </div>
       </section>
     );
   }
+
+  const sectors = Object.entries(damage.sectors || {});
+  const missing = damage.missing_sectors || [];
+  const anyAvailable = sectors.some(([, block]) => block.available);
+
   return (
     <section style={S.section}>
       <h4 style={S.h4}>Economic damage</h4>
-      <div style={S.row}>
-        <Tile label="Estimated damage" value={`₹${num(impact.damage.damage_crore_inr)} cr`}
-              sub={impact.damage.uncertainty_applied} emphasis />
+
+      {damage.total_crore_inr != null ? (
+        <div style={S.row}>
+          <Tile
+            label="Total damage"
+            value={`₹${num(damage.total_crore_inr)} cr`}
+            sub={`₹${num(damage.total_lower_crore_inr)} – ₹${num(damage.total_upper_crore_inr)} cr`}
+            emphasis
+          />
+        </div>
+      ) : (
+        anyAvailable && (
+          <div style={S.warn}>
+            <strong>No total.</strong> {missing.map((s) => SECTOR_LABEL[s] || s).join(", ")}{" "}
+            could not be fetched, and a total that silently omits a sector reads
+            as a complete one. The sectors that were measured are below.
+          </div>
+        )
+      )}
+
+      <div style={{ ...S.row, marginTop: 10 }}>
+        {sectors.map(([name, block]) =>
+          block.available ? (
+            <Tile
+              key={name}
+              label={SECTOR_LABEL[name] || name}
+              value={`₹${num(block.damage_crore_inr)} cr`}
+              sub={`${block.exposed_area_km2?.toFixed(3)} km² exposed · ₹${num(
+                block.unit_cost_inr_per_m2
+              )}/m² (${block.unit_cost_price_year})`}
+            />
+          ) : (
+            <Tile
+              key={name}
+              label={SECTOR_LABEL[name] || name}
+              value="—"
+              sub="not measured"
+            />
+          )
+        )}
       </div>
+
+      {sectors
+        .filter(([, block]) => !block.available)
+        .map(([name, block]) => (
+          <div key={name} style={{ ...S.warn, marginTop: 8 }}>
+            <strong>{SECTOR_LABEL[name] || name}:</strong> {block.reason}
+            <div style={{ marginTop: 4 }}>No estimate is substituted.</div>
+          </div>
+        ))}
+
       <div style={S.warnInline}>
-        UNVETTED — asset values are fixed constants, not derived from this
-        catchment. Treat as an order of magnitude.
+        UNVETTED — the depth–damage curve is an unpublished saturating
+        exponential, and the unit costs are placeholders at a stated price year,
+        echoed above so the figure can be rescaled. An ordering of severity and
+        an order of magnitude, not an appraisal.
+      </div>
+      <div style={S.provenance}>
+        Exposure is fetched onto this run's own grid, so it varies with the
+        catchment: GHS-BUILT-S built-up surface and ESA WorldCover cropland
+        fraction (CC BY 4.0). Cells shallower than{" "}
+        {sectors.find(([, b]) => b.available)?.[1]?.depth_threshold_m ?? 0.1} m
+        contribute nothing, matching the depth used for the population count
+        above. See docs/VERIFICATION_LOG.md rows 10, 35 and 36.
       </div>
     </section>
   );

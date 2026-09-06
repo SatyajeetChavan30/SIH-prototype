@@ -1,4 +1,4 @@
-# Progress checkpoint — 2026-09-03
+# Progress checkpoint — 2026-09-06
 
 Snapshot of what is done, what is running, and what is left, written for
 picking the work back up without re-deriving context.
@@ -72,7 +72,7 @@ Reproduce: `python scripts/validate_against_delft3d.py --case ritter`
    models of still water. Not fixed; the fix is locating the barrier along the
    real impoundment.
 
-Test suite: **435 passed, 4 skipped** (Delft3D + GEE-dependent tests skip
+Test suite at the time of this section: **435 passed, 4 skipped** (Delft3D + GEE-dependent tests skip
 cleanly without those installs).
 
 ## Dashboard integration — DONE (2026-08-29)
@@ -134,7 +134,7 @@ failures. Full record in CLAUDE.md; measurements in `validation_findings.md`
 
 **Verified end to end** through the API on the Rishi Ganga: 25 exports,
 provenance banner, DEM-update panel with stage-storage chart, downloadable
-GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
+GeoTIFF + sidecar + lake mask. All blocking gates pass. Suite now at **600 passed, 4 skipped**.
 
 **Five defects found along the way, none introduced by this work:**
 
@@ -151,6 +151,132 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
    beside it (the ensemble median of `h_max` over members that never arrived).
 5. A steep river mistaken for a hillside town: a 3 km window measures the
    river's own fall, so a point *on* the channel read as 64 m above it.
+
+## Khadakwasla drainage plateau — three mechanisms fixed (2026-09-03)
+
+A 24 h Khadakwasla run on the old 27 km dam-centred domain (54 x 54 km) did not
+recede. The hazard classification peaked at t ~ 17,876 s and then **plateaued**:
+46 cells stayed SEVERE for the last 7.5 simulated hours, and roughly **42% of the
+released volume was permanently trapped**. The same peak time appeared in both a
+10-member and a 100-member baseline, so it was structural, not an ensemble
+artefact.
+
+Three separate causes, each producing water that had nowhere to go:
+
+| Cause | Fix | Default |
+| :--- | :--- | :--- |
+| The dam ridge is still intact in the DEM. `inject_breach_hydrograph` only ADDS depth at one cell — a source term with no momentum direction — so the fraction spreading back upstream landed in the real closed reservoir bowl and sat there | `run.py::_notch_breach_into_bed` carves a gap through the crest down to the dam-height invert, clamped never to dig below the local terrain floor just outside the notch | `notch_breach=True` |
+| Bilinear downsampling of a narrow channel manufactures spurious local minima along the flow corridor, and the solver's own water pools in them permanently | `terrain/conditioning.py::fill_depressions` — priority-flood seeded from the domain boundary (the only place the transmissive boundary lets water exit), with the raise per cell capped so genuine basins survive | `fill_max_depth_m=3.0` |
+| A dam-centred square spends half its cells on the Western Ghats and the Arabian Sea, and the flood has no downstream to drain into | `load_dem_as_grid(margins_km=...)`, exposed as `RunRequest.domain_margins_km`, gives an asymmetric rectangle biased downstream | none — per-request override only |
+
+**The notch is not a hole in an intact wall.** The invert is the crest elevation
+at the breach cell minus `dam_config["height_m"]` — the one breach-geometry
+number every hydrograph member carries, and the value Froehlich / Von Thun-style
+regressions assume for a full-depth breach. Dam height is a fixed ensemble input,
+not sampled per member, so there is one notch geometry shared by the whole
+ensemble, exactly like the terrain.
+
+**The depression fill is deliberately not "fill everything to guarantee
+drainage."** It computes the full hydrological fill, then caps the raise actually
+applied at the threshold. A one- or two-metre pit (resampling noise) fills
+completely; a real reservoir bowl keeps standing at very nearly its original
+depth, because only its top 3 m is touched. Erasing genuine terrain to make the
+water leave would have hidden the same defect behind a nicer graph.
+
+**Preset defaults are unchanged.** `domain_margins_km` was used as a per-request
+override for this investigation, not written into
+`jalraksha/presets.py::khadakwasla`. Every default Khadakwasla run, the dashboard
+demo included, still gets the same 27 km dam-centred square. The cached DEM at
+`data/dem/dem_18.44_73.77_clipped.tif` was widened to 240 x 188 km (40 km west /
+200 km east / 94 km north and south) to support the wider domain; it is a
+superset of the old 57 x 56 km clip, so nothing that worked before stopped
+working, and `test_domain_radius_does_not_exceed_the_cached_dem` still passes
+with much more headroom.
+
+Covered by `tests/test_terrain.py`:
+`test_fill_depressions_shallow_filled_deep_preserved`,
+`test_fill_depressions_unrestricted_removes_all_local_minima`,
+`test_notch_breach_lowers_bed_and_respects_local_floor`.
+
+**The confirmation runs completed, and the three fixes were not enough — see the
+next section.** `scripts/run_khadakwasla_drainage_check.py` exercises them
+together and writes a compact hazard time-series per run.
+The script exists rather than a `POST /runs` because an API-submitted run
+executes in a subprocess spawned by the server and dies with it — that happened
+three times in one session, each time silently discarding hours of compute,
+because `run_ensemble` returns every member at once and writes nothing
+per-member. The script is nobody's child and survives the server coming and
+going.
+
+## Khadakwasla drainage — the cause was reclassified, and the flood now drains (2026-09-06)
+
+Full measurement in `docs/validation_findings.md` §8. The three mechanism fixes
+above were necessary and not sufficient, and the field that resolved it was one
+nobody was reading: `volume_balance.exited_mcm`.
+
+| run | domain (km) | Δx | duration | members | wall | final sev/ext | `exited_mcm` |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- | ---: |
+| `48f7ac59` | full 40/200/94/94 | 500 m | 24 h | 4 | 3,867 s | 26 / 1 | −8.5e−14 |
+| `1d3d3c45` | full 40/200/94/94 | 300 m | 24 h | 4 | 18,047 s | 58 / 15 | −4.4e−13 |
+| `e5485691` | mid 12/105/45/45 | 500 m | 48 h | 2 | 827 s | 25 / 1 | +2.7e−13 |
+| **`e2e09ea3`** | **exit 8/20/8/18** | **200 m** | **30 h** | **6** | **2,740 s** | **0 / 0** | **82.219 (96.4%)** |
+
+The first three exported **no water at all**, so they never tested drainage: the
+transmissive boundary is the model's only exit, the flood front is
+volume-limited and stops at east 23.5 km, and the nearest edge was 40 km away.
+Moving the boundary 3.5 km *inside* the front (`--domain exit`) drains 96.4% of
+the released volume and reaches **zero SEVERE and zero EXTREME cells at 9.44 h**
+against a pre-fix baseline of 46 stuck SEVERE cells and ~42% trapped.
+
+That run clips the study area on purpose — it answers "when does the flood clear
+a 28 × 26 km area around Pune", not "the water ceased to exist" — and it changed
+four variables at once, so only the volume balance is cleanly attributable.
+Hadapsar and Magarpatta City sit 3.0 km from the outflow edge and are flagged
+boundary-contaminated.
+
+**Corridor conditioning** (`--condition-corridor`, `condition_corridor_m`,
+default off) fills depressions completely within *n* metres of the valley floor
+while upland basins keep the ordinary 3 m cap. It improves recession — wet
+severity 0.358 against 0.518/0.551 — and it is **not** drainage: `e5485691` still
+exported zero water. A conditioned bed is MODIFIED TERRAIN and the run label,
+`dam_config` and fill stats all say so.
+
+## Both blockage sites have now run (2026-09-06)
+
+Via `scripts/run_blockage.py`, which registers itself through `script_runs` so
+the run is durable *and* listed in the picker while it solves.
+
+| run | site | barrier | Δx / dur / members | impounded (MEASURED off the burn) | result |
+| :--- | :--- | :--- | :--- | ---: | :--- |
+| `afabb054` | `mutha_temghar` | 45 m × 1,600 m requested | 150 m / 6 h / 4 | 39.110 MCM, 2.542 km², surface 664.2 m | no arrival at any of six gauges |
+| `a221473f` | `rishi_ganga` | 110 m × 1,500 m | 100 m / 4 h / 4 | 22.177 MCM, 0.790 km², surface 1816.8 m | +5 km at 91.5 min, peak 11.72 m |
+
+`mutha_temghar` is **HYPOTHETICAL** — no landslide dam has been recorded on that
+reach of the Mutha — and carries no `event_date` and no detection window so the
+Sentinel-1 detector is never invited to hunt for it. Its no-arrival is the
+expected attenuation into Khadakwasla reservoir, not a broken run.
+
+`burn_barrier` widened the requested 1,600 m crest to a `width_m_final` of
+**7,200 m** before `downstream_leak_cells` reached zero. The preset note's
+"1,400–1,900 m" span estimate is therefore wrong and should be corrected or
+labelled as a terrain estimate next time that preset is touched.
+
+## Untracked working files
+
+- **`scripts/run_blockage.py`** — standalone blockage run for any site, durable
+  and dashboard-visible.
+- **`scripts/make_synthetic_demo_run.py`** — a LABELLED non-simulation. No solver
+  runs; it paints a prescribed wave onto the real DEM. Labelled three times over
+  (picker name, caption burned into every PNG, `is_synthetic: true` in both
+  `run_summary.json` and `params_json`). Now largely superseded by `e2e09ea3`,
+  which is a real solve that reaches zero severe cells.
+- **`JalRaksha_Icon.png` / `JalRaksha_Icon.svg` / `icons/`** — branding assets
+  (`JalRaksha_Icon_Options.png`, `JalRaksha_Icons.zip`). Not referenced by code.
+- **`JalRaksha_MultiHazard_Workflow.drawio`** — an editable draw.io flowchart of
+  the full multi-hazard pipeline: satellite monitoring feedback loop, hazard-type
+  branch (dam breach / river blockage), breach-mode and near-field/far-field
+  splits, validation gate, export engine, storage. Legend marks the satellite and
+  river-blockage lanes as new. Not referenced by any code or doc yet.
 
 ## Still open
 
@@ -186,6 +312,26 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
   timestep as a deep release accelerates down a gorge: 55 m / 0.6 MCM solved
   4 members in ~15 min at 100 m, the 120 m / 26 MCM case took ~40. Pre-compute
   anything large before a live demo.
+- **Nothing has ever drained on a domain wide enough to contain the flood.**
+  `exited_mcm` is zero in every wide-domain run; the 96.4% figure comes from the
+  clipped 28 × 26 km `exit` domain. Whether the retained water would leave a real
+  floodplain is untested — the solver has no infiltration, evaporation or seepage
+  sink of any kind.
+- **Corridor conditioning is not isolated.** Its one wide-domain run differs from
+  its comparator in domain, duration and ensemble size too, so the severity
+  improvement is suggestive, not attributed. Only one corridor capacity figure
+  (44 MCM, exit domain at 200 m) has a surviving log; three larger figures in
+  source docstrings (1,392 / 1,686 / 1,659 MCM) were measured on wider domains
+  and must never be quoted without their domain and resolution.
+- **`MUTHA_TEMGHAR`'s note claims a 1,400–1,900 m span** and the burn needed
+  7,200 m. Correct or relabel it.
+- **Tehri's `solver="both"` path fails at the initial condition** — *"Impounding
+  3540.0 MCM over 9.72 km2 requires a mean depth of 364.2 m, which exceeds the
+  dam height of 260.0 m"* (run `37e1e713`). The SWE half completes and exports;
+  the comparison is recorded as not written. Same root cause as `compare_tehri`.
+- **A wide downstream domain is expensive.** The verification run is 240 x 188 km
+  at 300 m — 800 x 627 cells — for 24 simulated hours across 4 members. Budget
+  hours, not minutes, and do not start it during a demo.
 - **Verification-only launch entries** (`api-verify` on :8010,
   `frontend-verify` on :3010) and the git-ignored `frontend/.env.verify.local`
   exist so the dashboard can be driven without colliding with a dev API on
@@ -193,7 +339,13 @@ GeoTIFF + sidecar + lake mask. 590 tests pass; all blocking gates pass.
 
 ## Next step, if resuming
 
-Rehearse the full demo script end to end and screenshot each tab — the one
-thing not yet done is running the twelve-step judge walkthrough start to
-finish on a quiet machine. After that, pre-bake a clean set of demo runs (one
-good SWE run per dam) and prune the 29 accumulated test runs from the picker.
+The drainage loop is closed (run `e2e09ea3`). The open loop with a number
+attached to it is now the other direction: **isolate what the `exit` run's four
+simultaneous changes each contributed.** The cheapest cut is the exit domain at
+200 m for 30 h *without* `--condition-corridor`, which separates the boundary
+from the conditioning; it costs roughly the same 2,740 s.
+
+Then rehearse the full demo script end to end and screenshot each tab — the
+twelve-step judge walkthrough has still never been run start to finish on a
+quiet machine. After that, pre-bake a clean set of demo runs (one good SWE run
+per dam) and prune the 29 accumulated test runs from the picker.

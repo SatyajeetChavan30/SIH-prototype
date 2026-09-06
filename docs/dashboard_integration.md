@@ -119,18 +119,29 @@ the real Deltares kernel. They lie on top of each other — that is the result.
 
 Every tile carries a real number or states why it does not:
 
-- **Population at risk** — live GHSL census counts. Verified on Tehri: **322 at
-  risk of 295,025 in the domain**, split across the three warning-urgency bands.
+- **Population at risk** — live GHSL census counts, split across the three
+  warning-urgency bands. **The Tehri figures once quoted here (322 at risk of
+  295,025 in domain) were low by (grid / 100 m)²**: `reduceResolution(sum)` is
+  area-weighted and returns a mean, measured at 25.003x on a 500 m grid.
+  Corrected in `gee/grid_fetch.py`; artifacts written before 2026-09-06 still
+  carry the error and are not retroactively fixed. VERIFICATION_LOG row 37.
 - **Loss of life** — Graham (USBR DSO-99-06) joined to those bands. Shown as a
   range across all three severity assumptions, never a single number.
 - **Hazard classes** — FD2320, coloured from the classifier's own palette so
   the legend cannot drift from the pixels.
-- **Buildings** — *"No data source integrated."* There is no building-footprint
-  dataset in this build. Google Open Buildings is licence-compatible and is the
-  intended source. A count derived from population density would be a number
-  invented from another number.
-- **Damage** — shown only if computed, and labelled UNVETTED: the asset values
-  are fixed constants, not derived from the catchment.
+- **Built-up exposure** — GHS-BUILT-S R2023A built-up SURFACE (m² per 100 m
+  cell) on the run's own grid, with residential derived as the published total
+  minus the published non-residential band. A building **count** is still not
+  built: that needs Google Open Buildings (CC BY 4.0), and a count derived from
+  population density would be a number invented from another number.
+- **Damage** — per sector (residential / non-residential / cropland), from that
+  exposure and ESA WorldCover cropland fraction. The asset term now varies with
+  the catchment; what stays UNVETTED is the depth-damage CURVE (an unpublished
+  saturating exponential, `model_is_published: false`) and the unit COST per m²,
+  which is echoed with its price year so a reader can rescale. A sector whose
+  exposure cannot be fetched shows its reason and no figure, and the TOTAL is
+  withheld unless every sector succeeded — a total silently missing a sector
+  reads as a complete one.
 
 ## Earth Engine
 
@@ -492,6 +503,63 @@ provenance JSON, and the impounded-lake extent, tagged
 `impounded_lake_extent` / "initial condition, not a solver output" so nobody
 reads a constructed lake as simulated inundation.
 
+## A second blockage site, and it is HYPOTHETICAL
+
+`mutha_temghar` ("Mutha River below Temghar, Pune") joins `rishi_ganga` in
+`BLOCKAGE_PRESETS` and reaches the dashboard through
+`config.py::_demo_blockage_from_preset`, the same path Rishi Ganga uses.
+
+**The two are not equally hypothetical, and the wire payload is what keeps them
+apart.** Rishi Ganga models a real 7 February 2021 blockage whose geometry is
+merely unmeasured. **No landslide dam has ever been recorded on the Mutha
+reach.** The preset's `barrier_source` and `note` travel in the payload, so the
+panel cannot present it as an observed event; nothing published from a run of it
+may describe the barrier as measured. It also carries **no `event_date` and no
+detection window**, deliberately — offering detect dates would invite the
+Sentinel-1 detector to hunt for a barrier that never existed.
+
+Its gauge corridor runs east from the barrier through Khadakwasla reservoir into
+Pune. Each town point records **its height above the local channel** (Deccan
+Gymkhana 5.0 m, Shivajinagar 20.5 m, Hadapsar 12.9 m above the lowest bed within
+600 m), measured the way the Rishi Ganga town gauges were condemned. **Loni
+Kalbhor is deliberately absent** even though the Khadakwasla corridor lists it:
+its published coordinate reads ~120 m above the river, which is the same failure.
+
+A run of it (`afabb054`, 45 m crest, 150 m, 6 h, 4 members) impounds 39.110 MCM
+measured off the burned geometry and reaches **no gauge at all** in 6 h. That is
+the expected attenuation into an 85.31 MCM reservoir 26 km downstream — say so if
+it comes up, rather than showing an empty map.
+
+## Runs that outlive the server, and the job-object trap
+
+`CREATE_BREAKAWAY_FROM_JOB` is defined as a literal in `main.py` rather than read
+off `subprocess`, where the attribute is missing on some builds (0 on POSIX,
+where `start_new_session` does the job).
+
+On Windows `DETACHED_PROCESS` detaches from the console but **not** from a Job
+Object. A harness that runs the API in a job with kill-on-close therefore takes
+the worker down with it — measured: a worker died mid-export at 92%. Breakaway
+succeeds only where the job permits it, and where it does not `CreateProcess`
+fails outright, so the dispatcher **retries without the flag and prints that the
+run will not survive the server being stopped**. A run that starts and is
+vulnerable beats a run that cannot start, but the difference has to be visible or
+"your run died" silently becomes "your run never started".
+
+Output goes to `data/runs/<run_id>.log`: a detached child has no console to
+inherit, and the log then survives the server and belongs to one run.
+
+`register_script_run.py` now emits the `GridSummary` field names
+(`nx`/`ny`/`dx`/`dy`/`x0`/`y0`/`crs`); the old `resolution_m` key rendered the
+grid panel as a row of blanks. Cell size and counts are recoverable from the
+recorded resolution and margins, so they are filled in. **`x0`/`y0` stay null
+rather than guessed** — the UTM origin was never recorded, and a wrong one
+georeferences every downloaded raster incorrectly, which is worse than an absent
+one.
+
+`scripts/run_api.py` honours `$PORT` and `.claude/launch.json` uses `autoPort`,
+so a second checkout or a parallel session no longer collides on 8000. An
+explicit `--port` still wins.
+
 ## Three gauge defects found by running the blockage scenario
 
 All three predate this work and affected dam-break runs too.
@@ -550,3 +618,22 @@ them, each labelled `TERRAIN-DERIVED`.
   render as blanks, correctly. New runs are complete.
 - Runs orphaned by an API restart are marked failed at startup; eight were
   stuck at `running` in the demo database.
+- **A run submitted from the dashboard can still die with the server** where the
+  job object forbids breakaway. The dispatcher says so in the API log when it
+  falls back. Long runs belong in `scripts/` — `run_blockage.py` and
+  `run_khadakwasla_drainage_check.py` register themselves, so they are durable
+  *and* listed in the picker while they solve.
+- **The demo run to load is `e2e09ea3`** (Khadakwasla, exit domain, 200 m, 30 h):
+  it is the only run whose hazard reaches zero SEVERE and zero EXTREME cells.
+  When showing it, say that its domain is deliberately clipped to 28 × 26 km so
+  the flood can cross a boundary — 96.4% of the volume left the box and is
+  downstream, unmodelled — and that Hadapsar and Magarpatta City sit 3.0 km from
+  that edge and are flagged boundary-contaminated.
+- **`scripts/make_synthetic_demo_run.py` output is not a simulation.** It is
+  labelled three times over (picker name begins "SYNTHETIC DEMO", the caption is
+  burned into every keyframe PNG, and `is_synthetic: true` is in both
+  `run_summary.json` and `params_json`). Prefer `e2e09ea3`, which is real.
+- **Tehri's `solver="both"` comparison fails at the initial condition** —
+  *"Impounding 3540.0 MCM over 9.72 km2 requires a mean depth of 364.2 m, which
+  exceeds the dam height of 260.0 m."* The SWE half completes and exports 18
+  products; the Comparison tab has nothing to show for that run.
