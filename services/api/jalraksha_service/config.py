@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 #
 # Direction matters — service depends on library, never the reverse. That is
 # jalraksha/presets.py's own stated rule for this exact situation.
-from jalraksha.presets import KHADAKWASLA, RISHI_GANGA, get_gauges
+from jalraksha.presets import KHADAKWASLA, MUTHA_TEMGHAR, RISHI_GANGA, get_gauges
 
 
 def _env(key: str, default: str) -> str:
@@ -240,6 +240,11 @@ class Settings:
         # It publishes no height, storage or dam type, and record_type
         # "blockage" is what stops RunRequest.to_dam_config refusing it for that.
         _demo_blockage_from_preset(RISHI_GANGA),
+        # The Pune-basin blockage site. HYPOTHETICAL -- no landslide dam has
+        # been recorded on the Mutha -- which its barrier_source and note say
+        # in the wire payload, so the dashboard cannot present it as an
+        # observed event the way Rishi Ganga legitimately is.
+        _demo_blockage_from_preset(MUTHA_TEMGHAR),
     ]
 
     # ParaView desktop integration (POST /runs/{id}/open-paraview).

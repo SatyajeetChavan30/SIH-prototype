@@ -106,18 +106,34 @@ def _synthesise_run_summary(series: dict, manifest: dict) -> dict:
     """
     info = manifest.get("simulation_info") or {}
     balance = series.get("volume_balance") or {}
+
+    # Grid must use the GridSummary field names (nx/ny/dx/dy/x0/y0/crs) or the
+    # panel renders a row of blanks. Cell size and counts ARE recoverable —
+    # resolution and the domain margins were both recorded — so they are filled
+    # in. The UTM origin was not recorded and is NOT guessed: a wrong x0/y0
+    # would georeference every downloaded raster incorrectly, which is worse
+    # than an absent one.
+    resolution = info.get("grid_resolution_m") or series.get("target_resolution_m")
+    margins = series.get("margins_km") or {}
+    nx = ny = None
+    if resolution and margins:
+        nx = int(round((margins.get("west", 0) + margins.get("east", 0)) * 1000 / resolution))
+        ny = int(round((margins.get("south", 0) + margins.get("north", 0)) * 1000 / resolution))
+
     return {
         "source": "backfilled",
         "note": (
             "Registered from artifacts on disk by "
             "scripts/register_script_run.py. The solver result was not "
             "retained, so fields normally derived from it are absent rather "
-            "than recomputed."
+            "than recomputed. The grid origin was never recorded and is left "
+            "null rather than guessed."
         ),
         "ensemble": None,
         "grid": {
-            "resolution_m": info.get("grid_resolution_m")
-            or series.get("target_resolution_m"),
+            "nx": nx, "ny": ny,
+            "dx": resolution, "dy": resolution,
+            "x0": None, "y0": None, "crs": None,
         },
         "solver_params": {
             "ensemble_size": series.get("ensemble_size"),

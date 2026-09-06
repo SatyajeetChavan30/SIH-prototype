@@ -32,8 +32,11 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import warnings
 from pathlib import Path
 from typing import Dict, Optional, Tuple
+
+import numpy as np
 
 from jalraksha.gee.auth import gee_status
 from jalraksha.terrain.roughness import LandCoverUnavailableError
@@ -167,3 +170,149 @@ def fetch_worldcover(
     }
     manifest.write_text(json.dumps(detection, indent=2), encoding="utf-8")
     return detection
+
+
+#: Intermediate posting for the two-stage aggregation onto a solver grid.
+#: 100 m matches the GHSL products, so every raster in the impact pipeline
+#: passes through the same middle scale.
+STAGE_SCALE_M = 100.0
+
+#: ESA WorldCover class code for Cropland. The full legend lives in
+#: ``terrain/roughness.py``; only this one class is needed here, because it is
+#: the only one an agricultural damage figure is computed over.
+CROPLAND_CLASS = 40
+
+
+def _grid_cache_paths(cache_dir: Path, epoch_tag: str) -> Tuple[Path, Path]:
+    cache_dir = Path(cache_dir)
+    return (cache_dir / f"worldcover_cropland_{epoch_tag}.tif",
+            cache_dir / "worldcover_cropland_manifest.json")
+
+
+def fetch_cropland_fraction_on_grid(
+    grid_dict: Dict,
+    crs_epsg: int,
+    cache_dir,
+) -> Dict:
+    """
+    Per-cell CROPLAND FRACTION on the solver's own grid.
+
+    WHY THIS EXISTS ALONGSIDE ``fetch_worldcover``. That function returns a
+    4326, bbox-shaped, 30 m raster of class CODES, which ``roughness.py``
+    resamples to the solver grid by nearest neighbour. Nearest neighbour is
+    right for a friction lookup — an interpolated class code is not a land
+    cover — but it is wrong for an AREA: it reports the class at the cell
+    centre, so a 200 m cell that is 40% cropland comes back as either fully
+    cropland or not cropland at all. An agricultural damage figure built on
+    that is a coin flip per cell.
+
+    It is also the only form that scales. WorldCover is 10 m; a 240 x 188 km
+    domain fetched at 30 m is about 50 megapixels, past what
+    ``getDownloadURL`` will return. Reducing to the solver grid server-side
+    keeps the download proportional to the domain the solver actually has.
+
+    So: ``Map.eq(40)`` gives a 0/1 cropland mask at native posting, and MEAN —
+    not sum — aggregates it into the fraction of each solver cell that is
+    cropland. Mean is correct here precisely because a fraction is INTENSIVE,
+    which is the opposite of the population and built-up cases in this package.
+    Multiply by the solver cell area to get cropland m2 per cell.
+
+    Three states and no fourth, same as ``fetch_worldcover``: live, cached, or
+    ``LandCoverUnavailableError``. No land cover is synthesised.
+
+    Args:
+        grid_dict: {"nx","ny","dx","dy","x0","y0"} from the run's Grid.
+        crs_epsg: The run's metric EPSG code.
+        cache_dir: Directory for the cached GeoTIFF and manifest.
+
+    Returns:
+        Dict with 'cropland_fraction' [ny, nx] in solver row order (row 0
+        south), values in [0, 1], plus provenance.
+
+    Raises:
+        LandCoverUnavailableError: when neither Earth Engine nor a cache can
+            supply the grid.
+    """
+    from jalraksha.gee.grid_fetch import read_cached_stack
+
+    cache_dir = Path(cache_dir)
+    geotiff, manifest = _grid_cache_paths(cache_dir, "v200")
+
+    available, reason = gee_status()
+    live_failure = reason
+
+    if available:
+        try:
+            import ee
+
+            from jalraksha.gee.grid_fetch import fetch_image_on_grid
+
+            mask = (
+                ee.ImageCollection(WORLDCOVER_COLLECTION)
+                .first()
+                .select("Map")
+                .eq(CROPLAND_CLASS)
+                .rename("cropland")
+            )
+            stack, meta = fetch_image_on_grid(
+                image=mask,
+                bands=["cropland"],
+                grid_dict=grid_dict,
+                crs_epsg=crs_epsg,
+                destination=geotiff,
+                # A FRACTION is intensive: the area-weighted mean of the 0/1
+                # mask already is the cropland share of each solver cell, and
+                # no cell-area rescaling belongs here. This is the opposite
+                # case from population and built-up surface in this package.
+                extensive=False,
+                # WorldCover is 10 m and the solver runs at 100-500 m, which is
+                # too far to cross in one reduceResolution: at 500 m Earth
+                # Engine wants 3,081 source pixels per output pixel against a
+                # 1,024 default, and lifting the cap instead asks it to
+                # materialise the whole domain at 10 m ("Reprojection output
+                # too large (27412x20470 pixels)"). Staging at 100 m makes both
+                # ratios small, and both hops are means over the same fraction,
+                # so nothing is approximated by splitting them.
+                stage_scale_m=STAGE_SCALE_M,
+            )
+            fraction = np.clip(stack[0], 0.0, 1.0)
+            detection = {
+                "source": "esa_worldcover_v200",
+                "collection": WORLDCOVER_COLLECTION,
+                "class_code": CROPLAND_CLASS,
+                "crs_epsg": meta["crs_epsg"],
+                "aggregation":
+                    f"{meta['aggregation']} — the 0/1 cropland mask, so an area fraction",
+                "geotiff_path": meta["geotiff_path"],
+                "attribution": ATTRIBUTION,
+                "licence": "CC BY 4.0",
+                "fetched_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            }
+            manifest.write_text(json.dumps(detection, indent=2), encoding="utf-8")
+            detection["cropland_fraction"] = fraction
+            return detection
+        except Exception as exc:
+            live_failure = f"{type(exc).__name__}: {exc}"
+            print(f"[gee] Live WorldCover cropland fetch failed - {live_failure}")
+    else:
+        print(f"[gee] Earth Engine unavailable for WorldCover - {reason}")
+
+    if geotiff.exists() and manifest.exists():
+        try:
+            cached = json.loads(manifest.read_text(encoding="utf-8"))
+        except Exception as exc:
+            warnings.warn(f"Cached cropland manifest is unreadable: {exc}")
+            cached = None
+        if cached is not None:
+            cached = dict(cached)
+            cached["cropland_fraction"] = np.clip(
+                read_cached_stack(cached["geotiff_path"], 1)[0], 0.0, 1.0)
+            cached["source"] = "cached"
+            cached["reason"] = f"Served from cache: {live_failure}"
+            return cached
+
+    raise LandCoverUnavailableError(
+        f"No ESA WorldCover cropland fraction available on this grid: the live "
+        f"Earth Engine query could not run ({live_failure}), and nothing is "
+        f"cached under {cache_dir}. No land cover is synthesised."
+    )

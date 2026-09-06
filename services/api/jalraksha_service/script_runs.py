@@ -216,7 +216,7 @@ class RegisteredRun:
         complete run with nothing in it.
         """
         from jalraksha_service import db
-        from jalraksha_service.tasks import _existing_exports
+        from jalraksha_service.tasks import _existing_exports, impact_exports
 
         exports: List[Dict[str, str]] = []
 
@@ -258,6 +258,13 @@ class RegisteredRun:
             self.run_id, result, self.dam_config, self.solver_params,
             dem_path=dem_path,
         ))
+
+        # Population at risk and economic damage. SHARED with tasks.py, not
+        # copied. This path wrote neither until now, which is why runs launched
+        # from scripts - including the flagship drain-to-green run - list in the
+        # picker with an Impact tab that has nothing in it.
+        exports.extend(impact_exports(self.run_id, result, self.dam_config))
+
         exports.extend(self._extra_exports)
 
         db.insert_gauge_results(self.run_id, gauge_rows_from_result(result))

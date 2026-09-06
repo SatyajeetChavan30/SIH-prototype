@@ -77,6 +77,7 @@ def build_domain(
     use_synthetic_terrain: bool = False,
     margins_km: Optional[Dict[str, float]] = None,
     fill_max_depth_m: float = 3.0,
+    condition_corridor_m: float = 0.0,
 ) -> Tuple[Grid, Any, np.ndarray]:
     """
     Build computational domain from DEM for dam-break simulation.
@@ -109,6 +110,10 @@ def build_domain(
             for a domain deliberately biased in one direction (e.g. downstream,
             so the flood has runway to actually exit) rather than centred on
             the dam. Produces a rectangular grid.
+        condition_corridor_m: Passed through to load_dem_as_grid. > 0 fills
+            depressions within this height of the valley floor COMPLETELY, so
+            the flow corridor drains. Produces MODIFIED TERRAIN — every product
+            built from it must say so.
         fill_max_depth_m: Passed through to load_dem_as_grid — threshold-limited
             depression fill; see that function's docstring. Pass 0 to disable.
 
@@ -139,6 +144,7 @@ def build_domain(
             domain_radius_km=domain_radius_km,
             margins_km=margins_km,
             fill_max_depth_m=fill_max_depth_m,
+            condition_corridor_m=condition_corridor_m,
         )
 
     print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m resolution ({grid.crs})")

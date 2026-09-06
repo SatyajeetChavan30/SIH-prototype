@@ -13,6 +13,18 @@
 | **Manual length** | ~199,456 words |
 | **Defects catalogued** | 546 findings across 9 subsystems, each with file:line and a proposed fix |
 | **Generated** | 2026-09-03 |
+| **Amended** | 2026-09-06 — see below |
+
+> **About the 2026-09-06 amendment.** The figures above describe the original
+> full-codebase read of 2026-09-03. This revision is a **targeted amendment**, not
+> a fresh read: six new subsections cover work that landed afterwards — a second
+> (hypothetical) blockage site, depression fill and corridor conditioning, the
+> breach notch and asymmetric domains, job-object breakaway and script-registered
+> runs, a labelled synthetic demo asset, and the Khadakwasla drainage
+> measurement. Each is marked "Amendment (2026-09-06)" and states where it
+> supersedes the surrounding text. Everything outside those subsections is still
+> the 2026-09-03 reading, and the file counts, line counts and defect tally above
+> have **not** been recomputed.
 
 ---
 
@@ -67,6 +79,7 @@ Two conventions matter throughout:
     - [2b.9 Demo and smoke entry points](#2b-9-demo-and-smoke-entry-points)
     - [2b.10 Test coverage](#2b-10-test-coverage)
     - [2b.11 Gaps, bugs, hardcoded values and risks](#2b-11-gaps-bugs-hardcoded-values-and-risks)
+    - [2b.12 Amendment (2026-09-06) — a second blockage site, and it is hypothetical](#2b-12-amendment-2026-09-06-a-second-blockage-site)
   - [2.2  Backend Service Layer — FastAPI, Persistence, Task Execution](#2-2-backend-service-layer-fastapi-persistence-task-execution)
     - [2C. The Backend Service Layer](#2c-the-backend-service-layer)
     - [2C.2 Service configuration (`config.py`)](#2c-2-service-configuration-config-py)
@@ -79,10 +92,12 @@ Two conventions matter throughout:
     - [2C.9 Deployment](#2c-9-deployment)
     - [2C.10 Gaps, bugs, hardcoded values, security issues and risks](#2c-10-gaps-bugs-hardcoded-values-security-issues-and-risks)
     - [2C.11 Summary of the subsystem's own strongest properties](#2c-11-summary-of-the-subsystem-s-own-strongest-properties)
+    - [2C.12 Amendment (2026-09-06) — runs that outlive the server](#2c-12-amendment-2026-09-06-runs-that-outlive-the-server)
   - [2.3  Presentation Layer — React + Vite Dashboard](#2-3-presentation-layer-react-vite-dashboard)
     - [2.4 The React + Vite Dashboard Frontend](#2-4-the-react-vite-dashboard-frontend)
 - **[3. Data Ingestion & Input Pipeline](#section-3)**
   - [3. Data Ingestion, the DEM Pipeline, Terrain Conditioning and Breach Hydrograph Generation](#3-data-ingestion-the-dem-pipeline-terrain-conditioning-and-breach-hydrograph-generation)
+    - [3.x Amendment (2026-09-06) — depression fill, corridor conditioning, and the breach notch](#3-x-amendment-2026-09-06-depression-fill-corridor-conditioning-and-the-breach-notch)
 - **[4. Core Processing Logic & Algorithms](#section-4)**
   - [4.1  The 2D Shallow-Water Solver Core](#4-1-the-2d-shallow-water-solver-core)
     - [4a. The 2D Shallow-Water Solver Core](#4a-the-2d-shallow-water-solver-core)
@@ -156,6 +171,7 @@ Two conventions matter throughout:
     - [4C.10.1 Where synthetic data is generated](#4c-10-1-where-synthetic-data-is-generated)
     - [4C.10.2 How it is flagged, at every layer](#4c-10-2-how-it-is-flagged-at-every-layer)
     - [4C.10.3 Can synthetic output be confused with a real run?](#4c-10-3-can-synthetic-output-be-confused-with-a-real-run)
+    - [4C.10.4 Amendment (2026-09-06) — `scripts/make_synthetic_demo_run.py`](#4c-10-4-amendment-2026-09-06-the-labelled-synthetic-demo-run)
     - [4C.11.1 `tests/test_export.py` — 10 tests, 4 classes](#4c-11-1-tests-test-export-py-10-tests-4-classes)
     - [4C.11.2 `tests/test_keyframes.py` — 6 tests](#4c-11-2-tests-test-keyframes-py-6-tests)
     - [4C.11.3 `tests/test_xdmf_export.py` — 12 checks](#4c-11-3-tests-test-xdmf-export-py-12-checks)
@@ -181,8 +197,10 @@ Two conventions matter throughout:
     - [C6. Test coverage from the five test files](#c6-test-coverage-from-the-five-test-files)
     - [C7. Gaps, bugs, hardcoded values, overclaiming risks, and scientific caveats](#c7-gaps-bugs-hardcoded-values-overclaiming-risks-and-scientific-caveats)
     - [C8. Overall assessment](#c8-overall-assessment)
+    - [PART D (amendment, 2026-09-06) — the Khadakwasla drainage measurement](#part-d-amendment-2026-09-06-the-khadakwasla-drainage-measurement)
 - **[5. Current Gaps, Bugs & Known Vulnerabilities](#section-5)**
   - [5. Current Gaps, Bugs and Known Vulnerabilities](#5-current-gaps-bugs-and-known-vulnerabilities)
+    - [5.x Amendment (2026-09-06) — what closed, and what did not](#5-x-amendment-2026-09-06-what-closed-and-what-did-not)
 - **[6. Remediation & Action Plan](#section-6)**
   - [6. Remediation and Action Plan](#6-remediation-and-action-plan)
 
@@ -279,7 +297,7 @@ The PS file adds its own decomposition into twelve deliverables D1–D12 with th
 | **R7** | "DEM" (Description / D5b) | Digital elevation model input | `jalraksha/dem.py::fetch_dem` (Copernicus GLO-30 from public AWS COGs), `jalraksha/terrain/conditioning.py::load_dem_as_grid` (WGS84 → UTM reprojection, nodata fill, smoothing) | **Fully met** |
 | **R8** | "satellite imagery" (Description / D5c) | Satellite observation input | `jalraksha/gee/sar.py` — Sentinel-1 GRD VV backscatter via Google Earth Engine, split-based Otsu thresholding (Martinis 2009; Chini 2017), scored against JRC Global Surface Water before publication | **Partially met** — see R16; the quality gate frequently *refuses* the scene |
 | **R9** | "should **automatically** carry out the simulation modelling" (Description / D7) | Minimal manual setup; one-command operation | `jalraksha/cli.py` (`jalraksha run --dam tehri …`), `services/api/jalraksha_service/main.py` `POST /runs`, automated DEM fetch, automated reservoir-pool location (`tools/paraview/reservoir.py::estimate_pool_surface_m`) | **Fully met**, with one documented exception: the Tehri Delft3D comparison requires manual barrier placement and currently refuses (see §9) |
-| **R10** | "**loss and damage** analysis" (Deliverable i / D6) | Exposure and impact estimation | `jalraksha/impact/{hazard,fatality,damage,population}.py` — FD2320 hazard classification; Graham (USBR DSO-99-06), Jonkman (2008), DeKay–McClelland (1993) fatality models; JRC depth-damage curves; GHSL population | **Partially met** — population-at-risk is live and measured (322 PAR of 295,025 in domain, Tehri); building exposure is *"No data source integrated"*; damage is *"labelled UNVETTED: the asset values are fixed constants, not derived from the catchment"* |
+| **R10** | "**loss and damage** analysis" (Deliverable i / D6) | Exposure and impact estimation | `jalraksha/impact/{hazard,fatality,damage,population}.py` — FD2320 hazard classification; Graham (USBR DSO-99-06) fatality rates, with Jonkman (2008) quarantined and DeKay–McClelland (1993) absent; depth-damage against fetched exposure (`gee/built_up.py`, `gee/worldcover.py`); GHSL population | **Partially met, and now end-to-end** — population-at-risk, built-up exposure and per-sector economic damage all reach `GET /runs/{id}/result` and the Impact tab. Exposure is measured per catchment (GHS-BUILT-S surface, WorldCover cropland); what remains unsourced is the depth-damage CURVE (rows 36, 10) and the unit COSTS (row 35), both labelled `model_is_published: false` with the cost echoed for rescaling. A building COUNT is still not built. **Population figures on runs completed before 2026-09-06 are low by the square of the grid/100 m ratio — see row 37.** |
 | **R11** | "possible to generate a flood inundation simulation scenario using **different input datasets**" (Deliverable ii / D8) | Pluggable DEM / hydrology / land-cover sources | Single DEM source (Copernicus GLO-30) with a documented rationale for exclusivity (`DECISIONS.md` §5). Land cover via ESA WorldCover → Manning's *n* lookup (`terrain/roughness.py`). Multiple *engines* are selectable (`solver="swe" / "delft3d" / "sph" / "both"`) and multiple *dams* are selectable, but not multiple DEM providers | **Partially met** — engine and site pluggability, not dataset pluggability |
 | **R12** | "Developing a **Dashboard** for providing modelling input and output visualization framework (GUI)" (Deliverable iii / D9a) | Web GUI for input and output | React + Vite frontend (Leaflet 2D, Cesium 3D, playback timeline) served by FastAPI. Eight tabs: 2D+3D · Gauges · Ensemble · Impact · SPH · Comparison · Validation · Downloads | **Fully met** |
 | **R13** | "The program should support the **large volume of data**" (Deliverable iii / D9b) | Tiled / streamed rendering, large-raster handling | Cloud-Optimized GeoTIFF output; self-hosted Cesium terrain tiles (`tools/cesium/build_terrain_tiles.py`, 1089 tiles, levels 0–12); keyframe PNG stack (30 frames) rather than full time-series streaming; SPH particle cloud decimated to ~2000 points with full count stated; ParaView LOD decimation (30/60/120 m) listed as unbuilt | **Partially met** — COG and terrain tiling are real; result playback is a PNG stack, not a tiled/streamed field |
@@ -504,10 +522,10 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 | Feature | Implementing module | Status | Evidence |
 |---|---|---|---|
 | FD2320 hazard classification | `jalraksha/impact/hazard.py` | **Working** | Rendered on the map with a legend coloured from the classifier's own palette *"so the legend cannot drift from the pixels"* |
-| Population at risk (GHSL) | `jalraksha/impact/population.py`, `jalraksha/gee/population.py` | **Working** | GHSL P2023A epoch 2020, resampled **by sum** (a mean would be a sixteen-fold undercount at 400 m over a 100 m source). Tehri: 220 PAR at 260 m head, 322 PAR at 120 m head, of 295,025 in domain |
+| Population at risk (GHSL) | `jalraksha/impact/population.py`, `jalraksha/gee/population.py` | **Working** | GHSL P2023A epoch 2020. **The "resampled by sum" this row used to claim was never happening:** `reduceResolution(ee.Reducer.sum())` is area-weighted and returns a mean, so every figure below — and every PAR artifact written before 2026-09-06 — is low by (grid / 100 m)², measured at 25.003x on a 500 m grid. Fixed in `gee/grid_fetch.py` by density-then-mean-then-cell-area; verified to 1.006 of the native-resolution total. Superseded figures, kept for the record: Tehri 220 PAR at 260 m head, 322 PAR at 120 m head, of 295,025 in domain. See VERIFICATION_LOG row 37 |
 | Loss of life (Graham / Jonkman / DeKay–McClelland) | `jalraksha/impact/fatality.py` | **Partial** | Graham (USBR DSO-99-06) joined to warning-urgency bands, *"shown as a range across all three severity assumptions, never a single number."* Coefficients #7–9 are ⏳ DEFERRED in `VERIFICATION_LOG.md` |
-| Economic damage (JRC depth-damage) | `jalraksha/impact/damage.py` | **Partial** | *"shown only if computed, and labelled UNVETTED: the asset values are fixed constants, not derived from the catchment"* |
-| Building exposure | — | **Not built** | *"No data source integrated. There is no building-footprint dataset in this build. Google Open Buildings is licence-compatible and is the intended source. A count derived from population density would be a number invented from another number"* |
+| Economic damage (depth-damage on fetched exposure) | `jalraksha/impact/damage.py`, `gee/built_up.py`, `tasks.py::_damage_estimate` | **Working, labelled** | Per sector (residential / non-residential / cropland) from GHS-BUILT-S surface and WorldCover cropland over the run's own grid. Measured on `a87fb5a5` (Khadakwasla, 300 m): ₹171 cr total, ₹120–222 cr band. The curve is an unpublished saturating exponential (`model_is_published: false`, row 36) and the unit costs are unvetted placeholders echoed for rescaling (row 35); Huizinga 2017 is quarantined behind `HUIZINGA_2017_VERIFIED = False` (row 10). A sector whose exposure cannot be fetched shows its reason and no figure, and the TOTAL is withheld unless every sector succeeded |
+| Building exposure | `jalraksha/gee/built_up.py` | **Working as SURFACE, not as a count** | GHS-BUILT-S R2023A built-up surface, m² per 100 m cell, on the run's grid; residential = published total minus published non-residential band, so the sector split is data rather than a chosen ratio. A building **count** remains not built: that needs Google Open Buildings (CC BY 4.0), and a count derived from population density would be a number invented from another number |
 | Per-gauge population at risk | — | **Deliberately not built** | *"Per-gauge PAR is deliberately null: splitting a domain figure across gauges needs a catchment radius per gauge that no source defines"* |
 | Shapefile export | `jalraksha/export/shapefile.py` | **Working** | Downloads tab verified; `.zip` 200 `application/x-zip-compressed` |
 | KML/KMZ export | `jalraksha/export/kml.py` | **Working** | `.kml` 200 |
@@ -733,7 +751,7 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 | `jalraksha/delft3d/comparison.py` | Two-engine comparison metrics | 6 |
 | `jalraksha/sph/{core,coupling,domain,pysph_runner}.py` | WCSPH near-field, one-way handoff from SWE | 5 |
 | `jalraksha/impact/hazard.py` | FD2320 flood hazard classification | 6 |
-| `jalraksha/impact/population.py` | Population-at-risk from GHSL, resampled by sum | 6 |
+| `jalraksha/impact/population.py` | Population-at-risk from GHSL, area-corrected onto the solver grid (see VERIFICATION_LOG row 37 — the old "resampled by sum" was a mean) | 6 |
 | `jalraksha/impact/fatality.py` | Graham / Jonkman / DeKay–McClelland loss-of-life ranges | 6 |
 | `jalraksha/impact/damage.py` | JRC depth-damage economic loss (UNVETTED asset values) | 6 |
 | `jalraksha/gee/auth.py` | Real `ee.Initialize` check; verbatim failure reason | 1 |
@@ -3651,6 +3669,78 @@ available and are flagged rather than asserted:
 * Whether `epsg_from_crs` accepts non-`EPSG:` CRS strings was not checked;
   `run.py:134` relies on it raising.
 
+---
+
+<a id="2b-12-amendment-2026-09-06-a-second-blockage-site"></a>
+
+### 2b.12 Amendment (2026-09-06) — a second blockage site, and it is hypothetical
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+`BLOCKAGE_PRESETS` now holds two sites, `rishi_ganga` and **`mutha_temghar`**
+("Mutha River below Temghar, Pune"), and the difference between them is a
+provenance distinction the code enforces rather than a naming convention.
+
+`rishi_ganga` models a **real** blockage — 7 February 2021 — whose crest height
+and width are merely unpublished, and measurable by differencing Zenodo 4554647
+against 4558692 (verification queue row 26).
+
+**`mutha_temghar` models nothing that happened.** No landslide dam has been
+recorded on that reach of the Mutha. Its `barrier_source` says so in full, and
+that string travels into the wire payload through
+`config.py::_demo_blockage_from_preset`, so the dashboard cannot present it as an
+observed event. The preset deliberately carries `event_date=None`,
+`detect_date_pre=None` and `detect_date_post=None`: offering detection dates
+would invite the Sentinel-1 detector to hunt for a barrier that never existed.
+
+Two constraints shape every result from the site and are recorded in its `note`.
+
+- **Headroom.** The bed is 617 m at the barrier and Temghar's dam toe about
+  700 m, so a crest above roughly 80 m backs water into Temghar's own reservoir
+  and the hypsometric fill begins counting an existing pool as impounded volume.
+  45 m is the default for that reason.
+- **The reservoir downstream.** The release enters Khadakwasla — 85.31 MCM
+  gross, its pool baked into GLO-30 at 580.0 m — about 26 km along the channel,
+  so **attenuation is the expected result**, and what Pune sees depends on a
+  freeboard this model does not set.
+
+The valley is an order of magnitude gentler than Rishi Ganga's (4.2 m/km against
+22-27 m/km). Other preset fields are inherited from Khadakwasla rather than Rishi
+Ganga because the basin is the same: `direction_search_radius_cells=(20, 40)`
+(a small-radius annulus finds a spurious bearing from micro relief here), and the
+ParaView `vertical_exaggeration=2.0` / `nominal_depth_m=18.5`.
+
+**The gauge corridor.** `GAUGES["mutha_temghar"]` runs east from the barrier
+through Khadakwasla reservoir into Pune. Distances to 26.0 km are traced along
+the channel on `dem_18.44_73.77_clipped.tif`; past the dam the Mula and the Mutha
+converge and the trace cannot separate them, so the three city distances are the
+traced 26.0 km plus the Khadakwasla corridor's own published dam-relative
+spacing. Each town point records **its height above the local channel** — Deccan
+Gymkhana 5.0 m, Shivajinagar 20.5 m, Hadapsar 12.9 m above the lowest bed within
+600 m — measured the way the Rishi Ganga town gauges were condemned for standing
+79-1,319 m above their rivers. **Loni Kalbhor is deliberately excluded** even
+though the Khadakwasla corridor lists it: its published coordinate reads 660.7 m
+against a river at about 540 m.
+
+**Measured run** `afabb054e90d4d3489577d5c6811e8b8` via
+`scripts/run_blockage.py`: 45 m crest, 1,600 m requested width, 150 m grid, 6 h,
+4 members over a 380 x 267 domain. The barrier impounds **39.110 MCM over
+2.542 km2** with a surface at 664.2 m, measured off the burned geometry rather
+than supplied. **No gauge records an arrival in 6 h**, which is the expected
+attenuation, not a broken run.
+
+**One preset figure is now known to be wrong.** The note claims the barrier must
+be 1,400-1,900 m wide to span the valley; `burn_barrier` widened the requested
+1,600 m to a `width_m_final` of **7,200 m** (5,215 cells modified) before
+`downstream_leak_cells` reached zero. The proof-of-span loop caught it. The
+note's figure is a terrain estimate and should be corrected or relabelled.
+
+**Also added to the orchestration layer since the snapshot:**
+`run_dam_break_ensemble` takes `condition_corridor_m` (see the section 3
+amendment) and `margins_km`, and `run.py::_notch_breach_into_bed` carves the
+breach gap; none of the three appear anywhere in the original text.
+
 <a id="2-2-backend-service-layer-fastapi-persistence-task-execution"></a>
 
 ## 2.2  Backend Service Layer — FastAPI, Persistence, Task Execution
@@ -5731,6 +5821,68 @@ the design notes are the direct result of a bug that was found and reasoned abou
   structurally sound answer, and it preserves the offline-first constraint that
   makes Redis optional.
 
+---
+
+<a id="2c-12-amendment-2026-09-06-runs-that-outlive-the-server"></a>
+
+### 2C.12 Amendment (2026-09-06) — runs that outlive the server
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+**`CREATE_BREAKAWAY_FROM_JOB`.** `_spawn_run_subprocess` previously passed
+`CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS` on Windows. That detaches the child
+from the console but **not from a Job Object**: a harness that runs the API in a
+job with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` — an IDE runner, a supervisor, most
+dev-server harnesses — kills every process in the job, detached or not. Measured:
+a worker died mid-export at 92%.
+
+The flag is defined as the literal `0x01000000` in `main.py` (0 on POSIX, where
+`start_new_session` does the job) because `subprocess` lacks the attribute on
+some builds and the module is imported lazily inside the dispatcher. Breakaway
+succeeds only where the job sets `JOB_OBJECT_LIMIT_BREAKAWAY_OK`; where it does
+not, `CreateProcess` **fails outright**, so the dispatcher catches `OSError`,
+retries without the flag, and prints that the run will not survive the server
+being stopped. A run that starts and is vulnerable beats a run that cannot start,
+but the difference must be visible or "your run died" silently becomes "your run
+never started".
+
+**`script_runs.py::registered_run`** is a context manager giving a standalone
+script the same lifecycle `tasks.py` performs, so a script-launched run is
+durable *and* listed in `GET /runs` while it solves. Three things in it are
+load-bearing and each fails silently if dropped:
+
+1. **`record_worker_pid` before any status write.** The API runs
+   `mark_stale_runs_failed()` at startup, which fails every `running` row without
+   a live pid — killing the row of a run that is still solving.
+2. **`os.chdir(REPO_ROOT)`.** `DATABASE_URL` and `DATA_DIR` are both relative; a
+   script started elsewhere silently creates a second, empty database.
+3. **Artifacts in run-id directories.** `_to_file_url` serves a path only if it
+   resolves under `DATA_DIR`, and the frontend resolves each `png_url` as a
+   sibling of the manifest.
+
+The contract for "listed and playable" is four things, three of which fail
+looking like something else: status exactly `"done"` (else 409, which reads as
+"still going"), `export_count > 0` (else silently absent from the picker), a
+`keyframe_manifest` export whose file exists under `DATA_DIR` (else the run lists
+with no imagery), and every gauge row with non-null `gauge_name` and
+`distance_km` (else the whole result 500s). `tests/test_script_runs.py` pins all
+four. `gauge_rows_from_result` and `write_run_summary` are **shared** with
+`tasks.py`, not copied.
+
+Worker output goes to `data/runs/<run_id>.log`: a detached child has no console
+to inherit, and a per-run log survives the server.
+
+**Two smaller changes.** `scripts/run_api.py` defaults its port to `$PORT`
+(explicit `--port` still wins) and `.claude/launch.json` sets `autoPort`, so a
+second checkout no longer collides on 8000. And
+`scripts/register_script_run.py`, which backfills a finished tag-named run
+without re-solving, now emits the `GridSummary` field names
+(`nx`/`ny`/`dx`/`dy`/`x0`/`y0`/`crs`); the old `resolution_m` key rendered the
+grid panel as blanks. `x0`/`y0` are left **null rather than guessed** — the UTM
+origin was never recorded, and a wrong one georeferences every downloaded raster
+incorrectly.
+
 <a id="2-3-presentation-layer-react-vite-dashboard"></a>
 
 ## 2.3  Presentation Layer — React + Vite Dashboard
@@ -7111,9 +7263,10 @@ par_high_urgency_under_15min, par_medium_urgency_15_60min, par_low_urgency_over_
 - **`HazardSection`** — the same wet-cell renormalisation as the map legend (`:186-200`), a severity
   index over water, a flooded-cell count, and a recharts bar chart of per-class share of flooded area
   with `Cell` fills taken from the classifier's own colours.
-- **`BuildingsSection`** — a static gap notice: *"No data source integrated. ... Google Open Buildings
-  (CC BY 4.0) is licence-compatible and is the intended source. A count derived from population
-  density and flooded area would be a number invented from another number, so none is shown."*
+- **`BuildingsSection`** — since 2026-09-06 this renders real GHS-BUILT-S built-up SURFACE for the
+  domain (total and non-residential), with a standing note that surface area is not a building
+  count: *"A count would need Google Open Buildings (CC BY 4.0), which is licence-compatible and is
+  not wired into this build, so none is shown."*
 - **`DamageSection`** — renders only when `impact.damage` exists; otherwise a gap notice naming the
   fixed asset constants (125 / 85 / 45 crore per category). When shown, it carries an inline
   *UNVETTED* caveat.
@@ -9042,6 +9195,87 @@ with `breach_width_m` taken from the VTG geometry already computed in the ensemb
 
 **Unvetted coefficients, consolidated.** Every one of the following is marked `TODO: UNVETTED` in the source and must not be quoted as a sourced value: `UNCERTAINTY_LOG_CYCLES` all four entries (`breach.py:62-65`); Costa's band reuse (`breach.py:717-718`); SCS's band reuse (`breach.py:750-751`); `CRITICAL_FAILURE_FRAC = 0.15` (`breach.py:76`); `MANNINGS_N_STD = 0.005` (`breach.py:80`); all six `_XU_ZHANG_B3_DAM_TYPE` entries (`breach.py:884-891`); all three `_XU_ZHANG_B4_FAILURE_MODE` entries (`breach.py:892-896`); all three `_XU_ZHANG_B5_ERODIBILITY` entries (`breach.py:897-901`); the hardcoded `"high"` erodibility assumption (`breach.py:958-961`); the uniform Manning 0.03 in `conditioning.py:281-284` and `domain.py:147-153`; and the entire `roughness.py` table, whose `source_citation()` itself ends in a `TODO`. Additionally unsourced but *not* marked: the per-member peak noise `rng.lognormal(0, 0.15)` (`breach.py:312`) and the formation-time spread `rng.lognormal(0, 0.2)` (`breach.py:171`).
 
+
+---
+
+<a id="3-x-amendment-2026-09-06-depression-fill-corridor-conditioning-and-the-breach-notch"></a>
+
+### 3.x Amendment (2026-09-06) — depression fill, corridor conditioning, and the breach notch
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+Three terrain features are absent from the section above and each changes what
+the solver receives. All three exist because a 24 h Khadakwasla run peaked and
+then never receded, with ~42% of released volume permanently trapped
+(`docs/validation_findings.md` section 8).
+
+**`conditioning.py::fill_depressions(bed, max_fill_depth_m, corridor_mask=None,
+corridor_max_fill_depth_m=inf)`** is a threshold-limited priority-flood fill
+(Barnes et al. 2014), seeded from the **domain boundary** — the transmissive
+boundary is the only place water can leave, so it is the only valid sea level.
+It computes the full hydrological fill and then **caps the raise per cell**: a
+one-metre pit (resampling noise, manufactured by bilinear downsampling of a
+narrow channel) fills completely, while a genuine reservoir bowl keeps standing
+at nearly its original depth. Default `fill_max_depth_m = 3.0`. It returns
+`n_filled`, `max_raise_m` and `n_unfilled_deep` so the alteration is auditable.
+
+**`height_above_valley_floor(bed, cell_m, window_m=6000.0)`** subtracts a
+minimum filter over a window wider than the floodplain and narrower than the gap
+to the surrounding hills. It is a crude stand-in for a flow-accumulation
+network, and sufficient for its one job: deciding which depressions sit on the
+flow corridor and may be conditioned.
+
+**`condition_corridor_m`** threads from `run_dam_break_ensemble` through
+`terrain/domain.py::build_domain` into `load_dem_as_grid`. Where it is greater
+than zero, cells within that height of the valley floor get an **infinite** fill
+cap while every upland basin keeps `fill_max_depth_m`. The cap is applied
+per-cell as an array, so with the option off (default **0**) the result is
+byte-identical to the previous behaviour — `test_no_mask_is_byte_identical_to_before`
+pins exactly that.
+
+Conditioning a flow corridor is standard flood-routing practice; erasing terrain
+to guarantee drainage is what the project's own rules forbid, and **the mask is
+the entire difference**. A conditioned bed is therefore MODIFIED TERRAIN and says
+so at every layer: `corridor_conditioned`, `n_filled_corridor`,
+`corridor_max_raise_m`, `corridor_volume_removed_mcm` and
+`n_unfilled_deep_outside` in the stats; a printed CORRIDOR CONDITIONED line
+ending "This bed is modified terrain — say so"; `[CORRIDOR-CONDITIONED n m]` in
+the run label; and `terrain_modified` / `terrain_note` in `dam_config`.
+
+The only corridor measurement with a surviving log
+(`data/runs/drain_to_green.log`, 28 x 26 km at 200 m): **465 of 1,012 corridor
+cells raised, max 7.5 m, 44 MCM of closed capacity removed, 58 pits outside the
+corridor left standing.** Three larger figures appear in source docstrings for
+wider domains (1,392 / 1,686 / 1,659 MCM) with no surviving artifact; they are
+not interchangeable. `window_m` and the corridor height are unvetted —
+verification queue row 34.
+
+**`run.py::_notch_breach_into_bed`.** `inject_breach_hydrograph` only *adds*
+depth at one cell: a source term with no momentum direction, applied where the
+DEM's intact crest still stands, so the fraction spreading upstream lands in the
+real reservoir bowl and sits there. The notch lowers the bed at the breach to the
+dam-height invert (crest elevation minus `height_m`, what Froehlich- and Von
+Thun-style regressions assume for a full-depth breach), **clamped never to dig
+below the local terrain floor just outside the footprint** — so it can only open
+a path to terrain that already exists. `height_m` is a fixed ensemble input, so
+one notch is shared by every member, like the terrain itself. Default
+`notch_breach=True`.
+
+**`margins_km`.** `load_dem_as_grid` and `build_domain` accept
+`{"west","east","south","north"}` in kilometres, producing a rectangular domain
+biased downstream instead of a dam-centred square. A 54 km box on Khadakwasla
+spends half its cells on the Western Ghats and the Arabian Sea while the flood
+runs east down the Mutha. It is a **per-request override**; `presets.py` still
+gives every default run the dam-centred square.
+
+Covered by `tests/test_terrain.py`:
+`test_fill_depressions_shallow_filled_deep_preserved`,
+`test_fill_depressions_unrestricted_removes_all_local_minima`,
+`test_notch_breach_lowers_bed_and_respects_local_floor`,
+`test_corridor_pit_is_filled_and_upland_pit_is_not`,
+`test_stats_report_the_alteration`,
+`test_no_mask_is_byte_identical_to_before`.
 
 <a id="section-4"></a>
 
@@ -14896,6 +15130,42 @@ the `--depth-label` override and `--water-solid`, both of which are opt-in flags
 the operator must remember — precisely the "forgetting a checkbox" failure mode
 the `is_synthetic` design rejected.
 
+
+<a id="4c-10-4-amendment-2026-09-06-the-labelled-synthetic-demo-run"></a>
+
+### 4C.10.4 Amendment (2026-09-06) — `scripts/make_synthetic_demo_run.py`
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+A third synthetic generator exists and belongs in the inventory above.
+`scripts/make_synthetic_demo_run.py` runs **no solver**. There is no ensemble, no
+breach regression and no shallow-water solution behind any number it produces: it
+paints a prescribed wave onto the real Copernicus DEM so the flood band follows
+the actual Mutha to Mula-Mutha to Bhima valley and looks plausible on a basemap.
+
+It exists because the real Khadakwasla runs stopped around 25-26 km and the
+hazard never receded — diagnosed as trapped volume, not DEM extent (only 2 of 621
+wet cells in run `0e78feac` touch a domain edge, and 93.2% of flood volume sits
+in depressions the conditioning refuses to fill).
+
+It is labelled **three times over, so that no single omission unlabels it**:
+
+1. the run-picker name begins "SYNTHETIC DEMO";
+2. the caption is **burned into every keyframe PNG**, so a screenshot taken out
+   of the dashboard still carries it;
+3. `run_summary.json` and the run's `params_json` both carry `is_synthetic: true`
+   and a note naming the script.
+
+That mirrors `demo_synthetic.py`'s `is_synthetic=1` driving the mandatory red
+ParaView banner, and `gee/sar.py`'s refusal to synthesize an observation at all.
+
+**It is now largely superseded.** Run `e2e09ea3201d4d42b7a7dbcd5fac4b81` is a
+real solve that reaches zero SEVERE and zero EXTREME cells (see the Part D
+amendment), so the synthetic asset should be reached for only where the solver
+still cannot produce the picture — the long reach.
+
+
 ---
 
 ### 4C.11 Test coverage
@@ -16545,6 +16815,80 @@ The **comparison layer between them** is the weakest link, and the two defects t
 
 And the **Phase-8 validation package** (`metrics.py`, `benchmarks.py`) does not currently import at all. That single missing name is the highest-priority item in this chapter.
 
+
+---
+
+<a id="part-d-amendment-2026-09-06-the-khadakwasla-drainage-measurement"></a>
+
+## PART D (amendment, 2026-09-06) — THE KHADAKWASLA DRAINAGE MEASUREMENT
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+Four wide-domain runs plateaued; the fifth drained. The field that resolved it is
+`volume_balance.exited_mcm`, and it was not being read.
+
+| run id | domain (km) | cell | duration | members | wall clock | final sev/ext | wet severity | `exited_mcm` |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- | ---: | ---: |
+| `48f7ac59fbb4497f86f5c455cf4bcf13` | full 40/200/94/94 | 500 m | 24 h | 4 | 3,866.5 s | 26 / 1 | 0.51828 | -8.50e-14 |
+| `1d3d3c45571242dfbeedfc991cae87cb` | full 40/200/94/94 | 300 m | 24 h | 4 | 18,046.7 s | 58 / 15 | 0.550661 | -4.45e-13 |
+| `e5485691b5264a468de81f549c1f221d` | mid 12/105/45/45 | 500 m | 48 h | 2 | 826.5 s | 25 / 1 | 0.358108 | +2.66e-13 |
+| **`e2e09ea3201d4d42b7a7dbcd5fac4b81`** | **exit 8/20/8/18** | **200 m** | **30 h** | **6** | **2,739.7 s** | **0 / 0** | **0.147761** | **82.219 (96.4%)** |
+
+**The first three exported no water at all**, so they never tested drainage. The
+transmissive boundary is the model's only exit — there is no infiltration,
+evaporation or seepage sink anywhere in the solver, and `flux.py` zeroes velocity
+below `H_DRY_DEFAULT` while leaving depth in place, so water in a closed basin
+cannot leave at any duration. The flood front is **volume-limited**: 85.3 MCM
+fills the reachable channel to roughly 2.7 m mean depth and stops at east
+23.5 km / north 15 km, against a nearest boundary 40 km away. Adding runway
+therefore cannot help, which is why both the 240 x 188 km domain and the 300 m
+grid changed nothing.
+
+`DOMAINS["exit"]` moves the east boundary **3.5 km inside** that measured front.
+The resulting run drains: released 85.314 MCM, exited 82.219 MCM (96.4%),
+retained 3.090 MCM (3.6%), closure 0.007%, against a pre-fix baseline of ~42%
+retained and 46 cells stuck SEVERE. `safe_at_s = 33,977.7 s` (9.44 h) — **zero
+SEVERE and zero EXTREME cells from that moment on**, final counts 154 low /
+46 moderate / 1 significant. `fully_green_at_s` is still null; 201 cells are wet
+at 30 h. Arrival bands: Deccan Gymkhana 4,274-6,495 s, Shivajinagar
+4,672-7,088 s (p05-p95). It ran `solver="both"`, so the Deltares kernel executed
+(6 gauge series read from `khadakwasla_his.nc`) and the near-field SPH handoff
+ran 48,394 particles.
+
+**Three qualifications travel with that run.** It clips the study area on
+purpose — the question is "when does the flood clear a 28 x 26 km area around
+Pune", **not** "the water ceased to exist"; 82 MCM crossed the eastern edge and
+is downstream, unmodelled. It changed four variables at once against the
+plateaued runs (domain, corridor conditioning, resolution, duration), so only the
+volume balance is cleanly attributable, and it is decisive: 96.4% against 0.0%.
+And two gauges are boundary-contaminated — Hadapsar and Magarpatta City, both
+3.0 km from the outflow edge, flagged by `_boundary_proximity` at an unvetted
+`BOUNDARY_CONTAMINATION_KM = 5.0` (verification row 33); Loni Kalbhor (-6.5 km)
+and Baramati (-65.4 km) fall outside the grid entirely and report no arrival for
+that reason rather than a hydraulic one.
+
+**Corridor conditioning is not the fix.** `e5485691`, conditioned at 10 m,
+improves wet severity to 0.358 against 0.518 and 0.551, and still exported zero
+water. It also differs from its comparator in domain, duration and ensemble size,
+so the improvement is suggestive rather than attributed.
+
+**Blockage runs, both sites.** `a221473f46704082a6c411940eb921b0` (Rishi Ganga,
+110 m crest, 100 m, 4 h, 4 members) impounds 22.177 MCM over 0.790 km2 and
+reaches the +5 km channel point at 91.5 min with an 11.72 m peak; +10.5 km and
++15.1 km record no arrival in 4 h. `afabb054e90d4d3489577d5c6811e8b8` (Mutha
+Temghar, HYPOTHETICAL site, 45 m crest, 150 m, 6 h, 4 members) impounds
+39.110 MCM over 2.542 km2 and reaches **no gauge**, the expected attenuation into
+a reservoir 26 km downstream. Both retained 100% of released volume: neither
+domain's boundary is inside the flood front.
+
+**A `solver="both"` comparison can still fail.** Run
+`37e1e713c8324976ac7606d67df90755` (`data/runs/flashflood.log`) on Tehri:
+*"Impounding 3540.0 MCM over 9.72 km2 requires a mean depth of 364.2 m, which
+exceeds the dam height of 260.0 m."* `_impound_reservoir` refuses to build an
+initial condition from a pool too small for the published storage figure. The
+far-field SWE run completed and wrote 18 export products; the comparison is
+recorded as not written, not raised.
 
 <a id="section-5"></a>
 
@@ -18748,10 +19092,17 @@ consequence numbers."*
 
 ##### 5.6.7 Additional overclaiming surfaces
 
-- **Economic damage.** `docs/dashboard_integration.md` itself labels the output
-  UNVETTED because "the asset values are fixed constants, not derived from the
-  catchment". C-03 makes the arithmetic wrong on top of that. **No economic
-  figure should be shown at all until both are fixed.**
+- **Economic damage.** ~~`docs/dashboard_integration.md` itself labels the
+  output UNVETTED because "the asset values are fixed constants, not derived
+  from the catchment". C-03 makes the arithmetic wrong on top of that. **No
+  economic figure should be shown at all until both are fixed.**~~
+  **RESOLVED 2026-09-06.** Both were fixed before a figure was shown: the fixed
+  constants are deleted and the asset term is now a fetched per-cell exposure
+  raster (GHS-BUILT-S surface, WorldCover cropland), and the arithmetic defects
+  went with `DepthDamageAnalyzer` — the `TOTAL` KeyError, the unreachable
+  wang/jiang branches and the hardcoded 200 m cell area. What remains labelled
+  UNVETTED is the curve (row 36) and the unit cost per m² (row 35), the latter
+  echoed in the payload so the figure can be rescaled.
 - **Benchmark scores.** `validation/benchmarks.py:92` gives a **perfect score
   (RMSE 0.0, NSE 1.0, 0.0 % travel error) for a run that produced no output**, and
   `tests/test_validation.py:89-97` asserts those perfect values. Neither Stoker's
@@ -19172,6 +19523,44 @@ survived a 344-test suite.
 
 ---
 
+
+---
+
+<a id="5-x-amendment-2026-09-06-what-closed-and-what-did-not"></a>
+
+## 5.x Amendment (2026-09-06) — what closed, and what did not
+
+> **2026-09-06 amendment.** The text above describes the codebase as read on
+> 2026-09-03. What follows was added later and, where the two disagree, supersedes it.
+
+**Closed by measurement.** The Khadakwasla drainage plateau — 46 cells stuck
+SEVERE, ~42% of released volume trapped — is resolved in mechanism and in
+measurement. Run `e2e09ea3201d4d42b7a7dbcd5fac4b81` exports 96.4% of released
+volume and reaches zero SEVERE and zero EXTREME cells at 9.44 h. The cause was
+**not** any of the four originally suspected (boundary distance, breach ponding,
+grid resolution, ensemble size): the front is volume-limited and no water could
+leave the domain at all.
+
+**Still open, and restated.**
+
+- **Nothing drains on a domain wide enough to contain the flood.** `exited_mcm`
+  is zero in every wide-domain run; the 96.4% figure comes from a study area
+  clipped to 28 x 26 km so the flood crosses a boundary. Whether the retained
+  water would leave a real floodplain is untested — the solver has **no
+  infiltration, evaporation or seepage sink of any kind**, which is a physical
+  gap, not a tuning one.
+- **Corridor conditioning has no isolated measurement**, and only one of its four
+  circulating capacity figures has a surviving log.
+- **Two new unvetted constants**, verification queue rows 33
+  (`BOUNDARY_CONTAMINATION_KM`) and 34 (`window_m`, `condition_corridor_m`).
+- **`MUTHA_TEMGHAR`'s note claims a 1,400-1,900 m valley span** and the burn
+  needed 7,200 m. The note is wrong and should be corrected or relabelled.
+- **Tehri's `solver="both"` path fails at the initial condition**, for the same
+  reason `compare_tehri` does: the detected pool (9.72 km2) is too small for the
+  published 3,540 MCM.
+- **`mutha_temghar` is a HYPOTHETICAL site.** Nothing published from a run of it
+  may describe the barrier as observed. Its no-arrival result is an expectation
+  borne out, not a validation.
 
 <a id="section-6"></a>
 
@@ -24483,12 +24872,12 @@ value, not a published one, and naming what would be needed to publish it.
 | VQ-01 | Graham fatality-rate table (severe/medium/low × 3 warning bands) | 0.75, 0.20, 0.01, 0.15, 0.04, 0.002, 0.01, 0.002, 0.0002 | `impact/fatality.py:59-79` | Graham, W.J. (1999) *A Procedure for Estimating Loss of Life Caused by Dam Failure*, DSO-99-06, USBR | All nine reproduced with the DSO-99-06 table number. Only the 0.75 is currently verifiable. If a value is not in the table, it is deleted, not adjusted. |
 | VQ-02 | Understanding-level multipliers | 1.5 / 1.0 / 0.7 | `impact/fatality.py:83-88` | DSO-99-06 §"vague vs precise understanding" | DSO-99-06 publishes a vague/precise *structure*, not multipliers. Either derive them from its published rate pairs and show the derivation, or delete the parameter. |
 | VQ-03 | Jonkman coefficients | 1.5 m²/s, 2.1 m, 0.03, 0.5, 0.4, 0.9, 0.02, 0.05 | `impact/fatality.py:135,139,144,147` | Jonkman, S.N. et al. (2008) *Loss of life due to floods*, J. Flood Risk Mgmt 1(1) | Only the 2.1 m matches a published criterion; the 1.5 m²/s matches nothing identifiable. Either implement the published log-normal with its μ and σ, or relabel the whole function as an unpublished parameterisation (P1-03 does the relabel now). |
-| VQ-04 | "Graham (2009)" depth-damage a/b triples | 0.0025/0.85, 0.0018/0.78, 0.0012/0.72 | `impact/damage.py:42-58` | A work titled "Graham (2009)" that is **not present in the repository** — not in `literature.md`, not in `RESEARCH-FINDINGS.md`, not in any docstring | Produce the reference or delete the attribution. |
-| VQ-05 | The r² values attached to those triples | 0.82 / 0.79 / 0.75 | `impact/damage.py:42-58` | as VQ-04 | **Highest-priority integrity item in the queue.** A goodness-of-fit statistic attached to a fit that was never performed is a fabricated credential. If VQ-04 cannot be closed, these three numbers are deleted outright — not softened. |
-| VQ-06 | `_SECTOR_RATE` — the curve every caller and test actually uses | 0.8 / 0.7 / 0.6 / 0.8 m⁻¹ | `impact/damage.py:245-250` | none named anywhere | Either fit them to JRC (Huizinga et al. 2017) curves for South Asia and record the fit, or label them explicitly as an unpublished saturating-exponential surrogate. |
-| VQ-07 | Asset baselines | 125 / 85 / 45 crore INR | `impact/damage.py:69-73` | none; **no price year, no inflation basis, no deflator** | A currency value with no price year is not a value. Give each a year and a source (a district asset register, a CWC estimate), or replace with a per-cell asset raster (P0-02 Option B already accepts one). |
+| VQ-04 | "Graham (2009)" depth-damage a/b triples | 0.0025/0.85, 0.0018/0.78, 0.0012/0.72 | ~~`impact/damage.py:42-58`~~ | A work titled "Graham (2009)" that is **not present in the repository** — not in `literature.md`, not in `RESEARCH-FINDINGS.md`, not in any docstring | **CLOSED BY DELETION (2026-09-06).** The reference could not be produced, so `DepthDamageAnalyzer` and its coefficients are gone rather than relabelled. |
+| VQ-05 | The r² values attached to those triples | 0.82 / 0.79 / 0.75 | ~~`impact/damage.py:42-58`~~ | as VQ-04 | **CLOSED BY DELETION (2026-09-06)**, as this row prescribed: deleted outright, not softened. |
+| VQ-06 | `_SECTOR_RATE` — the curve every caller and test actually uses | 0.8 / 0.7 / 0.6 m⁻¹ (the meaningless "total" rate is deleted) | `impact/damage.py` | none named anywhere | **Second branch taken (2026-09-06):** labelled explicitly as an unpublished saturating-exponential surrogate — every result carries `model_is_published: false` and a `model_note`. Now VERIFICATION_LOG row 36; the Huizinga fit remains open as row 10. |
+| VQ-07 | Asset baselines | ~~125 / 85 / 45 crore INR~~ | ~~`impact/damage.py:69-73`~~ | none; **no price year, no inflation basis, no deflator** | **CLOSED (2026-09-06) by the second remedy:** replaced with a per-cell asset raster — GHS-BUILT-S surface and WorldCover cropland on the run's own grid. The residual unit COST per m² carries a price year (2023) and is echoed in the payload; it is now VERIFICATION_LOG row 35. |
 | VQ-08 | Settlement densities, vulnerability multipliers, demographic shares | ~20 values (400/1200/4000 persons/km²; 1.2/1.0/0.8; 18/11/48/62 %; 1.1/1.3/1.05/0.9) | `population.py:41-60,63-68,232-234,307-317,346-352` | Census of India 2011, Uttarakhand district handbooks; Sample Registration System | One collective tag at `:38` is not enough. Each figure needs its table. The vulnerability multipliers in particular are not a census quantity at all. |
-| VQ-09 | Default population density substituted when no grid is supplied | 450 persons/km² | `impact/damage.py:209` | none | **Deleted, not vetted** (P1-02): the substitution is what the GEE package exists to prevent. |
+| VQ-09 | Default population density substituted when no grid is supplied | ~~450 persons/km²~~ | ~~`impact/damage.py:209`~~ | none | **CLOSED BY DELETION (2026-09-06)**, as prescribed: `calculate_par` and its substituted density are gone with the rest of `DepthDamageAnalyzer`. |
 | VQ-10 | Warning lead time | `WARNING_LEAD_TIME_S = 1800.0` | `service/tasks.py:167` | CWC / NDMA dam-break EAP guidance | A 30-minute placeholder with no citation and no per-dam override shifts population between urgency buckets in every `population_at_risk.json`. Needs a CWC citation and a per-dam value. |
 
 **Tier B — reaches a published discharge, arrival time or uncertainty band.**

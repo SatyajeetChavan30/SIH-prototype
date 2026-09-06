@@ -775,6 +775,7 @@ def run_dam_break_ensemble(
     progress_cb: Optional[Callable[[float, str], None]] = None,
     margins_km: Optional[Dict[str, float]] = None,
     fill_max_depth_m: float = 3.0,
+    condition_corridor_m: float = 0.0,
     notch_breach: bool = True,
 ) -> Dict:
     """
@@ -813,6 +814,10 @@ def run_dam_break_ensemble(
             {"west":.., "east":.., "south":.., "north":..} (km from the dam),
             for a domain biased downstream instead of dam-centred. See
             terrain/domain.py::build_domain.
+        condition_corridor_m: > 0 conditions the flow corridor to drain by
+            filling depressions within this height of the valley floor
+            completely. Default 0 (off) — with it off a run is unchanged.
+            The resulting bed is MODIFIED TERRAIN and must be labelled.
         fill_max_depth_m: Threshold-limited depression fill applied to the
             bed (metres); see terrain/conditioning.py::fill_depressions. 0
             disables it.
@@ -883,6 +888,7 @@ def run_dam_break_ensemble(
             use_synthetic_terrain=use_synthetic_terrain,
             margins_km=margins_km,
             fill_max_depth_m=fill_max_depth_m,
+            condition_corridor_m=condition_corridor_m,
         )
         print(f"  Grid: {grid.nx} x {grid.ny} cells @ {grid.dx:.0f} m")
         print(f"  Domain: {grid.nx * grid.dx / 1000:.1f} x {grid.ny * grid.dy / 1000:.1f} km")

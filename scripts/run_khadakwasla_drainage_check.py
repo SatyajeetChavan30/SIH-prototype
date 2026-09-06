@@ -43,6 +43,36 @@ sys.path.insert(0, str(ROOT / "services" / "api"))
 # east down the Mutha -> Mula-Mutha -> Bhima; a dam-centred box would spend
 # half its cells on the Western Ghats and the Arabian Sea.
 MARGINS_KM = {"west": 40, "east": 200, "south": 94, "north": 94}
+
+#: Domain presets. "full" is the 240 x 188 km cache superset; "mid" is 117 x 90
+#: km, still 105 km of runway east down the Mutha -> Mula-Mutha -> Bhima and 4x
+#: cheaper. The flood has never travelled beyond 26 km, so the extra 100 km of
+#: "full" has never been used.
+#:
+#: "exit" is a different KIND of domain and the numbers are measured, not
+#: chosen for runway. Measuring the finished h_max rasters of runs 1d3d3c45
+#: (300 m, 24 h), 48f7ac59 (500 m, 24 h) and e5485691 (500 m, 48 h, corridor
+#: conditioned) gives the same answer in all three: wet cells stop at EAST
+#: 23.5 km and NORTH 15 km, and volume_balance.exited_mcm is ~1e-13 -- that is,
+#: zero. The front is VOLUME-limited, not domain-limited: 85.3 MCM fills the
+#: reachable channel to ~2.7 m mean depth and runs out. So "give it more
+#: runway" cannot work, and 105 km or 200 km of east margin is a boundary the
+#: wave never touches.
+#:
+#: The transmissive domain boundary is the only exit this model has -- no
+#: infiltration, no baseflow, and at 200 m no sub-grid channel conveyance --
+#: so for ANY water to leave, the boundary has to sit INSIDE 23.5 km. East 20
+#: km puts it 3.5 km inside the measured front. That makes the question "when
+#: does the flood clear a 28 x 26 km study area around Pune", which is a real
+#: emergency-management question; it is NOT a claim that the water ceased to
+#: exist, and anything published from it must say which. Two gauges (Hadapsar
+#: and Magarpatta City, both 17.0 km east) then sit 3 km from that boundary and
+#: are flagged by _boundary_proximity below.
+DOMAINS = {
+    "full": {"west": 40, "east": 200, "south": 94, "north": 94},
+    "mid": {"west": 12, "east": 105, "south": 45, "north": 45},
+    "exit": {"west": 8, "east": 20, "south": 8, "north": 18},
+}
 TARGET_RESOLUTION_M = 300.0
 SOLVER_DURATION_S = 86400.0
 # One frame per 24 min over 24 h. 30 (one per 48 min) is too coarse to say
@@ -79,6 +109,33 @@ def parse_args(argv=None):
                         help=f"Ensemble size (default {ENSEMBLE_SIZE}).")
     parser.add_argument("--snapshots", type=int, default=N_SNAPSHOTS,
                         help=f"Depth snapshots recorded (default {N_SNAPSHOTS}).")
+    parser.add_argument("--condition-corridor", type=float, default=0.0,
+                        metavar="METRES",
+                        help="Fill depressions within this height of the valley "
+                             "floor COMPLETELY so the flow corridor drains "
+                             "(e.g. 10). Default 0 = off. Measured on "
+                             "Khadakwasla at 200 m: a 10 m corridor alters 1.03%% "
+                             "of the domain and drops corridor closed capacity "
+                             "from 1,686 MCM to 0. The bed becomes MODIFIED "
+                             "TERRAIN and the run is labelled accordingly.")
+    parser.add_argument("--domain", choices=sorted(DOMAINS), default="full",
+                        help="Domain extent: 'full' = 240x188 km (default, "
+                             "unchanged), 'mid' = 117x90 km with 105 km of "
+                             "downstream runway at a quarter the cost, 'exit' "
+                             "= 28x26 km with its east boundary 3.5 km INSIDE "
+                             "the measured 23.5 km flood front, so water can "
+                             "actually leave the domain. See DOMAINS.")
+    parser.add_argument("--solver", choices=("swe", "both"), default="swe",
+                        help="'swe' (default) runs the far-field pipeline "
+                             "only. 'both' additionally runs Delft3D FM and "
+                             "the one-way near-field SPH handoff on top of it, "
+                             "which is what the dashboard's Comparison and SPH "
+                             "tabs read. Same meaning as POST /runs.")
+    parser.add_argument("--n-workers", type=int, default=None,
+                        help="Ensemble members solved concurrently. Default "
+                             "(unset) uses every core; lower it when the grid "
+                             "is large enough that N members will not fit in "
+                             "RAM at once.")
     parser.add_argument("--tag", default=RUN_TAG,
                         help="Output directory name under data/exports and "
                              "data/keyframes. Change it to keep a previous "
@@ -93,6 +150,10 @@ def main(argv=None) -> int:
     members = int(args.members)
     n_snapshots = int(args.snapshots)
     run_tag = str(args.tag)
+    condition_corridor_m = float(args.condition_corridor)
+    margins = DOMAINS[args.domain]
+    solver = str(args.solver)
+    n_workers = args.n_workers
 
     from jalraksha.presets import get_preset
     from jalraksha.run import run_dam_break_ensemble
@@ -113,13 +174,14 @@ def main(argv=None) -> int:
 
     print(f"[drainage-check] dam        : {dam_config.get('name')}")
     print(f"[drainage-check] dem        : {dem_path}")
-    print(f"[drainage-check] margins_km : {MARGINS_KM}")
+    print(f"[drainage-check] domain     : {args.domain} {margins}")
     print(f"[drainage-check] resolution : {resolution_m} m")
     print(f"[drainage-check] duration   : {duration_s} s ({duration_s / 3600:.1f} h)")
     print(f"[drainage-check] members    : {members}")
     print(f"[drainage-check] snapshots  : {n_snapshots}")
-    nx = int(round((MARGINS_KM["west"] + MARGINS_KM["east"]) * 1000 / resolution_m))
-    ny = int(round((MARGINS_KM["south"] + MARGINS_KM["north"]) * 1000 / resolution_m))
+    print(f"[drainage-check] solver     : {solver}")
+    nx = int(round((margins["west"] + margins["east"]) * 1000 / resolution_m))
+    ny = int(round((margins["south"] + margins["north"]) * 1000 / resolution_m))
     print(f"[drainage-check] grid       : {nx} x {ny} = {nx * ny:,} cells")
 
     t0 = time.time()
@@ -132,19 +194,34 @@ def main(argv=None) -> int:
 
     bootstrap_repo_root(ROOT)
 
+    conditioned = condition_corridor_m > 0
+    # The domain goes in the label because 'exit' is not a cheaper version of
+    # the others — it deliberately clips the study area so the flood crosses a
+    # boundary, and a result read without knowing that is read wrongly.
     label = (f"Khadakwasla — drainage check {resolution_m:.0f} m, "
-             f"{duration_s / 3600:.0f} h")
+             f"{duration_s / 3600:.0f} h, {args.domain} domain"
+             + (f" [CORRIDOR-CONDITIONED {condition_corridor_m:.0f} m]"
+                if conditioned else ""))
     registration = registered_run(
         dam_id="khadakwasla",
         dam_config={**dam_config, "name": label,
-                    "domain_margins_km": MARGINS_KM,
-                    "fill_max_depth_m": 3.0, "notch_breach": True},
-        solver="swe",
+                    "domain_margins_km": margins,
+                    "fill_max_depth_m": 3.0, "notch_breach": True,
+                    "condition_corridor_m": condition_corridor_m,
+                    "terrain_modified": conditioned,
+                    "terrain_note": (
+                        "Flow-corridor depressions filled completely so the "
+                        "channel drains. This is MODIFIED TERRAIN — depths and "
+                        "extents in basins along the corridor are not the "
+                        "unconditioned Copernicus surface."
+                    ) if conditioned else None},
+        solver=solver,
         solver_params={
             "ensemble_size": members,
             "solver_duration_s": duration_s,
             "target_resolution": resolution_m,
-            "domain_margins_km": MARGINS_KM,
+            "domain_margins_km": margins,
+            "condition_corridor_m": condition_corridor_m,
             "scenario_type": "dam_break",
         },
     )
@@ -168,9 +245,11 @@ def main(argv=None) -> int:
             record_depth_snapshots=True,
             n_snapshots=n_snapshots,
             progress_cb=progress,
-            margins_km=MARGINS_KM,
+            margins_km=margins,
             fill_max_depth_m=3.0,
             notch_breach=True,
+            condition_corridor_m=condition_corridor_m,
+            n_workers=n_workers,
         )
 
         if result.get("error"):
@@ -178,9 +257,117 @@ def main(argv=None) -> int:
             run.fail(str(result["error"]))
             return 1
 
+        if solver == "both":
+            _add_comparison_and_sph(run, dam_config, progress)
+
         return _report_and_register(
             run, result, dam_config, kf_dir, series_args=(
-                resolution_m, duration_s, members, n_snapshots, run_tag, t0))
+                resolution_m, duration_s, members, n_snapshots, run_tag, t0,
+            margins, condition_corridor_m))
+
+
+def _add_comparison_and_sph(run, dam_config, progress) -> None:
+    """
+    Delft3D FM and the near-field SPH handoff, on top of the SWE run.
+
+    This is what ``solver="both"`` means in the API (tasks.py's dispatch), and
+    it is reused rather than reimplemented: ``_run_comparison`` reads this dam's
+    own gauges from ``jalraksha.presets.GAUGES`` and records the real kernel's
+    verdict, including the case where the binary could not run. A second copy
+    here would eventually disagree with the API about whether a given run used
+    the Deltares kernel — which is exactly the claim CLAUDE.md makes
+    conditional on ``delft3d_binary_used``.
+
+    Failure is recorded, not raised: the far-field result is already complete
+    and registering it matters more than the comparison tab.
+    """
+    progress(88.0, "Running Delft3D FM and near-field SPH")
+    try:
+        from jalraksha_service.tasks import _run_comparison
+
+        comp_export = _run_comparison(run.run_id, dict(dam_config), with_sph=True)
+        if comp_export:
+            run.add_export(comp_export["kind"], comp_export["path_or_url"])
+            print(f"[drainage-check] comparison export: "
+                  f"{comp_export['path_or_url']}")
+    except Exception as exc:
+        print(f"[drainage-check] comparison/SPH failed "
+              f"({type(exc).__name__}: {exc}); far-field result is unaffected")
+
+
+#: A gauge closer than this to a domain edge has its depth and arrival shaped by
+#: the transmissive boundary rather than by the flood alone. UNVETTED: chosen as
+#: a few times the coarsest grid spacing this script is run at, not from a
+#: published guidance figure. It exists to make contamination visible, not to
+#: quantify it.
+BOUNDARY_CONTAMINATION_KM = 5.0
+
+
+def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION_KM):
+    """
+    Gauges sitting within `threshold_km` of a domain edge, and those outside it.
+
+    The 'exit' domain is deliberately small enough that the flood crosses its
+    eastern boundary, which is the only way water leaves this model at all. The
+    cost is that a gauge near that edge reports a depth partly set by the
+    outflow condition. Without this note such a depth reads as a clean
+    measurement, and it is the same class of error as reporting a minority
+    arrival as a confident median.
+
+    Distances are the flat-earth offsets used everywhere else in this pipeline
+    for gauge geometry; at these ranges the difference from a geodesic is far
+    below the 200 m grid.
+    """
+    import math
+
+    from jalraksha.presets import get_gauges
+
+    dam_lat = float(dam_config["lat"])
+    dam_lon = float(dam_config["lon"])
+    km_per_deg_lat = 111.0
+    km_per_deg_lon = 111.0 * math.cos(math.radians(dam_lat))
+
+    near, outside = [], []
+    for gauge in get_gauges(dam_config.get("dam_id")):
+        lat = getattr(gauge, "lat", None)
+        lon = getattr(gauge, "lon", None)
+        if lat is None or lon is None:
+            continue
+        east = (float(lon) - dam_lon) * km_per_deg_lon
+        north = (float(lat) - dam_lat) * km_per_deg_lat
+        # Signed clearance to each of the four edges; negative means outside.
+        clearances = {
+            "east": margins["east"] - east,
+            "west": margins["west"] + east,
+            "north": margins["north"] - north,
+            "south": margins["south"] + north,
+        }
+        edge, clearance = min(clearances.items(), key=lambda kv: kv[1])
+        row = {
+            "gauge": gauge.name,
+            "east_km": round(east, 2),
+            "north_km": round(north, 2),
+            "nearest_edge": edge,
+            "clearance_km": round(clearance, 2),
+        }
+        if clearance < 0:
+            outside.append(row)
+        elif clearance < threshold_km:
+            near.append(row)
+
+    return {
+        "threshold_km": threshold_km,
+        "boundary_contaminated": near,
+        "outside_domain": outside,
+        "note": (
+            "Gauges listed under boundary_contaminated sit within "
+            f"{threshold_km:g} km of a transmissive domain edge; their peak "
+            "depths and arrival times are shaped by the outflow condition as "
+            "well as by the flood, and must not be quoted as clean "
+            "measurements. Gauges under outside_domain are not in the grid at "
+            "all and report no arrival for that reason."
+        ),
+    }
 
 
 def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
@@ -197,7 +384,8 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     from jalraksha.impact.hazard import HazardClassifier
     from jalraksha.export.keyframes import export_keyframes
 
-    resolution_m, duration_s, members, n_snapshots, run_tag, t0 = series_args
+    (resolution_m, duration_s, members, n_snapshots, run_tag, t0,
+     margins, condition_corridor_m) = series_args
 
     print(f"[drainage-check] solve complete in {_time.time() - t0:.0f}s; "
           f"exporting keyframes")
@@ -272,6 +460,14 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
         # Only LOW and DRY remain -- no cell anywhere at or above 0.5 m.
         "fully_green_at_s": _first_time_zero(
             "moderate", "significant", "severe", "extreme"),
+        # READ THESE TWO FIRST. The transmissive boundary is the only exit this
+        # model has, so if exited_mcm is ~0 no water left and the two times
+        # above describe a pond that simply has nowhere to go -- the run did
+        # not test drainage at all, whatever the hazard counts say. Every
+        # Khadakwasla run before the 'exit' domain scored exited_mcm ~1e-13
+        # with retained_fraction 0.9999999.
+        "exited_mcm": balance.get("exited_mcm"),
+        "retained_fraction": balance.get("retained_fraction"),
         "final_counts": {k: last.get(k) for k in
                          ("low", "moderate", "significant", "severe", "extreme")},
         "final_wet_severity": last.get("wet_severity"),
@@ -284,10 +480,23 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     print(f"[drainage-check] VERDICT: safe_at={verdict['safe_at_s']} s, "
           f"fully_green_at={verdict['fully_green_at_s']} s")
     print(f"[drainage-check] final counts: {verdict['final_counts']}")
+    exited_mcm = verdict.get("exited_mcm")
+    if exited_mcm is not None and exited_mcm <= 1e-6:
+        print(f"[drainage-check] WARNING: exited_mcm={exited_mcm:.3g} -- no "
+              f"water left the domain, so this run does not test drainage. "
+              f"The flood front did not reach a boundary.")
+
+    proximity = _boundary_proximity(dam_config, margins)
+    for row in proximity["boundary_contaminated"]:
+        print(f"[drainage-check] BOUNDARY-CONTAMINATED: {row['gauge']} is "
+              f"{row['clearance_km']} km from the {row['nearest_edge']} edge")
 
     summary = {
         "run_tag": run_tag,
-        "margins_km": MARGINS_KM,
+        "margins_km": margins,
+        "boundary_proximity": proximity,
+        "condition_corridor_m": condition_corridor_m,
+        "terrain_modified": condition_corridor_m > 0,
         "target_resolution_m": resolution_m,
         "solver_duration_s": duration_s,
         "ensemble_size": members,

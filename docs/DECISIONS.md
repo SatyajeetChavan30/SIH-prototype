@@ -313,6 +313,49 @@ PR submitted → pytest (all analytical + gates + unit) → Pass? → Merge
 
 ---
 
+## 13. Corridor Conditioning Is Opt-In, and It Produces Modified Terrain
+
+**Context:** A 24 h Khadakwasla run never receded — 46 cells stuck SEVERE, ~42%
+of released volume trapped. Three mechanism fixes (breach notch, threshold-limited
+depression fill, asymmetric downstream domain) were implemented and did not clear
+it. Bilinear downsampling of a narrow channel manufactures local minima that exist
+only in the resampled raster, and the solver's own water pools in them forever;
+the obvious response is to raise `fill_max_depth_m` until everything drains.
+
+**Decision:** Do not raise the global cap. Add an **opt-in, per-run corridor
+mask** instead. `condition_corridor_m` (default **0 — off**) gives cells within
+*n* metres of the local valley floor an infinite depression-fill cap while every
+upland basin keeps the ordinary `fill_max_depth_m = 3.0`. The mask comes from
+`terrain/conditioning.py::height_above_valley_floor`, a 6 km minimum filter.
+
+**Rationale:** Conditioning a flow corridor is standard practice in flood
+routing. Erasing terrain to guarantee drainage is not, and CLAUDE.md forbids it
+explicitly. **The mask is the entire difference between the two**, and it is
+measurable: filling only within the corridor alters a small fraction of the
+domain and leaves the region's tanks, quarries and reservoirs standing, while an
+unrestricted fill removes them. A nicer hazard graph obtained by deleting real
+basins would have hidden the defect rather than fixed it.
+
+**Consequences:**
+- A conditioned bed is **MODIFIED TERRAIN** and every product built from it says
+  so: `corridor_conditioned` and `corridor_volume_removed_mcm` in the fill stats,
+  `[CORRIDOR-CONDITIONED n m]` in the run label, `terrain_modified` and
+  `terrain_note` in `dam_config`.
+- With the option off, output is **byte-identical** to before — pinned by
+  `test_no_mask_is_byte_identical_to_before`.
+- The two geometry numbers (`window_m = 6000.0`, and the 10 m corridor height
+  used so far) are **unvetted** — verification queue row 34.
+- **It was not the fix.** Conditioning improves recession (wet severity 0.358
+  against 0.518) and still exports zero water. The drainage plateau was
+  volume-limited, and only moving the domain boundary inside the flood front
+  resolved it (`docs/validation_findings.md` §8).
+
+**Rejected alternative:** raising `fill_max_depth_m` globally — it alters several
+times as many cells and erases genuine terrain, which is the failure mode the
+whole fill design exists to avoid.
+
+---
+
 ## References & Future Refinements
 
 - **Numerical analysis:** Toro 2001, Audusse 2004 (cited above)
@@ -328,5 +371,5 @@ PR submitted → pytest (all analytical + gates + unit) → Pass? → Merge
 ---
 
 **Document maintained by:** Claude Code (SIH 2026 team)  
-**Last updated:** 2026-08-24  
+**Last updated:** 2026-09-06  
 **Next review:** After Phase 1 completion (approx. 2026-08-28)

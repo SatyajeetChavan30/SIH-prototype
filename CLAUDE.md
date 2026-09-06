@@ -495,6 +495,66 @@ screening pulse and says so.
   band and no per-gauge peak depth — those fields did not exist when they were
   written, and they render as blanks. New runs are complete.
 
+## A run can now be durable AND visible at the same time
+
+These were mutually exclusive, and the trade cost real work.
+
+- **Dashboard-submitted runs died with the server.** `_spawn_run_subprocess`
+  used a plain `Popen`, so the worker was an ordinary child of uvicorn. Three
+  runs were lost that way in one session, hours of compute each, because
+  `run_ensemble` returns every member at once and writes nothing per-member.
+- **Script-launched runs were invisible.** They survived anything — one outlived
+  several API restarts across a 5 h solve — but nothing called `db.create_run`,
+  so `GET /runs` could not list them and the dashboard could not load them.
+
+`services/api/jalraksha_service/script_runs.py` closes the second half:
+`registered_run(...)` is a context manager giving a script the same lifecycle
+`tasks.py` performs. Three things in it are load-bearing and each fails
+silently if dropped.
+
+- **`record_worker_pid` before any status write.** The API runs
+  `mark_stale_runs_failed()` at startup, which marks every `running` row failed
+  unless a LIVE pid is recorded. Register a long run at start without it and the
+  next API restart kills the row of a run that is still solving — defeating the
+  exact durability scripts exist for.
+- **`os.chdir(REPO_ROOT)`.** `DATABASE_URL` and `DATA_DIR` are both RELATIVE.
+  A script started elsewhere silently creates a second, empty database.
+- **Artifacts go in RUN-ID directories.** `_to_file_url` serves a path only if it
+  resolves under `DATA_DIR`, and the frontend resolves each `png_url` as a
+  SIBLING of the manifest, so frames and manifest cannot be separated.
+
+**The contract for "listed and playable" is four things, and three of them fail
+looking like something else:** status EXACTLY `"done"` (else 409, reads as
+"still going"), `export_count > 0` (else silently absent from the picker), a
+`keyframe_manifest` export whose file exists under `DATA_DIR` (else the run
+lists and shows no imagery), and every gauge row with non-null `gauge_name` and
+`distance_km` (else the whole result 500s). `tests/test_script_runs.py` pins all
+four.
+
+**`gauge_rows_from_result` and `write_run_summary` are SHARED with `tasks.py`,
+not copied.** Two versions would eventually disagree about what a minority
+arrival is, and that note is what stops "1 of 4 members arrived" reading as a
+confident median.
+
+**On Windows, `DETACHED_PROCESS` is not enough** — it detaches from the console
+but NOT from a Job Object, and a harness that runs the API in a job with
+kill-on-close takes the worker down with it. Measured: a worker died mid-export
+at 92%. `CREATE_BREAKAWAY_FROM_JOB` is what actually escapes, and it fails
+outright where the job forbids breakaway, so the dispatcher retries without it
+and SAYS so rather than turning "your run died" into "your run never started".
+Verified: with the API killed outright, a run reached `done` with 22 exports and
+7 gauges while nothing was serving.
+
+Output goes to `data/runs/<run_id>.log` because a detached child has no console
+to inherit — better than the old shared API stdout, since it survives the server
+and belongs to one run.
+
+`scripts/register_script_run.py` backfills a finished tag-named run without
+re-solving. It MOVES the directories rather than copying (two divergent 50-file
+trees help nobody) and marks status `done` LAST, so a half-registered run is
+never briefly listed as complete — which is what saved the first attempt when it
+crashed partway.
+
 ## Friction, and a legend that was shifted by one
 
 `terrain/roughness.py` maps ESA WorldCover classes to Manning's *n*. Two
@@ -592,8 +652,259 @@ executes in a subprocess spawned by the server and dies with it — three runs
 were lost that way in one session, each discarding hours of compute, because
 `run_ensemble` returns every member at once and writes nothing per-member.
 `scripts/run_khadakwasla_drainage_check.py` calls the same pipeline directly and
-survives the server restarting. Its 24 h confirmation run has NOT completed, so
-the plateau is fixed in mechanism but not yet re-measured.
+survives the server restarting. **Its confirmation runs have now completed — see
+the next section, which supersedes the "not yet re-measured" status this
+paragraph used to carry.**
+
+## The plateau was VOLUME-limited, and the flood now drains
+
+Five confirmation runs later, the mechanism fixes of the previous section were
+necessary and not sufficient, and the reason was not the one being looked for.
+
+**Three runs on the wide domain all plateaued identically.** Read them from
+`data/keyframes/<run_id>/hazard_series.json`:
+
+| run | domain | Δx | duration | members | wall clock | final low/mod/sig/sev/ext | wet severity | `exited_mcm` |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- | ---: | ---: |
+| `48f7ac59` | full 40/200/94/94 | 500 m | 24 h | 4 | 3,867 s | 6/21/39/26/1 | 0.518 | −8.5e−14 |
+| `1d3d3c45` | full 40/200/94/94 | 300 m | 24 h | 4 | 18,047 s | 11/45/98/58/15 | 0.551 | −4.4e−13 |
+| `e5485691` | mid 12/105/45/45 | 500 m | 48 h | 2 | 827 s | 62/21/39/25/1 | 0.358 | +2.7e−13 |
+
+**`exited_mcm` is ZERO in all three, and that is the whole finding.** The
+transmissive domain boundary is the only exit this model has — no infiltration,
+no evaporation, no seepage, and `flux.py` zeroes velocity below `H_DRY_DEFAULT`
+while LEAVING DEPTH IN PLACE. So a run that exported no water never tested
+drainage at all, whatever its hazard counts say, and `safe_at_s: null` on such a
+run describes a pond with nowhere to go rather than a failed recession. Read
+`exited_mcm` and `retained_fraction` FIRST; they are in the verdict now, and the
+script prints a WARNING when `exited_mcm <= 1e-6`.
+
+The front is **volume-limited, not domain-limited**: 85.3 MCM fills the
+reachable channel and runs out at east 23.5 km / north 15 km, against a boundary
+40 km away. "Give it more runway" therefore cannot work, which is why the wider
+domain and the finer grid both changed nothing.
+
+**So the boundary was moved INSIDE the front.** `DOMAINS["exit"]` (8/20/8/18 km,
+a 28 × 26 km box) puts the east edge 3.5 km inside the measured 23.5 km front.
+Run `e2e09ea3201d4d42b7a7dbcd5fac4b81` (`khadakwasla_drain_to_green`, 200 m,
+30 h, 6 members, `solver="both"`, corridor-conditioned 10 m, 2,740 s wall clock):
+
+    released 85.314 MCM · exited 82.219 MCM (96.4%) · retained 3.090 MCM (3.6%)
+    closure 0.007% · safe_at 33,977.7 s (9.44 h) · final sev 0, ext 0
+
+against a pre-fix baseline of ~42% retained and 46 cells stuck SEVERE. **The
+hazard reaches zero SEVERE and zero EXTREME at 9.44 h.** `fully_green_at_s` is
+still null: 154 low + 46 moderate + 1 significant cell remain wet at 30 h.
+
+**Say what that run is, because it clips the study area on purpose.** It answers
+"when does the flood clear a 28 × 26 km area around Pune", NOT "the water ceased
+to exist" — 82 MCM left through the eastern edge and is downstream, unmodelled.
+It also changed four things at once against the plateaued runs (domain,
+conditioning, resolution, duration), so only the volume balance is cleanly
+attributable: 96.4% exited against 0.0%. Two gauges then sit 3.0 km from that
+edge — Hadapsar and Magarpatta City — and `_boundary_proximity` flags them, at an
+UNVETTED `BOUNDARY_CONTAMINATION_KM = 5.0` chosen as a few times the coarsest
+grid spacing, not from published guidance. Their depths are shaped by the
+outflow condition and are not clean measurements. Loni Kalbhor (−6.5 km) and
+Baramati (−65.4 km) fall outside the box entirely and report no arrival for that
+reason, not for a hydraulic one.
+
+## Corridor conditioning — opt-in, and it produces MODIFIED TERRAIN
+
+`condition_corridor_m` threads `run.py` → `terrain/domain.py::build_domain` →
+`conditioning.py::load_dem_as_grid` → `fill_depressions(corridor_mask=...)`.
+Default **0 (off)**; off, a run is byte-identical to before, which
+`test_no_mask_is_byte_identical_to_before` pins.
+
+- **The mask is what makes it defensible.** `height_above_valley_floor` is a
+  6 km minimum filter (wider than the Mutha's floodplain, narrower than the gap
+  to the Western Ghats), and cells within `condition_corridor_m` of that floor
+  get an INFINITE fill cap while every upland basin keeps the ordinary
+  `fill_max_depth_m`. Conditioning a flow corridor is standard flood-routing
+  practice; erasing terrain to guarantee drainage is what the previous section
+  forbids. The mask is the entire difference, and `window_m = 6000.0` is an
+  UNVETTED basin-specific choice.
+- **Measured, with provenance, on the exit domain** (28 × 26 km at 200 m, in
+  `data/runs/drain_to_green.log`): 465 of 1,012 corridor cells raised, max 7.5 m,
+  **44 MCM of closed capacity removed**, 58 pits OUTSIDE the corridor left
+  standing. Larger figures appear in source docstrings for other domains
+  (1,392 MCM, 1,686 MCM, 1,659 MCM) — those were measured on the 117 × 90 km and
+  wider domains, are not interchangeable with this one, and none of them has a
+  surviving log. Quote a corridor figure with its domain and resolution or not at
+  all.
+- **It improves recession and it is not drainage.** `e5485691` conditioned at
+  10 m still exported zero water. Only moving the boundary did that.
+- **A conditioned run says so everywhere:** `corridor_conditioned` and
+  `corridor_volume_removed_mcm` in the fill stats, `[CORRIDOR-CONDITIONED n m]`
+  in the run label, and `terrain_modified` / `terrain_note` in `dam_config`.
+
+## `mutha_temghar` is HYPOTHETICAL, and both blockage sites have now run
+
+`rishi_ganga` models a REAL 2021 blockage whose geometry is merely unmeasured.
+**`mutha_temghar` models nothing that happened.** No landslide dam has been
+recorded on that reach of the Mutha; crest and width are entirely
+operator-supplied, and its `barrier_source` says so in the wire payload, so the
+dashboard cannot present it as an observed event. The preset carries **no
+`event_date` and no detection window**, deliberately — offering detect dates
+would invite the Sentinel-1 detector to hunt for a barrier that never existed.
+
+Two constraints shape every result from it, and both are in the preset note.
+**Headroom:** the bed is 617 m here and Temghar's toe about 700 m, so a crest
+above roughly 80 m backs water into Temghar's own pool and the hypsometric fill
+starts counting an existing reservoir as impounded volume — 45 m is the default
+for that reason. **The reservoir downstream:** the release enters Khadakwasla
+(85.31 MCM gross, pool baked into GLO-30 at 580.0 m) at about 26 km, so
+**attenuation is the expected result**, and whether Pune sees anything depends on
+a freeboard this model does not set.
+
+Measured runs, both via `scripts/run_blockage.py`:
+
+| run | site | barrier | Δx / duration / members | impounded (MEASURED off the burn) | result |
+| :--- | :--- | :--- | :--- | ---: | :--- |
+| `afabb054` | mutha_temghar | 45 m crest, 1,600 m requested | 150 m / 6 h / 4 | 39.110 MCM over 2.542 km², surface 664.2 m | **no arrival at any of six gauges**, 100% retained |
+| `a221473f` | rishi_ganga | 110 m crest, 1,500 m | 100 m / 4 h / 4 | 22.177 MCM over 0.790 km², surface 1816.8 m | +5 km arrives 91.5 min, peak 11.72 m; +10.5 and +15.1 km no arrival |
+
+Mutha's no-arrival is the expected attenuation, not a broken run — say that
+rather than showing an empty map without explanation.
+
+**The preset's own width estimate was wrong, and the burn caught it.**
+`MUTHA_TEMGHAR`'s note says the barrier must be 1,400–1,900 m wide to span the
+valley. `burn_barrier` widened the requested 1,600 m to a `width_m_final` of
+**7,200 m** before `downstream_leak_cells` reached zero (5,215 cells modified).
+The proof-of-span loop is doing exactly the job it exists for; the note's figure
+is a terrain estimate and should be corrected or labelled when someone touches
+that preset.
+
+**A `solver="both"` comparison can still fail, and Tehri's does.**
+`data/runs/flashflood.log`, run `37e1e713`: *"Impounding 3540.0 MCM over
+9.72 km2 requires a mean depth of 364.2 m, which exceeds the dam height of
+260.0 m."* The detected pool is too small for the published storage, so
+`_impound_reservoir` refuses to build an initial condition. The far-field SWE run
+completed and exported 18 products regardless — the comparison is recorded as
+not written, not raised — but Tehri has no Delft3D cross-check on that path until
+the pool detection or the storage figure is reconciled.
+
+## `scripts/make_synthetic_demo_run.py` is NOT a simulation
+
+No solver runs. It paints a prescribed wave onto the real Copernicus DEM so the
+band follows the actual Mutha → Mula-Mutha → Bhima valley and looks plausible on
+a basemap. It exists because the real runs stop at ~26 km and, before the exit
+domain, never receded.
+
+It is labelled **three times over, so no single omission unlabels it**: the run
+picker name begins "SYNTHETIC DEMO"; the caption is BURNED INTO every keyframe
+PNG, so a screenshot taken out of the dashboard still carries it; and both
+`run_summary.json` and `params_json` carry `is_synthetic: true`. That mirrors
+`demo_synthetic.py`'s mandatory red ParaView banner and `gee/sar.py`'s refusal to
+synthesize an observation at all. A fabricated run that looks like a result is
+the single failure mode those conventions exist to prevent.
+
+Now that `e2e09ea3` exists, prefer it: it is a real solve that reaches zero
+severe cells. Reach for the synthetic asset only for the long-reach picture the
+solver still cannot produce.
+
+## Damage estimation, and a 25x undercount found while building it
+
+PS-26161 deliverable (i) asks for "loss and damage analysis" and nothing reached
+a user. `impact/damage.py` existed but had **zero call sites outside tests**,
+and `main.py` had been reading an export of kind `"impact"` that **nothing has
+ever written** — `RunResult.impact` was null for all 40 runs in the shipped
+database, so `ImpactPanel`'s populated damage branch was dead code behind a gap
+notice.
+
+- **A fabricated credential was deleted, not relabelled.** The old
+  `DepthDamageAnalyzer` attributed its coefficients to "Graham (2009), a
+  comprehensive study for the Uttarakhand region" with r² of 0.82 / 0.79 / 0.75.
+  No such study is in `literature.md`; the only Graham there is the **1999 USBR
+  report on FATALITY rates**, a different quantity. A goodness-of-fit statistic
+  for a fit that was never performed is a fabricated credential. Gone with it:
+  three asset baselines (125 / 85 / 45 crore) identical for every dam in the
+  country, an assumed 450 persons/km², and two hardcoded 200 m cell areas that
+  ignored the run's real resolution.
+- **Exposure now comes from the catchment.** Damage is
+  `ratio(depth) x exposure x unit_cost`. Exposure is **GHS-BUILT-S built-up
+  SURFACE** (`gee/built_up.py`, m² per cell) plus **WorldCover cropland
+  fraction**, both fetched onto the solver's own grid. The residential /
+  non-residential split is `built_surface` minus `built_surface_nres` — **two
+  published bands, not a ratio somebody picked**. Both fetches keep the
+  three-states-no-fourth contract, and `built_up.py` has **no `allow_synthetic`
+  parameter at all**, following `blockage_detect` rather than `population.py`.
+- **The curve says it is unpublished and the cost says it is unvetted.**
+  `compute_depth_damage` is a saturating exponential with three unsourced rate
+  constants; every result carries `model_is_published: False`. The unit costs
+  are placeholders **echoed in the payload** (`unit_cost_inr_per_m2`,
+  `unit_cost_price_year`) so a reader can divide them back out — a test pins
+  that doubling the constant doubles the figure. Huizinga (2017) is present in
+  SHAPE and quarantined behind `HUIZINGA_2017_VERIFIED = False`, exactly as
+  `fatality.py` holds Jonkman (2008). Verification rows 35 and 36; row 10 now
+  points at the quarantine.
+- **THREE STATES PER SECTOR, NOT PER PAYLOAD.** Built-up can be available while
+  cropland is not. Refusing the whole payload would suppress a good buildings
+  figure; totalling with agriculture silently zero would publish a fabricated
+  number that reads as "no agricultural damage". So each sector carries its own
+  `available` and `reason`, and **the total is withheld entirely unless every
+  sector succeeded**, beside a `missing_sectors` list.
+- **`jalraksha.impact` must not import `jalraksha.gee`** (Phase 6 importing
+  Phase 9). `tasks.py` fetches and passes arrays in, the same seam
+  `_population_at_risk` already used. That is also what keeps `damage.py`
+  testable with no network.
+- **`impact_exports` is SHARED with `script_runs.py`, not copied**, and it
+  covers PAR as well. The script path wrote **neither** artifact, which is why
+  the flagship `e2e09ea3` run lists with an empty Impact tab.
+
+**And the reason to read `exposure_provenance` before any rupee figure:
+`reduceResolution(ee.Reducer.sum())` DOES NOT SUM.** Earth Engine weights each
+contributing pixel by the fraction of the OUTPUT pixel it covers and those
+weights sum to one, so a weighted sum is arithmetically a **mean**.
+`gee/population.py` documented this exact hazard at length, switched to `sum()`
+to avoid it, and produced it anyway: over the 480x376 domain at 500 m it
+returned **741,659 people against a native-resolution total of 18,543,954** —
+short by **25.003x**, precisely (500/100)². Every population-at-risk figure this
+project published before now was low by the square of the ratio between the
+solver grid and 100 m, and **runs finished before the fix keep that error in
+their `population_at_risk.json`** — they are not retroactively corrected.
+
+`sum().unweighted()` is not the fix (it overshoots 1.49x). The correction in
+`gee/grid_fetch.py` is to stop resampling a per-cell count at all: convert to a
+density per m² dividing by `pixelArea()` **declared in the SOURCE projection**,
+aggregate as the intensive quantity it then is, and multiply back by the output
+cell area. Against native totals: population 1.0055, built-up 1.0059 — the same
+residual for both, so clip-boundary handling, not scale. Callers now declare
+`extensive=True/False` instead of choosing a reducer, GHSL manifests are
+versioned (`ghsl_manifest_v2.json`) so pre-fix rasters are never served again,
+and `test_an_extensive_quantity_survives_the_change_of_grid` fetches the same
+ground at 500 m and 250 m and asserts one total — which the old path failed by
+exactly 4x. Verification row 37.
+
+**Two Earth Engine limits are worth not rediscovering.** WorldCover is 10 m and
+the solver runs at 100-500 m: in one hop EE wants 3,081 source pixels per output
+pixel against a default of 1,024, and raising the cap trips the other limit —
+*"Reprojection output too large (27412x20470 pixels)"* — because the whole
+domain then has to be materialised at 10 m. `stage_scale_m` aggregates through
+a middle scale, and it must stage **in the SOURCE CRS**: staging into UTM still
+forces that 10 m materialisation, measured identically at 50, 100 and 200 m,
+which is what shows the stage scale was never the problem. Both hops are means
+over the same quantity, so splitting them approximates nothing — 100 m and
+200 m staging return the same cropland area to the last decimal.
+
+**Measured, Khadakwasla run `858d7690` (480x376 at 500 m, 119 wet cells):**
+791.07 km² built-up in domain (native-resolution truth 786.42, +0.6%), 24.54 km²
+non-residential, 23,933 km² cropland. Flooded exposure 5.43 km² residential,
+0.151 km² non-residential, 2.15 km² cropland, giving ₹8,482 / ₹283 / ₹2.1 crore
+and a total of **₹8,767 crore (band 6,137-11,397)**. Quote it as an order of
+magnitude — the exposure is measured, the cost per m² is not.
+
+## Two small operational facts
+
+`scripts/run_api.py` honours `$PORT` (an explicit `--port` still wins) and
+`.claude/launch.json` uses `autoPort`, so a second checkout or a parallel session
+no longer collides on 8000.
+
+`scripts/register_script_run.py` emits the `GridSummary` field names
+(`nx`/`ny`/`dx`/`dy`/`x0`/`y0`/`crs`); the old `resolution_m` key rendered the
+panel as a row of blanks. `x0`/`y0` stay **null rather than guessed** — the UTM
+origin was never recorded, and a wrong one georeferences every downloaded raster
+incorrectly, which is worse than an absent one.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" width="640" height="460">
+  <defs>
+    <linearGradient id="res" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#5E9BDA"/>
+      <stop offset="100%" stop-color="#1C5CAB"/>
+    </linearGradient>
+    <linearGradient id="jet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#2A78D6"/>
+      <stop offset="100%" stop-color="#7FB2EA"/>
+    </linearGradient>
+    <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#C2CEDA"/>
+      <stop offset="100%" stop-color="#93A6B6"/>
+    </linearGradient>
+    <linearGradient id="hillNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#93A6B6"/>
+      <stop offset="100%" stop-color="#63798C"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#68798A"/>
+      <stop offset="100%" stop-color="#42525F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ============ SATELLITE + SCAN ============ -->
+  <path d="M 108 128 A 240 240 0 0 1 532 128" fill="none" stroke="#C9D8E4"
+        stroke-width="3.5" stroke-dasharray="11 10" stroke-linecap="round"/>
+  <path d="M 320 76 L 246 210 L 394 210 Z" fill="#0E6E6E" fill-opacity="0.12"/>
+  <path d="M 320 76 L 246 210 M 320 76 L 394 210" stroke="#0E6E6E" stroke-width="2.5"
+        stroke-opacity="0.5" stroke-linecap="round"/>
+  <g transform="translate(320 58)">
+    <rect x="-42" y="-9" width="24" height="18" rx="3.5" fill="#0E6E6E"/>
+    <rect x="18"  y="-9" width="24" height="18" rx="3.5" fill="#0E6E6E"/>
+    <rect x="-17" y="-14" width="34" height="28" rx="6" fill="#14385C"/>
+    <circle cx="0" cy="0" r="5.5" fill="#EAF1F6"/>
+  </g>
+
+  <!-- ============ VALLEY (far ridge) ============ -->
+  <path d="M 0 460 L 0 236 L 168 138 L 300 460 Z" fill="url(#hillFar)"/>
+  <path d="M 640 460 L 640 236 L 472 138 L 340 460 Z" fill="url(#hillFar)"/>
+
+  <!-- ============ RESERVOIR ============ -->
+  <path d="M 150 202 L 490 202 L 490 276 L 150 276 Z" fill="url(#res)"/>
+  <path d="M 150 208 q 43 -14 85 0 t 85 0 t 85 0 t 85 0 v -6 H 150 Z" fill="#8CBAE8" opacity="0.55"/>
+
+  <!-- ============ VALLEY (near shoulders, in front of reservoir) ============ -->
+  <path d="M 0 460 L 0 300 L 150 196 L 196 460 Z" fill="url(#hillNear)"/>
+  <path d="M 640 460 L 640 300 L 490 196 L 444 460 Z" fill="url(#hillNear)"/>
+
+  <!-- ============ DAM WALL — two halves with a breach gap ============ -->
+  <g>
+    <path d="M 150 266 L 300 266 L 294 356 L 158 356 Z" fill="url(#wall)"/>
+    <path d="M 340 266 L 490 266 L 482 356 L 346 356 Z" fill="url(#wall)"/>
+    <rect x="148" y="258" width="154" height="12" rx="4" fill="#8496A6"/>
+    <rect x="338" y="258" width="154" height="12" rx="4" fill="#8496A6"/>
+    <!-- face texture -->
+    <path d="M 196 276 L 192 350 M 242 276 L 239 350" stroke="#5A6B79" stroke-width="3" opacity="0.5"/>
+    <path d="M 398 276 L 401 350 M 444 276 L 448 350" stroke="#5A6B79" stroke-width="3" opacity="0.5"/>
+  </g>
+
+  <!-- ============ VALLEY FLOOR below the dam ============ -->
+  <path d="M 158 460 L 172 352 L 468 352 L 482 460 Z" fill="#7C8FA0"/>
+
+  <!-- ============ BREACH JET ============ -->
+  <path d="M 300 262 L 340 262 L 356 366 L 284 366 Z" fill="url(#jet)"/>
+  <path d="M 310 278 L 302 356" stroke="#EAF1F6" stroke-width="4.5" stroke-opacity="0.6" stroke-linecap="round"/>
+  <path d="M 332 278 L 340 356" stroke="#EAF1F6" stroke-width="4.5" stroke-opacity="0.45" stroke-linecap="round"/>
+
+  <!-- ============ DOWNSTREAM FLOOD ============ -->
+  <path d="M 284 360
+           C 236 376 200 388 156 398
+           C 214 420 300 428 372 422
+           C 448 416 500 400 528 386
+           C 466 372 392 364 356 360 Z"
+        fill="url(#jet)" opacity="0.95"/>
+  <path d="M 214 396 q 44 -10 90 -4"   stroke="#EAF1F6" stroke-width="4.5" fill="none" stroke-opacity="0.5" stroke-linecap="round"/>
+  <path d="M 344 410 q 54 -8 104 -20"  stroke="#EAF1F6" stroke-width="4.5" fill="none" stroke-opacity="0.4" stroke-linecap="round"/>
+
+  <!-- ============ WARNING MARKER ============ -->
+  <g transform="translate(536 318)">
+    <circle cx="0" cy="0" r="30" fill="#FFFFFF"/>
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#D97B00" stroke-width="4.5"/>
+    <path d="M 0 -15 L 16 13 L -16 13 Z" fill="#D97B00"/>
+    <rect x="-2.4" y="-5" width="4.8" height="11" rx="2.4" fill="#FFFFFF"/>
+    <circle cx="0" cy="9.5" r="2.4" fill="#FFFFFF"/>
+  </g>
+</svg>

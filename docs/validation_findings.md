@@ -248,7 +248,12 @@ satellite scene id.
 
 ---
 
-## 8. The Khadakwasla drainage plateau — a measured failure, fixed in mechanism
+## 8. The Khadakwasla drainage plateau — measured, diagnosed, and drained
+
+*Read to the end before quoting anything from this section.* The first three
+subsections record a plateau and three mechanism fixes that did not clear it; the
+last three record what actually did, and supersede the intermediate "not
+resolved" verdict.
 
 ```bash
 python -m pytest tests/test_terrain.py -q -k "fill_depressions or notch_breach"
@@ -388,17 +393,121 @@ Excluded by measurement:
 - **The ensemble.** Four members here; the pre-fix baseline plateaued
   identically at 10 and 100 members.
 
-**Not resolved:** whether the residual standing water is genuine slow drainage of
-a flat floodplain — 85 MCM over ~20 km² of the Mutha corridor is ~4 m mean
-depth, and after the reservoir empties at 2.88 h no further inflow drives it out,
-so a multi-day recession would be physically unremarkable — or whether
-depressions survive `fill_max_depth_m = 3.0` and still trap it. Separating the
-two needs either a much longer run or an audit of what the fill actually raised
-and what it left.
+**Was not resolved at the time of writing:** whether the residual standing water
+is genuine slow drainage of a flat floodplain — 85 MCM over ~20 km² of the Mutha
+corridor is ~4 m mean depth, and after the reservoir empties at 2.88 h no further
+inflow drives it out, so a multi-day recession would be physically unremarkable —
+or whether depressions survive `fill_max_depth_m = 3.0` and still trap it.
 
-**The honest statement:** the three fixes are implemented and unit-tested; the
-hazard does not recede to green within 24 h at either resolution; and the cause
-is no longer attributable to any of the four mechanisms listed above.
+**That fork is now closed. It is neither, exactly: no water could leave the
+domain at all.** See the next two subsections, which supersede this paragraph.
+
+**The honest statement, as of the 300 m run:** the three fixes are implemented
+and unit-tested; the hazard does not recede to green within 24 h at either
+resolution; and the cause is no longer attributable to any of the four mechanisms
+listed above.
+
+### The plateau is VOLUME-limited, not domain-limited — measured 2026-09-06
+
+The measurement that resolves §8 is one field, and it was not being read:
+`volume_balance.exited_mcm`. Read from
+`data/keyframes/<run_id>/hazard_series.json`:
+
+| run id | tag | domain (km) | Δx | duration | members | wall clock | final low/mod/sig/sev/ext | wet severity | `exited_mcm` | `retained_fraction` |
+| :--- | :--- | :--- | ---: | ---: | ---: | ---: | :--- | ---: | ---: | ---: |
+| `48f7ac59fbb4497f86f5c455cf4bcf13` | `khadakwasla_drainage_check` | full 40/200/94/94 | 500 m | 24 h | 4 | 3,866.5 s | 6/21/39/26/1 | 0.51828 | −8.50e−14 | 0.99999996 |
+| `1d3d3c45571242dfbeedfc991cae87cb` | `khadakwasla_drainage_300m` | full 40/200/94/94 | 300 m | 24 h | 4 | 18,046.7 s | 11/45/98/58/15 | 0.550661 | −4.45e−13 | 0.99999994 |
+| `e5485691b5264a468de81f549c1f221d` | `pilot_48h` | mid 12/105/45/45 | 500 m | 48 h | 2 | 826.5 s | 62/21/39/25/1 | 0.358108 | +2.66e−13 | 0.99999992 |
+
+`safe_at_s` and `fully_green_at_s` are **null in all three**. `exited_mcm` is
+zero to within float noise in all three, and the sign flips between runs because
+these are cancellation residuals, not outflow.
+
+**No water ever left the domain, so none of these runs tested drainage.** The
+transmissive boundary is the model's only exit: there is no infiltration, no
+evaporation and no seepage sink anywhere in the solver, and `flux.py` zeroes
+velocity below `H_DRY_DEFAULT` while **leaving depth in place**. Water that
+reaches a closed basin cannot leave it at any duration.
+
+The front is volume-limited. 85.3 MCM fills the reachable channel to roughly
+2.7 m mean depth and stops: wet cells end at **east 23.5 km / north 15 km** in
+all three `h_max` rasters, against a nearest boundary 40 km away. Supporting
+counts from run `0e78feac`: only **2 of 621 wet cells** touch the domain edge,
+and **93.2% of flood volume** sits in depressions the conditioning refuses to
+fill (5,075 surviving pits, mean 16.5 m deep). Adding runway therefore cannot
+help, which is exactly why the 240 × 188 km domain and the 300 m grid both
+changed nothing.
+
+### Moving the boundary inside the front — the flood drains, 2026-09-06
+
+```bash
+python scripts/run_khadakwasla_drainage_check.py --domain exit --resolution 200 \
+    --duration-h 30 --members 6 --solver both --condition-corridor 10 \
+    --tag khadakwasla_drain_to_green
+```
+
+`DOMAINS["exit"]` is 8/20/8/18 km — a 28 × 26 km box, 140 × 130 = 18,200 cells —
+whose east edge sits **3.5 km inside** the measured 23.5 km front. Run
+`e2e09ea3201d4d42b7a7dbcd5fac4b81`, 2,739.7 s wall clock, log at
+`data/runs/drain_to_green.log`:
+
+| | released | exited | retained | closure |
+| :--- | ---: | ---: | ---: | ---: |
+| median of 6 members | 85.314 MCM | **82.219 MCM (96.4%)** | 3.090 MCM (3.6%) | 0.007% |
+
+against a pre-fix baseline of roughly 42% retained. `safe_at_s = 33,977.7 s`
+(9.44 h) — **zero SEVERE and zero EXTREME cells anywhere from that moment on**,
+final counts 154 low / 46 moderate / 1 significant. `fully_green_at_s` is still
+null: 201 cells are still wet at 30 h.
+
+Arrival bands (p05–p95): Deccan Gymkhana 4,274–6,495 s, Shivajinagar
+4,672–7,088 s. Swargate, Hadapsar and Magarpatta City record no arrival in 30 h.
+
+**Three qualifications, none of them optional when quoting this run.**
+
+1. **It clips the study area deliberately.** The question it answers is "when
+   does the flood clear a 28 × 26 km area around Pune", **not** "the water ceased
+   to exist". 82 MCM crossed the eastern edge and is downstream, unmodelled.
+2. **Four variables changed at once** against the plateaued runs — domain,
+   corridor conditioning, resolution (200 m) and duration (30 h). Only the volume
+   balance is cleanly attributable, and it is decisive: 96.4% exited against
+   0.0%. The domain is the cause; the other three are not separated here.
+3. **Two gauges are boundary-contaminated.** Hadapsar and Magarpatta City are
+   both 17.0 km east, 3.0 km from the outflow edge, and `_boundary_proximity`
+   flags them at `BOUNDARY_CONTAMINATION_KM = 5.0` (UNVETTED — a few times the
+   coarsest grid spacing, not a published figure; verification row 33). Their
+   depths are shaped by the outflow condition. Loni Kalbhor (−6.5 km) and
+   Baramati (−65.4 km) are outside the box altogether and report no arrival for
+   that reason rather than a hydraulic one.
+
+### Corridor conditioning — a real improvement that is NOT drainage
+
+`condition_corridor_m` gives cells within *n* metres of the local valley floor an
+infinite depression-fill cap while every upland basin keeps the ordinary
+`fill_max_depth_m = 3.0`. The mask comes from `height_above_valley_floor`, a
+6 km minimum filter (`window_m = 6000.0`, UNVETTED — verification row 34).
+
+`pilot_48h` (`e5485691`) is the only conditioned run on a wide domain: wet
+severity **0.358 against 0.518 and 0.551**, and low-hazard cells 62 against 6.
+That is a genuine improvement in recession. **It is not drainage** — `exited_mcm`
+is still zero and `safe_at_s` is still null. Only moving the boundary produced
+outflow.
+
+`pilot_48h` is **not a clean A/B**: it differs from `khadakwasla_drainage_check`
+in domain (mid vs full), duration (48 h vs 24 h) and ensemble size (2 vs 4) as
+well as in conditioning. The severity drop is suggestive, not attributed.
+
+**One corridor measurement has a surviving log, and it is the only one to
+quote.** From `data/runs/drain_to_green.log`, on the exit domain at 200 m:
+
+> 465 of 1,012 corridor cells raised, max 7.5 m, **44 MCM of closed capacity
+> removed**, 58 pits OUTSIDE the corridor left untouched.
+
+Three larger figures circulate in source docstrings — 1,392 MCM (0.84% of cells),
+1,686 MCM (1.03%), and 1,659 MCM across 5,075 pits — all measured on the
+117 × 90 km or wider domains, none with a surviving artifact. They are **not**
+interchangeable with the 44 MCM figure above. Quote a corridor figure together
+with its domain and resolution, or not at all.
 
 ---
 
@@ -642,10 +751,29 @@ Caveats on this measurement:
   Zenodo 4554647 (pre-event, 2 m) against 4558692 (post-event) — which is
   verification queue row 26. The preset publishes both as `None` and the operator
   supplies them.
-- **The Khadakwasla drainage fix has no post-fix measurement.** The plateau in
-  §8 is a measured number (46 SEVERE cells, ~42% of volume trapped); the recovery
-  is not. The 24 h confirmation run has not finished, so no hazard curve exists to
-  put beside the plateaued one.
+- **The Khadakwasla drainage recovery is measured only on a clipped domain.**
+  §8 now carries a post-fix curve — run `e2e09ea3`, 96.4% of volume exported,
+  zero SEVERE cells from 9.44 h — but it was obtained by shrinking the study area
+  to 28 × 26 km so the flood crosses a boundary. **On any domain wide enough to
+  contain the flood, nothing has ever drained**: `exited_mcm` is zero in every
+  wide-domain run. Whether the remaining water would leave a real floodplain, and
+  by what mechanism, is untested; the solver has no infiltration, evaporation or
+  seepage sink.
+- **Corridor conditioning is not isolated.** Its one wide-domain run (`e5485691`)
+  differs from its comparator in domain, duration and ensemble size as well as in
+  conditioning, so the severity improvement (0.358 vs 0.518) is suggestive and not
+  attributed. Only one corridor measurement (44 MCM, exit domain at 200 m) has a
+  surviving log; the larger figures in source docstrings do not.
+- **`mutha_temghar` produced no arrival at any gauge**, and that is the expected
+  attenuation for a 39.1 MCM release into an 85.31 MCM reservoir 26 km
+  downstream — but it is an expectation, not a validated result. The site is
+  HYPOTHETICAL: nothing published from it may describe the barrier as observed.
+- **The Tehri `solver="both"` path fails at the initial condition.** Run
+  `37e1e713` (`data/runs/flashflood.log`): *"Impounding 3540.0 MCM over 9.72 km2
+  requires a mean depth of 364.2 m, which exceeds the dam height of 260.0 m."*
+  The far-field SWE run completed and exported 18 products; the comparison is
+  recorded as not written. Same root cause as the `compare_tehri` entry above —
+  the detected pool is too small for the published storage figure.
 - **Walder & O'Connor (1997) and Peng & Zhang (2012) are not transcribed.** Both
   are implemented in shape and quarantined behind `*_VERIFIED = False`; calling
   either raises. Costa (1985) is the only active natural-dam regression, so a

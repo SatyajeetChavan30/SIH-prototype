@@ -305,6 +305,133 @@ class TestPopulationProvenance:
         assert "census" not in result["source"].replace("not_census_derived", "")
 
 
+# ─── TestBuiltUpProvenance ────────────────────────────────────────────────────
+
+class TestBuiltUpProvenance:
+    """
+    The asset layer behind a rupee damage figure, held to the same contract as
+    the headcount behind a 'people at risk' one.
+    """
+
+    GRID = {"nx": 10, "ny": 8, "dx": 400.0, "dy": 400.0,
+            "x0": 600000.0, "y0": 3350000.0}
+
+    def test_refuses_without_gee_or_cache(self, no_gee, tmp_path):
+        from jalraksha.gee.built_up import (
+            BuiltUpUnavailableError, fetch_built_up_on_grid,
+        )
+        with pytest.raises(BuiltUpUnavailableError) as excinfo:
+            fetch_built_up_on_grid(self.GRID, 32644, tmp_path)
+        assert "No synthetic asset layer is substituted" in str(excinfo.value)
+
+    def test_refusal_writes_no_file(self, no_gee, tmp_path):
+        """A refusal must leave nothing behind that a later run could serve."""
+        from jalraksha.gee.built_up import (
+            BuiltUpUnavailableError, fetch_built_up_on_grid,
+        )
+        with pytest.raises(BuiltUpUnavailableError):
+            fetch_built_up_on_grid(self.GRID, 32644, tmp_path)
+        assert list(tmp_path.iterdir()) == []
+
+    def test_there_is_no_synthetic_generator(self):
+        """
+        population.py keeps a synthetic field behind allow_synthetic for tests.
+        This module has none, and no parameter that could reach one: a
+        fabricated exposure grid is a claim about how much is built where
+        people live.
+        """
+        import jalraksha.gee.built_up as module
+
+        assert not any("synthetic" in name.lower() for name in dir(module))
+        import inspect
+        signature = inspect.signature(module.fetch_built_up_on_grid)
+        assert "allow_synthetic" not in signature.parameters
+
+    def test_residential_is_derived_not_assumed(self):
+        """
+        The sector split comes from two published bands, not a chosen ratio,
+        and the count of cells where they disagree travels with it.
+        """
+        from jalraksha.gee.built_up import _split_sectors
+
+        total = np.array([[100.0, 50.0], [10.0, 0.0]])
+        nres = np.array([[40.0, 50.0], [12.0, 0.0]])
+        split = _split_sectors(total, nres)
+        assert split["built_surface_res_m2"][0, 0] == 60.0
+        assert split["built_surface_res_m2"][0, 1] == 0.0
+        # The one cell where non-residential exceeds the total is clipped AND
+        # counted: silently clipping would hide a structural disagreement.
+        assert split["built_surface_res_m2"][1, 0] == 0.0
+        assert split["nres_exceeded_total_cells"] == 1
+
+    @requires_live_gee
+    @pytest.mark.slow
+    def test_live_fetch_lands_on_the_grid_with_provenance(self, tmp_path):
+        from jalraksha.gee.built_up import fetch_built_up_on_grid
+
+        grid = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
+                "x0": 360000.0, "y0": 2040000.0}
+        result = fetch_built_up_on_grid(grid, 32643, tmp_path)
+
+        assert result["source"] == "GHSL_BUILT_S_P2023A"
+        assert result["collection"] == "JRC/GHSL/P2023A/GHS_BUILT_S"
+        assert result["built_surface_m2"].shape == (16, 20)
+        assert result["built_surface_nres_m2"].shape == (16, 20)
+        assert result["built_surface_res_m2"].shape == (16, 20)
+        assert os.path.exists(result["geotiff_path"])
+        # Residential + non-residential must reconstruct the total.
+        rebuilt = (result["built_surface_res_m2"]
+                   + result["built_surface_nres_m2"])
+        assert np.allclose(rebuilt, result["built_surface_m2"], atol=1e-3)
+        # Built-up surface can never exceed the cell it sits in.
+        assert np.all(result["built_surface_m2"] <= 500.0 * 500.0 * 1.01)
+
+    @requires_live_gee
+    @pytest.mark.slow
+    def test_cache_serves_when_live_is_unavailable(self, tmp_path, monkeypatch):
+        from jalraksha.gee import built_up as module
+
+        grid = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
+                "x0": 360000.0, "y0": 2040000.0}
+        live = module.fetch_built_up_on_grid(grid, 32643, tmp_path)
+
+        monkeypatch.setattr(module, "gee_status",
+                            lambda: (False, "simulated outage"))
+        cached = module.fetch_built_up_on_grid(grid, 32643, tmp_path)
+        assert cached["source"] == "cached"
+        assert "simulated outage" in cached["reason"]
+        assert np.allclose(cached["built_surface_m2"], live["built_surface_m2"])
+
+    @requires_live_gee
+    @pytest.mark.slow
+    def test_an_extensive_quantity_survives_the_change_of_grid(self, tmp_path):
+        """
+        The defect this whole aggregation path exists to prevent.
+
+        `reduceResolution(ee.Reducer.sum())` is area-WEIGHTED, so it returns a
+        mean and an extensive quantity comes back short by the cell-count
+        ratio — measured at 25.003x for a 500 m grid on 100 m GHSL. The test
+        is that the same domain fetched at two resolutions carries the same
+        TOTAL: a scale-dependent total is the signature of the bug.
+        """
+        from jalraksha.gee.built_up import fetch_built_up_on_grid
+
+        coarse = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
+                  "x0": 360000.0, "y0": 2040000.0}
+        fine = {"nx": 40, "ny": 32, "dx": 250.0, "dy": 250.0,
+                "x0": 360000.0, "y0": 2040000.0}
+
+        at_500 = fetch_built_up_on_grid(coarse, 32643, tmp_path / "c")
+        at_250 = fetch_built_up_on_grid(fine, 32643, tmp_path / "f")
+
+        total_500 = float(at_500["built_surface_m2"].sum())
+        total_250 = float(at_250["built_surface_m2"].sum())
+        assert total_500 > 0.0
+        # Same ground, same total. Under the old weighted-sum path these would
+        # differ by exactly (500/250)^2 = 4.
+        assert total_250 == pytest.approx(total_500, rel=0.05)
+
+
 # ─── TestPopulationAtRisk ─────────────────────────────────────────────────────
 
 class TestPopulationAtRisk:

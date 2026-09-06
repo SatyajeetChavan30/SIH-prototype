@@ -33,7 +33,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=8000)
+    # PORT is honoured so a supervisor that assigns the port (the launch
+    # config's autoPort, container platforms, etc.) can place this server
+    # somewhere free -- 8000 is a busy default and a second checkout or a
+    # parallel session will collide with it. An explicit --port still wins.
+    parser.add_argument("--port", type=int,
+                        default=int(os.environ.get("PORT", "8000")))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--reload", action="store_true",
                         help="Reload on source changes (development only).")

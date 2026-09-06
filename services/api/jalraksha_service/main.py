@@ -199,6 +199,15 @@ def submit_run(req: RunRequest):
                      solver=req.solver, phase="Queued")
 
 
+#: Windows CreateProcess flag letting a child leave its parent's Job Object.
+#: Absent from the `subprocess` module on some versions, so it is defined here
+#: rather than imported; 0 on POSIX, where `start_new_session` does the job.
+#: The literal rather than `subprocess.CREATE_BREAKAWAY_FROM_JOB`: that module
+#: is imported lazily inside the dispatcher below, and the attribute is missing
+#: on some Python builds. 0 on POSIX, where `start_new_session` does the job.
+CREATE_BREAKAWAY_FROM_JOB = 0x01000000 if os.name == "nt" else 0
+
+
 def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     """
     Run the simulation in a SEPARATE PROCESS, not a thread.
@@ -269,8 +278,23 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     if os.name == "nt":
         # DETACHED_PROCESS gives the child no console; CREATE_NEW_PROCESS_GROUP
         # keeps a Ctrl-C in the API's console from propagating to it.
+        #
+        # CREATE_BREAKAWAY_FROM_JOB is the one that matters and is easy to omit:
+        # on Windows, DETACHED_PROCESS does NOT escape a Job Object. If the API
+        # was started by something that puts it in a job with
+        # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE — an IDE runner, a supervisor, most
+        # dev-server harnesses — then closing that job kills every process in
+        # it, "detached" or not. MEASURED: without breakaway, stopping the API
+        # killed a worker mid-export at 92%.
+        #
+        # Breakaway only succeeds if the job permits it
+        # (JOB_OBJECT_LIMIT_BREAKAWAY_OK). Where it does not, CreateProcess
+        # fails outright, so the flag is retried without it below rather than
+        # turning "your run died" into "your run never started".
         popen_kwargs["creationflags"] = (
-            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+            subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.DETACHED_PROCESS
+            | CREATE_BREAKAWAY_FROM_JOB
         )
     else:
         popen_kwargs["start_new_session"] = True
@@ -280,13 +304,27 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     # discard the solver's progress. This is better than the old behaviour
     # anyway — the log survives the server and is attributable to one run,
     # instead of being interleaved with every other request in the API's stdout.
-    subprocess.Popen(
-        [sys.executable, "-m", "jalraksha_service.run_worker", handle.name],
-        cwd=str(repo_root),
-        env=env,
-        stdout=log_handle, stderr=subprocess.STDOUT,
-        **popen_kwargs,
-    )
+    argv = [sys.executable, "-m", "jalraksha_service.run_worker", handle.name]
+    try:
+        subprocess.Popen(argv, cwd=str(repo_root), env=env,
+                         stdout=log_handle, stderr=subprocess.STDOUT,
+                         **popen_kwargs)
+    except OSError as exc:
+        # The job forbids breakaway. Fall back to a merely-detached child: it
+        # will still die with the job, but a run that starts and is vulnerable
+        # beats a run that cannot start at all. Say so, because the difference
+        # is exactly whether a long run can be trusted to survive a restart.
+        if os.name != "nt" or CREATE_BREAKAWAY_FROM_JOB == 0:
+            raise
+        print(f"[api] job forbids breakaway ({exc}); starting run {run_id} "
+              f"WITHOUT it — this run will not survive the server being "
+              f"stopped. Use a script for anything long.")
+        popen_kwargs["creationflags"] = (
+            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        )
+        subprocess.Popen(argv, cwd=str(repo_root), env=env,
+                         stdout=log_handle, stderr=subprocess.STDOUT,
+                         **popen_kwargs)
     # The parent's copy of the descriptor is closed immediately; the child holds
     # its own. Leaving it open would leak one handle per submitted run.
     log_handle.close()
