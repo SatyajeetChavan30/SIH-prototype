@@ -1,5 +1,5 @@
 """
-Unit tests for jalraksha.dem module.
+Unit tests for floodview.dem module.
 
 Tests:
 - UTM zone computation from lat/lon
@@ -12,14 +12,14 @@ import pytest
 from pathlib import Path
 import math
 
-from jalraksha.dem import (
+from floodview.dem import (
     latlon_to_utm_zone,
     compute_copdem_tiles,
     copdem_url,
     fetch_dem,
     DEMError,
 )
-from jalraksha.cache import CacheError
+from floodview.cache import CacheError
 
 
 class TestLatlonToUtmZone:
@@ -74,7 +74,7 @@ class TestComputeCopdmTiles:
         """Tile names follow the AWS Copernicus_DSM_COG_10_<lat>_00_<lon>_00_DEM convention.
 
         This previously asserted the old SDSC "COPDEM_GL30_srtm_utm<zone>N_..."
-        naming. That mirror now answers 401 Unauthorized (see jalraksha/dem.py),
+        naming. That mirror now answers 401 Unauthorized (see floodview/dem.py),
         so the module moved to the public AWS bucket, whose objects use a
         different convention. The code is right; the assertion was stale.
         """
@@ -252,7 +252,7 @@ class TestFetchDemOfflineMode:
 
     def test_offline_mode_with_cached_dem(self, temp_cache_dir, mock_dem_geotiff):
         """Offline mode with cached DEM should work or raise CacheError."""
-        from jalraksha.cache import store_cache
+        from floodview.cache import store_cache
 
         # Prepare cache with mock DEM
         source_url = "https://cloud.sdsc.edu/v1/AUTH_ogc/Raster/COPDEM/COPDEM_GL30/COPDEM_GL30_srtm_utm43N_E078N030.tif"
@@ -302,7 +302,7 @@ class TestCachedWindowCoverage:
         return path
 
     def test_a_non_covering_cached_window_is_not_treated_as_coverage(self, tmp_path):
-        from jalraksha.dem import _window_covers
+        from floodview.dem import _window_covers
 
         tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
 
@@ -316,20 +316,20 @@ class TestCachedWindowCoverage:
         Overlapping is not containing. A window that straddles the cached edge
         would clip successfully and return a raster half full of nodata.
         """
-        from jalraksha.dem import _window_covers
+        from floodview.dem import _window_covers
 
         tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
         assert _window_covers(tile, 79.05, 30.10, 79.30, 30.50) is False
 
     def test_an_unreadable_tile_reports_no_coverage(self, tmp_path):
-        from jalraksha.dem import _window_covers
+        from floodview.dem import _window_covers
 
         broken = tmp_path / "broken.tif"
         broken.write_bytes(b"not a geotiff")
         assert _window_covers(broken, 79.0, 30.0, 79.1, 30.1) is False
 
     def test_bounds_of_a_missing_tile_are_none_not_an_exception(self, tmp_path):
-        from jalraksha.dem import _tile_bounds
+        from floodview.dem import _tile_bounds
 
         assert _tile_bounds(tmp_path / "absent.tif") is None
 
@@ -339,7 +339,7 @@ class TestCachedWindowCoverage:
         coverage — Tehri's own tile would stop containing Tehri. The union keeps
         both, at the cost of a larger file.
         """
-        from jalraksha.dem import _tile_bounds, _window_covers
+        from floodview.dem import _tile_bounds, _window_covers
 
         tile = self._tile(tmp_path / "sliver.tif", 79.000, 30.000, 79.105, 30.920)
         cached = _tile_bounds(tile)

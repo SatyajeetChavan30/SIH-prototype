@@ -1,15 +1,15 @@
 """
-Command-line interface for JalRaksha.
+Command-line interface for FloodView.
 
 Phase 0 responsibility: Accept dam location, fetch data, validate setup.
-Entry point: jalraksha run --dam <name> --lat <lat> --lon <lon> --height <m> --storage <Mm³>
+Entry point: floodview run --dam <name> --lat <lat> --lon <lon> --height <m> --storage <Mm³>
 
 Usage:
-  jalraksha run --config jalraksha.yaml
-  jalraksha run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540
-  jalraksha validate --config jalraksha.yaml
-  jalraksha cache --list
-  jalraksha cache --clear
+  floodview run --config floodview.yaml
+  floodview run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540
+  floodview validate --config floodview.yaml
+  floodview cache --list
+  floodview cache --clear
 
 Outputs:
   - Validates configuration
@@ -25,7 +25,7 @@ from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
-from jalraksha_service.db import (
+from floodview_service.db import (
     create_run,
     init_db,
     insert_exports,
@@ -33,18 +33,18 @@ from jalraksha_service.db import (
     update_run_status,
 )
 
-from jalraksha.config import load_config, setup_cache, ConfigError
-from jalraksha.dem import fetch_dem
+from floodview.config import load_config, setup_cache, ConfigError
+from floodview.dem import fetch_dem
 
 
 def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(description="JalRaksha: Dam-break inundation modelling")
+    parser = argparse.ArgumentParser(description="FloodView: Dam-break inundation modelling")
     subparsers = parser.add_subparsers(dest="command", help="Subcommand")
 
-    # `jalraksha run` — orchestrate end-to-end
+    # `floodview run` — orchestrate end-to-end
     run_parser = subparsers.add_parser("run", help="Run dam-break simulation")
-    run_parser.add_argument("--config", type=str, help="Path to jalraksha.yaml config file")
+    run_parser.add_argument("--config", type=str, help="Path to floodview.yaml config file")
     run_parser.add_argument("--dam", type=str, help="Dam name (e.g., 'tehri')")
     run_parser.add_argument("--lat", type=float, help="Dam latitude (metric CRS)")
     run_parser.add_argument("--lon", type=float, help="Dam longitude (metric CRS)")
@@ -60,11 +60,11 @@ def main():
         "--time", type=float, default=1800.0, help="Simulation duration in seconds (default 1800)"
     )
 
-    # `jalraksha validate` — check config only
+    # `floodview validate` — check config only
     validate_parser = subparsers.add_parser("validate", help="Validate configuration")
     validate_parser.add_argument("--config", type=str, required=True)
 
-    # `jalraksha cache` — manage local cache
+    # `floodview cache` — manage local cache
     cache_parser = subparsers.add_parser("cache", help="Manage data cache")
     cache_group = cache_parser.add_mutually_exclusive_group()
     cache_group.add_argument("--list", action="store_true", help="List cached data")
@@ -84,7 +84,7 @@ def main():
 
 
 def cmd_run(args):
-    """Execute: jalraksha run"""
+    """Execute: floodview run"""
     run_id = None
     try:
         # Load config from file or CLI args
@@ -134,8 +134,8 @@ def cmd_run(args):
         dem_path = fetch_dem(dam_lat, dam_lon, cache_dir=cache_dir)
         print(f"[OK] DEM cached: {dem_path}")
 
-        print("\n[INFO] Executing end-to-end JalRaksha dam-break simulation...")
-        from jalraksha.run import run_dam_break_ensemble
+        print("\n[INFO] Executing end-to-end FloodView dam-break simulation...")
+        from floodview.run import run_dam_break_ensemble
 
         dam_config = {
             "name": config.get("dam_name", "tehri"),
@@ -191,7 +191,7 @@ def cmd_run(args):
 
 
 def cmd_validate(args):
-    """Execute: jalraksha validate"""
+    """Execute: floodview validate"""
     try:
         config = load_config(args.config)
         print("[OK] Config is valid")
@@ -201,7 +201,7 @@ def cmd_validate(args):
 
 
 def cmd_cache(args):
-    """Execute: jalraksha cache"""
+    """Execute: floodview cache"""
     cache_dir = Path(args.cache_dir)
 
     if args.list:

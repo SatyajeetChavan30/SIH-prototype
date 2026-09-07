@@ -26,9 +26,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
 
-pytest.importorskip("jalraksha_service", reason="API service not importable")
+pytest.importorskip("floodview_service", reason="API service not importable")
 
-from jalraksha.gee.auth import GEE_PROJECT_ENV, reset_gee_status  # noqa: E402
+from floodview.gee.auth import GEE_PROJECT_ENV, reset_gee_status  # noqa: E402
 
 GRID = {"nx": 8, "ny": 6, "dx": 400.0, "dy": 400.0,
         "x0": 600000.0, "y0": 3350000.0, "crs": "EPSG:32644"}
@@ -45,7 +45,7 @@ def offline(monkeypatch):
 
 @pytest.fixture
 def data_dir(tmp_path, monkeypatch):
-    from jalraksha_service.config import settings
+    from floodview_service.config import settings
     monkeypatch.setattr(settings, "DATA_DIR", tmp_path / "data", raising=False)
     return tmp_path / "data"
 
@@ -58,7 +58,7 @@ def _result(depth: float = 3.0):
 class TestRefusal:
 
     def test_no_aggregated_fields_yields_no_artifact(self, data_dir):
-        from jalraksha_service.tasks import _damage_estimate, impact_exports
+        from floodview_service.tasks import _damage_estimate, impact_exports
 
         assert _damage_estimate("r1", {"grid": dict(GRID)}, {}) is None
         assert _damage_estimate("r1", {"h_max_median": np.zeros((2, 2))}, {}) is None
@@ -67,7 +67,7 @@ class TestRefusal:
 
     def test_unavailable_exposure_publishes_a_reason_and_no_figure(
             self, offline, data_dir):
-        from jalraksha_service.tasks import _damage_estimate
+        from floodview_service.tasks import _damage_estimate
 
         payload = _damage_estimate("r2", _result(), {"name": "Test Dam"})
         assert payload["available"] is False
@@ -91,11 +91,11 @@ class TestRefusal:
         TOTAL must not, because a total silently missing agriculture reads as a
         complete one.
         """
-        import jalraksha_service.tasks as tasks
+        import floodview_service.tasks as tasks
 
         ny, nx = GRID["ny"], GRID["nx"]
         monkeypatch.setattr(
-            "jalraksha.gee.built_up.fetch_built_up_on_grid",
+            "floodview.gee.built_up.fetch_built_up_on_grid",
             lambda **kwargs: {
                 "built_surface_m2": np.full((ny, nx), 1000.0),
                 "built_surface_nres_m2": np.full((ny, nx), 200.0),
@@ -126,13 +126,13 @@ class TestArtifact:
         `RunResult.impact` is an untyped dict precisely so a pydantic model
         cannot silently drop `model_is_published` or the unit-cost echo.
         """
-        import jalraksha_service.tasks as tasks
-        from jalraksha_service.main import _read_export_json
-        from jalraksha_service.schemas import RunResult
+        import floodview_service.tasks as tasks
+        from floodview_service.main import _read_export_json
+        from floodview_service.schemas import RunResult
 
         ny, nx = GRID["ny"], GRID["nx"]
         monkeypatch.setattr(
-            "jalraksha.gee.built_up.fetch_built_up_on_grid",
+            "floodview.gee.built_up.fetch_built_up_on_grid",
             lambda **kwargs: {
                 "built_surface_m2": np.full((ny, nx), 1000.0),
                 "built_surface_nres_m2": np.full((ny, nx), 200.0),
@@ -167,7 +167,7 @@ class TestArtifact:
         An impact artifact is not worth failing a solved run over — the compute
         is already spent and every other product is written.
         """
-        import jalraksha_service.tasks as tasks
+        import floodview_service.tasks as tasks
 
         def explode(*args, **kwargs):
             raise RuntimeError("exposure service on fire")

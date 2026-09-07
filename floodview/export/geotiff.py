@@ -24,9 +24,9 @@ from datetime import datetime
 from typing import Dict, Optional, List
 import warnings
 
-from jalraksha.export.georef import grid_affine, to_north_up
+from floodview.export.georef import grid_affine, to_north_up
 
-# PROJ's data path is repaired once, in jalraksha/__init__.py, BEFORE rasterio
+# PROJ's data path is repaired once, in floodview/__init__.py, BEFORE rasterio
 # is imported — which is the only point at which it can be repaired, since PROJ
 # resolves its search path when the native library loads and ignores later
 # changes to os.environ. This module used to pop PROJ_LIB/PROJ_DATA here

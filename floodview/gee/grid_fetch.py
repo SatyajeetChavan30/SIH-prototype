@@ -57,7 +57,7 @@ is that a duplicated correctness-bearing routine eventually disagrees with
 itself. Decision 3 is the proof: it was wrong in the one copy that existed, and
 a second copy would have been wrong in a different way.
 
-This module must not import any other ``jalraksha.gee`` module: they import it.
+This module must not import any other ``floodview.gee`` module: they import it.
 
 References:
   - Gorelick, N. et al. (2017) "Google Earth Engine", RSE 202:18-27.
@@ -99,7 +99,7 @@ def grid_region(grid_dict: Dict, crs_epsg: int):
     """
     import ee
 
-    from jalraksha.export.georef import grid_affine
+    from floodview.export.georef import grid_affine
 
     ny = int(grid_dict["ny"])
     nx = int(grid_dict["nx"])
@@ -161,7 +161,7 @@ def fetch_image_on_grid(
     import rasterio
     import requests
 
-    from jalraksha.export.georef import grid_affine, to_north_up
+    from floodview.export.georef import grid_affine, to_north_up
 
     bands = list(bands)
     if not bands:
@@ -281,7 +281,7 @@ def read_cached_stack(geotiff, n_bands: int) -> np.ndarray:
     """
     import rasterio
 
-    from jalraksha.export.georef import to_north_up
+    from floodview.export.georef import to_north_up
 
     with rasterio.open(geotiff) as src:
         raster = src.read()

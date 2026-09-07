@@ -104,7 +104,7 @@ export default function GaugesPanel({ result, dam }) {
 }
 
 /**
- * FD2320 depth bands, matching jalraksha.impact.hazard.HazardClassifier's
+ * FD2320 depth bands, matching floodview.impact.hazard.HazardClassifier's
  * CODED thresholds (0.1 / 0.5 / 2.0 / 5.0 / 10.0 m). Note that module's
  * docstring lists different numbers from its own implementation; the code is
  * what runs, so the code is what is mirrored here.

@@ -4,7 +4,7 @@ Standalone Khadakwasla drainage-fix verification run.
 WHY THIS EXISTS, rather than POST /runs:
 
 A run submitted through the API executes in a subprocess spawned by the API
-server (services/api/jalraksha_service/main.py::_spawn_run_subprocess). That
+server (services/api/floodview_service/main.py::_spawn_run_subprocess). That
 subprocess is a CHILD of the server, so when the server process is reaped --
 which happened three times in one session, each time silently orphaning the
 run and discarding hours of compute with nothing persisted, because
@@ -155,10 +155,10 @@ def main(argv=None) -> int:
     solver = str(args.solver)
     n_workers = args.n_workers
 
-    from jalraksha.presets import get_preset
-    from jalraksha.run import run_dam_break_ensemble
-    from jalraksha.export.keyframes import export_keyframes
-    from jalraksha.impact.hazard import HazardClassifier
+    from floodview.presets import get_preset
+    from floodview.run import run_dam_break_ensemble
+    from floodview.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
 
     preset = get_preset("khadakwasla")
     dam_config = preset.to_dam_config() if hasattr(preset, "to_dam_config") else dict(preset)
@@ -190,7 +190,7 @@ def main(argv=None) -> int:
     # solves — not just a directory on disk that nothing can load. The script
     # still owns its own process, so it keeps the durability that is the whole
     # reason long runs live here rather than behind POST /runs.
-    from jalraksha_service.script_runs import bootstrap_repo_root, registered_run
+    from floodview_service.script_runs import bootstrap_repo_root, registered_run
 
     bootstrap_repo_root(ROOT)
 
@@ -272,7 +272,7 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
 
     This is what ``solver="both"`` means in the API (tasks.py's dispatch), and
     it is reused rather than reimplemented: ``_run_comparison`` reads this dam's
-    own gauges from ``jalraksha.presets.GAUGES`` and records the real kernel's
+    own gauges from ``floodview.presets.GAUGES`` and records the real kernel's
     verdict, including the case where the binary could not run. A second copy
     here would eventually disagree with the API about whether a given run used
     the Deltares kernel — which is exactly the claim CLAUDE.md makes
@@ -283,7 +283,7 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
     """
     progress(88.0, "Running Delft3D FM and near-field SPH")
     try:
-        from jalraksha_service.tasks import _run_comparison
+        from floodview_service.tasks import _run_comparison
 
         comp_export = _run_comparison(run.run_id, dict(dam_config), with_sph=True)
         if comp_export:
@@ -320,7 +320,7 @@ def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION
     """
     import math
 
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     dam_lat = float(dam_config["lat"])
     dam_lon = float(dam_config["lon"])
@@ -381,8 +381,8 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     """
     import time as _time
 
-    from jalraksha.impact.hazard import HazardClassifier
-    from jalraksha.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
+    from floodview.export.keyframes import export_keyframes
 
     (resolution_m, duration_s, members, n_snapshots, run_tag, t0,
      margins, condition_corridor_m) = series_args

@@ -39,7 +39,7 @@ WHAT THIS MODULE DELIBERATELY DOES NOT DO
    number.
 
 Row 0 of every array is the SOUTHERNMOST row, matching
-``jalraksha.terrain.conditioning.load_dem_as_grid``. All lengths are metres and
+``floodview.terrain.conditioning.load_dem_as_grid``. All lengths are metres and
 all coordinates are in the grid's metric CRS; latitude/longitude is converted
 once, at the boundary, in ``locate_barrier_cell``.
 """
@@ -51,7 +51,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.solver.types import Grid
+from floodview.solver.types import Grid
 
 #: Smallest barrier half-width the grid can resolve, in cells. A barrier
 #: narrower than a couple of cells is a mesh artefact rather than a landform:
@@ -239,7 +239,7 @@ def locate_barrier_cell(
     Returns:
         (i, j, bed_elevation_at_cell) — column, row, metres.
     """
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.terrain.domain import latlon_to_utm
 
     epsg = _grid_epsg(grid)
     if 32601 <= epsg <= 32660:

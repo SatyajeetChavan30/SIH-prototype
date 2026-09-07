@@ -1,7 +1,7 @@
 """
 Peak-outflow regressions for NATURAL (landslide, moraine, ice) dams — Phase 3.
 
-Kept separate from ``jalraksha.terrain.breach`` on purpose. Every regression in
+Kept separate from ``floodview.terrain.breach`` on purpose. Every regression in
 that module is fitted on constructed embankments, and its uncertainty bands are
 Wahl (2004)'s embankment prediction intervals. Importing those bands here would
 be a circular import and, worse, would state something untrue: predictions for
@@ -29,7 +29,7 @@ no equation at all, because nothing downstream can tell the difference.
 THE COUPLING WORTH NOTING
 
 Peng & Zhang needs a dam VOLUME and WIDTH, which no user-interface slider can
-supply for a landslide that has not been surveyed. ``jalraksha.terrain.blockage``
+supply for a landslide that has not been surveyed. ``floodview.terrain.blockage``
 produces both from the burned barrier geometry. The blockage scenario and the
 DEM update are therefore not two features bolted together: the second is what
 makes the first's inputs exist.
@@ -250,7 +250,7 @@ def peng_zhang_2012_peak_outflow(
 
     WHY THIS ONE IS WORTH FINISHING. It is the only regression in the set whose
     inputs match what a blockage run actually knows: dam volume and dam width are
-    exactly the two quantities ``jalraksha.terrain.blockage.burn_barrier``
+    exactly the two quantities ``floodview.terrain.blockage.burn_barrier``
     produces from the burned deposit, and neither is available for a landslide
     dam any other way. Xu & Zhang (2009) is quarantined in breach.py for the same
     untranscribed-coefficients reason and over-predicts Teton by 5.6x, so do not

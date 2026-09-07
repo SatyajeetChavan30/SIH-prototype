@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 
 from celery import Celery
-from jalraksha_service.config import settings
+from floodview_service.config import settings
 
 celery_app = Celery(
-    "jalraksha",
+    "floodview",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
 )
@@ -28,4 +28,4 @@ if os.environ.get("CELERY_EAGER") == "1":
     celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
 
 # Import task definitions so they register with the app.
-from jalraksha_service import tasks  # noqa: E402,F401
+from floodview_service import tasks  # noqa: E402,F401

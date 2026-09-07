@@ -15,7 +15,7 @@ Gated tests:
 - Thacker parabolic bowl (2D oscillation)
 """
 
-from jalraksha.solver.core import SWESolver
-from jalraksha.solver.types import Grid, State
+from floodview.solver.core import SWESolver
+from floodview.solver.types import Grid, State
 
 __all__ = ["SWESolver", "Grid", "State"]

@@ -20,7 +20,7 @@ Contract (all spatial values in a projected metric CRS, never degrees):
     sim.provenance        struct
 
 ORIENTATION — the one thing that must not be got wrong. Row 0 is the
-SOUTHERNMOST row, because jalraksha.solver.types.Grid.cell_centres_y() increases
+SOUTHERNMOST row, because floodview.solver.types.Grid.cell_centres_y() increases
 northward. Image formats put row 0 at the top (north), and that exact mismatch
 rendered this project's keyframe PNGs upside-down once already. MATLAB's
 surf(X, Y, Z) wants Y increasing, which matches the solver's convention, so the
@@ -98,7 +98,7 @@ def _stack(series: List[Dict[str, Any]], key: str, shape: tuple) -> np.ndarray:
         if key not in snap:
             raise MatlabExportError(
                 f"Snapshot {idx} has no '{key}'. Velocity capture was added to "
-                f"jalraksha/solver/parallel.py::_snapshot — a simulation recorded "
+                f"floodview/solver/parallel.py::_snapshot — a simulation recorded "
                 f"before that change cannot supply velocity fields; re-run it."
             )
         frame = np.asarray(snap[key], dtype=EXPORT_DTYPE)
@@ -192,7 +192,7 @@ def export_simulation_mat(
         "isSynthetic": bool(is_synthetic),
         "provenance": {
             "dem_path": str(dem_path or ""),
-            "solver": "jalraksha SWE (HLLC + Audusse, well-balanced)",
+            "solver": "floodview SWE (HLLC + Audusse, well-balanced)",
             "dam_name": str(result.get("dam_name", "")),
             "git_sha": _git_sha(),
             "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),

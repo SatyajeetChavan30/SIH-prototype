@@ -12,7 +12,7 @@ Tests:
 import numpy as np
 import pytest
 
-from jalraksha.validation.sensitivity import (
+from floodview.validation.sensitivity import (
     oat_sensitivity,
     wahl_uncertainty_band,
     compute_grid_convergence,

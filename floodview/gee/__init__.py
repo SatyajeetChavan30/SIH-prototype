@@ -10,9 +10,9 @@ Modules:
   - population: GHSL population density grid fetcher
 """
 
-from jalraksha.gee.auth import init_gee, is_gee_available
-from jalraksha.gee.sar import process_sentinel1_sar_flood
-from jalraksha.gee.population import fetch_ghsl_population_grid
+from floodview.gee.auth import init_gee, is_gee_available
+from floodview.gee.sar import process_sentinel1_sar_flood
+from floodview.gee.population import fetch_ghsl_population_grid
 
 __all__ = [
     "init_gee",

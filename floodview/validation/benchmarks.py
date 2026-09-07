@@ -14,7 +14,7 @@ References:
 
 import numpy as np
 from typing import Dict, List, Tuple
-from jalraksha.validation.metrics import compute_csi, compute_f1_score, compute_rmse, compute_nse
+from floodview.validation.metrics import compute_csi, compute_f1_score, compute_rmse, compute_nse
 
 
 def get_malpasset_benchmark() -> Dict:

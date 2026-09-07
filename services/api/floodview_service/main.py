@@ -26,20 +26,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from jalraksha_service import db
-from jalraksha_service.config import settings
-from jalraksha_service.schemas import (
+from floodview_service import db
+from floodview_service.config import settings
+from floodview_service.schemas import (
     RunRequest, RunStatus, RunResult, GaugeResult, ExportRef,
     ComparisonResult, DamPreset, GeoSarResponse,
     EnsembleSummary, GridSummary, EngineInfo, RunListEntry,
     GeeStatus, ValidationCheck, ValidationResult, BlockageDetectionResponse,
 )
-from jalraksha_service.worker import celery_app
+from floodview_service.worker import celery_app
 
 settings.ensure_dirs()
 db.init_db()
 
-app = FastAPI(title="JalRaksha API", version="1.0", description="Dam-break screening + 3D viz service")
+app = FastAPI(title="FloodView API", version="1.0", description="Dam-break screening + 3D viz service")
 
 # The React dev server (Vite, localhost:3000) and the API (localhost:8000) are
 # different origins; the browser blocks the fetches in api.js without this.
@@ -113,7 +113,7 @@ def _startup() -> None:
 
 @app.get("/health")
 def health() -> Dict[str, str]:
-    return {"status": "ok", "service": "JalRaksha API v1"}
+    return {"status": "ok", "service": "FloodView API v1"}
 
 
 @app.get("/dams", response_model=List[DamPreset])
@@ -150,7 +150,7 @@ def submit_run(req: RunRequest):
     # here because gee_status() is cached and answers in milliseconds: failing at
     # submission beats failing twenty minutes into a solve.
     if req.scenario_type == "river_blockage" and req.blockage_source == "detect":
-        from jalraksha.gee.auth import gee_status
+        from floodview.gee.auth import gee_status
 
         available, reason = gee_status()
         has_manual_fallback = None not in (
@@ -194,7 +194,7 @@ def submit_run(req: RunRequest):
     if celery_app.conf.task_always_eager:
         _spawn_run_subprocess(run_id, task_args)
     else:
-        celery_app.send_task("jalraksha.run_dam_break", args=task_args)
+        celery_app.send_task("floodview.run_dam_break", args=task_args)
     return RunStatus(run_id=run_id, status="queued", progress_pct=0.0,
                      solver=req.solver, phase="Queued")
 
@@ -304,7 +304,7 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     # discard the solver's progress. This is better than the old behaviour
     # anyway — the log survives the server and is attributable to one run,
     # instead of being interleaved with every other request in the API's stdout.
-    argv = [sys.executable, "-m", "jalraksha_service.run_worker", handle.name]
+    argv = [sys.executable, "-m", "floodview_service.run_worker", handle.name]
     try:
         subprocess.Popen(argv, cwd=str(repo_root), env=env,
                          stdout=log_handle, stderr=subprocess.STDOUT,
@@ -511,7 +511,7 @@ def _run_preset(run: Dict[str, Any]) -> Dict[str, Any]:
     """
     This run's dam's visualization settings, or the generic fallback.
 
-    Reads DEMO_DAMS rather than jalraksha.presets.get_preset() because the
+    Reads DEMO_DAMS rather than floodview.presets.get_preset() because the
     service's registry is the one that covers every selectable dam; the preset
     registry has entries only for tehri and khadakwasla and would raise for the
     others.
@@ -557,7 +557,7 @@ def gee_status_endpoint() -> GeeStatus:
     naming the exact missing variable and the free registration URL. It is
     written for a person to read - render it verbatim.
     """
-    from jalraksha.gee.auth import gee_project, gee_status
+    from floodview.gee.auth import gee_project, gee_status
 
     available, reason = gee_status()
     return GeeStatus(available=available, reason=reason,
@@ -622,7 +622,7 @@ def validation(refresh: bool = False) -> ValidationResult:
     This is the answer to "how do we know the animation is not decorative".
     Three independent kinds of evidence:
 
-      * Ritter - the exact analytical dam-break solution, with JalRaksha and
+      * Ritter - the exact analytical dam-break solution, with FloodView and
         (where the kernel is present) Delft3D FM scored against it on a shared
         axis. Three curves that can be overlaid, plus per-engine RMSE.
       * Lake at rest - still water over irregular bathymetry must stay still.
@@ -666,8 +666,8 @@ def _check_lake_at_rest() -> ValidationCheck:
     try:
         import numpy as np
 
-        from jalraksha.solver.core import SWESolver
-        from jalraksha.solver.types import Grid, create_state
+        from floodview.solver.core import SWESolver
+        from floodview.solver.types import Grid, create_state
 
         rng = np.random.default_rng(42)
         grid = Grid(nx=50, ny=50, dx=50.0, dy=50.0)
@@ -721,8 +721,8 @@ def _check_mass_conservation() -> ValidationCheck:
     try:
         import numpy as np
 
-        from jalraksha.solver.core import SWESolver
-        from jalraksha.solver.types import Grid, create_state
+        from floodview.solver.core import SWESolver
+        from floodview.solver.types import Grid, create_state
 
         nx = 200
         grid = Grid(nx=nx, ny=1, dx=0.5, dy=1.0, x0=-50.0)
@@ -763,21 +763,21 @@ def _check_ritter() -> ValidationCheck:
     """
     Ritter dry-bed dam-break against the exact solution.
 
-    Uses jalraksha.validation.delft3d_benchmark.compare_ritter, which scores
-    BOTH JalRaksha and the real Delft3D FM kernel against the same analytical
+    Uses floodview.validation.delft3d_benchmark.compare_ritter, which scores
+    BOTH FloodView and the real Delft3D FM kernel against the same analytical
     curve on a shared axis. When the kernel is absent it still returns the
-    JalRaksha-vs-analytical half; the series dict simply has no delft3d entry,
+    FloodView-vs-analytical half; the series dict simply has no delft3d entry,
     and the UI draws two curves instead of three.
     """
     try:
         import tempfile
 
-        from jalraksha.validation.delft3d_benchmark import compare_ritter
+        from floodview.validation.delft3d_benchmark import compare_ritter
 
-        with tempfile.TemporaryDirectory(prefix="jalraksha_ritter_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="floodview_ritter_") as tmp:
             result = compare_ritter(tmp)
 
-        jr = result.get("jalraksha_vs_analytical", {}) or {}
+        jr = result.get("floodview_vs_analytical", {}) or {}
         d3d = result.get("delft3d_vs_analytical", {}) or {}
         rmse = jr.get("rmse_m")
         passed = rmse is not None and rmse < 0.10
@@ -785,12 +785,12 @@ def _check_ritter() -> ValidationCheck:
         series = {
             "x_m": _as_list(result.get("x")),
             "analytical_m": _as_list(result.get("analytical")),
-            "jalraksha_m": _as_list(result.get("jalraksha")),
+            "floodview_m": _as_list(result.get("floodview")),
         }
         if result.get("delft3d") is not None:
             series["delft3d_m"] = _as_list(result.get("delft3d"))
 
-        detail = (f"JalRaksha RMSE {rmse:.4f} m vs the exact solution at "
+        detail = (f"FloodView RMSE {rmse:.4f} m vs the exact solution at "
                   f"t={result.get('t_end_s')} s (gate: < 0.10 m)")
         if d3d.get("rmse_m") is not None:
             detail += f"; Delft3D FM {d3d['rmse_m']:.4f} m on the same case"
@@ -800,8 +800,8 @@ def _check_ritter() -> ValidationCheck:
             passed=passed,
             detail=detail,
             metrics={
-                "jalraksha_rmse_m": rmse,
-                "jalraksha_depth_at_dam_m": jr.get("depth_at_dam_m"),
+                "floodview_rmse_m": rmse,
+                "floodview_depth_at_dam_m": jr.get("depth_at_dam_m"),
                 "delft3d_rmse_m": d3d.get("rmse_m"),
                 "delft3d_depth_at_dam_m": d3d.get("depth_at_dam_m"),
                 "exact_depth_at_dam_m": result.get("exact_depth_at_dam_m"),
@@ -837,7 +837,7 @@ def _resolve_reach(reach: str) -> Dict[str, Any] | None:
     Accepts either a dam id ("tehri") or a river name ("bhagirathi"), so the
     long-standing `?reach=bhagirathi` default keeps working.
 
-    This lives in the SERVICE, not in jalraksha.gee, because the dam registry
+    This lives in the SERVICE, not in floodview.gee, because the dam registry
     is service configuration and the library must not import it — service
     depends on library, never the reverse (config.py's own rule).
     """
@@ -870,7 +870,7 @@ def gee_latest(reach: str = "bhagirathi") -> GeoSarResponse:
     This is observed WATER, not observed FLOOD. Over a dam on an ordinary day it
     shows the reservoir and the river, because those are water.
     """
-    from jalraksha.gee.sar import SarUnavailableError, latest_observed_extent
+    from floodview.gee.sar import SarUnavailableError, latest_observed_extent
 
     resolved = _resolve_reach(reach)
     if resolved is None:
@@ -929,8 +929,8 @@ def gee_blockage(
     Ganga carries 2021-01-15 / 2021-02-08, the Chamoli event), because the
     scene that matters for a past event is not the latest one.
     """
-    from jalraksha.gee.blockage_detect import detect_new_water
-    from jalraksha.gee.sar import SarUnavailableError
+    from floodview.gee.blockage_detect import detect_new_water
+    from floodview.gee.sar import SarUnavailableError
 
     resolved = _resolve_reach(reach)
     if resolved is None:
@@ -1086,7 +1086,7 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
         return {
             "launched": False, "reason": "paraview_not_found",
             "detail": (
-                f"ParaView is not at {paraview_exe!r}. Set JALRAKSHA_PARAVIEW_EXE "
+                f"ParaView is not at {paraview_exe!r}. Set FLOODVIEW_PARAVIEW_EXE "
                 f"to the full path of paraview.exe (the GUI — not pvpython.exe, "
                 f"which is headless). If the API is running in a container or on "
                 f"a remote host, this endpoint cannot work at all: it opens a "
@@ -1135,7 +1135,7 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
     stale = state_path.exists() and state_path.stat().st_mtime < newest_input
     if not state_path.exists() or stale:
         # pvpython, not this interpreter: ParaView's bundled Python cannot import
-        # jalraksha (rasterio is absent), and this process cannot import
+        # floodview (rasterio is absent), and this process cannot import
         # paraview.simple. The two only ever meet through files on disk.
         # The visual arguments come from THIS DAM's preset, not from
         # render_static.py's defaults. They used to be a fixed literal list, so

@@ -1,5 +1,5 @@
 """
-Type definitions and data structures for JalRaksha 2D SWE solver.
+Type definitions and data structures for FloodView 2D SWE solver.
 
 Phase 1 responsibility: Define Grid, State, and Result classes
 to standardize data flow between solver components.
@@ -19,7 +19,7 @@ Precision policy (IMPORTANT):
   For a reservoir surface at eta ~ 10-2000 m, float32 (~1e-7 relative,
   i.e. ~1e-4 m absolute at eta=1000 m) cannot represent that gate even
   with a perfectly well-balanced scheme. Storage is halved by casting
-  only at export time (see jalraksha.export.geotiff).
+  only at export time (see floodview.export.geotiff).
 
 State layout:
   State.h[j, i] = depth at cell (row j, column i)

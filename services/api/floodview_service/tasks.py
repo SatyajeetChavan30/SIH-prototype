@@ -22,9 +22,9 @@ import traceback
 from pathlib import Path
 from typing import Any, Dict, List
 
-from jalraksha_service.config import settings
-from jalraksha_service import db
-from jalraksha_service.worker import celery_app
+from floodview_service.config import settings
+from floodview_service import db
+from floodview_service.worker import celery_app
 
 
 def _resolve_dem(dam_config: Dict[str, Any]) -> str:
@@ -45,7 +45,7 @@ def _resolve_dem(dam_config: Dict[str, Any]) -> str:
             if cand.exists():
                 return str(cand)
     # Fall back to the cached DEM used by the offline cache.
-    from jalraksha import cache as cache_mod
+    from floodview import cache as cache_mod
     try:
         cached = cache_mod.get_cached_dem(lat, lon, cache_dir=data / "dem")
         if cached and Path(cached).exists():
@@ -66,7 +66,7 @@ def _resolve_dem(dam_config: Dict[str, Any]) -> str:
         f"No DEM staged for {dam_config.get('name', 'this dam')} "
         f"(lat={lat}, lon={lon}). Expected {expected!r} under {data / 'dem'}. "
         f"Available DEMs: {available or 'none'}. "
-        f"Fetch it first with: python -c \"from jalraksha.dem import fetch_dem; "
+        f"Fetch it first with: python -c \"from floodview.dem import fetch_dem; "
         f"fetch_dem({lat}, {lon}, domain_radius_km=60.0, cache_dir='./data')\""
     )
 
@@ -76,11 +76,11 @@ def _blockage_spec(dam_config: Dict[str, Any]):
     Build the barrier spec for a river_blockage run from its dam_config.
 
     Only the MANUAL path is assembled here. Auto-detection lives in
-    ``jalraksha.gee.blockage_detect`` and is bound in ``_resolve_dem_for_run``,
+    ``floodview.gee.blockage_detect`` and is bound in ``_resolve_dem_for_run``,
     because this service module is the only place the library's Earth Engine
     layer and its terrain layer are allowed to meet.
     """
-    from jalraksha.terrain.dem_update import BlockageSpec
+    from floodview.terrain.dem_update import BlockageSpec
 
     missing = [
         field
@@ -137,7 +137,7 @@ def _resolve_dem_for_run(
     if dam_config.get("scenario_type") != "river_blockage":
         return stale_dem, None
 
-    from jalraksha.terrain.dem_update import write_observation_conditioned_dem
+    from floodview.terrain.dem_update import write_observation_conditioned_dem
 
     if report:
         report(10.0, "Updating terrain for the landslide barrier")
@@ -171,7 +171,7 @@ def _apply_blockage_provenance(
     The domain stays centred where the DEM is, so the release is injected at the
     barrier's own coordinates rather than at the domain centre.
     """
-    from jalraksha.terrain.dem_update import dam_config_updates_from_provenance
+    from floodview.terrain.dem_update import dam_config_updates_from_provenance
 
     updates = dam_config_updates_from_provenance(provenance)
     # The barrier's own position becomes the injection point; the domain centre
@@ -219,9 +219,9 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
         possible. Never returns fabricated particles — the caller renders the
         reason instead.
     """
-    from jalraksha.sph.pysph_runner import SPHUnavailableError, run_near_field_sph
-    from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
-    from jalraksha.terrain.conditioning import load_dem_as_grid
+    from floodview.sph.pysph_runner import SPHUnavailableError, run_near_field_sph
+    from floodview.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
+    from floodview.terrain.conditioning import load_dem_as_grid
 
     try:
         dem_path = _resolve_dem(dam_config)
@@ -316,11 +316,11 @@ def _population_at_risk(run_id: str, result: Dict[str, Any],
     Returns:
         A dict of exposure + PAR figures with provenance, or None.
     """
-    from jalraksha.gee.population import (
+    from floodview.gee.population import (
         PopulationUnavailableError, fetch_population_on_grid,
     )
-    from jalraksha.impact.population import compute_par, compute_population_exposure
-    from jalraksha.export.georef import epsg_from_crs
+    from floodview.impact.population import compute_par, compute_population_exposure
+    from floodview.export.georef import epsg_from_crs
 
     grid = result.get("grid") or {}
     h_max = result.get("h_max_median")
@@ -395,8 +395,8 @@ def _damage_estimate(run_id: str, result: Dict[str, Any],
         A dict of damage figures with provenance, or None when this run has no
         aggregated fields to work from.
     """
-    from jalraksha.export.georef import epsg_from_crs
-    from jalraksha.impact.damage import estimate_sector_damage
+    from floodview.export.georef import epsg_from_crs
+    from floodview.impact.damage import estimate_sector_damage
 
     grid = result.get("grid") or {}
     h_max = result.get("h_max_median")
@@ -414,7 +414,7 @@ def _damage_estimate(run_id: str, result: Dict[str, Any],
     # Built-up surface: residential and non-residential come from one fetch.
     built = None
     try:
-        from jalraksha.gee.built_up import (
+        from floodview.gee.built_up import (
             BuiltUpUnavailableError, fetch_built_up_on_grid,
         )
         built = fetch_built_up_on_grid(
@@ -463,8 +463,8 @@ def _damage_estimate(run_id: str, result: Dict[str, Any],
     # Cropland comes back as a FRACTION, so it becomes an area only here.
     cropland = None
     try:
-        from jalraksha.gee.worldcover import fetch_cropland_fraction_on_grid
-        from jalraksha.terrain.roughness import LandCoverUnavailableError
+        from floodview.gee.worldcover import fetch_cropland_fraction_on_grid
+        from floodview.terrain.roughness import LandCoverUnavailableError
         cropland = fetch_cropland_fraction_on_grid(
             grid_dict=grid, crs_epsg=crs_epsg,
             cache_dir=_grid_cache_dir("worldcover_grid", grid, crs_epsg),
@@ -583,7 +583,7 @@ def _delft3d_only_comparison(d3d_res: Dict[str, Any], gauges_list: List[Dict[str
     need no special case, but with the SPH-derived fields absent rather than
     zeroed: an RMSE of 0 against a missing model reads as perfect agreement.
     """
-    from jalraksha.delft3d.comparison import (
+    from floodview.delft3d.comparison import (
         compare_gauge_arrivals, plot_comparison_hydrographs,
     )
     import matplotlib
@@ -685,11 +685,11 @@ def _build_delft3d_model(dam_config: Dict[str, Any],
     Two things were wrong with the previous path, and both made a REAL Delft3D
     run impossible while looking like it had merely fallen back:
 
-      1. `jalraksha.delft3d.setup.setup_delft3d_model` writes a
+      1. `floodview.delft3d.setup.setup_delft3d_model` writes a
          `[Grid] GridType=rectangular` INI as the NetFile. D-Flow FM cannot
          read that - it wants a UGRID netCDF mesh - so the kernel failed at
          mesh load EVERY time and the run silently became the built-in solver
-         wearing a Delft3D label. `jalraksha.delft3d.dfm_model.build_dfm_model`
+         wearing a Delft3D label. `floodview.delft3d.dfm_model.build_dfm_model`
          is the writer that produces a real UGRID mesh, and it is already
          exercised by tests/test_delft3d_model.py.
       2. No observation points were written, so the kernel produced no
@@ -702,8 +702,8 @@ def _build_delft3d_model(dam_config: Dict[str, Any],
     """
     import numpy as np
 
-    from jalraksha.delft3d.dfm_model import build_dfm_model
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.delft3d.dfm_model import build_dfm_model
+    from floodview.terrain.domain import latlon_to_utm
 
     lat = float(dam_config["lat"])
     lon = float(dam_config["lon"])
@@ -726,7 +726,7 @@ def _build_delft3d_model(dam_config: Dict[str, Any],
     bed = None
     terrain_source = "flat bed (no DEM staged)"
     try:
-        from jalraksha.terrain.domain import load_dem_as_grid
+        from floodview.terrain.domain import load_dem_as_grid
 
         dem_path = _resolve_dem(dam_config)
         loaded_grid, bed = load_dem_as_grid(
@@ -1062,8 +1062,8 @@ def _gauge_xy(gauge: Dict[str, Any], dam_config: Dict[str, Any],
     clamped to the boundary - a station pinned to the edge would report that
     edge cell's arrival time as if it were the town's.
     """
-    from jalraksha.presets import get_gauges
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.presets import get_gauges
+    from floodview.terrain.domain import latlon_to_utm
 
     match = next((g for g in get_gauges(dam_config.get("dam_id"))
                   if g.name == gauge.get("name")), None)
@@ -1086,7 +1086,7 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
     React Comparison tab (brief §5.7) has real data via GET /runs/{id}/comparison.
 
     The SPH side is a REAL PySPH WCSPH run over the dam's own terrain
-    (jalraksha.sph.pysph_runner). It used to be fabricated: particle positions
+    (floodview.sph.pysph_runner). It used to be fabricated: particle positions
     drawn from np.random.uniform, and "gauge arrivals" from a wave-celerity
     formula plus np.random.normal noise, rendered in the dashboard as a
     simulation result. If PySPH cannot run, this function records that fact and
@@ -1099,8 +1099,8 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
     a one-way near-field/far-field decomposition means (CLAUDE.md).
     """
     import json as _json
-    from jalraksha.delft3d.runner import run_delft3d_simulation
-    from jalraksha.delft3d.comparison import compare_sph_vs_delft3d
+    from floodview.delft3d.runner import run_delft3d_simulation
+    from floodview.delft3d.comparison import compare_sph_vs_delft3d
 
     # Bound before the try so the failure artifact below can report what the
     # KERNEL did, independently of what happened afterwards. See the comment
@@ -1110,15 +1110,15 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
     try:
         # This dam's own corridor. Was a hardcoded Tehri list applied to every
         # dam, so a Pune run produced a Delft3D comparison against Himalayan
-        # towns. jalraksha.presets.GAUGES is the single source of truth.
-        from jalraksha.presets import get_gauges
+        # towns. floodview.presets.GAUGES is the single source of truth.
+        from floodview.presets import get_gauges
         gauges_list = [
             {"name": g.name, "distance_km": g.distance_km}
             for g in get_gauges(dam_config.get("dam_id"))
         ]
         d3d_setup = _build_delft3d_model(dam_config, gauges_list)
         # No force_fallback. The real Delft3D FM binary is attempted whenever one
-        # is available — on PATH, or at JALRAKSHA_DFLOWFM_EXE — and the fallback
+        # is available — on PATH, or at FLOODVIEW_DFLOWFM_EXE — and the fallback
         # to the built-in solver happens only when it genuinely is not, with the
         # reason recorded in the result and shown in the Comparison tab. This
         # call used to pass force_fallback=True unconditionally, which made
@@ -1247,7 +1247,7 @@ def _write_xdmf(run_id: str, result: Dict[str, Any],
     /open-paraview answer "no_dataset" honestly instead of pointing at a file
     that was never written.
     """
-    from jalraksha.export.xdmf_export import (
+    from floodview.export.xdmf_export import (
         XdmfExportError, frames_from_result, write_xdmf_series,
     )
 
@@ -1258,7 +1258,7 @@ def _write_xdmf(run_id: str, result: Dict[str, Any],
             return None
         out_stem = settings.DATA_DIR / "simulation" / run_id
         out_stem.parent.mkdir(parents=True, exist_ok=True)
-        # provenance is built from dam_config, NOT jalraksha.presets.get_preset():
+        # provenance is built from dam_config, NOT floodview.presets.get_preset():
         # the service's dam registry (settings.DEMO_DAMS) and the preset registry
         # are separate, and bhakra/idukki/hirakud have no preset — get_preset()
         # would raise for them.
@@ -1273,7 +1273,7 @@ def _write_xdmf(run_id: str, result: Dict[str, Any],
                 "dam_name": dam_config.get("name", "Dam"),
                 "dam_lat": dam_config.get("lat"),
                 "dam_lon": dam_config.get("lon"),
-                "solver": "jalraksha SWE (HLLC + Audusse, well-balanced)",
+                "solver": "floodview SWE (HLLC + Audusse, well-balanced)",
                 "source": "services/api run_dam_break_task",
             },
         )
@@ -1378,7 +1378,7 @@ def _gauge_max_depths(result: Dict[str, Any]) -> Dict[str, float]:
     try:
         import numpy as np
 
-        from jalraksha.terrain.domain import latlon_to_utm
+        from floodview.terrain.domain import latlon_to_utm
 
         zone = int(str(grid.get("crs", "")).split(":")[-1]) % 100
         nx, ny = int(grid["nx"]), int(grid["ny"])
@@ -1549,7 +1549,7 @@ def _grid_summary(result: Dict[str, Any]) -> Dict[str, Any] | None:
     summary = {k: grid.get(k) for k in ("nx", "ny", "dx", "dy", "x0", "y0")}
     summary["crs"] = str(grid.get("crs"))
     try:
-        from jalraksha.export.georef import epsg_from_crs, wgs84_bounds
+        from floodview.export.georef import epsg_from_crs, wgs84_bounds
 
         summary["bounds_wgs84"] = list(
             wgs84_bounds(grid, epsg_from_crs(grid.get("crs"))))
@@ -1558,7 +1558,7 @@ def _grid_summary(result: Dict[str, Any]) -> Dict[str, Any] | None:
     return summary
 
 
-@celery_app.task(bind=True, name="jalraksha.run_dam_break")
+@celery_app.task(bind=True, name="floodview.run_dam_break")
 def run_dam_break_task(
     self, run_id: str, dam_config: Dict[str, Any], ensemble_size: int, solver: str,
     solver_duration_s: float = 1800.0, target_resolution: float = 200.0,
@@ -1567,7 +1567,7 @@ def run_dam_break_task(
 
     # The breach hydrograph is ROUTED for as long as this run simulates.
     #
-    # jalraksha.terrain.breach used to pin that window at a hardcoded 3 h, and
+    # floodview.terrain.breach used to pin that window at a hardcoded 3 h, and
     # the solver injects from the resulting array — so asking for a longer run
     # bought more simulated time with no more water behind it. Tehri released
     # only 51% of its 3,540 MCM however long the solver ran. Setting it here
@@ -1620,7 +1620,7 @@ def run_dam_break_task(
         # ones. Now it runs the full SWE pipeline first and adds Delft3D FM and
         # near-field SPH afterwards, which is what "both" was always meant to be.
         if solver in ("swe", "sph", "both"):
-            from jalraksha.run import run_dam_break_ensemble
+            from floodview.run import run_dam_break_ensemble
             # For a river_blockage this burns the landslide barrier into the DEM
             # and returns the updated product plus its provenance; for every
             # other scenario it is _resolve_dem verbatim.
@@ -1667,7 +1667,7 @@ def run_dam_break_task(
             # population-at-risk figure cannot be divided among gauges without a
             # per-gauge catchment radius no source defines. See the
             # population_at_risk export.
-            from jalraksha_service.script_runs import gauge_rows_from_result
+            from floodview_service.script_runs import gauge_rows_from_result
 
             gauges.extend(gauge_rows_from_result(result))
             # Record export references. run.py::write_export_products has
@@ -1704,7 +1704,7 @@ def run_dam_break_task(
                 # Delft3D FM and near-field SPH, on top of the full SWE run
                 # above. _run_comparison takes only (run_id, dam_config,
                 # with_sph) and reads this dam's gauges from
-                # jalraksha.presets.GAUGES, so it needs nothing from the
+                # floodview.presets.GAUGES, so it needs nothing from the
                 # rapid_estimate result it used to sit beside.
                 report(88.0, "Running Delft3D FM and near-field SPH")
                 comp_export = _run_comparison(run_id, dict(dam_config),
@@ -1721,11 +1721,11 @@ def run_dam_break_task(
             # 5-key copy that dropped dam_id, dam_type and failure_mode — and
             # dropping dam_id is what made this path report gauges named
             # "Gauge_10km", "Gauge_25km", "Gauge_50km", "Gauge_100km". Those are
-            # jalraksha/api.py's generic placeholders, reached because
+            # floodview/api.py's generic placeholders, reached because
             # get_downstream_gauges(lat, lon, None) cannot identify the dam and
             # Pune is outside the Tehri bounding box it falls back to. A judge
             # selecting Khadakwasla saw four invented town names.
-            from jalraksha.api import rapid_estimate
+            from floodview.api import rapid_estimate
             report(15.0, "Analytic rapid estimate")
             cfg = dict(dam_config)
             est = rapid_estimate(cfg, ensemble_size=max(10, min(ensemble_size, 200)))
@@ -1751,8 +1751,8 @@ def run_dam_break_task(
         # Keyframe rendering (brief §5.3) — requires a recorded depth time-series.
         if isinstance(result, dict) and result.get("depth_series"):
             report(96.0, "Rendering keyframes")
-            from jalraksha.export.keyframes import export_keyframes
-            from jalraksha.impact.hazard import HazardClassifier
+            from floodview.export.keyframes import export_keyframes
+            from floodview.impact.hazard import HazardClassifier
             kf_dir = settings.DATA_DIR / "keyframes" / run_id
             manifest = export_keyframes(
                 {**result, "dam_name": dam_config.get("name", "Dam")},
@@ -1798,7 +1798,7 @@ def run_dam_break_task(
         # already computed; it simply had nowhere to go.
         # Shared writer, so the script path produces a byte-compatible
         # run_summary.json. Five panels read this one file back.
-        from jalraksha_service.script_runs import write_run_summary
+        from floodview_service.script_runs import write_run_summary
 
         summary_export = write_run_summary(
             run_id, result, dam_config,

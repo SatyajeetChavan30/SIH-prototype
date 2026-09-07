@@ -6,7 +6,7 @@ the CesiumJS 3D view: a *manifest* of time-tagged, FD2320-classified flood
 keyframes rendered over the exact terrain the solver ran on.
 
 Design rules (per integration brief §5.3 / §5.5.6):
-  * Color mapping is delegated to `jalraksha.impact.hazard.HazardClassifier` — the
+  * Color mapping is delegated to `floodview.impact.hazard.HazardClassifier` — the
     SINGLE source of truth for FD2320 depth×velocity hazard colors. No second
     color scheme is invented here.
   * Keyframes are sliced by *simulation time*, not adaptive-CFL step index, so the
@@ -71,7 +71,7 @@ def _utmtp_corners(grid: Dict[str, Any]):
     """
     Return (x_min, y_min, x_max, y_max) of the domain in its metric CRS.
 
-    jalraksha.solver.types.Grid documents x0/y0 as the LOWER-LEFT corner, with
+    floodview.solver.types.Grid documents x0/y0 as the LOWER-LEFT corner, with
     cell centres at x0 + (i+0.5)*dx (row index increasing northward/eastward) —
     see Grid.cell_centres_2d(). So the domain simply spans [x0, x0+nx*dx] x
     [y0, y0+ny*dy]; no raster-style origin-at-top-row correction applies here.
@@ -100,7 +100,7 @@ def _reproject_bounds_utm_to_wgs84(
 ) -> List[float]:
     """Reproject domain corners UTM → WGS84 [west, south, east, north]."""
     x_min, y_min, x_max, y_max = _utmtp_corners(grid)
-    # jalraksha.solver.types.Grid.crs is a string like "EPSG:32643"; accept
+    # floodview.solver.types.Grid.crs is a string like "EPSG:32643"; accept
     # that form as well as a bare int for callers that pass one directly.
     crs = _parse_epsg(grid)
     try:
@@ -246,7 +246,7 @@ def export_keyframes(
         result: Pipeline result containing a depth time series (see
             `_extract_depth_series`) plus a `grid` dict describing the metric
             domain (nx, ny, dx, dy, x0, y0, crs).
-        hazard_classifier: A `jalraksha.impact.hazard.HazardClassifier` instance
+        hazard_classifier: A `floodview.impact.hazard.HazardClassifier` instance
             used for FD2320 colorization. If None, a default one is created.
         n_keyframes: Number of evenly-spaced simulation-time keyframes (default 30).
         out_dir: Directory for PNGs and manifest.json.
@@ -255,7 +255,7 @@ def export_keyframes(
         KeyframeManifest with one Keyframe per simulation time, each carrying
         its WGS84 bounds and FD2320 hazard summary.
     """
-    from jalraksha.impact.hazard import HazardClassifier
+    from floodview.impact.hazard import HazardClassifier
 
     if hazard_classifier is None:
         hazard_classifier = HazardClassifier()
@@ -328,11 +328,11 @@ def export_keyframes(
             "simulation_duration_s": [series_times[0], series_times[-1]],
             "grid_resolution_m": float(grid.get("dx", 0.0)),
             "classification_scheme": "FD2320",
-            "color_source": "jalraksha.impact.hazard.HazardClassifier",
+            "color_source": "floodview.impact.hazard.HazardClassifier",
             "crs_source": f"EPSG:{_parse_epsg(grid)}",
         },
         metadata={
-            "description": "Flood keyframes for JalRaksha dam-break visualization",
+            "description": "Flood keyframes for FloodView dam-break visualization",
             "license": "CC BY 4.0 (data: Copernicus DEM, ESA WorldCover)",
             "note": "FD2320 depth-velocity hazard classification; terrain-matched.",
         },

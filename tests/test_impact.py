@@ -10,10 +10,10 @@ Tests:
 
 import numpy as np
 import pytest
-from jalraksha.impact.hazard import compute_fd2320_hazard_rating, categorize_hazard_zones
-from jalraksha.impact.damage import compute_depth_damage, calculate_economic_loss
-from jalraksha.impact.population import compute_population_exposure, compute_par
-from jalraksha.impact.fatality import estimate_loss_of_life_graham, estimate_loss_of_life_jonkman
+from floodview.impact.hazard import compute_fd2320_hazard_rating, categorize_hazard_zones
+from floodview.impact.damage import compute_depth_damage, calculate_economic_loss
+from floodview.impact.population import compute_population_exposure, compute_par
+from floodview.impact.fatality import estimate_loss_of_life_graham, estimate_loss_of_life_jonkman
 
 
 class TestFD2320HazardRating:

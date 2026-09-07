@@ -1,11 +1,11 @@
-# JalRaksha: Dam-Break Inundation Modelling System
+# FloodView: Dam-Break Inundation Modelling System
 ## Smart India Hackathon 2026 (Problem Statement 26161, NTRO-Sponsored)
 
 ---
 
-## What is JalRaksha?
+## What is FloodView?
 
-JalRaksha is a Python-based automated system for dam-break and natural river-blockage inundation modelling. It combines physics-based numerical solvers with satellite validation to generate rapid flood-risk screening assessments for disaster management authorities.
+FloodView is a Python-based automated system for dam-break and natural river-blockage inundation modelling. It combines physics-based numerical solvers with satellite validation to generate rapid flood-risk screening assessments for disaster management authorities.
 
 **Use Case**: Tier-1 rapid screening tool for CWC (Central Water Commission), NDMA, and state disaster management agencies to prioritize dams for detailed expert studies and support evacuation planning.
 
@@ -121,7 +121,7 @@ Breach mode: overtopping | piping | seepage
 ## Code Organization
 
 ```
-jalraksha/
+floodview/
 ├── config.py          — Config loading & validation (Phase 0)
 ├── cli.py             — CLI entry point (Phase 0)
 ├── cache.py           — Offline-first cache management (Phase 0)
@@ -167,7 +167,7 @@ tools/sih-presentation/  — SIH deck generation (isolated)
 
 ✅ **Completed**:
 - Project guidance (CLAUDE.md, 150+ lines)
-- 4 production skills (`/verify-jalraksha`, `/build-phase`, `/improve-architecture`, `/code-quality-deep-dive`)
+- 4 production skills (`/verify-floodview`, `/build-phase`, `/improve-architecture`, `/code-quality-deep-dive`)
 - Hooks configured (auto-format, pre-flight checks)
 - Phase 0 skeleton scaffolded (config, cli, cache, dem modules)
 - Architecture rules documented (8 deep-module principles)
@@ -179,7 +179,7 @@ tools/sih-presentation/  — SIH deck generation (isolated)
 
 ---
 
-## Why JalRaksha Matters
+## Why FloodView Matters
 
 **Social Impact**: Arrival-time maps enable evacuation lead-time. Phuktal 2015: 3,000 moved, zero deaths (vs Chamoli 2021: 204 died, no warning).
 
@@ -211,7 +211,7 @@ tools/sih-presentation/  — SIH deck generation (isolated)
 
 ## Contact & Team
 
-**Project**: JalRaksha (Dam-Break Inundation Modelling)
+**Project**: FloodView (Dam-Break Inundation Modelling)
 **Hackathon**: Smart India Hackathon 2026, Problem Statement 26161
 **Sponsor**: NTRO (National Technical Research Organisation)
 **Repository**: D:\pd\chosen one\SIH prototype

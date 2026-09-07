@@ -28,14 +28,14 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from numba import njit
 
-from jalraksha.hardening import HardeningError
-from jalraksha.terrain.natural_dam import (
+from floodview.hardening import HardeningError
+from floodview.terrain.natural_dam import (
     COSTA_NATURAL_BAND_KEY,
     NATURAL_DAM_LOG_CYCLES,
     NATURAL_DAM_REGRESSION_FAMILIES,
     NATURAL_DAM_SCATTER_NOTE,
 )
-from jalraksha.terrain.natural_dam import (
+from floodview.terrain.natural_dam import (
     dam_class_outside_fitted_population as natural_dam_class_outside_fitted_population,
 )
 
@@ -344,7 +344,7 @@ def _synthesize_blockage_ensemble(
     1. STORAGE COMES FROM THE TERRAIN, NOT FROM A SLIDER. A natural dam has no
        published gross storage, so the impounded volume is the hypsometric fill
        of a DEM with the barrier burned into it
-       (``jalraksha.terrain.blockage.stage_storage_table``). A config whose
+       (``floodview.terrain.blockage.stage_storage_table``). A config whose
        ``storage_source`` does not say so is REFUSED. Without that refusal the
        dashboard's storage slider silently drives the physics again the first
        time somebody refactors this, and the result would look identical.
@@ -355,7 +355,7 @@ def _synthesize_blockage_ensemble(
        engineered-dam answer for an unengineered landslide deposit. Walder &
        O'Connor (1997) and Peng & Zhang (2012) are implemented in shape and
        quarantined pending coefficient transcription — see
-       jalraksha.terrain.natural_dam.
+       floodview.terrain.natural_dam.
 
     3. THE SPREAD COMES FROM THE PREDICTION BAND. A dam-break ensemble gets most
        of its spread from four equations disagreeing with each other by 3-4x.
@@ -370,7 +370,7 @@ def _synthesize_blockage_ensemble(
             f"terrain, but storage_source is {storage_source or 'absent'!r}. A "
             f"landslide dam has no published gross storage: the volume has to "
             f"come from a hypsometric fill of the DEM with the barrier burned "
-            f"in (jalraksha.terrain.blockage), not from a user-supplied storage "
+            f"in (floodview.terrain.blockage), not from a user-supplied storage "
             f"figure. Accepting one here would let a dashboard slider set the "
             f"outburst volume while the output still read as a modelled result."
         )
@@ -613,7 +613,7 @@ def _generate_single_hydrograph(
             "across natural (landslide, moraine) dams; hydrograph shape from "
             "level-pool routing against a stage-storage curve read off the "
             "updated DEM. Natural-dam prediction bands are UNVETTED — see "
-            "jalraksha.terrain.natural_dam.NATURAL_DAM_LOG_CYCLES."
+            "floodview.terrain.natural_dam.NATURAL_DAM_LOG_CYCLES."
         )
 
     return {"t_array": t_array, "Q_t": Q_t, "metadata": metadata}

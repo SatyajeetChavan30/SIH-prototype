@@ -1,5 +1,5 @@
 """
-Data cache management for JalRaksha.
+Data cache management for FloodView.
 
 Phase 0 responsibility: Offline-first design — fetch data once, cache locally, all reads from cache.
 Cache versioning by (source_url, timestamp, md5_hash).

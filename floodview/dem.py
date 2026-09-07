@@ -1,5 +1,5 @@
 """
-DEM (Digital Elevation Model) fetch and processing for JalRaksha.
+DEM (Digital Elevation Model) fetch and processing for FloodView.
 
 Phase 0 responsibility: Fetch Copernicus GLO-30 DEM from the public AWS S3
 bucket (open, no auth). Clip to a bounding box around dam + 60 km domain and
@@ -60,7 +60,7 @@ from rasterio.merge import merge
 from rasterio.io import MemoryFile
 from shapely.geometry import box
 
-from jalraksha.cache import check_cache, store_cache, CacheError
+from floodview.cache import check_cache, store_cache, CacheError
 
 
 class DEMError(Exception):
@@ -408,7 +408,7 @@ def fetch_dem(
             product still saves to the SAME filename convention
             (dem_{lat:.2f}_{lon:.2f}_clipped.tif) as the symmetric case, so
             callers that resolve the DEM by lat/lon alone
-            (services/api/jalraksha_service/tasks.py::_resolve_dem) need no
+            (services/api/floodview_service/tasks.py::_resolve_dem) need no
             change — the wider file simply replaces the narrower one at that
             path. Only one extent per (lat, lon) can be staged at a time.
 
@@ -436,7 +436,7 @@ def fetch_dem(
         )
     else:
         extent_tag = f"r{domain_radius_km:g}km"
-    product_key = f"jalraksha://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/{extent_tag}"
+    product_key = f"floodview://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/{extent_tag}"
 
     # A repeat call should skip the whole fetch-mosaic-clip pipeline. Probe with
     # offline_mode=False even when offline: a miss here is not fatal, because the

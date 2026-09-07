@@ -1,11 +1,11 @@
 """
-Build the SIH 2026 idea-submission deck for PS 26161 (JalRaksha) on top of the
+Build the SIH 2026 idea-submission deck for PS 26161 (FloodView) on top of the
 official SIH template.
 
     python build_ppt.py
 
 Reads : SIH2026-IDEA-Presentation-Format.pptx   (official template, unmodified)
-Writes: JalRaksha_SIH2026_PS26161.pptx
+Writes: FloodView_SIH2026_PS26161.pptx
 
 Hard constraints enforced by this script, taken from the template's own
 "IMPORTANT INSTRUCTIONS" slide:
@@ -35,7 +35,7 @@ from pptx.util import Inches, Pt
 
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "SIH2026-IDEA-Presentation-Format.pptx"
-OUTPUT = HERE / "JalRaksha_SIH2026_PS26161.pptx"
+OUTPUT = HERE / "FloodView_SIH2026_PS26161.pptx"
 
 # --------------------------------------------------------------------------- #
 # Palette — sampled from the template so the deck matches rather than clashes.
@@ -57,7 +57,7 @@ BODY_FONT = "Calibri"
 # CONTENT
 # --------------------------------------------------------------------------- #
 
-IDEA_NAME = "JalRaksha"
+IDEA_NAME = "FloodView"
 TEAM_NAME = "TEAM NAME"  # <-- replace with your registered team name
 
 TITLE_FIELDS = [

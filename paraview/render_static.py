@@ -67,9 +67,9 @@ from paraview.simple import (
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import camera_presets  # noqa: E402 — after sys.path fix-up
 
-# Mirrors jalraksha.export.xdmf_export.DRY_DEPTH_M (0.01 m). Duplicated, not
-# imported: pvpython's bundled Python cannot import the jalraksha package —
-# jalraksha.export pulls in rasterio, which is not installed in ParaView's
+# Mirrors floodview.export.xdmf_export.DRY_DEPTH_M (0.01 m). Duplicated, not
+# imported: pvpython's bundled Python cannot import the floodview package —
+# floodview.export pulls in rasterio, which is not installed in ParaView's
 # Python. Keep this in sync with xdmf_export.py by hand if either changes.
 DRY_DEPTH_M = 0.01
 

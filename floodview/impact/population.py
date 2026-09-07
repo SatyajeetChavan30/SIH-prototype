@@ -79,7 +79,7 @@ class PopulationEstimator:
         Estimate population affected by flood depth.
 
         PREFER compute_population_exposure() / compute_par() BELOW when a real
-        per-cell population count is available (jalraksha.gee.population fetches
+        per-cell population count is available (floodview.gee.population fetches
         GHSL onto the solver grid). Those take census-derived counts directly.
         This method instead infers density from settlement TYPE using the
         hardcoded per-type figures in __init__, every one of which is flagged
@@ -125,7 +125,7 @@ class PopulationEstimator:
                     "No settlement_grid supplied. Generating one places "
                     "villages and towns at random over the terrain, and the "
                     "population figure that follows describes nobody. Supply a "
-                    "real grid (see jalraksha.gee.population for GHSL), or use "
+                    "real grid (see floodview.gee.population for GHSL), or use "
                     "compute_population_exposure()/compute_par() with census "
                     "counts, or pass allow_synthetic_settlements=True if a "
                     "fabricated layout is genuinely what you want."

@@ -103,7 +103,7 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
 /**
  * Depth-hazard colour key for the flood overlay.
  *
- * The keyframe PNGs are coloured by jalraksha.impact.hazard.HazardClassifier,
+ * The keyframe PNGs are coloured by floodview.impact.hazard.HazardClassifier,
  * and every keyframe already carries a `hazard_summary` with each level's
  * colour, cell count and share of the domain. None of it was rendered, so the
  * map showed a coloured flood with no way to read what the colours meant.

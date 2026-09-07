@@ -14,13 +14,13 @@ CLAUDE.md's no-silent-fallback rule the code was deleted rather than kept as a
 "fallback" — a plausible-looking wrong answer is the outcome that rule exists
 to prevent.
 
-The real implementation is jalraksha.sph.pysph_runner, which runs PySPH's
+The real implementation is floodview.sph.pysph_runner, which runs PySPH's
 WCSPHScheme (Wendland quintic kernel, Tait equation of state, Monaghan
 artificial viscosity, dynamic boundary particles) and raises
 SPHUnavailableError rather than substituting anything when PySPH cannot run.
 """
 
-from jalraksha.sph.pysph_runner import (  # noqa: F401  (re-export)
+from floodview.sph.pysph_runner import (  # noqa: F401  (re-export)
     SPHUnavailableError,
     is_pysph_available,
     run_near_field_sph,

@@ -50,7 +50,7 @@ from pathlib import Path
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Entry point: ``python -m jalraksha_service.run_worker <payload.json>``.
+    Entry point: ``python -m floodview_service.run_worker <payload.json>``.
 
     The payload carries the task arguments. It is passed as a FILE rather than
     on the command line because a dam config plus solver parameters can exceed
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     """
     argv = list(sys.argv[1:] if argv is None else argv)
     if len(argv) != 1:
-        print("usage: python -m jalraksha_service.run_worker <payload.json>",
+        print("usage: python -m floodview_service.run_worker <payload.json>",
               file=sys.stderr)
         return 2
 
@@ -69,8 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     # Import AFTER the payload is read: importing tasks pulls in numpy, numba
     # and the solver, which is seconds of startup we should not pay before we
     # know there is work to do.
-    from jalraksha_service import db
-    from jalraksha_service.worker import celery_app
+    from floodview_service import db
+    from floodview_service.worker import celery_app
 
     run_id = payload["run_id"]
 
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         # shift every argument by one and pass None as the run_id. .apply() is
         # Celery's own eager path and does the binding correctly - it is what
         # the previous in-process thread used, for the same reason.
-        result = celery_app.tasks["jalraksha.run_dam_break"].apply(args=[
+        result = celery_app.tasks["floodview.run_dam_break"].apply(args=[
             run_id,
             payload["dam_config"],
             payload["ensemble_size"],
@@ -135,9 +135,9 @@ if __name__ == "__main__":
     package_root = Path(__file__).resolve().parents[1]
     if str(package_root) not in sys.path:
         sys.path.insert(0, str(package_root))
-    # Same for the repo root, which holds the `jalraksha` library.
+    # Same for the repo root, which holds the `floodview` library.
     repo_root = package_root.parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
-    os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")
+    os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")
     raise SystemExit(main())

@@ -365,10 +365,10 @@ code {
           : 'default'
     });
   </script>
-<h1 id="jalraksha--technical-reference-document">JalRaksha — Technical Reference Document</h1>
+<h1 id="floodview--technical-reference-document">FloodView — Technical Reference Document</h1>
 <p><strong>Version:</strong> 1.0<br>
 <strong>Date:</strong> 2026-08-30<br>
-<strong>Project:</strong> JalRaksha — Dam-Break Flood Screening System<br>
+<strong>Project:</strong> FloodView — Dam-Break Flood Screening System<br>
 <strong>Purpose:</strong> Smart India Hackathon 2026, Problem Statement 26161 (NTRO)</p>
 <hr>
 <h2 id="table-of-contents">Table of Contents</h2>
@@ -382,8 +382,8 @@ code {
 </ol>
 <hr>
 <h1 id="1-executive-summary--core-purpose">1. Executive Summary &amp; Core Purpose</h1>
-<h2 id="what-is-jalraksha">What is JalRaksha?</h2>
-<p>JalRaksha is an open-data dam-break flood screening system designed for rapid emergency response. Given a dam's location, height, and storage capacity, it predicts:</p>
+<h2 id="what-is-floodview">What is FloodView?</h2>
+<p>FloodView is an open-data dam-break flood screening system designed for rapid emergency response. Given a dam's location, height, and storage capacity, it predicts:</p>
 <ul>
 <li><strong>When</strong> floodwater arrives at downstream towns</li>
 <li><strong>How far</strong> the flood spreads (inundation footprint)</li>
@@ -396,7 +396,7 @@ code {
 <li><strong>Near-field</strong> (hundreds of metres, tens of seconds): Violent, 3D, turbulent flow → SPH (particle method)</li>
 <li><strong>Far-field</strong> (tens of km, hours): Thin sheet flow down the valley → 2D Shallow Water Equations (SWE)</li>
 </ol>
-<p>JalRaksha's main engine is the <strong>2D SWE solver</strong>. This produces the maps that matter for evacuation planning.</p>
+<p>FloodView's main engine is the <strong>2D SWE solver</strong>. This produces the maps that matter for evacuation planning.</p>
 <p><strong>Why an ensemble?</strong> Nobody knows the exact hole size or how fast a dam fails. Historical formulas (Froehlich, MacDonald, Wahl) disagree by a factor of 2-3, and Tehri is taller than the dams those formulas were fitted on. So the code runs many possible hydrographs (10-100) and reports median / 5th / 95th percentile — not one magic number.</p>
 <h2 id="key-features--capability-matrix">Key Features &amp; Capability Matrix</h2>
 <h3 id="primary-features-working-demonstrable">Primary Features (Working, Demonstrable)</h3>
@@ -411,57 +411,57 @@ code {
 <tbody>
 <tr>
 <td>2D SWE solver (HLLC + Audusse + MUSCL + Manning)</td>
-<td><code>jalraksha/solver/</code></td>
+<td><code>floodview/solver/</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Ensemble breach hydrographs (Froehlich, MacDonald, Wahl)</td>
-<td><code>jalraksha/terrain/breach.py</code></td>
+<td><code>floodview/terrain/breach.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>DEM fetch &amp; processing (Copernicus GLO-30 via AWS S3)</td>
-<td><code>jalraksha/dem.py</code></td>
+<td><code>floodview/dem.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Terrain domain construction (UTM grid, breach location)</td>
-<td><code>jalraksha/terrain/domain.py</code></td>
+<td><code>floodview/terrain/domain.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Manning friction from land cover</td>
-<td><code>jalraksha/terrain/roughness.py</code></td>
+<td><code>floodview/terrain/roughness.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Downstream gauge arrival time computation</td>
-<td><code>jalraksha/run.py</code></td>
+<td><code>floodview/run.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Export to GeoTIFF (COG)</td>
-<td><code>jalraksha/export/geotiff.py</code></td>
+<td><code>floodview/export/geotiff.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Export to Shapefile</td>
-<td><code>jalraksha/export/shapefile.py</code></td>
+<td><code>floodview/export/shapefile.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Export to KML</td>
-<td><code>jalraksha/export/kml.py</code></td>
+<td><code>floodview/export/kml.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Export to XDMF (ParaView)</td>
-<td><code>jalraksha/export/xdmf_export.py</code></td>
+<td><code>floodview/export/xdmf_export.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Export keyframes (PNG)</td>
-<td><code>jalraksha/export/keyframes.py</code></td>
+<td><code>floodview/export/keyframes.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
@@ -471,27 +471,27 @@ code {
 </tr>
 <tr>
 <td>FastAPI REST API</td>
-<td><code>services/api/jalraksha_service/</code></td>
+<td><code>services/api/floodview_service/</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Celery background jobs</td>
-<td><code>services/api/jalraksha_service/worker.py</code></td>
+<td><code>services/api/floodview_service/worker.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Dam presets (Tehri, Khadakwasla)</td>
-<td><code>jalraksha/presets.py</code></td>
+<td><code>floodview/presets.py</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Impact assessment (population, damage, fatalities)</td>
-<td><code>jalraksha/impact/</code></td>
+<td><code>floodview/impact/</code></td>
 <td>✅ Working</td>
 </tr>
 <tr>
 <td>Hazard classification (depth × velocity)</td>
-<td><code>jalraksha/impact/hazard.py</code></td>
+<td><code>floodview/impact/hazard.py</code></td>
 <td>✅ Working</td>
 </tr>
 </tbody>
@@ -508,27 +508,27 @@ code {
 <tbody>
 <tr>
 <td>Delft3D FM Suite adapter</td>
-<td><code>jalraksha/delft3d/</code></td>
+<td><code>floodview/delft3d/</code></td>
 <td>⚠️ Built, not wired</td>
 </tr>
 <tr>
 <td>SPH near-field solver</td>
-<td><code>jalraksha/sph/</code></td>
+<td><code>floodview/sph/</code></td>
 <td>⚠️ Built, not wired</td>
 </tr>
 <tr>
 <td>Google Earth Engine SAR water detection</td>
-<td><code>jalraksha/gee/</code></td>
+<td><code>floodview/gee/</code></td>
 <td>⚠️ Built, needs auth</td>
 </tr>
 <tr>
 <td>GEE population exposure</td>
-<td><code>jalraksha/gee/population.py</code></td>
+<td><code>floodview/gee/population.py</code></td>
 <td>⚠️ Built, needs auth</td>
 </tr>
 <tr>
 <td>Validation benchmarks (Ritter, Malpasset, Chamoli)</td>
-<td><code>jalraksha/validation/</code></td>
+<td><code>floodview/validation/</code></td>
 <td>⚠️ Standalone only</td>
 </tr>
 <tr>
@@ -620,26 +620,26 @@ code {
     C -.->|Optional| M
 </div></code></pre>
 <h2 id="component-by-component-analysis">Component-by-Component Analysis</h2>
-<h3 id="21-core-library-jalraksha">2.1 Core Library (<code>jalraksha/</code>)</h3>
-<h4 id="jalraksha__init__py"><code>jalraksha/__init__.py</code></h4>
+<h3 id="21-core-library-floodview">2.1 Core Library (<code>floodview/</code>)</h3>
+<h4 id="floodview__init__py"><code>floodview/__init__.py</code></h4>
 <p>Package initializer. Exports version and top-level API.</p>
-<h4 id="jalrakshaconfigpy"><code>jalraksha/config.py</code></h4>
+<h4 id="floodviewconfigpy"><code>floodview/config.py</code></h4>
 <p>Configuration management. Loads YAML config files, sets up cache directories. Defines <code>ConfigError</code> exception.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
 <li><code>load_config(path)</code> — loads YAML configuration</li>
 <li><code>setup_cache(dir)</code> — creates cache directory structure</li>
 </ul>
-<h4 id="jalrakshaclipy"><code>jalraksha/cli.py</code></h4>
-<p>Command-line interface entry point. Provides <code>jalraksha run</code>, <code>jalraksha validate</code>, <code>jalraksha cache</code> subcommands.</p>
+<h4 id="floodviewclipy"><code>floodview/cli.py</code></h4>
+<p>Command-line interface entry point. Provides <code>floodview run</code>, <code>floodview validate</code>, <code>floodview cache</code> subcommands.</p>
 <p><strong>Usage:</strong></p>
-<pre class="hljs"><code><div>jalraksha run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
-jalraksha run --config jalraksha.yaml
-jalraksha validate --config jalraksha.yaml
-jalraksha cache --list
-jalraksha cache --clear
+<pre class="hljs"><code><div>floodview run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
+floodview run --config floodview.yaml
+floodview validate --config floodview.yaml
+floodview cache --list
+floodview cache --clear
 </div></code></pre>
-<h4 id="jalrakshadempy"><code>jalraksha/dem.py</code></h4>
+<h4 id="floodviewdempy"><code>floodview/dem.py</code></h4>
 <p>DEM fetching from Copernicus GLO-30 via AWS S3.</p>
 <p><strong>Data Source:</strong> <code>https://copernicus-dem-30m.s3.amazonaws.com/</code></p>
 <ul>
@@ -652,7 +652,7 @@ jalraksha cache --clear
 <li><code>fetch_dem(lat, lon, domain_radius_km, cache_dir, offline_mode)</code> → returns GeoTIFF path</li>
 <li><code>latlon_to_utm_zone(lat, lon)</code> → UTM zone number</li>
 </ul>
-<h4 id="jalrakshapresetspy"><code>jalraksha/presets.py</code></h4>
+<h4 id="floodviewpresetspy"><code>floodview/presets.py</code></h4>
 <p>Dam preset definitions. Single source of truth for dam parameters.</p>
 <p><strong>Defined Presets:</strong></p>
 <ul>
@@ -665,7 +665,7 @@ jalraksha cache --clear
 <li><code>GaugePoint</code> dataclass — downstream gauge locations</li>
 <li><code>GAUGES</code> dict — gauge corridors per dam</li>
 </ul>
-<h4 id="jalraksharunpy"><code>jalraksha/run.py</code></h4>
+<h4 id="floodviewrunpy"><code>floodview/run.py</code></h4>
 <p>End-to-end pipeline orchestrator. The &quot;main simulation&quot; function.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
@@ -682,7 +682,7 @@ jalraksha cache --clear
 <li>Compute arrival times at gauges</li>
 <li>Write export products (GeoTIFF, SHP, KML, XDMF)</li>
 </ol>
-<h4 id="jalrakshasolvercorepy"><code>jalraksha/solver/core.py</code></h4>
+<h4 id="floodviewsolvercorepy"><code>floodview/solver/core.py</code></h4>
 <p>2D Shallow Water Equations solver.</p>
 <p><strong>Numerics:</strong></p>
 <ul>
@@ -700,27 +700,27 @@ jalraksha cache --clear
 <li><code>hv</code> — north momentum (m²/s)</li>
 <li><code>b</code> — bed elevation (m)</li>
 </ul>
-<h4 id="jalrakshasolverfluxpy"><code>jalraksha/solver/flux.py</code></h4>
+<h4 id="floodviewsolverfluxpy"><code>floodview/solver/flux.py</code></h4>
 <p>HLLC Riemann solver implementation.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
 <li><code>hllc_flux(ql, qr, ...)</code> — computes inter-cell flux</li>
 <li>Handles subcritical, supercritical, and transcritical flows</li>
 </ul>
-<h4 id="jalrakshasolverparallelpy"><code>jalraksha/solver/parallel.py</code></h4>
+<h4 id="floodviewsolverparallelpy"><code>floodview/solver/parallel.py</code></h4>
 <p>Ensemble parallelization using multiprocessing.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
 <li><code>run_ensemble(members, ...)</code> — runs members in parallel</li>
 </ul>
-<h4 id="jalrakshaterraindomainpy"><code>jalraksha/terrain/domain.py</code></h4>
+<h4 id="floodviewterraindomainpy"><code>floodview/terrain/domain.py</code></h4>
 <p>Terrain domain construction from DEM.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
 <li><code>build_domain(dam_config, dem_path, target_resolution)</code> → <code>Grid</code> object</li>
 <li><code>compute_breach_location(grid, dam_config)</code> → breach cell indices</li>
 </ul>
-<h4 id="jalrakshaterrainbreachpy"><code>jalraksha/terrain/breach.py</code></h4>
+<h4 id="floodviewterrainbreachpy"><code>floodview/terrain/breach.py</code></h4>
 <p>Breach hydrograph generation from published regressions.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
@@ -733,12 +733,12 @@ jalraksha cache --clear
 <li>MacDonald &amp; Langridge-Monopolis (1984)</li>
 <li>Wahl (2004) uncertainty bounds</li>
 </ul>
-<h4 id="jalrakshaterrainroughnesspy"><code>jalraksha/terrain/roughness.py</code></h4>
+<h4 id="floodviewterrainroughnesspy"><code>floodview/terrain/roughness.py</code></h4>
 <p>Manning's n friction from land cover classification.</p>
 <p><strong>Source:</strong> ESA WorldCover (when available)</p>
-<h4 id="jalrakshaterrainconditioningpy"><code>jalraksha/terrain/conditioning.py</code></h4>
+<h4 id="floodviewterrainconditioningpy"><code>floodview/terrain/conditioning.py</code></h4>
 <p>Terrain conditioning: burn streams, fix pits, ensure drainage.</p>
-<h4 id="jalrakshaimpacthazardpy"><code>jalraksha/impact/hazard.py</code></h4>
+<h4 id="floodviewimpacthazardpy"><code>floodview/impact/hazard.py</code></h4>
 <p>Hazard classification from depth × velocity.</p>
 <p><strong>Classification (FD2320-style):</strong></p>
 <table>
@@ -767,24 +767,24 @@ jalraksha cache --clear
 </tr>
 </tbody>
 </table>
-<h4 id="jalrakshaimpactpopulationpy"><code>jalraksha/impact/population.py</code></h4>
+<h4 id="floodviewimpactpopulationpy"><code>floodview/impact/population.py</code></h4>
 <p>Population at risk from GHSL data over the flood extent.</p>
-<h4 id="jalrakshaimpactdamagepy"><code>jalraksha/impact/damage.py</code></h4>
+<h4 id="floodviewimpactdamagepy"><code>floodview/impact/damage.py</code></h4>
 <p>Damage estimates using depth-damage curves.</p>
 <p><strong>References:</strong> Graham (1999), DeKay &amp; McClelland</p>
-<h4 id="jalrakshaimpactfatalitypy"><code>jalraksha/impact/fatality.py</code></h4>
+<h4 id="floodviewimpactfatalitypy"><code>floodview/impact/fatality.py</code></h4>
 <p>Fatality estimates using Jonkman (2007) / Graham (2009) methods.</p>
-<h4 id="jalrakshaexportgeotiffpy"><code>jalraksha/export/geotiff.py</code></h4>
+<h4 id="floodviewexportgeotiffpy"><code>floodview/export/geotiff.py</code></h4>
 <p>Cloud-Optimized GeoTIFF export.</p>
-<h4 id="jalrakshaexportshapefilepy"><code>jalraksha/export/shapefile.py</code></h4>
+<h4 id="floodviewexportshapefilepy"><code>floodview/export/shapefile.py</code></h4>
 <p>ESRI Shapefile export (zipped: .shp/.shx/.dbf/.prj).</p>
-<h4 id="jalrakshaexportkmlpy"><code>jalraksha/export/kml.py</code></h4>
+<h4 id="floodviewexportkmlpy"><code>floodview/export/kml.py</code></h4>
 <p>KML export for Google Earth.</p>
-<h4 id="jalrakshaexportxdmf_exportpy"><code>jalraksha/export/xdmf_export.py</code></h4>
+<h4 id="floodviewexportxdmf_exportpy"><code>floodview/export/xdmf_export.py</code></h4>
 <p>XDMF + HDF5 time series export for ParaView.</p>
-<h4 id="jalrakshaexportkeyframespy"><code>jalraksha/export/keyframes.py</code></h4>
+<h4 id="floodviewexportkeyframespy"><code>floodview/export/keyframes.py</code></h4>
 <p>PNG keyframe generation for 2D animation.</p>
-<h4 id="jalrakshadelft3drunnerpy"><code>jalraksha/delft3d/runner.py</code></h4>
+<h4 id="floodviewdelft3drunnerpy"><code>floodview/delft3d/runner.py</code></h4>
 <p>Delft3D FM Suite binary execution adapter.</p>
 <p><strong>Key Functions:</strong></p>
 <ul>
@@ -792,38 +792,38 @@ jalraksha cache --clear
 <li><code>is_dflowfm_available()</code> → bool</li>
 </ul>
 <p><strong>Current Issue:</strong> Looks for <code>dflowfm</code> on PATH, but Delft3D FM Suite 2026.02 uses <code>DeltaShell.Console.exe</code>.</p>
-<h4 id="jalrakshadelft3dsetuppy"><code>jalraksha/delft3d/setup.py</code></h4>
+<h4 id="floodviewdelft3dsetuppy"><code>floodview/delft3d/setup.py</code></h4>
 <p>DIMR config XML generation for Delft3D.</p>
-<h4 id="jalrakshadelft3ddfm_modelpy"><code>jalraksha/delft3d/dfm_model.py</code></h4>
+<h4 id="floodviewdelft3ddfm_modelpy"><code>floodview/delft3d/dfm_model.py</code></h4>
 <p>D-Flow FM model input file (.mdf) generation.</p>
-<h4 id="jalrakshadelft3dcomparisonpy"><code>jalraksha/delft3d/comparison.py</code></h4>
+<h4 id="floodviewdelft3dcomparisonpy"><code>floodview/delft3d/comparison.py</code></h4>
 <p>SPH vs Delft3D comparison metrics.</p>
-<h4 id="jalrakshadelft3dugridpy"><code>jalraksha/delft3d/ugrid.py</code></h4>
+<h4 id="floodviewdelft3dugridpy"><code>floodview/delft3d/ugrid.py</code></h4>
 <p>Unstructured grid handling.</p>
-<h4 id="jalrakshasphcorepy"><code>jalraksha/sph/core.py</code></h4>
+<h4 id="floodviewsphcorepy"><code>floodview/sph/core.py</code></h4>
 <p>SPH (Smoothed Particle Hydrodynamics) particle solver core.</p>
-<h4 id="jalrakshasphdomainpy"><code>jalraksha/sph/domain.py</code></h4>
+<h4 id="floodviewsphdomainpy"><code>floodview/sph/domain.py</code></h4>
 <p>SPH domain setup.</p>
-<h4 id="jalrakshasphcouplingpy"><code>jalraksha/sph/coupling.py</code></h4>
+<h4 id="floodviewsphcouplingpy"><code>floodview/sph/coupling.py</code></h4>
 <p>SPH-SWE one-way coupling (2D result drives SPH inflow).</p>
-<h4 id="jalrakshasphpysph_runnerpy"><code>jalraksha/sph/pysph_runner.py</code></h4>
+<h4 id="floodviewsphpysph_runnerpy"><code>floodview/sph/pysph_runner.py</code></h4>
 <p>PySPH integration wrapper.</p>
-<h4 id="jalrakshageesarpy"><code>jalraksha/gee/sar.py</code></h4>
+<h4 id="floodviewgeesarpy"><code>floodview/gee/sar.py</code></h4>
 <p>Sentinel-1 SAR water detection via Google Earth Engine (729 lines).</p>
 <p><strong>Method:</strong> Otsu thresholding on VV polarization, split-based approach for bimodal tiles.</p>
-<h4 id="jalrakshageeauthpy"><code>jalraksha/gee/auth.py</code></h4>
+<h4 id="floodviewgeeauthpy"><code>floodview/gee/auth.py</code></h4>
 <p>GEE authentication (uses <code>~/.config/earthengine/credentials</code>).</p>
-<h4 id="jalrakshageepopulationpy"><code>jalraksha/gee/population.py</code></h4>
+<h4 id="floodviewgeepopulationpy"><code>floodview/gee/population.py</code></h4>
 <p>GEE population exposure analysis.</p>
-<h4 id="jalrakshavalidationbenchmarkspy"><code>jalraksha/validation/benchmarks.py</code></h4>
+<h4 id="floodviewvalidationbenchmarkspy"><code>floodview/validation/benchmarks.py</code></h4>
 <p>Analytical benchmarks: Ritter dam-break, lake-at-rest, mass conservation.</p>
-<h4 id="jalrakshavalidationdelft3d_benchmarkpy"><code>jalraksha/validation/delft3d_benchmark.py</code></h4>
+<h4 id="floodviewvalidationdelft3d_benchmarkpy"><code>floodview/validation/delft3d_benchmark.py</code></h4>
 <p>Delft3D comparison benchmarks: Malpasset, Chamoli.</p>
-<h4 id="jalrakshavalidationmetricspy"><code>jalraksha/validation/metrics.py</code></h4>
+<h4 id="floodviewvalidationmetricspy"><code>floodview/validation/metrics.py</code></h4>
 <p>Validation metrics: RMSE, bias, Nash-Sutcliffe efficiency.</p>
-<h4 id="jalrakshavalidationsensitivitypy"><code>jalraksha/validation/sensitivity.py</code></h4>
+<h4 id="floodviewvalidationsensitivitypy"><code>floodview/validation/sensitivity.py</code></h4>
 <p>Sensitivity analysis utilities.</p>
-<h3 id="22-api-service-servicesapijalraksha_service">2.2 API Service (<code>services/api/jalraksha_service/</code>)</h3>
+<h3 id="22-api-service-servicesapifloodview_service">2.2 API Service (<code>services/api/floodview_service/</code>)</h3>
 <h4 id="mainpy--fastapi-application"><code>main.py</code> — FastAPI Application</h4>
 <p><strong>Endpoints:</strong></p>
 <table>
@@ -981,7 +981,7 @@ jalraksha cache --clear
 </ul>
 <h3 id="34-user-inputs-dam-parameters">3.4 User Inputs (Dam Parameters)</h3>
 <p><strong>Via CLI:</strong></p>
-<pre class="hljs"><code><div>jalraksha run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
+<pre class="hljs"><code><div>floodview run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540
 </div></code></pre>
 <p><strong>Via API:</strong></p>
 <pre class="hljs"><code><div>POST /runs
@@ -993,7 +993,7 @@ jalraksha cache --clear
     <span class="hljs-attr">&quot;target_resolution&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">200</span>
 <span class="hljs-punctuation">}</span>
 </div></code></pre>
-<p><strong>Via Config File (jalraksha.yaml):</strong></p>
+<p><strong>Via Config File (floodview.yaml):</strong></p>
 <pre class="hljs"><code><div><span class="hljs-attr">dam_name:</span> <span class="hljs-string">tehri</span>
 <span class="hljs-attr">dam_location:</span> [<span class="hljs-number">30.3789</span>, <span class="hljs-number">78.4789</span>]
 <span class="hljs-attr">dam_height:</span> <span class="hljs-number">260</span>
@@ -1011,12 +1011,12 @@ jalraksha cache --clear
 </thead>
 <tbody>
 <tr>
-<td><code>JALRAKSHA_DFLOWFM_EXE</code></td>
+<td><code>FLOODVIEW_DFLOWFM_EXE</code></td>
 <td>Path to Delft3D executable</td>
 <td>Optional</td>
 </tr>
 <tr>
-<td><code>JALRAKSHA_GEE_PROJECT</code></td>
+<td><code>FLOODVIEW_GEE_PROJECT</code></td>
 <td>GCP project ID for GEE</td>
 <td>For GEE features</td>
 </tr>
@@ -1041,7 +1041,7 @@ jalraksha cache --clear
     participant AWS_S3
     participant Cache
     
-    User->>CLI: jalraksha run --lat 30.37 --lon 78.47
+    User->>CLI: floodview run --lat 30.37 --lon 78.47
     CLI->>DEM_Fetch: fetch_dem(lat, lon, radius_km)
     DEM_Fetch->>Cache: check_cache()
     alt Cache hit
@@ -1246,7 +1246,7 @@ h × v ≥ 2.0    → Extreme
 <h1 id="5-current-gaps-bugs--known-vulnerabilities">5. Current Gaps, Bugs &amp; Known Vulnerabilities</h1>
 <h2 id="51-broken-code--errors">5.1 Broken Code &amp; Errors</h2>
 <h3 id="delft3d-runner-critical">Delft3D Runner (CRITICAL)</h3>
-<p><strong>File:</strong> <code>jalraksha/delft3d/runner.py</code></p>
+<p><strong>File:</strong> <code>floodview/delft3d/runner.py</code></p>
 <p><strong>Issue:</strong> Searches for <code>dflowfm</code> on PATH, but Delft3D FM Suite 2026.02 uses <code>DeltaShell.Console.exe</code>.</p>
 <pre class="hljs"><code><div><span class="hljs-comment"># Current (broken):</span>
 <span class="hljs-keyword">def</span> <span class="hljs-title function_">resolve_dflowfm</span>(<span class="hljs-params">custom_path=<span class="hljs-literal">None</span></span>):
@@ -1255,22 +1255,22 @@ h × v ≥ 2.0    → Extreme
 
 <span class="hljs-comment"># Should be:</span>
 <span class="hljs-keyword">def</span> <span class="hljs-title function_">resolve_delft3d</span>(<span class="hljs-params">custom_path=<span class="hljs-literal">None</span></span>):
-    <span class="hljs-comment"># Check JALRAKSHA_DELFT3D_EXE env var</span>
+    <span class="hljs-comment"># Check FLOODVIEW_DELFT3D_EXE env var</span>
     <span class="hljs-comment"># Check known location: C:\Program Files\Deltares\Delft3D FM Suite 2026.02 OpenHMWQ\bin\DeltaShell.Console.exe</span>
     <span class="hljs-comment"># Fall back to PATH search for &quot;DeltaShell.Console&quot;</span>
 </div></code></pre>
 <p><strong>Impact:</strong> <code>solver=&quot;delft3d&quot;</code> silently falls back to SWE. No error shown to user.</p>
 <h3 id="sph-module-not-wired">SPH Module (NOT WIRED)</h3>
-<p><strong>Files:</strong> <code>jalraksha/sph/*.py</code></p>
+<p><strong>Files:</strong> <code>floodview/sph/*.py</code></p>
 <p><strong>Issue:</strong> Complete SPH implementation exists but is never called from the API or dashboard.</p>
 <p><strong>Impact:</strong> <code>solver=&quot;sph&quot;</code> option in API schema does nothing.</p>
 <h3 id="gee-authentication-incomplete">GEE Authentication (INCOMPLETE)</h3>
-<p><strong>File:</strong> <code>jalraksha/gee/auth.py</code></p>
-<p><strong>Issue:</strong> Credentials file exists at <code>~/.config/earthengine/credentials</code>, but <code>JALRAKSHA_GEE_PROJECT</code> env var is not set.</p>
+<p><strong>File:</strong> <code>floodview/gee/auth.py</code></p>
+<p><strong>Issue:</strong> Credentials file exists at <code>~/.config/earthengine/credentials</code>, but <code>FLOODVIEW_GEE_PROJECT</code> env var is not set.</p>
 <p><strong>Impact:</strong> GEE SAR overlay returns &quot;unavailable&quot; on dashboard.</p>
 <h2 id="52-incomplete-features-todosfixmes">5.2 Incomplete Features (TODOs/FIXMEs)</h2>
 <h3 id="unvetted-coefficients">Unvetted Coefficients</h3>
-<p><strong>File:</strong> <code>jalraksha/presets.py</code></p>
+<p><strong>File:</strong> <code>floodview/presets.py</code></p>
 <p>Multiple dam parameters marked as UNVETTED:</p>
 <ul>
 <li>Khadakwasla height_m, storage_mm3 — user-supplied, no primary source</li>
@@ -1425,7 +1425,7 @@ h × v ≥ 2.0    → Extreme
 <h1 id="6-remediation--action-plan">6. Remediation &amp; Action Plan</h1>
 <h2 id="61-bug-fixes-priority-order">6.1 Bug Fixes (Priority Order)</h2>
 <h3 id="fix-1-delft3d-runner-high">Fix 1: Delft3D Runner (HIGH)</h3>
-<p><strong>File:</strong> <code>jalraksha/delft3d/runner.py</code></p>
+<p><strong>File:</strong> <code>floodview/delft3d/runner.py</code></p>
 <pre class="hljs"><code><div><span class="hljs-comment"># Add to resolve_dflowfm() or create new resolve_delft3d():</span>
 <span class="hljs-keyword">import</span> os
 
@@ -1437,7 +1437,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
         <span class="hljs-keyword">return</span> custom_path
     
     <span class="hljs-comment"># 2. Check environment variable</span>
-    env_path = os.environ.get(<span class="hljs-string">&quot;JALRAKSHA_DELFT3D_EXE&quot;</span>)
+    env_path = os.environ.get(<span class="hljs-string">&quot;FLOODVIEW_DELFT3D_EXE&quot;</span>)
     <span class="hljs-keyword">if</span> env_path <span class="hljs-keyword">and</span> os.path.isfile(env_path):
         <span class="hljs-keyword">return</span> env_path
     
@@ -1454,18 +1454,18 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
     <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>
 </div></code></pre>
 <h3 id="fix-2-wire-delft3d-to-api-high">Fix 2: Wire Delft3D to API (HIGH)</h3>
-<p><strong>File:</strong> <code>services/api/jalraksha_service/tasks.py</code></p>
+<p><strong>File:</strong> <code>services/api/floodview_service/tasks.py</code></p>
 <pre class="hljs"><code><div><span class="hljs-comment"># In submit_run_task():</span>
 <span class="hljs-keyword">if</span> solver <span class="hljs-keyword">in</span> (<span class="hljs-string">&quot;delft3d&quot;</span>, <span class="hljs-string">&quot;both&quot;</span>):
-    <span class="hljs-keyword">from</span> jalraksha.delft3d.runner <span class="hljs-keyword">import</span> resolve_delft3d
+    <span class="hljs-keyword">from</span> floodview.delft3d.runner <span class="hljs-keyword">import</span> resolve_delft3d
     delft3d_path = resolve_delft3d()
     <span class="hljs-keyword">if</span> delft3d_path <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
         <span class="hljs-comment"># Fall back to SWE with warning</span>
         logger.warning(<span class="hljs-string">&quot;Delft3D not found, falling back to SWE&quot;</span>)
         solver = <span class="hljs-string">&quot;swe&quot;</span>
 </div></code></pre>
-<h3 id="fix-3-set-jalraksha_gee_project-high">Fix 3: Set JALRAKSHA_GEE_PROJECT (HIGH)</h3>
-<pre class="hljs"><code><div>setx JALRAKSHA_GEE_PROJECT &quot;your-gcp-project-id&quot; /M
+<h3 id="fix-3-set-floodview_gee_project-high">Fix 3: Set FLOODVIEW_GEE_PROJECT (HIGH)</h3>
+<pre class="hljs"><code><div>setx FLOODVIEW_GEE_PROJECT &quot;your-gcp-project-id&quot; /M
 </div></code></pre>
 <p>Then restart all terminals.</p>
 <h3 id="fix-4-wire-impact-to-dashboard-medium">Fix 4: Wire Impact to Dashboard (MEDIUM)</h3>
@@ -1535,7 +1535,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
 </ul>
 <hr>
 <h1 id="appendix-a-file-inventory">Appendix A: File Inventory</h1>
-<h2 id="core-library-jalraksha">Core Library (<code>jalraksha/</code>)</h2>
+<h2 id="core-library-floodview">Core Library (<code>floodview/</code>)</h2>
 <table>
 <thead>
 <tr>
@@ -1592,7 +1592,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
 </tr>
 </tbody>
 </table>
-<h2 id="solver-jalrakshasolver">Solver (<code>jalraksha/solver/</code>)</h2>
+<h2 id="solver-floodviewsolver">Solver (<code>floodview/solver/</code>)</h2>
 <table>
 <thead>
 <tr>
@@ -1624,7 +1624,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
 </tr>
 </tbody>
 </table>
-<h2 id="terrain-jalrakshaterrain">Terrain (<code>jalraksha/terrain/</code>)</h2>
+<h2 id="terrain-floodviewterrain">Terrain (<code>floodview/terrain/</code>)</h2>
 <table>
 <thead>
 <tr>
@@ -1656,7 +1656,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
 </tr>
 </tbody>
 </table>
-<h2 id="impact-jalrakshaimpact">Impact (<code>jalraksha/impact/</code>)</h2>
+<h2 id="impact-floodviewimpact">Impact (<code>floodview/impact/</code>)</h2>
 <table>
 <thead>
 <tr>
@@ -1688,7 +1688,7 @@ DELFT3D_KNOWN_PATH = <span class="hljs-string">r&quot;C:\Program Files\Deltares\
 </tr>
 </tbody>
 </table>
-<h2 id="export-jalrakshaexport">Export (<code>jalraksha/export/</code>)</h2>
+<h2 id="export-floodviewexport">Export (<code>floodview/export/</code>)</h2>
 <table>
 <thead>
 <tr>

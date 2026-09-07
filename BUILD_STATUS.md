@@ -1,4 +1,4 @@
-# JalRaksha Build Status — 2026-08-24
+# FloodView Build Status — 2026-08-24
 
 > **This is a dated snapshot. Its numbers are no longer current.** Kept as a
 > record of where the build stood on 24 August 2026; the figures below have not
@@ -35,8 +35,8 @@
 
 **Deliverables:**
 - ✅ `pyproject.toml` — Dependencies locked
-- ✅ `jalraksha/cache.py` — Offline-first caching (286 lines)
-- ✅ `jalraksha/dem.py` — Copernicus DEM fetch (286 lines)
+- ✅ `floodview/cache.py` — Offline-first caching (286 lines)
+- ✅ `floodview/dem.py` — Copernicus DEM fetch (286 lines)
 - ✅ Tests: 17 cache + 14 DEM (100% pass)
 
 ---
@@ -54,9 +54,9 @@
 **Status:** All 11 tests passing. Domain builder ready for Phase 3.
 
 **Deliverables:**
-- ✅ `jalraksha/terrain/conditioning.py` — DEM preprocessing (201 lines)
-- ✅ `jalraksha/terrain/roughness.py` — Manning's n assignment (88 lines)
-- ✅ `jalraksha/terrain/domain.py` — Domain geometry (175 lines)
+- ✅ `floodview/terrain/conditioning.py` — DEM preprocessing (201 lines)
+- ✅ `floodview/terrain/roughness.py` — Manning's n assignment (88 lines)
+- ✅ `floodview/terrain/domain.py` — Domain geometry (175 lines)
 - ✅ `tests/test_terrain.py` — Domain validation (230 lines, all 11 tests passing)
 
 ---
@@ -65,7 +65,7 @@
 **Status:** All 18 tests passing.
 
 **Deliverables:**
-- ✅ `jalraksha/terrain/breach.py` — Monte Carlo breach ensemble models (Froehlich, MacDonald, Xu-Zhang) with Wahl uncertainty bands.
+- ✅ `floodview/terrain/breach.py` — Monte Carlo breach ensemble models (Froehlich, MacDonald, Xu-Zhang) with Wahl uncertainty bands.
 - ✅ Tests: `tests/test_breach.py` (18 passing)
 - `tests/test_breach.py` (~300 lines)
 
@@ -101,7 +101,7 @@
 
 ## Deployment & Final Status
 
-JalRaksha is fully prepared and packaged for the Smart India Hackathon 2026:
+FloodView is fully prepared and packaged for the Smart India Hackathon 2026:
 1.  **Dashboard**: Streamlit web GUI on port 8501. *(Superseded — the Streamlit dashboard was removed once the React + FastAPI stack landed; see README.md for the current two-process launch.)*
 2.  **API Layer**: Python standard-library REST API on port 8502.
 3.  **Containerization**: Ready for local/cloud deployment via Dockerfile.

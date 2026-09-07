@@ -1,7 +1,7 @@
 """
-JalRaksha vs Delft3D FM vs analytical theory (Phase 19).
+FloodView vs Delft3D FM vs analytical theory (Phase 19).
 
-Runs the SAME dam-break through JalRaksha's own 2D SWE solver and through the
+Runs the SAME dam-break through FloodView's own 2D SWE solver and through the
 real Deltares D-Flow FM kernel, and — for the Ritter case — against the exact
 solution both should reproduce.
 
@@ -15,7 +15,7 @@ honestly as engine-vs-engine agreement only.
 MEASURED, on this machine, with dimrset 2026.01 (dflowfm-cli 1.2.184), on a
 10 m dam-break at t = 40 s, dx = 10 m, scored over the interior:
 
-    JalRaksha   vs exact   RMSE 0.0317 m   h@dam 4.532 m
+    FloodView   vs exact   RMSE 0.0317 m   h@dam 4.532 m
     Delft3D FM  vs exact   RMSE 0.0349 m   h@dam 4.515 m
     engine vs engine       RMSE 0.0294 m
     exact                                  h@dam 4.444 m  (= 4*h0/9)
@@ -85,11 +85,11 @@ def ritter_exact(x, t: float, h_left: float = 1.0):
     return h_exact, u_exact
 
 
-def run_ritter_jalraksha(x_centres: np.ndarray, t_end: float,
+def run_ritter_floodview(x_centres: np.ndarray, t_end: float,
                          h_left: float, dx: float) -> np.ndarray:
-    """JalRaksha's own SWE solver on the Ritter case, sampled at x_centres."""
-    from jalraksha.solver.core import SWESolver
-    from jalraksha.solver.types import Grid, create_state
+    """FloodView's own SWE solver on the Ritter case, sampled at x_centres."""
+    from floodview.solver.core import SWESolver
+    from floodview.solver.types import Grid, create_state
 
     nx = x_centres.size
     grid = Grid(nx=nx, ny=1, dx=dx, dy=dx, x0=float(x_centres[0] - dx / 2.0))
@@ -114,15 +114,15 @@ def run_ritter_delft3d(work_dir, x_centres: np.ndarray, t_end: float,
         BenchmarkUnavailableError: when no kernel is installed, or the run
             fails. Never returns a substitute.
     """
-    from jalraksha.delft3d.dfm_model import build_dfm_model
-    from jalraksha.delft3d.runner import (
+    from floodview.delft3d.dfm_model import build_dfm_model
+    from floodview.delft3d.runner import (
         _run_dflowfm_binary, kernel_environment, resolve_dflowfm,
     )
 
     executable = resolve_dflowfm(dflowfm_path)
     if executable is None:
         raise BenchmarkUnavailableError(
-            "No Delft3D FM kernel found. Set JALRAKSHA_DFLOWFM_EXE to the full "
+            "No Delft3D FM kernel found. Set FLOODVIEW_DFLOWFM_EXE to the full "
             "path of dflowfm-cli.exe, or install a Delft3D FM Suite edition "
             "that ships plugins/DeltaShell.Dimr/kernels."
         )
@@ -226,7 +226,7 @@ def compare_ritter(work_dir, h_left: float = 10.0, t_end: float = 40.0,
             BOUNDARY_MARGIN_CELLS.
 
     Returns:
-        Dict with `x`, `analytical`, `jalraksha`, `delft3d` depth profiles at
+        Dict with `x`, `analytical`, `floodview`, `delft3d` depth profiles at
         t_end, plus RMSE and max-error for each engine and the provenance of the
         Delft3D run. Scores are computed over the interior only; `scored_mask`
         records which cells counted.
@@ -236,7 +236,7 @@ def compare_ritter(work_dir, h_left: float = 10.0, t_end: float = 40.0,
     x_centres = (np.arange(nx) + 0.5) * dx - domain_m / 2.0
 
     analytical, _ = ritter_exact(x_centres, t_end, h_left=h_left)
-    jalraksha = run_ritter_jalraksha(x_centres, t_end, h_left, dx)
+    floodview = run_ritter_floodview(x_centres, t_end, h_left, dx)
 
     d3d = run_ritter_delft3d(work_dir, x_centres, t_end, h_left, dx,
                              dflowfm_path=dflowfm_path)
@@ -263,15 +263,15 @@ def compare_ritter(work_dir, h_left: float = 10.0, t_end: float = 40.0,
         "dx_m": dx,
         "x": x_centres,
         "analytical": analytical,
-        "jalraksha": jalraksha,
+        "floodview": floodview,
         "delft3d": delft3d,
         "exact_depth_at_dam_m": 4.0 * h_left / 9.0,
         "front_position_analytical_m": 2.0 * t_end * np.sqrt(GRAVITY * h_left),
-        "jalraksha_vs_analytical": score(jalraksha),
+        "floodview_vs_analytical": score(floodview),
         "delft3d_vs_analytical": score(delft3d),
         "engine_agreement": {
-            "rmse_m": float(np.sqrt(np.mean(((jalraksha - delft3d)[interior]) ** 2))),
-            "max_abs_error_m": float(np.max(np.abs((jalraksha - delft3d)[interior]))),
+            "rmse_m": float(np.sqrt(np.mean(((floodview - delft3d)[interior]) ** 2))),
+            "max_abs_error_m": float(np.max(np.abs((floodview - delft3d)[interior]))),
         },
         "scored_mask": interior,
         "boundary_margin_cells": margin,
@@ -363,13 +363,13 @@ def compare_tehri(work_dir, dem_path: Optional[str] = None,
     Raises:
         BenchmarkUnavailableError: if the DEM or the kernel is missing.
     """
-    from jalraksha.delft3d.dfm_model import build_dfm_model
-    from jalraksha.delft3d.runner import _run_dflowfm_binary, resolve_dflowfm
-    from jalraksha.run import define_downstream_gauges
-    from jalraksha.solver.core import SWESolver
-    from jalraksha.solver.types import create_state
-    from jalraksha.terrain.conditioning import load_dem_as_grid
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.delft3d.dfm_model import build_dfm_model
+    from floodview.delft3d.runner import _run_dflowfm_binary, resolve_dflowfm
+    from floodview.run import define_downstream_gauges
+    from floodview.solver.core import SWESolver
+    from floodview.solver.types import create_state
+    from floodview.terrain.conditioning import load_dem_as_grid
+    from floodview.terrain.domain import latlon_to_utm
 
     executable = resolve_dflowfm(dflowfm_path)
     if executable is None:
@@ -382,7 +382,7 @@ def compare_tehri(work_dir, dem_path: Optional[str] = None,
         dem_path = str(Path("data") / "dem" / "dem_30.38_78.48_clipped.tif")
     if not Path(dem_path).exists():
         raise BenchmarkUnavailableError(
-            f"No Tehri DEM at {dem_path}. Fetch it with jalraksha.dem.fetch_dem first."
+            f"No Tehri DEM at {dem_path}. Fetch it with floodview.dem.fetch_dem first."
         )
 
     grid_obj, bed = load_dem_as_grid(
@@ -401,7 +401,7 @@ def compare_tehri(work_dir, dem_path: Optional[str] = None,
     # The reservoir is the impounded water behind the dam: cells on the UPHILL
     # side whose bed lies below the crest. Uphill is decided from the terrain
     # itself, the same way the near-field SPH domain decides it.
-    from jalraksha.sph.pysph_runner import orient_downhill
+    from floodview.sph.pysph_runner import orient_downhill
 
     _oriented, rotations = orient_downhill(bed)
     dam_row = grid_obj.ny // 2
@@ -491,7 +491,7 @@ def compare_tehri(work_dir, dem_path: Optional[str] = None,
                   and grid["y0"] <= northing <= grid["y0"] + grid["ny"] * grid["dy"])
         gauges.append({**gauge, "x": easting, "y": northing, "inside_domain": inside})
 
-    # --- JalRaksha -----------------------------------------------------------
+    # --- FloodView -----------------------------------------------------------
     depth_init = np.maximum(0.0, water - bed)
     state = create_state(grid_obj, depth_init.astype(np.float64), b_init=bed)
     solver = SWESolver(grid_obj, manning_n=0.03, cfl=0.3)
@@ -545,7 +545,7 @@ def compare_tehri(work_dir, dem_path: Optional[str] = None,
             "name": gauge["name"],
             "distance_km": gauge["distance_km"],
             "inside_domain": gauge["inside_domain"],
-            "jalraksha_arrival_s": jr,
+            "floodview_arrival_s": jr,
             "delft3d_arrival_s": d3,
             "delta_s": (jr - d3) if (jr is not None and d3 is not None) else None,
         })
@@ -579,13 +579,13 @@ def plot_tehri_gauges(result: Dict, out_path) -> Path:
         return (value / 60.0) if value is not None else np.nan
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    ax.bar(positions - 0.2, [minutes(r["jalraksha_arrival_s"]) for r in rows],
-           width=0.4, color="#1565C0", label="JalRaksha 2D SWE")
+    ax.bar(positions - 0.2, [minutes(r["floodview_arrival_s"]) for r in rows],
+           width=0.4, color="#1565C0", label="FloodView 2D SWE")
     ax.bar(positions + 0.2, [minutes(r["delft3d_arrival_s"]) for r in rows],
            width=0.4, color="#E53935", label="Delft3D FM")
 
     for k, row in enumerate(rows):
-        if row["jalraksha_arrival_s"] is None and row["delft3d_arrival_s"] is None:
+        if row["floodview_arrival_s"] is None and row["delft3d_arrival_s"] is None:
             reason = ("outside modelled domain" if not row["inside_domain"]
                       else "flood did not reach it")
             ax.text(k, 0.4, "not reached\n(" + reason + ")", ha="center",

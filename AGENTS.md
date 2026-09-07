@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-**JalRaksha** is a Python system for dam-break inundation modelling and analysis, designed for the Smart India Hackathon 2026 (Problem Statement 26161, NTRO-sponsored). It combines a 2D shallow-water equation (SWE) solver for far-field propagation with 3D Smoothed Particle Hydrodynamics (SPH) for violent near-field dynamics. The system uses exclusively open data (Copernicus DEM, Google Earth Engine, CWC dam registers, ESA WorldCover) and produces outputs in Cloud-Optimized GeoTIFF, Shapefile, and KML/KMZ formats.
+**FloodView** is a Python system for dam-break inundation modelling and analysis, designed for the Smart India Hackathon 2026 (Problem Statement 26161, NTRO-sponsored). It combines a 2D shallow-water equation (SWE) solver for far-field propagation with 3D Smoothed Particle Hydrodynamics (SPH) for violent near-field dynamics. The system uses exclusively open data (Copernicus DEM, Google Earth Engine, CWC dam registers, ESA WorldCover) and produces outputs in Cloud-Optimized GeoTIFF, Shapefile, and KML/KMZ formats.
 
 ## Critical Constraints
 
@@ -15,7 +15,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 - **Metric CRS for all solver operations** — never degrees. Cell-centred finite volume on uniform Cartesian grids.
 - **No overclaiming — but the Delft3D rule is now CONDITIONAL.** A real Deltares kernel is installed and running (`dflowfm-cli.exe`, dimrset 2026.01, build 1.2.184), so the naming follows the evidence:
   - `delft3d_binary_used == True` → it IS Delft3D FM. Name it, and name the build: **"Delft3D FM (dflowfm-cli, dimrset 2026.01)"**.
-  - `delft3d_binary_used == False` → unchanged: **"JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
+  - `delft3d_binary_used == False` → unchanged: **"FloodView built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
   The old blanket "never claim to be Delft3D" existed because the project had never run it. Continuing to hedge once it demonstrably runs would be its own inaccuracy. `run_delft3d_simulation` returns the boolean, so the label is always checkable.
 - **No overclaiming (unchanged elsewhere)**: never claim rigorous two-way SPH↔SWE coupling — the handoff is one-way only.
 - **DEM resolution is 30 m Copernicus GLO-30** — adequate for Tier-1 screening, but point depths are indicative only. Lead with arrival times and inundation envelopes, not absolute flood depths.
@@ -54,11 +54,11 @@ Multi-tier validation framework:
 **Benchmarks:**
 - Malpasset (1959) real-terrain dam-break (France) — comparison vs published arrival-time field measurements
 - Chamoli 2021 (India) — the only Indian dam-break with pre- and post-event 2 m DEMs publicly available; published <5% travel-time benchmark (Shugar et al., Science)
-- **Delft3D FM cross-check (implemented and passing).** The same Ritter dam-break is run through JalRaksha's solver and through the real Deltares kernel, and both are scored against the exact solution:
+- **Delft3D FM cross-check (implemented and passing).** The same Ritter dam-break is run through FloodView's solver and through the real Deltares kernel, and both are scored against the exact solution:
 
   | | RMSE vs exact | depth at dam |
   | :--- | ---: | ---: |
-  | JalRaksha 2D SWE | 0.0317 m | 4.532 m |
+  | FloodView 2D SWE | 0.0317 m | 4.532 m |
   | Delft3D FM | 0.0349 m | 4.515 m |
   | exact (4h₀/9) | — | 4.444 m |
 
@@ -93,7 +93,7 @@ Multi-tier validation framework:
 - Far-field (tens of kilometres, hours) is well-captured by depth-averaged shallow water with much lower cost
 - Follows Maranzoni & Tomirotti (2023)'s review recommendation and SPH community best practices
 
-**Tier-1 instrument framing**: JalRaksha is positioned as a rapid screening and prioritisation tool against CWC's own guidelines, not a replacement for Tier-2/3 detailed surveyed studies.
+**Tier-1 instrument framing**: FloodView is positioned as a rapid screening and prioritisation tool against CWC's own guidelines, not a replacement for Tier-2/3 detailed surveyed studies.
 
 **India-specific validation**: Chamoli 2021 is the only publicly available Indian dam-break event with rigorous pre- and post-event DEMs and published benchmarks.
 
@@ -118,7 +118,7 @@ Multi-tier validation framework:
 ### ✅ Completed
 - **AGENTS.md** initialized with full project guidance (500+ lines)
 - **4 skills created**:
-  - `/verify-jalraksha` — Multi-tier validation (analytical tests, correctness gates, benchmarks)
+  - `/verify-floodview` — Multi-tier validation (analytical tests, correctness gates, benchmarks)
   - `/build-phase` — Phase executor with dependency tracking
   - `/improve-architecture` — Codebase structure audit (HTML explorer + grilling)
   - `/code-quality-deep-dive` — Exhaustive numerical + safety review
@@ -130,7 +130,7 @@ Multi-tier validation framework:
   - .gitignore configured
   - Python 3.14.2 available
 - **Architecture Improved** (Aug 23, 2026):
-  - ✅ Created `jalraksha/` package structure (Phase 0 skeleton + stubs for Phases 1–7)
+  - ✅ Created `floodview/` package structure (Phase 0 skeleton + stubs for Phases 1–7)
   - ✅ Implemented Phase 0 modules: config.py, cli.py, cache.py, dem.py
   - ✅ Moved presentation tooling to `tools/sih-presentation/`
   - ✅ Created tests/ directory with conftest.py
@@ -139,7 +139,7 @@ Multi-tier validation framework:
 ### 🏗️ Package Structure
 
 ```
-jalraksha/
+floodview/
 ├── __init__.py           — Package init (phase boundaries documented)
 ├── config.py             — Config loading & validation (Phase 0)
 ├── cli.py                — CLI entry point (Phase 0)
@@ -179,11 +179,11 @@ tools/
 
 ### 🚀 Ready To Start
 - **Phase 0 (Skeleton)**: Run `/build-phase 0`
-  - ✅ CLI entry point: `jalraksha run --dam tehri --lat ... --lon ... --height ... --storage ...`
-  - ✅ Config validation: `jalraksha validate --config jalraksha.yaml`
-  - ✅ Cache management: `jalraksha cache --list` / `--clear`
+  - ✅ CLI entry point: `floodview run --dam tehri --lat ... --lon ... --height ... --storage ...`
+  - ✅ Config validation: `floodview validate --config floodview.yaml`
+  - ✅ Cache management: `floodview cache --list` / `--clear`
   - ✅ DEM fetch: Copernicus GLO-30 from public AWS COGs
-- **Phase 1 (Solver Core)**: Run `/build-phase 1` then `/verify-jalraksha analytical`
+- **Phase 1 (Solver Core)**: Run `/build-phase 1` then `/verify-floodview analytical`
   - 2D SWE implementation (HLLC, Audusse, MUSCL)
   - Analytical test validation
 
@@ -206,14 +206,14 @@ These rules ensure the codebase stays navigable and testable as it grows across 
 
 ### 1. Module Depth (Functionality vs Interface)
 Each module should have **high functionality relative to interface complexity**:
-- **Deep**: CLI accepts `jalraksha run --dam tehri`, internally handles DEM fetch, config validation, cache setup (simple interface, lots of work)
+- **Deep**: CLI accepts `floodview run --dam tehri`, internally handles DEM fetch, config validation, cache setup (simple interface, lots of work)
 - **Shallow**: 3 small functions scattered across 5 files that do nearly the same thing (complex interface, little work)
 
 ### 2. Dependency Direction (No Backwards Imports)
 Phases build on earlier phases only:
-- Phase 0 (`jalraksha.config`, `.cli`, `.cache`, `.dem`) → no dependencies on Phase 1+
-- Phase 1 (`jalraksha.solver`) → may depend on Phase 0, but NOT Phases 2+
-- Phase 4 (`jalraksha.terrain`, `.breach`) → may depend on Phases 0–3, but NOT Phases 5+
+- Phase 0 (`floodview.config`, `.cli`, `.cache`, `.dem`) → no dependencies on Phase 1+
+- Phase 1 (`floodview.solver`) → may depend on Phase 0, but NOT Phases 2+
+- Phase 4 (`floodview.terrain`, `.breach`) → may depend on Phases 0–3, but NOT Phases 5+
 - **Violation**: Phase 1 importing Phase 5 export logic = circular, hard to test
 
 ### 3. Layer Isolation (Seams)
@@ -224,32 +224,32 @@ Each phase has a clear seam (boundary) with the next:
 
 ### 4. Test Co-Location (Locality)
 Tests live next to modules they test:
-- `tests/test_cache.py` imports `jalraksha.cache`
-- `tests/test_solver.py` imports `jalraksha.solver.core` (NOT through CLI or export)
+- `tests/test_cache.py` imports `floodview.cache`
+- `tests/test_solver.py` imports `floodview.solver.core` (NOT through CLI or export)
 - **Anti-pattern**: Tests importing from main entry point (forces everything to load)
 
 ### 5. Configuration Isolation
 Configuration is data, not code:
-- Unvetted coefficients live in `jalraksha/config.py` (not hardcoded in solver)
+- Unvetted coefficients live in `floodview/config.py` (not hardcoded in solver)
 - Manning's n, breach regression params flagged with `# TODO: UNVETTED — source?`
 - Each param must have a source citation
 
 ### 6. Reusability (SPH Independence)
 SPH (Phase 7) must be independent of SWE (Phase 1):
-- Phase 7 can import `jalraksha.solver.types.State`, but NOT `jalraksha.export`
+- Phase 7 can import `floodview.solver.types.State`, but NOT `floodview.export`
 - One-way handoff only: SWE produces raster → SPH reads raster (no bidirectional coupling)
 - If you remove Phase 5 (export), SPH still works
 
 ### 7. Documentation Locality
 Each module is self-documenting:
-- `jalraksha/cli.py` docstring explains Phase 0 CLI contract
-- `jalraksha/solver/__init__.py` lists gating tests (Ritter, Stoker, Thacker)
+- `floodview/cli.py` docstring explains Phase 0 CLI contract
+- `floodview/solver/__init__.py` lists gating tests (Ritter, Stoker, Thacker)
 - `tests/conftest.py` explains fixtures (temp_cache_dir, sample_config)
 
 ### 8. Separation of Concerns
 Presentation, solver, and export are in separate trees:
-- **Solver logic**: `jalraksha/solver/`
-- **Export logic**: `jalraksha/export/`
+- **Solver logic**: `floodview/solver/`
+- **Export logic**: `floodview/export/`
 - **Presentation/tooling**: `tools/sih-presentation/`
 - SIH deck build can fail without breaking solver tests
 
@@ -267,7 +267,7 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   to tear down and rebuild the Cesium viewer and Leaflet map every time.
 - **Run picker** (`GET /runs`) loads any completed run instantly. This is the
   offline demo path; it replaced typing a 32-character hex id by hand.
-- **Earth Engine is live.** `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
+- **Earth Engine is live.** `FLOODVIEW_GEE_PROJECT=sih-prototype-506812`, set in
   `scripts/run_api.py` because `.Codex/launch.json` has no env field. Both the
   Sentinel-1 overlay and GHSL population-at-risk depend on it.
   - For Khadakwasla the SAR fetch retrieves a real scene and then REFUSES it
@@ -277,7 +277,7 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
     not built, and `GeoSarResponse`'s "there is no fourth state" rule stands.
 - **Validation tab** runs the blocking gates against the live build, mirroring
   the CI tests exactly: lake-at-rest 5.98e-14 m/s, mass conservation 0.000000%,
-  Ritter RMSE 0.0317 m (JalRaksha) vs 0.0349 m (Delft3D FM).
+  Ritter RMSE 0.0317 m (FloodView) vs 0.0349 m (Delft3D FM).
 - **Delft3D now genuinely runs.** `setup.py`'s NetFile was unreadable by D-Flow
   FM, so the kernel failed at mesh load every time and silently fell back;
   `dfm_model.py` is used instead, and `*_his.nc` is read for real gauge
@@ -293,7 +293,7 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   latter reads only the shell environment and, being a text substitution,
   silently overwrites whatever Vite loaded from `.env.local` with empty strings.
 - **Runs execute in a SUBPROCESS**, not a thread
-  (`services/api/jalraksha_service/run_worker.py`). A dam-break run is CPU-bound
+  (`services/api/floodview_service/run_worker.py`). A dam-break run is CPU-bound
   and holds the GIL — the flux kernels are `@njit` without `nogil=True` — so an
   in-process thread starved uvicorn and `GET /validation` returned nothing after
   120 s. With the subprocess, every endpoint answers in ~0.21 s while a run is
@@ -320,7 +320,7 @@ Half the events PS-26161 names are natural blockages, not dam failures. The
 screening pulse and says so.
 
 - **A landslide dam has no published storage, so it is measured.**
-  `jalraksha/terrain/blockage.py` burns the barrier into the bed, PROVES it spans
+  `floodview/terrain/blockage.py` burns the barrier into the bed, PROVES it spans
   the valley (fill, count `downstream_leak_cells`, widen and retry, refuse after
   8 doublings), and reads an elevation-area-capacity curve straight off the
   result. `breach._synthesize_blockage_ensemble` REFUSES a run whose
@@ -345,7 +345,7 @@ screening pulse and says so.
   policy, and the code says so where it would be edited.** Stereo pairs are
   geo-fenced or commercial; Earth Engine carries S1 GRD, not SLC. What ships is
   an **observation-conditioned DEM update**: GLO-30 with a barrier burned in,
-  written as a new GeoTIFF carrying `JALRAKSHA_NOT_A_SURVEY`. Every product and
+  written as a new GeoTIFF carrying `FLOODVIEW_NOT_A_SURVEY`. Every product and
   the dashboard banner say it is not photogrammetry.
 - **Delta-add, never a reprojection round trip.** Only the CHANGE is reprojected
   back onto the source raster, so every pixel outside the barrier footprint stays
@@ -471,7 +471,7 @@ the plateau is fixed in mechanism but not yet re-measured.
 
 The ParaView sub-project (`paraview/`, `tools/paraview/`) builds a DEM →
 XDMF+HDF5 → ParaView pipeline visualizing dam-break floods for two presets
-(`jalraksha/presets.py`): **Khadakwasla** (Mutha Basin, Pune — default) and
+(`floodview/presets.py`): **Khadakwasla** (Mutha Basin, Pune — default) and
 **Tehri** (Bhagirathi Basin, Uttarakhand). Its own phase numbering follows
 `paraview/*.md`'s spec Section 17, not the table below — the **Phase**
 column here is a work-routing label from planning, not a phase number; the

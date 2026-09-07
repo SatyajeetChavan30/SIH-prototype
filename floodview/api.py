@@ -1,5 +1,5 @@
 """
-Phase 14: REST API Layer for JalRaksha.
+Phase 14: REST API Layer for FloodView.
 
 Provides a lightweight HTTP REST API (using Python stdlib http.server) so the
 The web dashboard or external tools can trigger simulations and retrieve
@@ -38,7 +38,7 @@ DEMO_DAMS = [
         "dam_type": "embankment",
         "river": "Bhagirathi",
         "state": "Uttarakhand",
-        "note": "Primary demo scenario for JalRaksha SIH 2026.",
+        "note": "Primary demo scenario for FloodView SIH 2026.",
     },
     {
         "id": "bhakra",
@@ -62,7 +62,7 @@ def get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) 
     Return downstream gauge definitions for a given dam location.
 
     Resolution order:
-      1. jalraksha.presets.GAUGES[dam_id] — the real corridor for this dam.
+      1. floodview.presets.GAUGES[dam_id] — the real corridor for this dam.
       2. The Tehri bounding box, for a caller that passes coordinates but no
          dam_id. Kept because it is the only thing that made a lat/lon-only
          Tehri call work, and tests depend on it.
@@ -76,7 +76,7 @@ def get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) 
     Returns:
         List of gauge dicts with: name, distance_km, lat, lon, river.
     """
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     gauges = get_gauges(dam_id)
     if gauges:
@@ -137,7 +137,7 @@ def rapid_estimate(dam_config: Dict, ensemble_size: int = 10) -> Dict:
     Returns:
         Dict with: q_peak, c_wave, arrival_times, inundation_km2, affected_pop.
     """
-    from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+    from floodview.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
 
     try:
         hydrographs = synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)
@@ -191,9 +191,9 @@ def rapid_estimate(dam_config: Dict, ensemble_size: int = 10) -> Dict:
 
 # ── HTTP Request Handler ──────────────────────────────────────────────────────
 
-class JalRakshaAPIHandler(BaseHTTPRequestHandler):
+class FloodViewAPIHandler(BaseHTTPRequestHandler):
     """
-    Minimal HTTP request handler for the JalRaksha REST API.
+    Minimal HTTP request handler for the FloodView REST API.
 
     Routes:
       GET  /health
@@ -239,7 +239,7 @@ class JalRakshaAPIHandler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
 
         if path == "/health":
-            self._send_json(200, {"status": "ok", "service": "JalRaksha API v1"})
+            self._send_json(200, {"status": "ok", "service": "FloodView API v1"})
 
         elif path == "/api/v1/dams":
             self._send_json(200, {"dams": DEMO_DAMS})
@@ -276,7 +276,7 @@ class JalRakshaAPIHandler(BaseHTTPRequestHandler):
                 return
 
             try:
-                from jalraksha.hardening import validate_dam_config, HardeningError
+                from floodview.hardening import validate_dam_config, HardeningError
                 validate_dam_config(body)
             except Exception as exc:
                 self._send_json(422, {"error": str(exc)})
@@ -297,7 +297,7 @@ class JalRakshaAPIHandler(BaseHTTPRequestHandler):
 
 def start_api_server(host: str = "127.0.0.1", port: int = 8502) -> HTTPServer:
     """
-    Start the JalRaksha API server in a background thread.
+    Start the FloodView API server in a background thread.
 
     Args:
         host: Bind address (default: localhost only).
@@ -317,13 +317,13 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8502) -> HTTPServer:
     #
     # daemon_threads so a hung handler cannot keep the process alive after
     # shutdown() — the tests stop this server between modules.
-    server = ThreadingHTTPServer((host, port), JalRakshaAPIHandler)
+    server = ThreadingHTTPServer((host, port), FloodViewAPIHandler)
     server.daemon_threads = True
 
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    print(f"[JalRaksha API] Listening on http://{host}:{port}")
+    print(f"[FloodView API] Listening on http://{host}:{port}")
     return server
 
 

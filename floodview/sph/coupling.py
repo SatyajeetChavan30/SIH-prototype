@@ -13,7 +13,7 @@ References:
 
 import numpy as np
 from typing import Dict, Tuple, Optional
-from jalraksha.sph.domain import NearFieldDomain
+from floodview.sph.domain import NearFieldDomain
 
 
 def handoff_swe_to_sph(

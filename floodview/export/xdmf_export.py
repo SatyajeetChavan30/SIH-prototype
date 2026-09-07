@@ -372,7 +372,7 @@ def frames_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
         if "velocity_x" not in snap or "velocity_y" not in snap:
             raise XdmfExportError(
                 f"snapshot {idx} has no velocity. It predates the velocity capture "
-                f"in jalraksha/solver/parallel.py::_snapshot — re-run the simulation."
+                f"in floodview/solver/parallel.py::_snapshot — re-run the simulation."
             )
         frames.append({
             "time_s": snap["time_s"],

@@ -49,7 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def _bootstrap() -> None:
     """Match scripts/run_api.py: repo root as CWD, services/api importable."""
     os.chdir(REPO_ROOT)
-    os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")
+    os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")
     api_dir = REPO_ROOT / "services" / "api"
     if str(api_dir) not in sys.path:
         sys.path.insert(0, str(api_dir))
@@ -59,7 +59,7 @@ def _candidates(db, settings):
     """Done swe runs that have no xdmf export row."""
     import sqlite3
 
-    db_path = REPO_ROOT / "data" / "jalraksha.db"
+    db_path = REPO_ROOT / "data" / "floodview.db"
     conn = sqlite3.connect(db_path)
     rows = list(conn.execute(
         "SELECT run_id, dam_id, solver FROM runs WHERE status='done'"))
@@ -79,9 +79,9 @@ def _replace_xdmf_export(run_id: str, export: dict) -> None:
     """Insert the xdmf export row, removing any previous one for this run."""
     import sqlite3
 
-    from jalraksha_service import db
+    from floodview_service import db
 
-    conn = sqlite3.connect(REPO_ROOT / "data" / "jalraksha.db")
+    conn = sqlite3.connect(REPO_ROOT / "data" / "floodview.db")
     try:
         conn.execute("DELETE FROM exports WHERE run_id=? AND kind='xdmf'", (run_id,))
         conn.commit()
@@ -91,10 +91,10 @@ def _replace_xdmf_export(run_id: str, export: dict) -> None:
 
 
 def backfill_one(run_id: str, overrides: dict | None = None) -> bool:
-    from jalraksha_service import db
-    from jalraksha_service.config import settings
-    from jalraksha_service.tasks import _resolve_dem, _write_xdmf
-    from jalraksha.run import run_dam_break_ensemble
+    from floodview_service import db
+    from floodview_service.config import settings
+    from floodview_service.tasks import _resolve_dem, _write_xdmf
+    from floodview.run import run_dam_break_ensemble
 
     run = db.get_run(run_id)
     if run is None:
@@ -205,8 +205,8 @@ def main() -> None:
     }
 
     _bootstrap()
-    from jalraksha_service import db
-    from jalraksha_service.config import settings
+    from floodview_service import db
+    from floodview_service.config import settings
 
     if args.list:
         rows = _candidates(db, settings)

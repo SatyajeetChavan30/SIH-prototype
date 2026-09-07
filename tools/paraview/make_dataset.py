@@ -15,7 +15,7 @@ Three modes, matching the spec's build order:
   (default)        Full run of the validated HLLC + Audusse solver. The real
                    deliverable; minutes to hours depending on duration.
 
-Two dam presets (jalraksha.presets), selected with --dam:
+Two dam presets (floodview.presets), selected with --dam:
 
   khadakwasla (default)  Mutha River Basin, Pune. Moderate relief, urban
                          downstream edge. No published FRL/height/storage yet
@@ -53,7 +53,7 @@ DEM_DIR = REPO_ROOT / "data" / "dem"
 
 
 def _resolve_utm_zone(lat: float, lon: float) -> int:
-    """Same formula jalraksha.terrain.domain.latlon_to_utm uses when no zone
+    """Same formula floodview.terrain.domain.latlon_to_utm uses when no zone
     is forced — kept local so this file doesn't need a solver import just to
     print a diagnostic zone number."""
     zone = int((lon + 180) / 6) + 1
@@ -64,7 +64,7 @@ def _print_locate_diagnostics(terrain, grid, i_dam: int, j_dam: int,
                               direction_search_radius_cells) -> None:
     """
     --locate-only: report what's actually at the derived dam location, so a
-    coordinate error (see jalraksha/presets.py's note on the 13.8 km Tehri
+    coordinate error (see floodview/presets.py's note on the 13.8 km Tehri
     discrepancy in the spec's own UTM table) is caught before any dataset is
     written, not after a reservoir fill fails confusingly.
     """
@@ -99,12 +99,12 @@ def _print_locate_diagnostics(terrain, grid, i_dam: int, j_dam: int,
         "[locate] Sanity check: the downstream bearing should point toward "
         "the dam's known outflow direction. If it points the wrong way, the "
         "derived lat/lon is likely wrong — correct it with --dam-lat/--dam-lon "
-        "rather than editing jalraksha/presets.py from memory."
+        "rather than editing floodview/presets.py from memory."
     )
 
 
 def main() -> None:
-    from jalraksha.presets import DEFAULT_PRESET_ID, PRESETS, get_preset
+    from floodview.presets import DEFAULT_PRESET_ID, PRESETS, get_preset
 
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -164,13 +164,13 @@ def main() -> None:
     if not dem_path.exists():
         raise SystemExit(
             f"DEM not found: {dem_path}\nFetch it first:\n"
-            f'  python -c "from jalraksha.dem import fetch_dem; '
+            f'  python -c "from floodview.dem import fetch_dem; '
             f"fetch_dem({preset.lat}, {preset.lon}, "
             f"domain_radius_km={radius_km}, cache_dir='./data')\""
         )
 
-    from jalraksha.export.xdmf_export import write_xdmf_series, frames_from_result
-    from jalraksha.terrain.domain import build_domain, compute_breach_location
+    from floodview.export.xdmf_export import write_xdmf_series, frames_from_result
+    from floodview.terrain.domain import build_domain, compute_breach_location
 
     mode_name = ("terrain" if args.terrain_only
                  else "reservoir" if args.reservoir
@@ -192,7 +192,7 @@ def main() -> None:
             raise SystemExit(
                 f"CRS mismatch: build_domain auto-detected {grid.crs} from "
                 f"({preset.lat}, {preset.lon}), but the {preset.name} preset "
-                f"declares EPSG:{preset.epsg}. Fix jalraksha/presets.py — the "
+                f"declares EPSG:{preset.epsg}. Fix floodview/presets.py — the "
                 f"declared epsg must match what the coordinate actually "
                 f"produces, or every downstream CRS assumption is wrong."
             )
@@ -285,7 +285,7 @@ def main() -> None:
             )
             is_synthetic = True
     else:
-        from jalraksha.run import run_dam_break_ensemble
+        from floodview.run import run_dam_break_ensemble
 
         dam_config = preset.to_dam_config()  # raises PresetError if unvetted
         print(f"[solver] {args.duration/3600:.1f} h simulated @ {args.resolution:.0f} m")
@@ -330,7 +330,7 @@ def main() -> None:
                        "surface, which already includes the impounded pool"
                        if args.reservoir else
                        "SYNTHETIC kinematic wave — not physical" if args.synthetic
-                       else "jalraksha SWE (HLLC + Audusse, well-balanced)"),
+                       else "floodview SWE (HLLC + Audusse, well-balanced)"),
         },
     )
     print(f"[done] {time.time() - t0:.1f}s")

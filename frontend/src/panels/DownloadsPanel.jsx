@@ -7,7 +7,7 @@ import { resolveApiUrl } from "../api.js";
  *
  * Everything here comes from GET /runs/{id}/result's `exports` array. The
  * worker only records a row once the file has been verified on disk
- * (jalraksha.run.write_export_products, then _existing_exports in tasks.py),
+ * (floodview.run.write_export_products, then _existing_exports in tasks.py),
  * so a link rendered here is backed by bytes. Nothing is invented client-side:
  * if a product is missing from the array it is missing from this list, which is
  * the honest reading — previously the exports table named four GeoTIFFs that

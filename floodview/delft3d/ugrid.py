@@ -147,9 +147,9 @@ def write_ugrid_net(
     ds = nc.Dataset(path, "w", format="NETCDF4")
     try:
         ds.Conventions = "CF-1.8 UGRID-1.0"
-        ds.title = "JalRaksha dam-break mesh"
-        ds.source = "jalraksha.delft3d.ugrid"
-        ds.institution = "JalRaksha (SIH 2026, PS 26161)"
+        ds.title = "FloodView dam-break mesh"
+        ds.source = "floodview.delft3d.ugrid"
+        ds.institution = "FloodView (SIH 2026, PS 26161)"
         if crs_epsg:
             ds.crs = f"EPSG:{crs_epsg}"
 

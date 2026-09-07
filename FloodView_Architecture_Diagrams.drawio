@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" agent="JalRaksha build_architecture_drawio.py" pages="10">
+<mxfile host="app.diagrams.net" agent="FloodView build_architecture_drawio.py" pages="10">
   <diagram id="page1" name="1. System Architecture">
     <mxGraphModel dx="1591" dy="958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1333" pageHeight="750" math="0" shadow="1">
       <root>
@@ -169,7 +169,7 @@
         <mxCell id="p6956_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p6956_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p6956_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p6956_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -196,7 +196,7 @@
         <mxCell id="p6956_11" value="&lt;b&gt;&lt;font color=&quot;#5D2CB2&quot;&gt;Checked against an independent engine&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ The same textbook case run through Delft3D FM as well&lt;br&gt;▪ A real Deltares kernel, not a lookalike of our own&lt;br&gt;▪ Our answer 0.0317 m error, theirs 0.0349 m&lt;br&gt;▪ The two engines agree to within 0.0294 m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FE;strokeColor=#7C3AED;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="452" y="94" width="428" height="144" as="geometry" />
         </mxCell>
-        <mxCell id="p6956_12" value="&lt;b&gt;&lt;font color=&quot;#A35904&quot;&gt;Why the speed matters&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Today: weeks of specialist setup and licensed software&lt;br&gt;▪ Today: field survey costs before a single map exists&lt;br&gt;▪ JalRaksha: four inputs, free data, a full run in 47 seconds&lt;br&gt;▪ Any trained officer can run it -- and it runs offline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCF5EE;strokeColor=#D97706;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p6956_12" value="&lt;b&gt;&lt;font color=&quot;#A35904&quot;&gt;Why the speed matters&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Today: weeks of specialist setup and licensed software&lt;br&gt;▪ Today: field survey costs before a single map exists&lt;br&gt;▪ FloodView: four inputs, free data, a full run in 47 seconds&lt;br&gt;▪ Any trained officer can run it -- and it runs offline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCF5EE;strokeColor=#D97706;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="900" y="94" width="411" height="144" as="geometry" />
         </mxCell>
         <mxCell id="p6956_13" value="&lt;b&gt;1. Pick a Dam&lt;/b&gt;&lt;br&gt;Choose from the list, or type in&lt;br&gt;position, height and storage.&lt;br&gt;Four numbers, nothing more." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#475569;strokeColor=#475569;fontColor=#FFFFFF;fontSize=8.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -309,7 +309,7 @@
         <mxCell id="p3432_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p3432_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p3432_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p3432_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -626,7 +626,7 @@
         <mxCell id="p436_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p436_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p436_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p436_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -778,7 +778,7 @@
         <mxCell id="p1211_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p1211_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p1211_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p1211_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -826,7 +826,7 @@
         <mxCell id="p1211_18" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FCFE;strokeColor=#0284C7;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=3;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="232" y="102" width="774" height="592" as="geometry" />
         </mxCell>
-        <mxCell id="p1211_19" value="EVERYTHING INSIDE THIS BOX IS JALRAKSHA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.4;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p1211_19" value="EVERYTHING INSIDE THIS BOX IS FLOODVIEW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.4;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="442" y="90" width="354" height="30" as="geometry" />
         </mxCell>
         <mxCell id="p1211_20" value="Choose a dam and set the failure scenario" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CFEAE7;strokeColor=#0D9488;fontColor=#086058;fontSize=6.5;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
@@ -939,7 +939,7 @@
         <mxCell id="p2440_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p2440_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p2440_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p2440_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -960,7 +960,7 @@
         <mxCell id="p2440_9" value="6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
         </mxCell>
-        <mxCell id="p2440_10" value="JALRAKSHA · THE WHOLE SYSTEM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;arcSize=20;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p2440_10" value="FLOODVIEW · THE WHOLE SYSTEM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;arcSize=20;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="502" y="96" width="330" height="52" as="geometry" />
         </mxCell>
         <mxCell id="p2440_11" style="html=1;strokeColor=#9CA3AF;strokeWidth=0.8;endArrow=none;startArrow=none;rounded=0;" edge="1" parent="1">
@@ -1139,7 +1139,7 @@
         <mxCell id="p6220_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p6220_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p6220_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p6220_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1306,7 +1306,7 @@
         <mxCell id="p3755_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p3755_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p3755_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p3755_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1327,7 +1327,7 @@
         <mxCell id="p3755_9" value="8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0070C0;strokeColor=#0070C0;fontColor=#FFFFFF;fontSize=8.5;fontStyle=1;align=right;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="1260" y="716" width="50" height="34" as="geometry" />
         </mxCell>
-        <mxCell id="p3755_10" value="A conventional dam-break study takes &lt;b&gt;weeks&lt;/b&gt; of specialist time and licensed software, so it is only commissioned for the dams somebody has already worried about.&lt;br&gt;JalRaksha completes the same screening in &lt;b&gt;minutes&lt;/b&gt;, from free satellite data -- which changes who gets screened, not just how fast." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECF7;strokeColor=#1E40AF;fontColor=#1F2937;fontSize=9;fontStyle=1;align=left;verticalAlign=middle;arcSize=5;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p3755_10" value="A conventional dam-break study takes &lt;b&gt;weeks&lt;/b&gt; of specialist time and licensed software, so it is only commissioned for the dams somebody has already worried about.&lt;br&gt;FloodView completes the same screening in &lt;b&gt;minutes&lt;/b&gt;, from free satellite data -- which changes who gets screened, not just how fast." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECF7;strokeColor=#1E40AF;fontColor=#1F2937;fontSize=9;fontStyle=1;align=left;verticalAlign=middle;arcSize=5;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="96" width="1289" height="62" as="geometry" />
         </mxCell>
         <mxCell id="p3755_11" value="&lt;b&gt;&lt;font color=&quot;#04704F&quot;&gt;SAVES LIVES&lt;/font&gt;&lt;/b&gt;&lt;br&gt;▪ Arrival times per town -- the number that sets an evacuation order&lt;br&gt;▪ Flood extent showing which areas to clear, and in what order&lt;br&gt;▪ Population exposed, estimated from satellite data&lt;br&gt;▪ Works with the network unplugged, when it matters most" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF8F4;strokeColor=#059669;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=top;arcSize=5;spacing=4;" vertex="1" parent="1">
@@ -1351,7 +1351,7 @@
         <mxCell id="p3755_17" value="How it is done today" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="308" y="396" width="466" height="34" as="geometry" />
         </mxCell>
-        <mxCell id="p3755_18" value="How JalRaksha does it" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p3755_18" value="How FloodView does it" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.2;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="778" y="396" width="535" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p3755_19" value="Time to a first answer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCEEF7;strokeColor=#8DC8E6;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1425,7 +1425,7 @@
         <mxCell id="p8140_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p8140_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p8140_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p8140_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1485,7 +1485,7 @@
         <mxCell id="p8140_22" value="Verdict" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=6.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="1133" y="378" width="178" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="p8140_23" value="JalRaksha" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE3FC;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p8140_23" value="FloodView" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE3FC;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=1;align=left;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="506" y="418" width="275" height="36" as="geometry" />
         </mxCell>
         <mxCell id="p8140_24" value="0.0317 m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF7FE;strokeColor=#C4A6F7;fontColor=#1F2937;fontSize=6.4;fontStyle=0;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1541,7 +1541,7 @@
         <mxCell id="p8731_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#1F2937;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;arcSize=6;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1333" height="750" as="geometry" />
         </mxCell>
-        <mxCell id="p8731_3" value="JalRaksha" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p8731_3" value="FloodView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14305A;strokeColor=#14305A;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;arcSize=40;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="22" y="14" width="130" height="34" as="geometry" />
         </mxCell>
         <mxCell id="p8731_4" value="PS 26161 · NTRO" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;fontColor=#6B7280;fontSize=6.2;fontStyle=0;align=left;verticalAlign=top;arcSize=6;spacing=4;" vertex="1" parent="1">
@@ -1652,7 +1652,7 @@
         <mxCell id="p8731_35" value="NEXT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0284C7;strokeColor=#0284C7;fontColor=#FFFFFF;fontSize=7.6;fontStyle=1;align=center;verticalAlign=middle;arcSize=30;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="964" y="503" width="80" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="p8731_36" value="The framing matters as much as the software. JalRaksha is a first-pass screening instrument: it tells a state which of its dams deserve a full surveyed study, and in what order. It does not replace that study, and the reports say so on their own face rather than in a footnote." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#824704;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
+        <mxCell id="p8731_36" value="The framing matters as much as the software. FloodView is a first-pass screening instrument: it tells a state which of its dams deserve a full surveyed study, and in what order. It does not replace that study, and the reports say so on their own face rather than in a footnote." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBF1E6;strokeColor=#D97706;fontColor=#824704;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">
           <mxGeometry x="406" y="576" width="520" height="122" as="geometry" />
         </mxCell>
         <mxCell id="p8731_37" value="One laptop is enough to run all of this. Nothing here assumes a data centre, a licence server or a working connection." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F3F9;strokeColor=#0284C7;fontColor=#014F77;fontSize=6.4;fontStyle=3;align=left;verticalAlign=middle;arcSize=10;spacing=4;" vertex="1" parent="1">

@@ -1,17 +1,17 @@
 """
-JalRaksha: Dam-break inundation modelling system.
+FloodView: Dam-break inundation modelling system.
 
 Combines 2D shallow-water equation (SWE) solver for far-field propagation
 with 3D Smoothed Particle Hydrodynamics (SPH) for violent near-field dynamics.
 Uses exclusively open data (Copernicus DEM, Google Earth Engine, CWC dam registers).
 
 Public API:
-  - jalraksha.cli — Command-line interface
-  - jalraksha.config — Configuration loading and validation
-  - jalraksha.cache — Data cache management
-  - jalraksha.dem — DEM fetch and processing
-  - jalraksha.solver.core — 2D SWE solver (Phase 1+)
-  - jalraksha.export — Output formats (GeoTIFF, Shapefile, KML)
+  - floodview.cli — Command-line interface
+  - floodview.config — Configuration loading and validation
+  - floodview.cache — Data cache management
+  - floodview.dem — DEM fetch and processing
+  - floodview.solver.core — 2D SWE solver (Phase 1+)
+  - floodview.export — Output formats (GeoTIFF, Shapefile, KML)
 
 Phases:
   Phase 0: CLI, cache, DEM fetch (this module's scope)
@@ -24,7 +24,7 @@ For detailed constraints and testing strategy, see CLAUDE.md.
 """
 
 __version__ = "0.0.1-alpha"
-__author__ = "JalRaksha Team (SIH 2026)"
+__author__ = "FloodView Team (SIH 2026)"
 
 
 def _repair_proj_data_path() -> None:

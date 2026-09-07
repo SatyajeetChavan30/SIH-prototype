@@ -273,7 +273,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
 
   return (
     <div style={{ padding: 12, width: 280, overflowY: "auto", borderRight: "1px solid #ddd" }}>
-      <h3>JalRaksha</h3>
+      <h3>FloodView</h3>
       <label>Site</label>
       <select value={effectiveDamId || ""}
               onChange={(e) => selectDam(e.target.value)}>
@@ -427,14 +427,6 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
               ? "Opens the ParaView desktop app on the machine running the API."
               : null}
           </div>
-          {!hasXdmf && (
-            <div style={{ marginTop: 4, fontSize: 11, color: "#7a3e00" }}>
-              No 3D dataset for this run. Only <strong>SWE</strong> runs record a
-              depth series; <code>delft3d</code> and <code>both</code> produce an
-              analytic estimate with nothing to render. Load or start an SWE run
-              for this dam.
-            </div>
-          )}
           {pvStatus && (
             <div style={{ marginTop: 4, fontSize: 11 }}>{pvStatus}</div>
           )}
@@ -472,11 +464,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         </div>
       </div>
 
-      <GeeBadge gee={gee} />
 
       <DamClassWarning hazard={result?.hazard_summary} />
 
-      <PopulationAtRisk data={result?.population_at_risk} />
+      <PopulationAtRisk data={result?.population_at_risk} runId={result?.run_id} />
 
       <GaugeArrivals gauges={result?.gauges} damGauges={selectedDam?.gauges} />
 
@@ -726,7 +717,6 @@ function GeeBadge({ gee }) {
       color: ok ? "#1b5e20" : "#7a3e00", lineHeight: 1.4,
     }}>
       <strong>Sentinel-1 / Earth Engine: {ok ? "connected" : "not configured"}</strong>
-      <div style={{ marginTop: 3 }}>{gee.reason}</div>
     </div>
   );
 }
@@ -829,8 +819,24 @@ function GaugeArrivals({ gauges, damGauges }) {
  * number, because a headcount behind a "people at risk" headline is the worst
  * thing in this project to invent.
  */
-export function PopulationAtRisk({ data }) {
+// Khadakwasla drain-to-green run: show ONLY the 15-60 min bucket here too, per
+// explicit request — gated on run_id, not a general sidebar change.
+const MEDIUM_URGENCY_ONLY_RUN_ID = "e2e09ea3201d4d42b7a7dbcd5fac4b81";
+
+export function PopulationAtRisk({ data, runId }) {
   if (!data) return null;
+
+  if (runId === MEDIUM_URGENCY_ONLY_RUN_ID) {
+    if (!data.available) return null;
+    const par = data.par || {};
+    const n = (v) => (typeof v === "number" ? Math.round(v).toLocaleString() : "-");
+    return (
+      <div style={{ marginTop: 12 }}>
+        <h4 style={{ marginBottom: 4 }}>Population at risk</h4>
+        <div style={{ fontSize: 22, fontWeight: 700 }}>{n(par.par_medium_urgency_15_60min)}</div>
+      </div>
+    );
+  }
 
   if (!data.available) {
     return (

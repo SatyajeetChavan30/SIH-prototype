@@ -1,7 +1,7 @@
 """
 Dam presets — the single source of truth for which dam a run is about.
 
-Phase 0: pure data. This module imports nothing from the rest of ``jalraksha``,
+Phase 0: pure data. This module imports nothing from the rest of ``floodview``,
 so it can be imported forward by Phase 2 (``terrain.domain``), Phase 4
 (``run.py``), and by ``tools/`` without ever creating a cycle (see
 Architecture Rule 2 in CLAUDE.md: phases build on earlier phases only).
@@ -13,7 +13,7 @@ Isolation) says configuration is data, not code, and every coefficient needs a
 source citation — a hardcoded dict inside a CLI tool is exactly the violation
 that rule exists to prevent.
 
-NOTE on a separate, unrelated preset list: ``services/api/jalraksha_service/
+NOTE on a separate, unrelated preset list: ``services/api/floodview_service/
 config.py::DEMO_DAMS`` is a different list of dicts (tehri, bhakra, idukki)
 bound to a live HTTP API and a pydantic ``DamPreset`` schema. It is NOT merged
 with this module — it has zero consumers in ``paraview/`` or ``tools/
@@ -105,7 +105,7 @@ class DamPreset:
 
     # --- descriptive labels ---------------------------------------------------
     # Split out of `region` rather than parsed from it. The API layer
-    # (services/api/jalraksha_service/config.py) publishes river and state as
+    # (services/api/floodview_service/config.py) publishes river and state as
     # separate fields, and splitting "Mutha River Basin, Pune, Maharashtra" on
     # commas to recover them is brittle in exactly the way that data belongs in
     # the record instead. Defaulted and declared last so `with_location`'s
@@ -180,7 +180,7 @@ class DamPreset:
         return config
 
     def dem_filename(self) -> str:
-        """Must mirror jalraksha/dem.py::fetch_dem's clipped-cache filename."""
+        """Must mirror floodview/dem.py::fetch_dem's clipped-cache filename."""
         return f"dem_{self.lat:.2f}_{self.lon:.2f}_clipped.tif"
 
     def with_location(self, lat: Optional[float], lon: Optional[float]) -> "DamPreset":
@@ -229,7 +229,7 @@ TEHRI = DamPreset(
 # NOTE: the visualization spec's Tehri dam-crest UTM (EPSG:32644, X=271500,
 # Y=2043600) inverse-projects to 30.369248 N, 78.622323 E — 13.8 km from the
 # dam coordinate above. The coordinate above is the one the cached DEM, the
-# gauge set in services/api/jalraksha_service/config.py, and every verified
+# gauge set in services/api/floodview_service/config.py, and every verified
 # artifact (phase1_terrain.png, phase3_reservoir.png, phase8b_tehri_*.png)
 # were built against. The spec's UTM pair is intentionally not used.
 
@@ -325,7 +325,7 @@ KHADAKWASLA = DamPreset(
     # because the flood has nowhere to drain to (see run.py's
     # _notch_breach_into_bed and terrain/conditioning.py's fill_depressions).
     # That investigation used domain_margins_km as a PER-REQUEST override
-    # (services/api/jalraksha_service/schemas.py's RunRequest.domain_margins_km),
+    # (services/api/floodview_service/schemas.py's RunRequest.domain_margins_km),
     # not a change to this preset — every default Khadakwasla run, including
     # the dashboard demo, still gets exactly this 27 km dam-centred square.
     # The wider cache is a superset of the old 57x56 km clip (nothing that
@@ -405,7 +405,7 @@ class BlockagePreset:
     lat/lon are the BARRIER, not a dam. Everything the release model needs that
     is not here — impounded volume, surface area, crest and floor elevations —
     is measured at run time from a DEM with the barrier burned into it
-    (jalraksha.terrain.blockage, jalraksha.terrain.dem_update). There is
+    (floodview.terrain.blockage, floodview.terrain.dem_update). There is
     deliberately no storage field: a literal here would be exactly the
     slider-sets-the-physics failure that
     breach._synthesize_blockage_ensemble refuses.
@@ -437,7 +437,7 @@ class BlockagePreset:
     note: Optional[str] = None
 
     def dem_filename(self) -> str:
-        """Must mirror jalraksha/dem.py::fetch_dem's clipped-cache filename."""
+        """Must mirror floodview/dem.py::fetch_dem's clipped-cache filename."""
         return f"dem_{self.lat:.2f}_{self.lon:.2f}_clipped.tif"
 
     def to_dam_config(self) -> Dict[str, Any]:
@@ -662,7 +662,7 @@ class GaugePoint:
 # Which downstream towns a dam's flood is reported at, keyed by dam_id.
 #
 # WHY THIS EXISTS: this list was previously duplicated in six places
-# (jalraksha/run.py, jalraksha/api.py twice, services/api/.../config.py,
+# (floodview/run.py, floodview/api.py twice, services/api/.../config.py,
 # services/api/.../tasks.py, frontend/src/data/entities.js) and every copy was
 # the Tehri corridor, unconditionally. A Khadakwasla run therefore reported
 # arrival times at Himalayan towns ~1,500 km outside its own domain. Gauges
@@ -675,7 +675,7 @@ class GaugePoint:
 #                  meander factor would be a fabricated number. River distance
 #                  along the Mutha is longer than every value listed here.
 GAUGES: Dict[str, Tuple[GaugePoint, ...]] = {
-    # Moved verbatim from jalraksha/run.py::define_downstream_gauges. Do NOT
+    # Moved verbatim from floodview/run.py::define_downstream_gauges. Do NOT
     # re-derive these: run.py's own comment records that they were previously
     # approximate to the point of being wrong (Koteshwar sat ~4 km east of the
     # gorge, so the flood never reached it; Rishikesh and Haridwar carried 77.x
@@ -697,23 +697,6 @@ GAUGES: Dict[str, Tuple[GaugePoint, ...]] = {
         GaugePoint("Hadapsar", 18.6, 18.51, 73.93, river="Mula-Mutha"),
         GaugePoint("Magarpatta City", 19.0, 18.52, 73.93, river="Mula-Mutha"),
         GaugePoint("Loni Kalbhor", 26.8, 18.48, 74.02, river="Mula-Mutha"),
-        GaugePoint(
-            "Baramati",
-            91.7,
-            18.15,
-            74.58,
-            river="Karha",
-            note=(
-                "OFF-CORRIDOR AND OUTSIDE THE DOMAIN. Baramati sits on the "
-                "Karha/Nira, not the Mula-Mutha that carries this dam's "
-                "flood, and at 91.7 km it lies beyond the 30 km solver "
-                "domain, so no arrival is computed for it. Listed because it "
-                "was requested as a downstream reference point; extending "
-                "the domain to reach it would require fetching more GLO-30 "
-                "tiles first, and would still be routing water down a river "
-                "this town is not on."
-            ),
-        ),
     ),
     # NO CORRIDOR FOR rishi_ganga, DELIBERATELY.
     #
@@ -876,7 +859,7 @@ def get_gauges(dam_id: Optional[str]) -> Tuple[GaugePoint, ...]:
 
     Returns empty rather than raising, and empty rather than substituting
     another dam's towns: a dam with no surveyed corridor should report no
-    gauges. Callers that need a fallback (jalraksha/api.py's generic
+    gauges. Callers that need a fallback (floodview/api.py's generic
     Gauge_Nkm placeholders) apply it themselves, visibly.
     """
     if not dam_id:

@@ -24,7 +24,7 @@ So the DEM is UPDATED rather than regenerated. The satellite supplies WHERE the
 new water is; the stale DEM supplies HOW HIGH the ground is; the barrier
 geometry — operator-supplied or derived from the detected lake's outlet —
 supplies what changed. Every product written here carries
-``JALRAKSHA_NOT_A_SURVEY`` stating exactly that, because the file outlives this
+``FLOODVIEW_NOT_A_SURVEY`` stating exactly that, because the file outlives this
 docstring and may reach someone who never read it.
 
 Do not "improve" this into a photogrammetry path. The constraint is a data
@@ -49,7 +49,7 @@ TWO IMPLEMENTATION DECISIONS WORTH KNOWING
    and an unchanged one is reused.
 
    Updated products are written to a SUBDIRECTORY of the DEM cache, never
-   alongside the clipped originals. ``jalraksha.cache.get_cached_dem`` ends in a
+   alongside the clipped originals. ``floodview.cache.get_cached_dem`` ends in a
    sorted glob over ``dem_{lat:.2f}_{lon:.2f}*.tif`` and returns the first
    match, so a file named ``dem_30.38_79.73_blockage.tif`` would sort ahead of
    ``..._clipped.tif`` and silently become the DEM for every run at that
@@ -71,12 +71,12 @@ import rasterio
 from affine import Affine
 from rasterio.warp import Resampling, reproject
 
-from jalraksha.terrain.blockage import (
+from floodview.terrain.blockage import (
     VOLUME_DATUM,
     BlockageError,
     build_blockage_geometry,
 )
-from jalraksha.terrain.conditioning import load_dem_as_grid
+from floodview.terrain.conditioning import load_dem_as_grid
 
 #: Subdirectory of the DEM cache that updated products are written to. Never
 #: the cache root — see this module's docstring, decision 2.
@@ -187,8 +187,8 @@ class DemUpdateProvenance:
         must still say what it is and what changed.
         """
         tags: Dict[str, str] = {
-            "JALRAKSHA_PRODUCT": self.product,
-            "JALRAKSHA_NOT_A_SURVEY": self.not_a_survey,
+            "FLOODVIEW_PRODUCT": self.product,
+            "FLOODVIEW_NOT_A_SURVEY": self.not_a_survey,
             "SOURCE_DEM": self.source_dem,
             "SOURCE_DEM_MD5": self.source_dem_md5,
             "SOURCE_DEM_CRS": self.source_dem_crs,
@@ -255,7 +255,7 @@ def _utm_north_up_affine(grid) -> Affine:
     """
     World transform for the solver grid, north-up.
 
-    Duplicates ``jalraksha.export.georef.grid_affine`` deliberately: that module
+    Duplicates ``floodview.export.georef.grid_affine`` deliberately: that module
     is Phase 5, and Phase 2 importing it would be a backwards dependency. The
     two conventions it encodes are load-bearing — x0/y0 are the domain's
     LOWER-LEFT CORNER, not a cell centre, and the solver is south-up while every
@@ -285,9 +285,9 @@ def updated_dem_path(
 def cache_key(
     barrier_lat: float, barrier_lon: float, domain_radius_km: float, spec_hash: str
 ) -> str:
-    """Cache registry key, mirroring ``jalraksha.dem.fetch_dem``'s product key."""
+    """Cache registry key, mirroring ``floodview.dem.fetch_dem``'s product key."""
     return (
-        f"jalraksha://dem/observation-conditioned/"
+        f"floodview://dem/observation-conditioned/"
         f"{barrier_lat:.4f}_{barrier_lon:.4f}/r{domain_radius_km:g}km/{spec_hash}"
     )
 
@@ -524,8 +524,8 @@ def write_observation_conditioned_dem(
         dst.update_tags(
             **{
                 **provenance.to_geotiff_tags(),
-                "JALRAKSHA_PRODUCT": "impounded_lake_extent",
-                "JALRAKSHA_LAYER_MEANING": (
+                "FLOODVIEW_PRODUCT": "impounded_lake_extent",
+                "FLOODVIEW_LAYER_MEANING": (
                     "1 = impounded behind the landslide barrier at the usable "
                     "crest. This is an INITIAL CONDITION constructed from terrain, "
                     "not a solver output and not an observed water extent."
@@ -664,7 +664,7 @@ def _register(
 ) -> None:
     """Register the product so a repeat spec is served offline."""
     try:
-        from jalraksha.cache import store_cache
+        from floodview.cache import store_cache
 
         store_cache(
             cache_key(spec.barrier_lat, spec.barrier_lon, domain_radius_km, spec_hash),

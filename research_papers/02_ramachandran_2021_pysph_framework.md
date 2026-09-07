@@ -15,7 +15,7 @@ PySPH is an open-source, high-performance, Python-based framework for Smoothed P
 
 ---
 
-## 🔑 Key Features & Relevance to JalRaksha
+## 🔑 Key Features & Relevance to FloodView
 
 1. **De-Risking Near-Field 3D SPH**:
    - **BSD License**: Pure permissive open-source license, allowing complete integration without share-alike GPL restrictions (unlike DualSPHysics or GPUSPH).
@@ -26,7 +26,7 @@ PySPH is an open-source, high-performance, Python-based framework for Smoothed P
    - Includes standard 2D and 3D dam-break benchmark scripts (`dam_break_2d.py`, `dam_break_3d.py`) and experimental validation datasets (Lobovsky, Buchner, Yeh).
    - Includes a specialized shallow water SPH module (`pysph.sph.swe`) for cross-verification.
 
-3. **Role in JalRaksha**:
+3. **Role in FloodView**:
    - Serves as the near-field 3D solver engine for Phase 7 (3D near-field breach simulation).
 
 ---

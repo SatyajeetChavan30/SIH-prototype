@@ -24,8 +24,8 @@ from rasterio.warp import Resampling, reproject
 from scipy.ndimage import gaussian_filter, distance_transform_edt
 from scipy.interpolate import RegularGridInterpolator
 
-from jalraksha.solver.types import Grid, State, create_state
-from jalraksha.terrain.roughness import (
+from floodview.solver.types import Grid, State, create_state
+from floodview.terrain.roughness import (
     DEFAULT_MANNING_N,
     assign_manning_from_worldcover,
 )
@@ -275,7 +275,7 @@ def load_dem_as_grid(
     """
     # Local import: terrain.domain imports this module's siblings, and importing
     # it at module scope would create a cycle.
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.terrain.domain import latlon_to_utm
 
     zone, dam_easting, dam_northing = latlon_to_utm(dam_lat, dam_lon)
     epsg = (32600 if dam_lat >= 0 else 32700) + zone
@@ -384,7 +384,7 @@ def load_dem_as_grid(
 
     # Flip north-up raster rows to south-up, so row 0 is the southernmost row and
     # indexing agrees with Grid.cell_centres_y() / the keyframe bounds in
-    # jalraksha/export/keyframes.py.
+    # floodview/export/keyframes.py.
     bed_elevation = np.ascontiguousarray(np.flipud(destination), dtype=np.float64)
 
     grid = Grid(

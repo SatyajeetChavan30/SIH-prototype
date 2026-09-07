@@ -12,7 +12,7 @@ approved for redistribution under this project's licensing rules, unlike the
 OSM-derived land-use layers (ODbL share-alike) and the non-commercial DEMs
 CLAUDE.md forbids. Attribution travels in the manifest.
 
-SAME CONTRACT AS THE REST OF jalraksha.gee. Three states and no fourth: live,
+SAME CONTRACT AS THE REST OF floodview.gee. Three states and no fourth: live,
 cached, or ``LandCoverUnavailableError``. Nothing here synthesises land cover.
 A fabricated roughness field is worse than a uniform one, because a uniform
 field is at least visibly a placeholder while a fabricated one has structure
@@ -38,8 +38,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.gee.auth import gee_status
-from jalraksha.terrain.roughness import LandCoverUnavailableError
+from floodview.gee.auth import gee_status
+from floodview.terrain.roughness import LandCoverUnavailableError
 
 #: ESA WorldCover 2021 v200 in Earth Engine. v100 is the 2020 epoch; v200 is
 #: the later one and is what the class legend in roughness.py describes.
@@ -94,7 +94,7 @@ def fetch_worldcover(
 
     Args:
         bbox: (min_lon, min_lat, max_lon, max_lat) in WGS84 degrees. Supplied by
-            the caller — ``jalraksha.gee`` must not import the service layer,
+            the caller — ``floodview.gee`` must not import the service layer,
             which is where the site registry lives.
         cache_dir: Directory for the cached raster and its manifest.
         scale_m: Output posting, metres.
@@ -129,7 +129,7 @@ def fetch_worldcover(
     try:
         import ee
 
-        from jalraksha.gee.sar import _download
+        from floodview.gee.sar import _download
 
         region = ee.Geometry.BBox(*bbox)
         image = (
@@ -233,7 +233,7 @@ def fetch_cropland_fraction_on_grid(
         LandCoverUnavailableError: when neither Earth Engine nor a cache can
             supply the grid.
     """
-    from jalraksha.gee.grid_fetch import read_cached_stack
+    from floodview.gee.grid_fetch import read_cached_stack
 
     cache_dir = Path(cache_dir)
     geotiff, manifest = _grid_cache_paths(cache_dir, "v200")
@@ -245,7 +245,7 @@ def fetch_cropland_fraction_on_grid(
         try:
             import ee
 
-            from jalraksha.gee.grid_fetch import fetch_image_on_grid
+            from floodview.gee.grid_fetch import fetch_image_on_grid
 
             mask = (
                 ee.ImageCollection(WORLDCOVER_COLLECTION)

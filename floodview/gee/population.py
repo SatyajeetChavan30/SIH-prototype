@@ -48,7 +48,7 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.gee.auth import gee_status
+from floodview.gee.auth import gee_status
 
 #: Multitemporal GHSL population count collection (100 m posting).
 GHSL_COLLECTION = "JRC/GHSL/P2023A/GHS_POP"
@@ -127,7 +127,7 @@ def fetch_population_on_grid(
     """
     import rasterio
 
-    from jalraksha.export.georef import grid_affine, to_north_up
+    from floodview.export.georef import grid_affine, to_north_up
 
     cache_dir = Path(cache_dir)
     available, reason = gee_status()
@@ -173,7 +173,7 @@ def _fetch_ghsl_live(grid_dict: Dict, crs_epsg: int, cache_dir: Path,
     """Download GHSL aligned to the solver grid, aggregating counts by SUM."""
     import ee
 
-    from jalraksha.gee.grid_fetch import fetch_image_on_grid
+    from floodview.gee.grid_fetch import fetch_image_on_grid
 
     collection = ee.ImageCollection(GHSL_COLLECTION)
     image = collection.filter(

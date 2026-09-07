@@ -226,14 +226,14 @@ def main() -> int:
     parser.add_argument("--resolution", type=float, default=RESOLUTION_M)
     args = parser.parse_args()
 
-    from jalraksha_service.script_runs import bootstrap_repo_root, registered_run
+    from floodview_service.script_runs import bootstrap_repo_root, registered_run
 
     bootstrap_repo_root(ROOT)
 
-    from jalraksha.export.keyframes import export_keyframes
-    from jalraksha.impact.hazard import HazardClassifier
-    from jalraksha.presets import get_gauges
-    from jalraksha.terrain.conditioning import load_dem_as_grid
+    from floodview.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
+    from floodview.presets import get_gauges
+    from floodview.terrain.conditioning import load_dem_as_grid
 
     duration_s = args.duration_h * 3600.0
     dem = str(ROOT / "data" / "dem" / "dem_18.44_73.77_clipped.tif")

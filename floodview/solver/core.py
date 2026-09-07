@@ -8,7 +8,7 @@ Conserved variables U = (h, hu, hv). Well-balanced, not surface-gradient.
 
   - Spatial: MUSCL reconstruction on eta = b + h with the minmod limiter,
     Audusse et al. (2004) hydrostatic reconstruction at faces, HLLC
-    approximate Riemann solver (see jalraksha.solver.flux).
+    approximate Riemann solver (see floodview.solver.flux).
   - Temporal: two-stage SSP-RK2 (Heun). Strong-stability-preserving, so the
     positivity that the first-order Audusse/HLLC update guarantees under
     CFL <= 1/2 survives the second-order extension.

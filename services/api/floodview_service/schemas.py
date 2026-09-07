@@ -1,4 +1,4 @@
-"""Pydantic request/response schemas for the JalRaksha REST API (brief §5.1)."""
+"""Pydantic request/response schemas for the FloodView REST API (brief §5.1)."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class RunRequest(BaseModel):
     #
     # Note what is NOT here: storage. A landslide dam has no published gross
     # storage, so the impounded volume is measured from a hypsometric fill of
-    # the updated DEM. jalraksha.terrain.breach refuses a blockage run whose
+    # the updated DEM. floodview.terrain.breach refuses a blockage run whose
     # storage came from anywhere else.
     blockage_source: str = Field(
         "manual",
@@ -119,7 +119,7 @@ class RunRequest(BaseModel):
             )
         self._validate_blockage_fields()
         if self.dam_id:
-            from jalraksha_service.config import settings
+            from floodview_service.config import settings
             preset = next((d for d in settings.DEMO_DAMS if d["id"] == self.dam_id), None)
             if preset is None:
                 raise ValueError(f"Unknown dam_id: {self.dam_id}")
@@ -143,7 +143,7 @@ class RunRequest(BaseModel):
             # A preset can be published without vetted structural figures (see
             # DamPreset's docstring). The solver's breach regressions cannot run
             # on None, so refuse here with a message naming exactly what is
-            # missing, mirroring jalraksha.presets.PresetError. submit_run turns
+            # missing, mirroring floodview.presets.PresetError. submit_run turns
             # ValueError into a 422.
             #
             # This also replaces a real crash: the two lines below do
@@ -359,7 +359,7 @@ class ExportRef(BaseModel):
     One downloadable product of a run.
 
     `kind` is prefixed by product family so a client can group without parsing
-    filenames (jalraksha.run.write_export_products is the producer):
+    filenames (floodview.run.write_export_products is the producer):
 
       cog_<var>_<pct>       Cloud-Optimized GeoTIFF, e.g. cog_h_max_median,
                             cog_v_max_p95, cog_t_arrival_median
@@ -597,7 +597,7 @@ class GeeStatus(BaseModel):
     GET /gee/status - whether Earth Engine is usable, and if not, why.
 
     `reason` is Earth Engine's own message passed through verbatim (or this
-    project's own "JALRAKSHA_GEE_PROJECT is not set..." text, which names the
+    project's own "FLOODVIEW_GEE_PROJECT is not set..." text, which names the
     exact variable and the free registration URL). It is written to be shown to
     a person, so render it rather than mapping it to a generic string.
     """

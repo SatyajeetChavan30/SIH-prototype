@@ -22,7 +22,7 @@ from pptx import Presentation
 from pptx.util import Emu
 
 HERE = Path(__file__).resolve().parent
-DECK = HERE / "JalRaksha_SIH2026_PS26161.pptx"
+DECK = HERE / "FloodView_SIH2026_PS26161.pptx"
 
 FONT_DIR = Path("C:/Windows/Fonts")
 FILES = {

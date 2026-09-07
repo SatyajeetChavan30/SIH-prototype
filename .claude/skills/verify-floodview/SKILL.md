@@ -1,11 +1,11 @@
 ---
-name: verify-jalraksha
-description: Run the multi-tier validation suite for the JalRaksha solver (analytical tests, correctness gates, optional benchmarks). Use this before committing solver changes or after implementing Phase 1 core components.
+name: verify-floodview
+description: Run the multi-tier validation suite for the FloodView solver (analytical tests, correctness gates, optional benchmarks). Use this before committing solver changes or after implementing Phase 1 core components.
 ---
 
 ## Overview
 
-The `/verify-jalraksha` skill executes the complete testing framework specified in CLAUDE.md:
+The `/verify-floodview` skill executes the complete testing framework specified in CLAUDE.md:
 
 1. **Analytical exact-solution tests** (Ritter, Stoker, Thacker)
 2. **Blocking correctness gates** (lake-at-rest <0.1% velocity, mass conservation <0.1%)
@@ -22,16 +22,16 @@ The `/verify-jalraksha` skill executes the complete testing framework specified 
 ## Typical Workflow
 
 ```
-/verify-jalraksha analytical
+/verify-floodview analytical
 # Runs Ritter, Stoker, Thacker only — fast (~30s)
 
-/verify-jalraksha gates
+/verify-floodview gates
 # Runs lake-at-rest, mass conservation, dry-bed — ~1 min
 
-/verify-jalraksha full
+/verify-floodview full
 # Runs all of the above plus Malpasset benchmark — ~5 min
 
-/verify-jalraksha chamoli
+/verify-floodview chamoli
 # Runs the Chamoli 2021 comparison (most expensive, most realistic) — ~10 min
 ```
 
@@ -72,7 +72,7 @@ The `/verify-jalraksha` skill executes the complete testing framework specified 
 
 ## Status (Aug 2026)
 
-**Initialized**: Skill scaffold created and registered in `.claude/skills/verify-jalraksha/`
+**Initialized**: Skill scaffold created and registered in `.claude/skills/verify-floodview/`
 **Next steps**: Implement test runner scripts (Phase 1 prerequisite)
 - Ritter exact solution test
 - Stoker exact solution test

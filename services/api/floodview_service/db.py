@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jalraksha_service.config import settings
+from floodview_service.config import settings
 
 
 def _connect() -> Any:

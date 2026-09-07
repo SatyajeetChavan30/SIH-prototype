@@ -10,7 +10,7 @@ enough to test transcription against:
     h_d = 93 m                      dam height
     Q_p = 65,120 m^3/s              measured peak outflow
 
-Every peak-outflow equation in jalraksha.terrain.breach is checked against it.
+Every peak-outflow equation in floodview.terrain.breach is checked against it.
 That is the point of the file: a mis-transcribed coefficient or a MCM/m^3 unit
 slip moves the Teton prediction by a factor of 2 to 59, which these tests
 catch. An earlier version of the module encoded regressions that were
@@ -25,7 +25,7 @@ Source for the Teton figures and for the equations: Wahl, T.L. (1998),
 import numpy as np
 import pytest
 
-from jalraksha.terrain.breach import (
+from floodview.terrain.breach import (
     CALIBRATION_MAX_HEIGHT_M,
     DEFAULT_REGRESSION_FAMILIES,
     MCM_TO_M3,
@@ -133,7 +133,7 @@ class TestBlockageEnsemble:
         measuring it must fail loudly rather than route a slider value and label
         the output a modelled result.
         """
-        from jalraksha.hardening import HardeningError
+        from floodview.hardening import HardeningError
 
         for storage_source in (None, "user_input", "preset"):
             config = _blockage_config(storage_source=storage_source)
@@ -141,7 +141,7 @@ class TestBlockageEnsemble:
                 synthesize_scenario_ensemble(config, num_samples=2, random_seed=7)
 
     def test_barrier_crest_and_valley_floor_are_required(self):
-        from jalraksha.hardening import HardeningError
+        from floodview.hardening import HardeningError
 
         for missing in ("initial_surface_elev_m", "breach_bottom_elev_m"):
             config = _blockage_config(**{missing: None})
@@ -179,7 +179,7 @@ class TestBlockageEnsemble:
             )
 
     def test_every_member_carries_the_natural_dam_scatter_note(self):
-        from jalraksha.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
+        from floodview.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
 
         members = synthesize_scenario_ensemble(
             _blockage_config(), num_samples=4, random_seed=7
@@ -200,8 +200,8 @@ class TestBlockageEnsemble:
         landslide-dam outburst. Reporting one sense with the other scenario's
         explanation would be the right warning attached to the wrong reason.
         """
-        from jalraksha.terrain.breach import DAM_CLASS_EXTRAPOLATION_NOTE
-        from jalraksha.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
+        from floodview.terrain.breach import DAM_CLASS_EXTRAPOLATION_NOTE
+        from floodview.terrain.natural_dam import NATURAL_DAM_SCATTER_NOTE
 
         landslide = synthesize_scenario_ensemble(
             _blockage_config(dam_type="landslide"), num_samples=2, random_seed=7
@@ -242,7 +242,7 @@ class TestNaturalDamRegressions:
     """
 
     def test_unverified_natural_dam_equations_are_quarantined(self):
-        from jalraksha.terrain.natural_dam import (
+        from floodview.terrain.natural_dam import (
             NATURAL_DAM_REGRESSION_FAMILIES,
             PENG_ZHANG_2012_VERIFIED,
             WALDER_OCONNOR_1997_VERIFIED,
@@ -262,7 +262,7 @@ class TestNaturalDamRegressions:
             peng_zhang_2012_peak_outflow(60.0, 400.0, 5.4e6, 7.2e7)
 
     def test_costa_is_the_only_active_natural_dam_family(self):
-        from jalraksha.terrain.natural_dam import NATURAL_DAM_REGRESSION_FAMILIES
+        from floodview.terrain.natural_dam import NATURAL_DAM_REGRESSION_FAMILIES
 
         assert NATURAL_DAM_REGRESSION_FAMILIES == ("costa",)
 
@@ -273,8 +273,8 @@ class TestNaturalDamRegressions:
         wider than Wahl's embankment scatter because the dams are unengineered
         and the case databases are smaller.
         """
-        from jalraksha.terrain.breach import UNCERTAINTY_LOG_CYCLES
-        from jalraksha.terrain.natural_dam import NATURAL_DAM_LOG_CYCLES
+        from floodview.terrain.breach import UNCERTAINTY_LOG_CYCLES
+        from floodview.terrain.natural_dam import NATURAL_DAM_LOG_CYCLES
 
         widest_embankment = max(UNCERTAINTY_LOG_CYCLES.values())
         narrowest_natural = min(NATURAL_DAM_LOG_CYCLES.values())
@@ -290,16 +290,16 @@ class TestNaturalDamRegressions:
         Silently defaulting a natural-dam band would let a new regression ship
         with an embankment-width interval nobody chose.
         """
-        from jalraksha.terrain.natural_dam import natural_dam_bounds
+        from floodview.terrain.natural_dam import natural_dam_bounds
 
         with pytest.raises(KeyError):
             natural_dam_bounds(1000.0, "some_new_equation")
 
     def test_the_natural_dam_class_population_is_the_mirror_of_the_embankment_one(self):
-        from jalraksha.terrain.breach import (
+        from floodview.terrain.breach import (
             dam_class_outside_fitted_population as embankment_outside,
         )
-        from jalraksha.terrain.natural_dam import (
+        from floodview.terrain.natural_dam import (
             dam_class_outside_fitted_population as natural_outside,
         )
 
@@ -314,7 +314,7 @@ class TestNaturalDamRegressions:
         published case of a different size. Two geometrically similar events must
         map to the same number.
         """
-        from jalraksha.terrain.natural_dam import dimensionless_peak_outflow
+        from floodview.terrain.natural_dam import dimensionless_peak_outflow
 
         small = dimensionless_peak_outflow(1000.0, 30.0)
         large = dimensionless_peak_outflow(1000.0 * 2.0**2.5, 60.0)
@@ -1050,7 +1050,7 @@ class TestEnsembleGeneration:
             np.testing.assert_allclose(a["Q_t"], b["Q_t"])
 
     def test_missing_required_config_raises(self):
-        from jalraksha.hardening import HardeningError
+        from floodview.hardening import HardeningError
 
         with pytest.raises(HardeningError):
             synthesize_breach_ensemble({"name": "NoNumbers"}, num_samples=2)
@@ -1114,7 +1114,7 @@ class TestDamClassOutsideFittedPopulation:
     }
 
     def test_gravity_dam_is_flagged(self):
-        from jalraksha.terrain.breach import (
+        from floodview.terrain.breach import (
             ensemble_statistics, synthesize_breach_ensemble,
         )
 
@@ -1125,7 +1125,7 @@ class TestDamClassOutsideFittedPopulation:
         assert "EMBANKMENT" in stats["dam_class_note"]
 
     def test_embankment_dam_is_not_flagged(self):
-        from jalraksha.terrain.breach import (
+        from floodview.terrain.breach import (
             ensemble_statistics, synthesize_breach_ensemble,
         )
 
@@ -1145,7 +1145,7 @@ class TestDamClassOutsideFittedPopulation:
         so adjusting the peak here would be fabricating one. Same seed, same
         dam, different class => identical peak.
         """
-        from jalraksha.terrain.breach import (
+        from floodview.terrain.breach import (
             ensemble_statistics, synthesize_breach_ensemble,
         )
 
@@ -1166,7 +1166,7 @@ class TestDamClassOutsideFittedPopulation:
         the regressions' fitted HEIGHT range, so extrapolation_ratio reports no
         problem while the dam is the wrong class entirely.
         """
-        from jalraksha.terrain.breach import (
+        from floodview.terrain.breach import (
             dam_class_outside_fitted_population, extrapolation_ratio,
         )
 
@@ -1192,7 +1192,7 @@ class TestHydrographWindow:
         "storage_mm3": TEHRI_STORAGE_MCM,
         "dam_type": "embankment",
         "failure_mode": "overtopping",
-        # As services/api/jalraksha_service/schemas.py builds them.
+        # As services/api/floodview_service/schemas.py builds them.
         "breach_bottom_elev_m": TEHRI_HEIGHT_M * 0.1,
         "initial_surface_elev_m": TEHRI_HEIGHT_M,
     }

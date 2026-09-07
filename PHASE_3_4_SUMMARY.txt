@@ -1,5 +1,5 @@
 ================================================================================
-JALRAKSHA PHASE 3 & 4 — END-TO-END DAM-BREAK PIPELINE
+FLOODVIEW PHASE 3 & 4 — END-TO-END DAM-BREAK PIPELINE
 ================================================================================
 
 SESSION DATE: 2026-08-24
@@ -11,7 +11,7 @@ PHASE 3: BREACH REGRESSIONS — ✅ 18/18 TESTS PASSING
 ================================================================================
 
 DELIVERABLES:
-  ✅ jalraksha/terrain/breach.py (620 lines)
+  ✅ floodview/terrain/breach.py (620 lines)
      - 4 empirical breach regressions (Froehlich, Von Thun, MacDonald, Xu & Zhang)
      - Level-pool routing with broad-crested weir discharge
      - 100-member ensemble with Wahl (2004) uncertainty bands
@@ -40,7 +40,7 @@ PHASE 4: END-TO-END PIPELINE — ✅ 6/6 TESTS PASSING
 ================================================================================
 
 DELIVERABLES:
-  ✅ jalraksha/run.py (420 lines)
+  ✅ floodview/run.py (420 lines)
      - Full orchestration: terrain → breach → solver → arrival times
      - 5-step pipeline with error handling
      - Ensemble averaging & percentile statistics

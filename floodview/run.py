@@ -22,12 +22,12 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.solver.types import Grid, create_state
-from jalraksha.solver.core import SWESolver
-from jalraksha.solver.parallel import run_ensemble
-from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
-from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
-from jalraksha.presets import get_gauges
+from floodview.solver.types import Grid, create_state
+from floodview.solver.core import SWESolver
+from floodview.solver.parallel import run_ensemble
+from floodview.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
+from floodview.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
+from floodview.presets import get_gauges
 
 
 def _attempt(kind: str, writer, *args, **kwargs):
@@ -86,16 +86,16 @@ def write_export_products(
     Write every Phase 5 deliverable the problem statement names: .tif, .shp, .kml.
 
     PS 26161 requires "Output should be converted to .shp or .Kml file". Until
-    this function existed, jalraksha.run fabricated four .tif path strings that
+    this function existed, floodview.run fabricated four .tif path strings that
     nothing ever wrote, and the service recorded them in its exports table — so
     the API advertised downloads that 404'd for every run ever made.
 
-    LAYERING. This makes jalraksha.run (Phase 4) import jalraksha.export
+    LAYERING. This makes floodview.run (Phase 4) import floodview.export
     (Phase 5), which CLAUDE.md's dependency-direction rule forbids read
     literally. Taken deliberately: run.py is the top-level pipeline
     orchestrator — its own module docstring already lists "5. Raster export"
-    among its steps — rather than a Phase-4 layer module, and jalraksha.export
-    does not import jalraksha.run, so the import graph stays acyclic and
+    among its steps — rather than a Phase-4 layer module, and floodview.export
+    does not import floodview.run, so the import graph stays acyclic and
     Phase 5 remains independently testable.
 
     Args:
@@ -112,14 +112,14 @@ def write_export_products(
         Kinds are prefixed (cog_ / shp_ / kml_ / kmz_) so the service and the
         dashboard can tell a raster from a vector from an Earth overlay.
     """
-    from jalraksha.export.geotiff import export_ensemble_to_cogs
-    from jalraksha.export.georef import epsg_from_crs, zip_shapefile
-    from jalraksha.export.shapefile import (
+    from floodview.export.geotiff import export_ensemble_to_cogs
+    from floodview.export.georef import epsg_from_crs, zip_shapefile
+    from floodview.export.shapefile import (
         export_arrival_time_contours,
         export_hazard_classification_polygons,
         export_inundation_polygon,
     )
-    from jalraksha.export.kml import (
+    from floodview.export.kml import (
         export_depth_ground_overlay,
         export_inundation_kml,
         export_kmz,
@@ -221,7 +221,7 @@ def define_downstream_gauges(
     """
     Downstream gauge locations for a dam, as plain dicts for the solver.
 
-    Reads jalraksha.presets.GAUGES, which is the single source of truth for
+    Reads floodview.presets.GAUGES, which is the single source of truth for
     which towns a dam's flood is reported at. This function used to hold the
     Tehri corridor as a literal and return it for every dam it was called with,
     including its own dam_lat/dam_lon arguments, which it ignored — so a
@@ -250,7 +250,7 @@ def define_downstream_gauges(
         # Coordinates inside the Tehri corridor AND NO dam_id — the shape of
         # every call site that predates dam_id existing. Resolve through the
         # registry rather than reintroducing a literal copy of the corridor.
-        # Mirrors the same fallback in jalraksha/api.py::get_downstream_gauges.
+        # Mirrors the same fallback in floodview/api.py::get_downstream_gauges.
         #
         # The `dam_id is None` term is load-bearing and was missing. Without it
         # the box fired for any NAMED site that simply had no corridor yet, and
@@ -263,14 +263,14 @@ def define_downstream_gauges(
         gauges = get_gauges("tehri")
 
     if not gauges:
-        # No corridor, and no placeholder invented. jalraksha/api.py's generic
+        # No corridor, and no placeholder invented. floodview/api.py's generic
         # Gauge_Nkm placeholders are a display convenience for the legacy HTTP
         # layer; putting made-up coordinates into the solver's arrival-time
         # table would be presenting invented locations as results.
         warnings.warn(
             f"No downstream gauge corridor is defined for dam_id={dam_id!r} "
             f"at ({dam_lat}, {dam_lon}). Arrival times will be reported at no "
-            f"gauges. Add one to jalraksha.presets.GAUGES."
+            f"gauges. Add one to floodview.presets.GAUGES."
         )
         return []
 
@@ -800,7 +800,7 @@ def run_dam_break_ensemble(
         record_depth_snapshots: If True, snapshot the depth grid of the
             ensemble member closest to the median peak outflow at
             `n_snapshots` evenly-spaced simulation times, returned as
-            `depth_series` for `jalraksha.export.keyframes.export_keyframes`.
+            `depth_series` for `floodview.export.keyframes.export_keyframes`.
             Off by default: recording every member's full time series is
             memory-prohibitive for large ensembles, so only one representative
             member is snapshotted.

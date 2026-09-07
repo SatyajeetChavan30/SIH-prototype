@@ -62,7 +62,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from jalraksha.gee.auth import gee_status
+from floodview.gee.auth import gee_status
 
 #: Multitemporal GHSL built-up surface collection (100 m posting).
 GHS_BUILT_COLLECTION = "JRC/GHSL/P2023A/GHS_BUILT_S"
@@ -94,7 +94,7 @@ class BuiltUpUnavailableError(RuntimeError):
 
     Raised rather than falling back to an assumed asset density. The caller's
     contract is to publish no damage figure for the affected sector and to say
-    why — see ``services/api/jalraksha_service/tasks.py::_damage_estimate``.
+    why — see ``services/api/floodview_service/tasks.py::_damage_estimate``.
     """
 
 
@@ -167,7 +167,7 @@ def fetch_built_up_on_grid(
         BuiltUpUnavailableError: when neither Earth Engine nor a cache can
             supply the grid.
     """
-    from jalraksha.gee.grid_fetch import read_cached_stack
+    from floodview.gee.grid_fetch import read_cached_stack
 
     cache_dir = Path(cache_dir)
     available, reason = gee_status()
@@ -213,7 +213,7 @@ def _fetch_built_up_live(grid_dict: Dict, crs_epsg: int, cache_dir: Path,
     """Download both GHS-BUILT-S bands aligned to the solver grid, summed."""
     import ee
 
-    from jalraksha.gee.grid_fetch import fetch_image_on_grid
+    from floodview.gee.grid_fetch import fetch_image_on_grid
 
     collection = ee.ImageCollection(GHS_BUILT_COLLECTION)
     image = collection.filter(

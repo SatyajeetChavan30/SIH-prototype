@@ -40,7 +40,7 @@ Baige, a garbage mask cleared a window-total floor by 900x precisely because its
 mis-classified pixels were scattered everywhere, whereas a lake is one patch.
 The flatness gate reads Copernicus GLO-30 from inside the Earth Engine call,
 which is not a layering violation: an EE asset is another EE image, not a call
-into ``jalraksha.terrain``. ``score_candidate_flatness`` remains the offline
+into ``floodview.terrain``. ``score_candidate_flatness`` remains the offline
 twin, and both decide through the same ``flatness_verdict``.
 
 Do NOT widen MIN_JRC_PRECISION to make a steep reach pass. That threshold
@@ -104,8 +104,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.gee.auth import gee_status
-from jalraksha.gee.sar import (
+from floodview.gee.auth import gee_status
+from floodview.gee.sar import (
     JRC_GSW,
     JRC_PERMANENT_OCCURRENCE_PCT,
     MAX_PLAUSIBLE_WATER_FRACTION,
@@ -117,7 +117,7 @@ from jalraksha.gee.sar import (
     _download,
     derive_threshold_from_tiles,
 )
-from jalraksha.gee.terrain_correction import (
+from floodview.gee.terrain_correction import (
     GLO30_COLLECTION,
     describe_refusal as describe_geometry_refusal,
     earth_engine_validity_mask,
@@ -624,7 +624,7 @@ def _fetch_live(
     #
     # The DEM comes from Copernicus GLO-30 INSIDE the Earth Engine call, which
     # is why this can now run at all: importing an EE asset is not a call into
-    # jalraksha.terrain, so the package's layering boundary is intact. The
+    # floodview.terrain, so the package's layering boundary is intact. The
     # verdict itself is flatness_verdict(), shared with the offline half.
     # setDefaultProjection for the same reason terrain_correction.py needs it:
     # a bare mosaic() is EPSG:4326 at ONE DEGREE per pixel, and Terrain computes
@@ -765,7 +765,7 @@ def detect_new_water(
     Args:
         reach: Reach name, for messages and the cache directory.
         bbox: (min_lon, min_lat, max_lon, max_lat) WGS84. Supplied by the
-            caller — jalraksha.gee must not import the service layer, which is
+            caller — floodview.gee must not import the service layer, which is
             where the site registry lives.
         cache_dir: Directory for this reach's cached mask and manifest.
         date_pre_start, date_pre_end: Stable pre-event window, ISO dates.

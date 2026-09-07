@@ -95,12 +95,12 @@
       30.919440540540542
     ]
   },
-  "jalraksha://dem/clipped/30.3789_78.4789/r60km": {
+  "floodview://dem/clipped/30.3789_78.4789/r60km": {
     "path": "data\\dem\\dem_30.38_78.48_clipped.tif",
     "timestamp": "2026-08-26T20:20:36.964427",
     "hash": "3092cb452d1e67a17b0c920ef2d3ec26",
     "size_bytes": 59825631,
-    "source_url": "jalraksha://dem/clipped/30.3789_78.4789/r60km",
+    "source_url": "floodview://dem/clipped/30.3789_78.4789/r60km",
     "format": "GeoTIFF",
     "product": "Copernicus DEM GLO-30 (clipped domain)",
     "synthetic": false,

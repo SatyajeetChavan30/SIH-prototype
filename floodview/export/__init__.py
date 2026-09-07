@@ -1,5 +1,5 @@
 """
-Output modules for JalRaksha results.
+Output modules for FloodView results.
 
 Phase 5+: Export results in various formats (GeoTIFF, Shapefile, KML, keyframes).
 
@@ -10,10 +10,10 @@ Exports:
 - Keyframe PNGs for 3D visualization
 """
 
-from jalraksha.export.geotiff import export_cog
-from jalraksha.export.shapefile import export_shapefile
-from jalraksha.export.kml import export_kml
-from jalraksha.export.keyframes import export_keyframes
+from floodview.export.geotiff import export_cog
+from floodview.export.shapefile import export_shapefile
+from floodview.export.kml import export_kml
+from floodview.export.keyframes import export_keyframes
 
 __all__ = [
     "export_cog",

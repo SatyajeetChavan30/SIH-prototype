@@ -1,5 +1,5 @@
 """
-Validate JalRaksha against the real Delft3D FM kernel.
+Validate FloodView against the real Delft3D FM kernel.
 
     python scripts/validate_against_delft3d.py --case ritter
     python scripts/validate_against_delft3d.py --case tehri
@@ -29,7 +29,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from jalraksha.validation.delft3d_benchmark import (  # noqa: E402
+from floodview.validation.delft3d_benchmark import (  # noqa: E402
     BenchmarkUnavailableError, compare_ritter,
 )
 
@@ -48,8 +48,8 @@ def _plot_ritter(result: dict, out_path: Path) -> Path:
     ax.plot(x, result["analytical"], color="k", lw=2.5, label="Ritter (1892) exact", zorder=3)
     ax.plot(x, result["delft3d"], color="#E53935", lw=1.8, ls="--",
             label="Delft3D FM (dflowfm-cli)", zorder=4)
-    ax.plot(x, result["jalraksha"], color="#1565C0", lw=1.8, ls="-.",
-            label="JalRaksha 2D SWE", zorder=5)
+    ax.plot(x, result["floodview"], color="#1565C0", lw=1.8, ls="-.",
+            label="FloodView 2D SWE", zorder=5)
 
     # Shade the boundary cells excluded from scoring, so the reader can see
     # exactly what was and was not counted rather than taking it on trust.
@@ -77,8 +77,8 @@ def _plot_ritter(result: dict, out_path: Path) -> Path:
     ax.legend(loc="upper right")
     ax.grid(alpha=0.3)
 
-    ax_err.plot(x, result["jalraksha"] - result["analytical"], color="#1565C0",
-                lw=1.2, label="JalRaksha − exact")
+    ax_err.plot(x, result["floodview"] - result["analytical"], color="#1565C0",
+                lw=1.2, label="FloodView − exact")
     ax_err.plot(x, result["delft3d"] - result["analytical"], color="#E53935",
                 lw=1.2, label="Delft3D FM − exact")
     ax_err.axhline(0.0, color="k", lw=0.8)
@@ -87,10 +87,10 @@ def _plot_ritter(result: dict, out_path: Path) -> Path:
     ax_err.legend(loc="upper right", fontsize=9)
     ax_err.grid(alpha=0.3)
 
-    jr = result["jalraksha_vs_analytical"]
+    jr = result["floodview_vs_analytical"]
     d3 = result["delft3d_vs_analytical"]
     fig.text(0.01, 0.01,
-             f"RMSE vs exact —  JalRaksha {jr['rmse_m']:.4f} m   |   "
+             f"RMSE vs exact —  FloodView {jr['rmse_m']:.4f} m   |   "
              f"Delft3D FM {d3['rmse_m']:.4f} m   |   "
              f"engines agree to {result['engine_agreement']['rmse_m']:.4f} m RMSE",
              fontsize=9, color="#333")
@@ -114,13 +114,13 @@ def _jsonable(value):
 
 
 def run_ritter(out_dir: Path, dflowfm_path: str | None) -> dict:
-    print("=== Ritter dam-break: JalRaksha vs Delft3D FM vs exact solution ===")
+    print("=== Ritter dam-break: FloodView vs Delft3D FM vs exact solution ===")
     result = compare_ritter(out_dir / "ritter_model", dflowfm_path=dflowfm_path)
 
-    jr = result["jalraksha_vs_analytical"]
+    jr = result["floodview_vs_analytical"]
     d3 = result["delft3d_vs_analytical"]
     print(f"  exact depth at dam (4h0/9) : {result['exact_depth_at_dam_m']:.3f} m")
-    print(f"  JalRaksha   vs exact  RMSE : {jr['rmse_m']:.4f} m   "
+    print(f"  FloodView   vs exact  RMSE : {jr['rmse_m']:.4f} m   "
           f"(h@dam {jr['depth_at_dam_m']:.3f} m)")
     print(f"  Delft3D FM  vs exact  RMSE : {d3['rmse_m']:.4f} m   "
           f"(h@dam {d3['depth_at_dam_m']:.3f} m)")
@@ -149,7 +149,7 @@ def main() -> int:
         if args.case in ("ritter", "both"):
             results["ritter"] = run_ritter(out_dir, args.dflowfm)
         if args.case in ("tehri", "both"):
-            from jalraksha.validation.delft3d_benchmark import compare_tehri
+            from floodview.validation.delft3d_benchmark import compare_tehri
             results["tehri"] = compare_tehri(out_dir / "tehri_model",
                                              dflowfm_path=args.dflowfm)
             _report_tehri(results["tehri"], out_dir)
@@ -166,14 +166,14 @@ def main() -> int:
 
 def _report_tehri(result: dict, out_dir: Path) -> None:
     """Print and plot the Tehri gauge comparison."""
-    from jalraksha.validation.delft3d_benchmark import plot_tehri_gauges
+    from floodview.validation.delft3d_benchmark import plot_tehri_gauges
 
-    print("\n=== Tehri dam-break: JalRaksha vs Delft3D FM (no ground truth) ===")
+    print("\n=== Tehri dam-break: FloodView vs Delft3D FM (no ground truth) ===")
     for row in result["gauges"]:
-        jr = row["jalraksha_arrival_s"]
+        jr = row["floodview_arrival_s"]
         d3 = row["delft3d_arrival_s"]
         fmt = lambda v: f"{v / 60.0:6.1f} min" if v is not None else "      —   "
-        print(f"  {row['name']:<12} JalRaksha {fmt(jr)}   Delft3D {fmt(d3)}")
+        print(f"  {row['name']:<12} FloodView {fmt(jr)}   Delft3D {fmt(d3)}")
     figure = plot_tehri_gauges(result, out_dir / "tehri_validation.png")
     print(f"  figure: {figure}")
 

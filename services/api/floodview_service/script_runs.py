@@ -83,7 +83,7 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     schemas.py declares them required, so a null there turns
     ``GET /runs/{id}/result`` into a 500 rather than a missing value.
     """
-    from jalraksha_service.tasks import _gauge_max_depths, _minority_arrival_note
+    from floodview_service.tasks import _gauge_max_depths, _minority_arrival_note
 
     gauge_depths = _gauge_max_depths(result)
     rows: List[Dict[str, Any]] = []
@@ -121,8 +121,8 @@ def write_run_summary(
     as empty states, which looks like a broken dashboard rather than a run that
     was registered by a different route.
     """
-    from jalraksha_service.config import settings
-    from jalraksha_service.tasks import _ensemble_summary, _grid_summary
+    from floodview_service.config import settings
+    from floodview_service.tasks import _ensemble_summary, _grid_summary
 
     run_summary: Dict[str, Any] = {
         "ensemble": _ensemble_summary(result) if isinstance(result, dict) else None,
@@ -161,7 +161,7 @@ class RegisteredRun:
 
     def __init__(self, run_id: str, dam_config: Dict[str, Any],
                  solver_params: Dict[str, Any]):
-        from jalraksha_service.config import settings
+        from floodview_service.config import settings
 
         self.run_id = run_id
         self.dam_config = dict(dam_config)
@@ -183,7 +183,7 @@ class RegisteredRun:
         instead of a frozen row. Failures here are swallowed: telemetry must
         never be able to kill a simulation that is otherwise fine.
         """
-        from jalraksha_service import db
+        from floodview_service import db
 
         try:
             db.update_run_status(
@@ -215,8 +215,8 @@ class RegisteredRun:
         flipped to done before its export rows exist is briefly listed as a
         complete run with nothing in it.
         """
-        from jalraksha_service import db
-        from jalraksha_service.tasks import _existing_exports, impact_exports
+        from floodview_service import db
+        from floodview_service.tasks import _existing_exports, impact_exports
 
         exports: List[Dict[str, str]] = []
 
@@ -236,8 +236,8 @@ class RegisteredRun:
                 "path_or_url": str(self.keyframe_dir / "manifest.json"),
             })
         elif result.get("depth_series"):
-            from jalraksha.export.keyframes import export_keyframes
-            from jalraksha.impact.hazard import HazardClassifier
+            from floodview.export.keyframes import export_keyframes
+            from floodview.impact.hazard import HazardClassifier
 
             manifest = export_keyframes(
                 {**result, "dam_name": self.dam_config.get("name", "Dam")},
@@ -275,7 +275,7 @@ class RegisteredRun:
               f"({len(exports)} export rows) — loadable in the dashboard")
 
     def fail(self, error: str) -> None:
-        from jalraksha_service import db
+        from floodview_service import db
 
         db.update_run_status(self.run_id, STATUS_FAILED, 0.0, error=error,
                              phase="Failed")
@@ -315,7 +315,7 @@ class registered_run:  # noqa: N801 - used as a context manager, reads as one
         self.run: Optional[RegisteredRun] = None
 
     def __enter__(self) -> RegisteredRun:
-        from jalraksha_service import db
+        from floodview_service import db
 
         db.init_db()
         run_id = db.create_run(
@@ -356,17 +356,17 @@ class registered_run:  # noqa: N801 - used as a context manager, reads as one
 
 def bootstrap_repo_root(repo_root: Path) -> None:
     """
-    Make ``jalraksha_service`` importable and the relative paths resolve.
+    Make ``floodview_service`` importable and the relative paths resolve.
 
-    Both ``DATABASE_URL`` (``sqlite:///./data/jalraksha.db``) and ``DATA_DIR``
+    Both ``DATABASE_URL`` (``sqlite:///./data/floodview.db``) and ``DATA_DIR``
     (``./data``) are relative to the process CWD, so a script run from anywhere
     else silently creates a SECOND empty database and writes artifacts the API
-    cannot see. Call this before importing anything from ``jalraksha_service``.
+    cannot see. Call this before importing anything from ``floodview_service``.
     """
     import sys
 
     os.chdir(repo_root)
-    os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")
+    os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")
     services_api = str(repo_root / "services" / "api")
     if services_api not in sys.path:
         sys.path.insert(0, services_api)

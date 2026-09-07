@@ -22,7 +22,7 @@ SETUP (all three are required):
 
     pip install earthengine-api
     earthengine authenticate                      # interactive browser sign-in
-    set JALRAKSHA_GEE_PROJECT=<your-gcp-project>  # with the EE API enabled
+    set FLOODVIEW_GEE_PROJECT=<your-gcp-project>  # with the EE API enabled
 
 References:
   - Gorelick, N. et al. (2017) "Google Earth Engine: Planetary-scale geospatial
@@ -38,7 +38,7 @@ from typing import Optional, Tuple
 #: Environment variable naming the Google Cloud project to bill/authorise
 #: Earth Engine against. Earth Engine has required a Cloud project since the
 #: 2023 access change, so there is no sensible default to fall back on.
-GEE_PROJECT_ENV = "JALRAKSHA_GEE_PROJECT"
+GEE_PROJECT_ENV = "FLOODVIEW_GEE_PROJECT"
 
 # Initialization is a network round-trip, so the outcome is cached. Guarded by a
 # lock because FastAPI serves requests from a threadpool and two concurrent

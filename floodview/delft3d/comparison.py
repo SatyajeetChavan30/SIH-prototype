@@ -66,7 +66,7 @@ def rasterize_sph_particles(
             "sph_result has no 'particle_volume_m3'. Depth cannot be derived "
             "from particle positions without knowing the volume each particle "
             "represents, and assuming one would silently rescale every depth "
-            "in this comparison. jalraksha.sph.pysph_runner reports it."
+            "in this comparison. floodview.sph.pysph_runner reports it."
         )
 
     cell_i = np.clip((x / grid_dx).astype(int), 0, grid_nx - 1)

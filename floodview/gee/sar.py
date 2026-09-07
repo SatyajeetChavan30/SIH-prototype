@@ -68,8 +68,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from jalraksha.gee.auth import gee_status
-from jalraksha.gee.terrain_correction import (
+from floodview.gee.auth import gee_status
+from floodview.gee.terrain_correction import (
     describe_refusal as describe_geometry_refusal,
     earth_engine_validity_mask,
     geometry_provenance,
@@ -420,7 +420,7 @@ def _fetch_live(reach: str, bbox: Tuple[float, float, float, float],
     # darkness from water — measured at 63% of the Baige gorge classified as
     # water, and precision 0.010 over Tehri. Excluding shadow and layover before
     # the histogram is derived is the documented remedy (Small 2011, geometric
-    # half). See jalraksha/gee/terrain_correction.py and VERIFICATION_LOG row 29.
+    # half). See floodview/gee/terrain_correction.py and VERIFICATION_LOG row 29.
     geometry = earth_engine_validity_mask(scene, region, scale_m)
     if not geometry["passes_geometry"]:
         raise SarUnavailableError(describe_geometry_refusal(geometry, reach))
@@ -590,7 +590,7 @@ def latest_observed_extent(
     Args:
         reach: Reach name, used for the cache directory and for messages.
         bbox: (min_lon, min_lat, max_lon, max_lat) in WGS84 degrees. Supplied by
-            the caller rather than resolved here — `jalraksha.gee` must not
+            the caller rather than resolved here — `floodview.gee` must not
             import the service layer, which is where the dam registry lives.
         cache_dir: Directory for this reach's cached mask and manifest.
         scale_m: Output posting in metres.

@@ -20,7 +20,7 @@ The five grand challenges identified are:
 
 ---
 
-## 🔑 Key Findings & Relevance to JalRaksha
+## 🔑 Key Findings & Relevance to FloodView
 
 1. **SPHERIC Grand Challenge 3 (Adaptive Resolution)**:
    - SPH in production is fundamentally a uniform particle resolution method. The spatial resolution (particle spacing) required to resolve a breach opening (e.g. 20 m) must be maintained across the entire computational domain.
@@ -28,7 +28,7 @@ The five grand challenges identified are:
 
 2. **Defending Domain Decomposition**:
    - Provides explicit academic literature backing when asked: *"Why not use 3D SPH for the entire river basin?"*
-   - Answer: SPHERIC's own consensus paper explicitly lists full-domain far-field SPH resolution as an open research challenge. JalRaksha's coupling of SPH (near-field) with 2D SWE (far-field) aligns directly with SPH community recommendations.
+   - Answer: SPHERIC's own consensus paper explicitly lists full-domain far-field SPH resolution as an open research challenge. FloodView's coupling of SPH (near-field) with 2D SWE (far-field) aligns directly with SPH community recommendations.
 
 ---
 

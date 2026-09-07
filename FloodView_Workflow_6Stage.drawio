@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mxfile host="app.diagrams.net" modified="2026-09-03T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
-  <diagram name="JalRaksha Multi-Hazard Workflow" id="jalraksha-multihazard">
+  <diagram name="FloodView Multi-Hazard Workflow" id="floodview-multihazard">
     <mxGraphModel dx="2200" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="2280" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- ================= TITLE ================= -->
-        <mxCell id="title" value="JalRaksha — Multi-Hazard Flood Simulation Workflow" style="text;html=1;fontSize=30;fontStyle=1;align=left;verticalAlign=middle;fontColor=#1F3A54;" vertex="1" parent="1">
+        <mxCell id="title" value="FloodView — Multi-Hazard Flood Simulation Workflow" style="text;html=1;fontSize=30;fontStyle=1;align=left;verticalAlign=middle;fontColor=#1F3A54;" vertex="1" parent="1">
           <mxGeometry x="140" y="35" width="1200" height="42" as="geometry" />
         </mxCell>
         <mxCell id="subtitle" value="Dam Breach + River Blockage branches with continuous satellite change-detection loop" style="text;html=1;fontSize=15;align=left;verticalAlign=middle;fontColor=#6B7A8A;" vertex="1" parent="1">

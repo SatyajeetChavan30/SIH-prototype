@@ -43,7 +43,7 @@ behind ``HUIZINGA_2017_VERIFIED = False`` exactly as ``fatality.py`` holds
 Jonkman (2008) and ``terrain/natural_dam.py`` holds Walder & O'Connor (1997)
 and Peng & Zhang (2012).
 
-NO EARTH ENGINE IMPORTS HERE. Impact is Phase 6 and ``jalraksha.gee`` is
+NO EARTH ENGINE IMPORTS HERE. Impact is Phase 6 and ``floodview.gee`` is
 Phase 9; importing upward would violate the dependency direction in CLAUDE.md's
 Architecture Rules and would make this module untestable offline. The service
 layer fetches the exposure rasters and passes arrays in, the same seam

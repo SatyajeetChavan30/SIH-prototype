@@ -8,14 +8,14 @@
 
 ## What's Complete ✅
 
-### 1. **jalraksha/solver/types.py** (250 lines)
+### 1. **floodview/solver/types.py** (250 lines)
 - `Grid` class with cell geometry, extent, cell-centre calculations
 - `State` dataclass (h, u, v, b, t) with volume/eta properties
 - `Result` dataclass for tracking h_max, u_max, v_max, t_arrival
 - Helper functions: `create_state()`, `create_result()`
 - **Status:** Production-ready. No known issues.
 
-### 2. **jalraksha/solver/flux.py** (280 lines)
+### 2. **floodview/solver/flux.py** (280 lines)
 - Van Leer limiter for MUSCL reconstruction
 - Audusse hydrostatic reconstruction (ensures h ≥ 0)
 - HLLC flux in x and y directions
@@ -23,7 +23,7 @@
 - Manning friction source term
 - **Status:** Implemented. See "Known Issues" below.
 
-### 3. **jalraksha/solver/core.py** (340 lines)
+### 3. **floodview/solver/core.py** (340 lines)
 - `SWESolver` class with adaptive CFL timestep control
 - Single-step integration (`step()` method)
 - Full run loop with result tracking (`run()` method)
@@ -125,7 +125,7 @@ tests/test_solver.py::TestDryBedRobustness::test_wetting_front_propagation .... 
 ## Files Touched
 
 ```
-jalraksha/
+floodview/
 ├── solver/
 │   ├── __init__.py (empty)
 │   ├── types.py (NEW, 250 lines) ✅
@@ -144,7 +144,7 @@ tests/
 
 **Phase 2 (Terrain Conditioning)** depends on Phase 1's `SWESolver` class:
 ```python
-from jalraksha.solver.core import SWESolver
+from floodview.solver.core import SWESolver
 solver = SWESolver(grid, manning_n=0.035)
 result = solver.run(state, t_end=10800)  # 3 hours
 ```

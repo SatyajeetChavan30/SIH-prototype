@@ -14,15 +14,15 @@ Delft3D-FLOW is a 2D/3D hydrodynamic simulation program for coastal, river, and 
 
 ---
 
-## 🔑 Technical Comparison & Role in JalRaksha
+## 🔑 Technical Comparison & Role in FloodView
 
 1. **Problem Statement Context**:
    - Problem Statement 26161 specifically requests comparison against "Delf3D" (Delft3D).
    - Python pre/post-processing wrappers exist (`hydromt`, `hydrolib-core`, `dfm_tools`), but the computational kernel is compiled Fortran/C++.
 
 2. **Honest Framing Standard**:
-   - **Delft3D-Class Positioning**: JalRaksha's far-field 2D SWE solver solves the exact same depth-averaged Saint-Venant governing equations as Delft3D-FLOW, but uses an explicit finite-volume HLLC Riemann scheme with Audusse hydrostatic reconstruction rather than Delft3D's ADI finite-difference scheme.
-   - JalRaksha explicitly presents itself as a **"Delft3D-class shallow water solver"** without overclaiming identity with the compiled Deltares Fortran binary.
+   - **Delft3D-Class Positioning**: FloodView's far-field 2D SWE solver solves the exact same depth-averaged Saint-Venant governing equations as Delft3D-FLOW, but uses an explicit finite-volume HLLC Riemann scheme with Audusse hydrostatic reconstruction rather than Delft3D's ADI finite-difference scheme.
+   - FloodView explicitly presents itself as a **"Delft3D-class shallow water solver"** without overclaiming identity with the compiled Deltares Fortran binary.
 
 ---
 

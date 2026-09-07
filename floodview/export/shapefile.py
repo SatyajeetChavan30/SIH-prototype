@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Dict, Optional, List, Tuple
 import warnings
 
-from jalraksha.export.georef import grid_affine, to_north_up, zip_shapefile
+from floodview.export.georef import grid_affine, to_north_up, zip_shapefile
 
 
 def raster_to_inundation_polygon(

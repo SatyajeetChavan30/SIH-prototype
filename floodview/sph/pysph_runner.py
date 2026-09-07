@@ -7,7 +7,7 @@ DEM-derived topography and the surge front is tracked as it advances.
 
 WHY THIS MODULE EXISTS. The service layer previously synthesized its "SPH
 result" from np.random and presented it in the dashboard beside solver output.
-`jalraksha/sph/core.py` was no better a foundation: it had no kernel, no
+`floodview/sph/core.py` was no better a foundation: it had no kernel, no
 neighbour search and no density evolution — `step()` applied a uniform
 acceleration to every particle and discarded the pressure it computed, so
 wiring it in would have swapped random numbers for ballistic trajectories
@@ -792,6 +792,6 @@ def _scratch_dir(dam_name: str) -> str:
     from pathlib import Path
 
     safe = "".join(ch for ch in dam_name if ch.isalnum() or ch in "-_") or "sph"
-    path = Path(tempfile.gettempdir()) / f"jalraksha_sph_{safe}"
+    path = Path(tempfile.gettempdir()) / f"floodview_sph_{safe}"
     path.mkdir(parents=True, exist_ok=True)
     return str(path)

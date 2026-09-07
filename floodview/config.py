@@ -1,5 +1,5 @@
 """
-Configuration loading and validation for JalRaksha.
+Configuration loading and validation for FloodView.
 
 Phase 0 responsibility: Load config from file, CLI args, or environment.
 Validate metric CRS, dam location, and approved data sources.
@@ -20,7 +20,7 @@ Constraints (from CLAUDE.md):
   - Offline-first: all data fetched once, cached locally
 
 Example:
-  config = load_config("jalraksha.yaml")
+  config = load_config("floodview.yaml")
   validate_metric_crs(config)
   cache_dir = setup_cache(config['output_dir'])
 """
@@ -42,8 +42,8 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     Load configuration from file.
 
     Args:
-        config_path: Path to jalraksha.yaml or jalraksha.json.
-                     If None, uses default ./jalraksha.yaml
+        config_path: Path to floodview.yaml or floodview.json.
+                     If None, uses default ./floodview.yaml
 
     Returns:
         Parsed config dict.
@@ -52,7 +52,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         ConfigError: If file missing, invalid, or constraint violated.
     """
     if config_path is None:
-        config_path = Path("jalraksha.yaml")
+        config_path = Path("floodview.yaml")
     else:
         config_path = Path(config_path)
 
@@ -77,7 +77,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
 def validate_config(config: Dict[str, Any]) -> None:
     """
-    Validate config against JalRaksha constraints.
+    Validate config against FloodView constraints.
 
     Raises:
         ConfigError: If constraint violated.

@@ -146,7 +146,7 @@ RIGHT_LOOKING_OFFSET_DEG = -90.0
 #:
 #: EARTH ENGINE MARKS THIS DEPRECATED in favour of COPERNICUS/DEM/GLO30_2024_1,
 #: and it is deliberately NOT changed. This project's DEM provenance is GLO-30
-#: throughout — `jalraksha/dem.py` fetches it from the public AWS COGs, the
+#: throughout — `floodview/dem.py` fetches it from the public AWS COGs, the
 #: solver runs on that raster, and `terrain/dem_update.py` writes deltas back
 #: onto it. Pointing the geometry mask at the 2024 release would compute shadow
 #: and layover from a different DEM epoch than the terrain being modelled, and
@@ -433,7 +433,7 @@ def earth_engine_validity_mask(
     Same formula and the same module constants as the offline half, evaluated
     inside Earth Engine so the DEM never has to be downloaded. Importing an
     Earth Engine asset does not cross the package's layering boundary — this is
-    another EE image, not a call into ``jalraksha.terrain``.
+    another EE image, not a call into ``floodview.terrain``.
 
     Args:
         scene: An ``ee.Image`` from COPERNICUS/S1_GRD, carrying the ``angle``

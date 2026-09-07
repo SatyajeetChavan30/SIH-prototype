@@ -19,12 +19,12 @@ D:\pd\chosen one\SIH prototype\
 └── (no solver code, no package structure)
 ```
 
-**Problem**: Presentation logic dominated root. No `jalraksha/` package. Nowhere to put Phase 0 skeleton (CLI, cache, DEM fetch).
+**Problem**: Presentation logic dominated root. No `floodview/` package. Nowhere to put Phase 0 skeleton (CLI, cache, DEM fetch).
 
 ### After (Deep)
 ```
 D:\pd\chosen one\SIH prototype\
-├── jalraksha/                  ← Core package
+├── floodview/                  ← Core package
 │   ├── __init__.py             (Phase boundaries documented)
 │   ├── config.py               ✅ Phase 0: Config loading & validation
 │   ├── cli.py                  ✅ Phase 0: CLI entry point
@@ -50,7 +50,7 @@ D:\pd\chosen one\SIH prototype\
 
 **Benefits**:
 - ✅ Root is clean; solver package is visible first
-- ✅ Phase 0 code has a home (`jalraksha/config.py`, `.cli`, `.cache`, `.dem`)
+- ✅ Phase 0 code has a home (`floodview/config.py`, `.cli`, `.cache`, `.dem`)
 - ✅ Each phase (1–7) knows exactly where its code goes
 - ✅ Tests live next to modules (easy to import and test independently)
 - ✅ Presentation tooling isolated (can fail without breaking solver)
@@ -62,24 +62,24 @@ D:\pd\chosen one\SIH prototype\
 
 ### Modules Created
 
-1. **`jalraksha/config.py`** (90 lines)
+1. **`floodview/config.py`** (90 lines)
    - `load_config(path)` — Load from YAML or JSON
    - `validate_config(config)` — Check metric CRS, forbid India-WRIS/Bhuvan/CartoDEM
    - `setup_cache(output_dir)` — Create cache directory structure
 
-2. **`jalraksha/cli.py`** (140 lines)
-   - `jalraksha run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540`
-   - `jalraksha validate --config jalraksha.yaml`
-   - `jalraksha cache --list / --clear`
+2. **`floodview/cli.py`** (140 lines)
+   - `floodview run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540`
+   - `floodview validate --config floodview.yaml`
+   - `floodview cache --list / --clear`
    - Main entry point orchestrates config, cache, DEM fetch
 
-3. **`jalraksha/cache.py`** (85 lines)
+3. **`floodview/cache.py`** (85 lines)
    - `get_cache_path(cache_dir, data_type, identifier)` — Compute cache file path
    - `cache_exists(...)` — Check if data is cached
    - `get_or_fetch(url, cache_path)` — Fetch or return cached (offline-first)
    - `clean_cache(...)` — Free disk space
 
-4. **`jalraksha/dem.py`** (110 lines)
+4. **`floodview/dem.py`** (110 lines)
    - `latlon_to_tile(lat, lon)` — Convert to Copernicus tile name (e.g., N30E078)
    - `fetch_dem(location, cache_dir)` — Fetch from public AWS COGs (no login)
    - `validate_dem(dem_path)` — Verify metric CRS, not degrees
@@ -89,17 +89,17 @@ D:\pd\chosen one\SIH prototype\
 
 ```bash
 # Run with explicit parameters
-jalraksha run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540
+floodview run --dam tehri --lat 30.389 --lon 78.341 --height 260 --storage 3540
 
 # Run with config file
-jalraksha run --config jalraksha.yaml
+floodview run --config floodview.yaml
 
 # Validate config
-jalraksha validate --config jalraksha.yaml
+floodview validate --config floodview.yaml
 
 # Manage cache
-jalraksha cache --list
-jalraksha cache --clear
+floodview cache --list
+floodview cache --clear
 ```
 
 ### Phase 0 Output
@@ -140,15 +140,15 @@ Enforced via:
 
 ### Immediate (Phase 0)
 - [ ] Create `pyproject.toml` with dependencies (PySPH, NumPy, Numba, rasterio, geopandas, xarray)
-- [ ] Write sample `jalraksha.yaml` config file
-- [ ] Test Phase 0 CLI: `jalraksha run --config jalraksha.yaml`
+- [ ] Write sample `floodview.yaml` config file
+- [ ] Test Phase 0 CLI: `floodview run --config floodview.yaml`
 - [ ] Verify DEM fetch works (or mock it for local testing)
 
 ### Phase 1 (Solver Core)
-- [ ] Implement `jalraksha/solver/core.py` — SWE solver class
-- [ ] Implement `jalraksha/solver/flux.py` — HLLC Riemann solver
-- [ ] Implement analytical test harness: `jalraksha/solver/test_exact_solutions.py`
-- [ ] Gate Phase 1 on `/verify-jalraksha analytical` (Ritter, Stoker, Thacker)
+- [ ] Implement `floodview/solver/core.py` — SWE solver class
+- [ ] Implement `floodview/solver/flux.py` — HLLC Riemann solver
+- [ ] Implement analytical test harness: `floodview/solver/test_exact_solutions.py`
+- [ ] Gate Phase 1 on `/verify-floodview analytical` (Ritter, Stoker, Thacker)
 
 ### Phase 2–4 (Build to Deliverable)
 - Follow the same pattern: each phase in its own module tree
@@ -160,15 +160,15 @@ Enforced via:
 ## Files Modified/Created
 
 ### Created (10 files)
-- `jalraksha/__init__.py` — Package init
-- `jalraksha/config.py` — Config loading (90 lines)
-- `jalraksha/cli.py` — CLI entry (140 lines)
-- `jalraksha/cache.py` — Cache mgmt (85 lines)
-- `jalraksha/dem.py` — DEM fetch (110 lines)
-- `jalraksha/solver/__init__.py` — Solver package stub
-- `jalraksha/terrain/__init__.py` — Terrain package stub
-- `jalraksha/export/__init__.py` — Export package stub
-- `jalraksha/sph/__init__.py` — SPH package stub
+- `floodview/__init__.py` — Package init
+- `floodview/config.py` — Config loading (90 lines)
+- `floodview/cli.py` — CLI entry (140 lines)
+- `floodview/cache.py` — Cache mgmt (85 lines)
+- `floodview/dem.py` — DEM fetch (110 lines)
+- `floodview/solver/__init__.py` — Solver package stub
+- `floodview/terrain/__init__.py` — Terrain package stub
+- `floodview/export/__init__.py` — Export package stub
+- `floodview/sph/__init__.py` — SPH package stub
 - `tests/conftest.py` — Pytest fixtures
 
 ### Moved (2 files)
@@ -189,18 +189,18 @@ Enforced via:
 
 **Package structure**:
 ```bash
-find . -type f -name "*.py" | grep -E "jalraksha|tools|tests" | wc -l
+find . -type f -name "*.py" | grep -E "floodview|tools|tests" | wc -l
 # 12 files created
 ```
 
 **Import test** (to verify no circular deps):
 ```bash
-python -c "import jalraksha; import jalraksha.cli; print('✓ Imports work')"
+python -c "import floodview; import floodview.cli; print('✓ Imports work')"
 ```
 
 **CLI test**:
 ```bash
-jalraksha --help
+floodview --help
 # (requires Entry point in pyproject.toml)
 ```
 
@@ -221,7 +221,7 @@ jalraksha --help
 
 ## Summary
 
-**JalRaksha architecture improved from shallow/scattered to deep/organized.**
+**FloodView architecture improved from shallow/scattered to deep/organized.**
 
 Phase 0 skeleton is now in place:
 - CLI accepts dam parameters

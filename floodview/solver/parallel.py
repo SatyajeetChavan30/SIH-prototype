@@ -104,8 +104,8 @@ def run_ensemble_member(
     """
     # Imported here rather than at module scope so process-pool workers pick them
     # up on their own side of the fork/spawn boundary.
-    from jalraksha.solver.core import SWESolver
-    from jalraksha.run import inject_breach_hydrograph
+    from floodview.solver.core import SWESolver
+    from floodview.run import inject_breach_hydrograph
 
     try:
         t_hydro = hydrograph["t_array"]

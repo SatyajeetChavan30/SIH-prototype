@@ -1,4 +1,4 @@
-# JalRaksha — Complete Technical Reference Manual
+# FloodView — Complete Technical Reference Manual
 
 ### Dam-Break Inundation Modelling System
 **Smart India Hackathon 2026 · Problem Statement 26161 · Theme: Disaster Management · Sponsor: NTRO**
@@ -68,14 +68,14 @@ Two conventions matter throughout:
 - **[2. Architecture & Data Flow](#section-2)**
   - [2.1  Orchestration Layer — Pipeline, CLI, Presets, Hardening](#2-1-orchestration-layer-pipeline-cli-presets-hardening)
     - [2b. The Orchestration Layer](#2b-the-orchestration-layer)
-    - [2b.1 Package initialisation — `jalraksha/__init__.py`](#2b-1-package-initialisation-jalraksha-init-py)
-    - [2b.2 The end-to-end lifecycle — `jalraksha/run.py`](#2b-2-the-end-to-end-lifecycle-jalraksha-run-py)
+    - [2b.1 Package initialisation — `floodview/__init__.py`](#2b-1-package-initialisation-floodview-init-py)
+    - [2b.2 The end-to-end lifecycle — `floodview/run.py`](#2b-2-the-end-to-end-lifecycle-floodview-run-py)
     - [2b.3 Solver mode dispatch](#2b-3-solver-mode-dispatch)
     - [2b.4 Gauge analysis](#2b-4-gauge-analysis)
-    - [2b.5 The dam presets registry — `jalraksha/presets.py`](#2b-5-the-dam-presets-registry-jalraksha-presets-py)
-    - [2b.6 The CLI — `jalraksha/cli.py`](#2b-6-the-cli-jalraksha-cli-py)
-    - [2b.7 The standalone REST API — `jalraksha/api.py`](#2b-7-the-standalone-rest-api-jalraksha-api-py)
-    - [2b.8 Hardening — `jalraksha/hardening.py`](#2b-8-hardening-jalraksha-hardening-py)
+    - [2b.5 The dam presets registry — `floodview/presets.py`](#2b-5-the-dam-presets-registry-floodview-presets-py)
+    - [2b.6 The CLI — `floodview/cli.py`](#2b-6-the-cli-floodview-cli-py)
+    - [2b.7 The standalone REST API — `floodview/api.py`](#2b-7-the-standalone-rest-api-floodview-api-py)
+    - [2b.8 Hardening — `floodview/hardening.py`](#2b-8-hardening-floodview-hardening-py)
     - [2b.9 Demo and smoke entry points](#2b-9-demo-and-smoke-entry-points)
     - [2b.10 Test coverage](#2b-10-test-coverage)
     - [2b.11 Gaps, bugs, hardcoded values and risks](#2b-11-gaps-bugs-hardcoded-values-and-risks)
@@ -213,9 +213,9 @@ Two conventions matter throughout:
 
 ### Executive Summary
 
-JalRaksha is a Python-based dam-break inundation modelling system built for Smart India Hackathon 2026, Problem Statement 26161, sponsored by the National Technical Research Organisation (NTRO). It pairs a depth-averaged 2D shallow-water-equation (SWE) solver for far-field flood routing with a weakly-compressible Smoothed Particle Hydrodynamics (SPH) near-field solver at the breach, drives both from a Monte-Carlo ensemble of empirical breach hydrographs, and delivers the result as arrival-time rasters, inundation envelopes, hazard classes, population-at-risk figures, and GIS-interoperable exports (Cloud-Optimized GeoTIFF, Shapefile, KML/KMZ) behind a React + FastAPI dashboard.
+FloodView is a Python-based dam-break inundation modelling system built for Smart India Hackathon 2026, Problem Statement 26161, sponsored by the National Technical Research Organisation (NTRO). It pairs a depth-averaged 2D shallow-water-equation (SWE) solver for far-field flood routing with a weakly-compressible Smoothed Particle Hydrodynamics (SPH) near-field solver at the breach, drives both from a Monte-Carlo ensemble of empirical breach hydrographs, and delivers the result as arrival-time rasters, inundation envelopes, hazard classes, population-at-risk figures, and GIS-interoperable exports (Cloud-Optimized GeoTIFF, Shapefile, KML/KMZ) behind a React + FastAPI dashboard.
 
-The system's own framing, stated repeatedly and consistently across its documentation, is that it is a **Tier-1 screening instrument** in the Central Water Commission's own tiering taxonomy — not a replacement for a surveyed Tier-2/Tier-3 emergency-action-plan study. `CLAUDE.md` states it as an architectural rationale: *"Tier-1 instrument framing: JalRaksha is positioned as a rapid screening and prioritisation tool against CWC's own guidelines, not a replacement for Tier-2/3 detailed surveyed studies."* The `README.md` restates it as a user-facing constraint: *"JalRaksha is built as a rapid screening instrument. Flood forecasts represent indicative envelopes and arrival times rather than absolute point depths. Always consult CWC Tier-2/3 detailed studies for emergency planning."*
+The system's own framing, stated repeatedly and consistently across its documentation, is that it is a **Tier-1 screening instrument** in the Central Water Commission's own tiering taxonomy — not a replacement for a surveyed Tier-2/Tier-3 emergency-action-plan study. `CLAUDE.md` states it as an architectural rationale: *"Tier-1 instrument framing: FloodView is positioned as a rapid screening and prioritisation tool against CWC's own guidelines, not a replacement for Tier-2/3 detailed surveyed studies."* The `README.md` restates it as a user-facing constraint: *"FloodView is built as a rapid screening instrument. Flood forecasts represent indicative envelopes and arrival times rather than absolute point depths. Always consult CWC Tier-2/3 detailed studies for emergency planning."*
 
 The engineering record behind the system is unusually candid, and this chapter treats that candour as a first-class artefact. `PROGRESS_SUMMARY.md` opens by voiding all of the project's own earlier numerical results:
 
@@ -288,23 +288,23 @@ The PS file adds its own decomposition into twelve deliverables D1–D12 with th
 
 | ID | Verbatim requirement (source) | Interpretation | Implementing component | Status |
 |---|---|---|---|---|
-| **R1** | "simulate dam break … analysis" (Deliverable i / D1a) | Engineered structural dam failure, breach growth, outflow hydrograph, downstream routing | `jalraksha/terrain/breach.py` → `jalraksha/run.py::run_dam_break_ensemble` → `jalraksha/solver/core.py` | **Fully met** |
-| **R2** | "…/ river blockage analysis" (Deliverable i / D1b) | Landslide-dammed / natural-lake blockage as a *distinct* scenario type. `PS-26161-official.md` D1: "Two scenario types, not one. Rishi Ganga is a *natural* dam, not an engineered one." | No dedicated module exists. `jalraksha/presets.py` carries two engineered dams (Tehri, Khadakwasla). `failure_mode` is `"overtopping"` on both. The dashboard exposes a "breach-mode selector" (`docs/progress.md`) but no landslide-dam geometry, no impoundment-detection pipeline. | **Unmet** |
-| **R3** | "'Smooth Particle Hydrodynamics'" (Description / D2) | Lagrangian mesh-free particle solver | `jalraksha/sph/{core,coupling,domain,pysph_runner}.py`, PySPH 1.0b2 WCSPH, Wendland quintic kernel. Real runs measured: 14,149 particles (`docs/dashboard_integration.md`), 446–573 particles at low resolution (`docs/validation_findings.md` §3) | **Partially met** — runs, but scope is ~600 m over 15 s and it "can never reach a downstream gauge (`reaches_downstream_gauges` is hardcoded false)" |
-| **R4** | "'Delft3D' model" (Description / D3) | Eulerian depth-averaged shallow-water solver | `jalraksha/delft3d/{ugrid,dfm_model,runner,setup,comparison}.py` — invokes the real Deltares `dflowfm-cli.exe` (dimrset 2026.01, build 1.2.184) when installed; falls back to `jalraksha/solver/core.py` labelled "Delft3D-class, NOT Delft3D FM" when not | **Fully met, conditionally** — met only where a Delft3D FM Suite edition shipping kernels is installed |
-| **R5** | "**compare the scenario**" (Description / D4) | Quantitative comparison layer between the two named engines | `jalraksha/delft3d/comparison.py`, `frontend/src/panels/ComparisonPanel.jsx` — RMSE / bias / CSI / overlap metric cards, two matplotlib figures, gauge arrival table | **Partially met** — the comparison is real but not like-for-like: SPH covers ~600 m / 15 s and Delft3D covers the whole corridor, so the two engines are never compared over the same domain |
+| **R1** | "simulate dam break … analysis" (Deliverable i / D1a) | Engineered structural dam failure, breach growth, outflow hydrograph, downstream routing | `floodview/terrain/breach.py` → `floodview/run.py::run_dam_break_ensemble` → `floodview/solver/core.py` | **Fully met** |
+| **R2** | "…/ river blockage analysis" (Deliverable i / D1b) | Landslide-dammed / natural-lake blockage as a *distinct* scenario type. `PS-26161-official.md` D1: "Two scenario types, not one. Rishi Ganga is a *natural* dam, not an engineered one." | No dedicated module exists. `floodview/presets.py` carries two engineered dams (Tehri, Khadakwasla). `failure_mode` is `"overtopping"` on both. The dashboard exposes a "breach-mode selector" (`docs/progress.md`) but no landslide-dam geometry, no impoundment-detection pipeline. | **Unmet** |
+| **R3** | "'Smooth Particle Hydrodynamics'" (Description / D2) | Lagrangian mesh-free particle solver | `floodview/sph/{core,coupling,domain,pysph_runner}.py`, PySPH 1.0b2 WCSPH, Wendland quintic kernel. Real runs measured: 14,149 particles (`docs/dashboard_integration.md`), 446–573 particles at low resolution (`docs/validation_findings.md` §3) | **Partially met** — runs, but scope is ~600 m over 15 s and it "can never reach a downstream gauge (`reaches_downstream_gauges` is hardcoded false)" |
+| **R4** | "'Delft3D' model" (Description / D3) | Eulerian depth-averaged shallow-water solver | `floodview/delft3d/{ugrid,dfm_model,runner,setup,comparison}.py` — invokes the real Deltares `dflowfm-cli.exe` (dimrset 2026.01, build 1.2.184) when installed; falls back to `floodview/solver/core.py` labelled "Delft3D-class, NOT Delft3D FM" when not | **Fully met, conditionally** — met only where a Delft3D FM Suite edition shipping kernels is installed |
+| **R5** | "**compare the scenario**" (Description / D4) | Quantitative comparison layer between the two named engines | `floodview/delft3d/comparison.py`, `frontend/src/panels/ComparisonPanel.jsx` — RMSE / bias / CSI / overlap metric cards, two matplotlib figures, gauge arrival table | **Partially met** — the comparison is real but not like-for-like: SPH covers ~600 m / 15 s and Delft3D covers the whole corridor, so the two engines are never compared over the same domain |
 | **R6** | "using hydrological data" (Description / D5a) | Observed inflow / reservoir hydrology as model input | Not ingested. Reservoir storage comes from published gross-storage figures in `presets.py`; the storage–depth curve is `reservoir_storage_curve()` in `terrain/breach.py`; outflow comes from empirical breach regressions, not from a hydrological record | **Unmet as stated** — hydrology is *synthesised* from dam register parameters, not read from a hydrological dataset |
-| **R7** | "DEM" (Description / D5b) | Digital elevation model input | `jalraksha/dem.py::fetch_dem` (Copernicus GLO-30 from public AWS COGs), `jalraksha/terrain/conditioning.py::load_dem_as_grid` (WGS84 → UTM reprojection, nodata fill, smoothing) | **Fully met** |
-| **R8** | "satellite imagery" (Description / D5c) | Satellite observation input | `jalraksha/gee/sar.py` — Sentinel-1 GRD VV backscatter via Google Earth Engine, split-based Otsu thresholding (Martinis 2009; Chini 2017), scored against JRC Global Surface Water before publication | **Partially met** — see R16; the quality gate frequently *refuses* the scene |
-| **R9** | "should **automatically** carry out the simulation modelling" (Description / D7) | Minimal manual setup; one-command operation | `jalraksha/cli.py` (`jalraksha run --dam tehri …`), `services/api/jalraksha_service/main.py` `POST /runs`, automated DEM fetch, automated reservoir-pool location (`tools/paraview/reservoir.py::estimate_pool_surface_m`) | **Fully met**, with one documented exception: the Tehri Delft3D comparison requires manual barrier placement and currently refuses (see §9) |
-| **R10** | "**loss and damage** analysis" (Deliverable i / D6) | Exposure and impact estimation | `jalraksha/impact/{hazard,fatality,damage,population}.py` — FD2320 hazard classification; Graham (USBR DSO-99-06) fatality rates, with Jonkman (2008) quarantined and DeKay–McClelland (1993) absent; depth-damage against fetched exposure (`gee/built_up.py`, `gee/worldcover.py`); GHSL population | **Partially met, and now end-to-end** — population-at-risk, built-up exposure and per-sector economic damage all reach `GET /runs/{id}/result` and the Impact tab. Exposure is measured per catchment (GHS-BUILT-S surface, WorldCover cropland); what remains unsourced is the depth-damage CURVE (rows 36, 10) and the unit COSTS (row 35), both labelled `model_is_published: false` with the cost echoed for rescaling. A building COUNT is still not built. **Population figures on runs completed before 2026-09-06 are low by the square of the grid/100 m ratio — see row 37.** |
+| **R7** | "DEM" (Description / D5b) | Digital elevation model input | `floodview/dem.py::fetch_dem` (Copernicus GLO-30 from public AWS COGs), `floodview/terrain/conditioning.py::load_dem_as_grid` (WGS84 → UTM reprojection, nodata fill, smoothing) | **Fully met** |
+| **R8** | "satellite imagery" (Description / D5c) | Satellite observation input | `floodview/gee/sar.py` — Sentinel-1 GRD VV backscatter via Google Earth Engine, split-based Otsu thresholding (Martinis 2009; Chini 2017), scored against JRC Global Surface Water before publication | **Partially met** — see R16; the quality gate frequently *refuses* the scene |
+| **R9** | "should **automatically** carry out the simulation modelling" (Description / D7) | Minimal manual setup; one-command operation | `floodview/cli.py` (`floodview run --dam tehri …`), `services/api/floodview_service/main.py` `POST /runs`, automated DEM fetch, automated reservoir-pool location (`tools/paraview/reservoir.py::estimate_pool_surface_m`) | **Fully met**, with one documented exception: the Tehri Delft3D comparison requires manual barrier placement and currently refuses (see §9) |
+| **R10** | "**loss and damage** analysis" (Deliverable i / D6) | Exposure and impact estimation | `floodview/impact/{hazard,fatality,damage,population}.py` — FD2320 hazard classification; Graham (USBR DSO-99-06) fatality rates, with Jonkman (2008) quarantined and DeKay–McClelland (1993) absent; depth-damage against fetched exposure (`gee/built_up.py`, `gee/worldcover.py`); GHSL population | **Partially met, and now end-to-end** — population-at-risk, built-up exposure and per-sector economic damage all reach `GET /runs/{id}/result` and the Impact tab. Exposure is measured per catchment (GHS-BUILT-S surface, WorldCover cropland); what remains unsourced is the depth-damage CURVE (rows 36, 10) and the unit COSTS (row 35), both labelled `model_is_published: false` with the cost echoed for rescaling. A building COUNT is still not built. **Population figures on runs completed before 2026-09-06 are low by the square of the grid/100 m ratio — see row 37.** |
 | **R11** | "possible to generate a flood inundation simulation scenario using **different input datasets**" (Deliverable ii / D8) | Pluggable DEM / hydrology / land-cover sources | Single DEM source (Copernicus GLO-30) with a documented rationale for exclusivity (`DECISIONS.md` §5). Land cover via ESA WorldCover → Manning's *n* lookup (`terrain/roughness.py`). Multiple *engines* are selectable (`solver="swe" / "delft3d" / "sph" / "both"`) and multiple *dams* are selectable, but not multiple DEM providers | **Partially met** — engine and site pluggability, not dataset pluggability |
 | **R12** | "Developing a **Dashboard** for providing modelling input and output visualization framework (GUI)" (Deliverable iii / D9a) | Web GUI for input and output | React + Vite frontend (Leaflet 2D, Cesium 3D, playback timeline) served by FastAPI. Eight tabs: 2D+3D · Gauges · Ensemble · Impact · SPH · Comparison · Validation · Downloads | **Fully met** |
 | **R13** | "The program should support the **large volume of data**" (Deliverable iii / D9b) | Tiled / streamed rendering, large-raster handling | Cloud-Optimized GeoTIFF output; self-hosted Cesium terrain tiles (`tools/cesium/build_terrain_tiles.py`, 1089 tiles, levels 0–12); keyframe PNG stack (30 frames) rather than full time-series streaming; SPH particle cloud decimated to ~2000 points with full count stated; ParaView LOD decimation (30/60/120 m) listed as unbuilt | **Partially met** — COG and terrain tiling are real; result playback is a PNG stack, not a tiled/streamed field |
-| **R14** | "Output should be converted to **.shp or .kml** file" (Deliverable iii / D10) | Hard GIS format requirement | `jalraksha/export/shapefile.py`, `jalraksha/export/kml.py`, `jalraksha/export/geotiff.py`; Downloads tab verified end-to-end: *".zip 200 application/x-zip-compressed, .kml 200, .tif 200 image/tiff"* | **Fully met** |
-| **R15** | "framework for **near real time flood analysis through Google Earth Engine**" (Deliverable iv / D11a) | GEE integration | `jalraksha/gee/{auth,population,sar}.py`; `GET /gee/status`, `GET /gee/latest`; `JALRAKSHA_GEE_PROJECT=sih-prototype-506812` | **Contested — see §9.4.** `PROGRESS_SUMMARY.md` says these modules "still return mock data"; `CLAUDE.md`, `docs/progress.md` and `docs/dashboard_integration.md` all say Earth Engine is live |
+| **R14** | "Output should be converted to **.shp or .kml** file" (Deliverable iii / D10) | Hard GIS format requirement | `floodview/export/shapefile.py`, `floodview/export/kml.py`, `floodview/export/geotiff.py`; Downloads tab verified end-to-end: *".zip 200 application/x-zip-compressed, .kml 200, .tif 200 image/tiff"* | **Fully met** |
+| **R15** | "framework for **near real time flood analysis through Google Earth Engine**" (Deliverable iv / D11a) | GEE integration | `floodview/gee/{auth,population,sar}.py`; `GET /gee/status`, `GET /gee/latest`; `FLOODVIEW_GEE_PROJECT=sih-prototype-506812` | **Contested — see §9.4.** `PROGRESS_SUMMARY.md` says these modules "still return mock data"; `CLAUDE.md`, `docs/progress.md` and `docs/dashboard_integration.md` all say Earth Engine is live |
 | **R16** | "near real time" (Deliverable iv / D11b) | Timeliness of observed extent | Every fetched scene is cached under `data/gee/` and labelled with its real acquisition date. The observed extent is refused when precision against JRC Global Surface Water falls below 0.5 | **Partially met** — `docs/dashboard_integration.md`: *"Both dams currently refuse their latest scene on the JRC 0.5-precision gate (Tehri 0.486); earlier in the same session Tehri's scene passed."* A near-real-time product that may or may not appear on any given day |
-| **R17** | "**any river and Dam data (open source) of India** during the final demonstration" (Deliverable v / D12) | Real named Indian site, open data, live at finale | Tehri Dam (Bhagirathi, Uttarakhand — 260 m, 3,540 MCM) and Khadakwasla Dam (Mutha, Pune, Maharashtra — 39.6 m, 85.31 MCM) in `jalraksha/presets.py`, both on real cached Copernicus GLO-30 | **Fully met** — with the caveat that `docs/dashboard_integration.md` advises using a *pre-baked* run for the demo |
+| **R17** | "**any river and Dam data (open source) of India** during the final demonstration" (Deliverable v / D12) | Real named Indian site, open data, live at finale | Tehri Dam (Bhagirathi, Uttarakhand — 260 m, 3,540 MCM) and Khadakwasla Dam (Mutha, Pune, Maharashtra — 39.6 m, 85.31 MCM) in `floodview/presets.py`, both on real cached Copernicus GLO-30 | **Fully met** — with the caveat that `docs/dashboard_integration.md` advises using a *pre-baked* run for the demo |
 | **R18** | Background: "simulation modelling for flash flood and **scenario generation** … from Humanitarian Assistance and Disaster Relief (HADR) point of view" | Scenario ensemble, not a single deterministic forecast | Monte-Carlo breach ensemble across Froehlich, MacDonald, Costa and Von Thun regressions with Wahl uncertainty bands; `q_peak` and `t_fail` reported as median + p05/p95; per-gauge `arrival_p05_s` / `arrival_p95_s` | **Fully met** |
 
 #### 1.4 Traceability summary
@@ -336,11 +336,11 @@ The PS file adds its own decomposition into twelve deliverables D1–D12 with th
 
 #### 2.1 What the system is for, operationally
 
-JalRaksha answers one question quickly, from open data, with no ground survey: *if this dam fails now, where does the water go, when does it arrive, how deep is it, and who is in the way?* It is designed to answer that in the time available to an operations officer, not the time available to a consulting hydrologist.
+FloodView answers one question quickly, from open data, with no ground survey: *if this dam fails now, where does the water go, when does it arrive, how deep is it, and who is in the way?* It is designed to answer that in the time available to an operations officer, not the time available to a consulting hydrologist.
 
 The operational value proposition is set out in `DECISIONS.md` §8:
 
-> **CWC mandate:** Tier-1 screening of 450+ major dams against NWP/seismic failure. HEC-RAS is too slow (requires manual terrain survey, 1–2 weeks per dam). JalRaksha: 30 min per dam (open data, automated).
+> **CWC mandate:** Tier-1 screening of 450+ major dams against NWP/seismic failure. HEC-RAS is too slow (requires manual terrain survey, 1–2 weeks per dam). FloodView: 30 min per dam (open data, automated).
 
 Note that the "30 min per dam" figure is a *scoping claim* recorded in an architecture-decision record, not an instrumented wall-clock measurement, and it must not be confused with the measured figures in §3. It is also ambiguous: the control panel's "Simulated time" slider defaults to 30 minutes, and the same number appears in both roles. §3 disambiguates.
 
@@ -354,7 +354,7 @@ The framing is not the project's invention; it is CWC's. `RESEARCH-FINDINGS.md` 
 | 2 | 10 m INTERMAP or Lidar | HEC-HMS, HEC-RAS, MIKE-11 or similar 1D unsteady models |
 | 3 | High-resolution Lidar | Empirical equations, WinDAM-B; 1D or 2D unsteady models |
 
-JalRaksha runs on 30 m Copernicus GLO-30 — a global, low-resolution, no-survey DEM — which places it squarely in Tier 1 by CWC's own data criterion. `RESEARCH-FINDINGS.md` draws out precisely why this matters strategically:
+FloodView runs on 30 m Copernicus GLO-30 — a global, low-resolution, no-survey DEM — which places it squarely in Tier 1 by CWC's own data criterion. `RESEARCH-FINDINGS.md` draws out precisely why this matters strategically:
 
 > **Our pipeline is a Tier-1 instrument** in CWC's own taxonomy — automated, public-DEM, screening-grade. That is a *precise*, citable statement of what we are and are not. It pre-empts the "should a safety document rely on a simplified model?" question: CWC already defines a tier for exactly this.
 
@@ -413,7 +413,7 @@ This section is deliberately pedantic, because the documentation set contains tw
 
 The two are coupled but not proportional: `PROGRESS_SUMMARY.md` states the coupling directly — *"simulated time drives compute cost: the control panel's 'Simulated time' slider defaults to 30 min, and a 5-minute simulated run at 200 m resolution takes a few minutes of wall clock."* Note that this sentence contains both quantities and that they run in opposite directions of magnitude: a *shorter* simulated window (5 min) still costs *several minutes* of wall clock, because compute cost scales with grid cells × timesteps and the timestep is CFL-limited by cell size, not by the length of the window alone.
 
-**Where the two are most easily confused.** `DECISIONS.md` §8's "JalRaksha: 30 min per dam" and the slider's 30-minute default are the same number in different currencies. The former is a claimed wall-clock turnaround for a whole screening study; the latter is the default length of the modelled flood. Nothing in the documentation reconciles them, and no measurement supports a 30-minute wall-clock-per-dam figure.
+**Where the two are most easily confused.** `DECISIONS.md` §8's "FloodView: 30 min per dam" and the slider's 30-minute default are the same number in different currencies. The former is a claimed wall-clock turnaround for a whole screening study; the latter is the default length of the modelled flood. Nothing in the documentation reconciles them, and no measurement supports a 30-minute wall-clock-per-dam figure.
 
 #### 3.2 Measured wall-clock figures
 
@@ -457,7 +457,7 @@ Every figure below is transcribed from the source documents with its stated cond
 | Ritter validation case | h₀ = 10 m, **t = 40 s**, Δx = 10 m, 4 km channel | `docs/validation_findings.md` |
 | GHSL population-at-risk run | Tehri, 400 m, **90 min simulated** | `docs/validation_findings.md` |
 | Gauge arrival times, Delft3D FM (Khadakwasla) | Deccan Gymkhana **66.0 min**, Shivajinagar **78.0 min** | `docs/dashboard_integration.md` |
-| Gauge arrival times, JalRaksha SWE (same corridor) | Deccan Gymkhana **109 min** | `docs/dashboard_integration.md` |
+| Gauge arrival times, FloodView SWE (same corridor) | Deccan Gymkhana **109 min** | `docs/dashboard_integration.md` |
 | Gauge arrival times, 47 s Delft3D run | Deccan Gymkhana **17.8 min** through Baramati **155.1 min** | `docs/dashboard_integration.md`, `docs/progress.md` |
 | Gauge arrival, demo walkthrough | Deccan Gymkhana **1h 40m**, band **1h 25m–1h 41m**, 7.10 m | `docs/dashboard_integration.md` |
 
@@ -500,54 +500,54 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 | Feature | Implementing module | Status | Evidence |
 |---|---|---|---|
-| 2D SWE far-field solver | `jalraksha/solver/{core,flux,types}.py` | **Working** | Ritter RMSE 0.0317 m vs exact; lake-at-rest 5.98e-14 m/s over random bathymetry, 1000 steps; mass conservation 0.000000% drift, 1000 steps (`docs/dashboard_integration.md`) |
-| Flux scheme (HLLC + Audusse + MUSCL) | `jalraksha/solver/flux.py` | **Contested** | `CLAUDE.md`, `README.md`, `DECISIONS.md` §6 all describe HLLC with Audusse hydrostatic reconstruction and MUSCL. `BUILD_STATUS.md` and `VERIFICATION_LOG.md` state it was **replaced**: *"Replaced HLLC flux with simpler central-difference explicit solver … HLLC and surface-gradient implementations both produced spurious velocities."* `PROGRESS_SUMMARY.md` refers to a well-balanced C-property in `flux.py:48`, which points back toward the well-balanced scheme. Unresolved |
-| Breach hydrograph ensemble (Monte Carlo) | `jalraksha/terrain/breach.py` | **Working** | 18 tests passing (`BUILD_STATUS.md`); `q_peak` / `t_fail` median + p05/p95 persisted and rendered; `regressions_used` reports Froehlich, MacDonald, Costa, Von Thun |
+| 2D SWE far-field solver | `floodview/solver/{core,flux,types}.py` | **Working** | Ritter RMSE 0.0317 m vs exact; lake-at-rest 5.98e-14 m/s over random bathymetry, 1000 steps; mass conservation 0.000000% drift, 1000 steps (`docs/dashboard_integration.md`) |
+| Flux scheme (HLLC + Audusse + MUSCL) | `floodview/solver/flux.py` | **Contested** | `CLAUDE.md`, `README.md`, `DECISIONS.md` §6 all describe HLLC with Audusse hydrostatic reconstruction and MUSCL. `BUILD_STATUS.md` and `VERIFICATION_LOG.md` state it was **replaced**: *"Replaced HLLC flux with simpler central-difference explicit solver … HLLC and surface-gradient implementations both produced spurious velocities."* `PROGRESS_SUMMARY.md` refers to a well-balanced C-property in `flux.py:48`, which points back toward the well-balanced scheme. Unresolved |
+| Breach hydrograph ensemble (Monte Carlo) | `floodview/terrain/breach.py` | **Working** | 18 tests passing (`BUILD_STATUS.md`); `q_peak` / `t_fail` median + p05/p95 persisted and rendered; `regressions_used` reports Froehlich, MacDonald, Costa, Von Thun |
 | Breach regression coefficients verified against primary sources | `docs/VERIFICATION_LOG.md` items #1–6 | **Not done** | All six marked ❌ TODO with "Equations not yet transcribed. Research gap." Item #6: *"Cannot verify Tehri is inside domain"*; Froehlich calibrated on H ≈ 10–230 m, Tehri is 260 m — *"Flag as extrapolation"* |
-| SPH near-field (WCSPH, PySPH) | `jalraksha/sph/{core,coupling,domain,pysph_runner}.py` | **Partial** | Real PySPH 1.0b2 runs, Wendland quintic; hydrostatic convergence 3.2% dp/d(depth) error with `n_damp=50`; deterministic across RNG seeds. Limited to ~600 m / 15 s; `reaches_downstream_gauges` hardcoded false; `ALPHA_VISCOSITY = 0.25` carries `TODO: UNVETTED`; not validated against a published experiment |
-| Delft3D FM kernel integration | `jalraksha/delft3d/{ugrid,dfm_model,runner}.py` | **Working (conditional)** | Real `dflowfm-cli.exe` 1.2.184, dimrset 2026.01; genuine `*_his.nc` gauge arrivals; Ritter RMSE 0.0349 m. Requires a Suite edition that ships kernels — the "Open" editions do not |
-| Delft3D-class fallback solver | `jalraksha/solver/core.py` via `delft3d/runner.py` | **Working** | Orange banner in the Comparison tab states which engine produced the numbers, before showing any of them |
-| Two-engine comparison layer | `jalraksha/delft3d/comparison.py`, `frontend/src/panels/ComparisonPanel.jsx` | **Partial** | RMSE / bias / CSI / overlap cards, two matplotlib figures, gauge arrival table all render on a real `solver="both"` run. Not like-for-like — SPH and the depth-averaged engines cover different domains |
-| Terrain conditioning (DEM → solver grid) | `jalraksha/terrain/conditioning.py` | **Working** | `load_dem_as_grid()` is *"the single honest DEM→Grid path"* — WGS84 → correct UTM via `rasterio.warp`, nodata fill, smoothing. Verified against real Copernicus: 6 distinct tiles at 0.000277°, clipped to 3891 × 4510, elevations 246–6902 m |
-| Domain builder | `jalraksha/terrain/domain.py` | **Working (post-fix)** | Was the site of the headline elevation-in-`h` bug; now fixed and verified end to end |
-| Manning's *n* from land cover | `jalraksha/terrain/roughness.py` | **Working** | ESA WorldCover class → *n* lookup, sourced to Chow (1959): urban 0.05, grassland 0.035, forest 0.08, water 0.03. `VERIFICATION_LOG.md`: *"Accept as verified for Phase 2"* |
-| Parallel ensemble engine | `jalraksha/solver/parallel.py` | **Working** | Single definition of member physics shared by sequential and pool paths, verified bit-identical; 93.8 s vs 187.4 s at 16 members |
-| Arrival-time computation at gauges | `jalraksha/run.py::compute_arrival_times_at_gauges` | **Working (post-fix)** | Snaps to the lowest bed cell within 1.2 km rather than the geometrically nearest; per-gauge p05/p95 bands persisted |
-| DEM fetch, Copernicus GLO-30 | `jalraksha/dem.py` | **Working (post-fix)** | Was dead code (`NameError` on every call); now re-fetched for real with `GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR` baked into `_fetch_tile_window` |
-| Offline-first cache | `jalraksha/cache.py` | **Working** | 17 cache tests passing; versioned by (source_url, timestamp, md5_hash) with JSON metadata |
-| Dam registry / presets | `jalraksha/presets.py` | **Working** | Two vetted presets (Tehri, Khadakwasla) as frozen dataclasses; `to_dam_config()` raises `PresetError` rather than passing `None` into the regressions; per-dam gauge corridors |
+| SPH near-field (WCSPH, PySPH) | `floodview/sph/{core,coupling,domain,pysph_runner}.py` | **Partial** | Real PySPH 1.0b2 runs, Wendland quintic; hydrostatic convergence 3.2% dp/d(depth) error with `n_damp=50`; deterministic across RNG seeds. Limited to ~600 m / 15 s; `reaches_downstream_gauges` hardcoded false; `ALPHA_VISCOSITY = 0.25` carries `TODO: UNVETTED`; not validated against a published experiment |
+| Delft3D FM kernel integration | `floodview/delft3d/{ugrid,dfm_model,runner}.py` | **Working (conditional)** | Real `dflowfm-cli.exe` 1.2.184, dimrset 2026.01; genuine `*_his.nc` gauge arrivals; Ritter RMSE 0.0349 m. Requires a Suite edition that ships kernels — the "Open" editions do not |
+| Delft3D-class fallback solver | `floodview/solver/core.py` via `delft3d/runner.py` | **Working** | Orange banner in the Comparison tab states which engine produced the numbers, before showing any of them |
+| Two-engine comparison layer | `floodview/delft3d/comparison.py`, `frontend/src/panels/ComparisonPanel.jsx` | **Partial** | RMSE / bias / CSI / overlap cards, two matplotlib figures, gauge arrival table all render on a real `solver="both"` run. Not like-for-like — SPH and the depth-averaged engines cover different domains |
+| Terrain conditioning (DEM → solver grid) | `floodview/terrain/conditioning.py` | **Working** | `load_dem_as_grid()` is *"the single honest DEM→Grid path"* — WGS84 → correct UTM via `rasterio.warp`, nodata fill, smoothing. Verified against real Copernicus: 6 distinct tiles at 0.000277°, clipped to 3891 × 4510, elevations 246–6902 m |
+| Domain builder | `floodview/terrain/domain.py` | **Working (post-fix)** | Was the site of the headline elevation-in-`h` bug; now fixed and verified end to end |
+| Manning's *n* from land cover | `floodview/terrain/roughness.py` | **Working** | ESA WorldCover class → *n* lookup, sourced to Chow (1959): urban 0.05, grassland 0.035, forest 0.08, water 0.03. `VERIFICATION_LOG.md`: *"Accept as verified for Phase 2"* |
+| Parallel ensemble engine | `floodview/solver/parallel.py` | **Working** | Single definition of member physics shared by sequential and pool paths, verified bit-identical; 93.8 s vs 187.4 s at 16 members |
+| Arrival-time computation at gauges | `floodview/run.py::compute_arrival_times_at_gauges` | **Working (post-fix)** | Snaps to the lowest bed cell within 1.2 km rather than the geometrically nearest; per-gauge p05/p95 bands persisted |
+| DEM fetch, Copernicus GLO-30 | `floodview/dem.py` | **Working (post-fix)** | Was dead code (`NameError` on every call); now re-fetched for real with `GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR` baked into `_fetch_tile_window` |
+| Offline-first cache | `floodview/cache.py` | **Working** | 17 cache tests passing; versioned by (source_url, timestamp, md5_hash) with JSON metadata |
+| Dam registry / presets | `floodview/presets.py` | **Working** | Two vetted presets (Tehri, Khadakwasla) as frozen dataclasses; `to_dam_config()` raises `PresetError` rather than passing `None` into the regressions; per-dam gauge corridors |
 
 #### 4.2 Impact, export and observation
 
 | Feature | Implementing module | Status | Evidence |
 |---|---|---|---|
-| FD2320 hazard classification | `jalraksha/impact/hazard.py` | **Working** | Rendered on the map with a legend coloured from the classifier's own palette *"so the legend cannot drift from the pixels"* |
-| Population at risk (GHSL) | `jalraksha/impact/population.py`, `jalraksha/gee/population.py` | **Working** | GHSL P2023A epoch 2020. **The "resampled by sum" this row used to claim was never happening:** `reduceResolution(ee.Reducer.sum())` is area-weighted and returns a mean, so every figure below — and every PAR artifact written before 2026-09-06 — is low by (grid / 100 m)², measured at 25.003x on a 500 m grid. Fixed in `gee/grid_fetch.py` by density-then-mean-then-cell-area; verified to 1.006 of the native-resolution total. Superseded figures, kept for the record: Tehri 220 PAR at 260 m head, 322 PAR at 120 m head, of 295,025 in domain. See VERIFICATION_LOG row 37 |
-| Loss of life (Graham / Jonkman / DeKay–McClelland) | `jalraksha/impact/fatality.py` | **Partial** | Graham (USBR DSO-99-06) joined to warning-urgency bands, *"shown as a range across all three severity assumptions, never a single number."* Coefficients #7–9 are ⏳ DEFERRED in `VERIFICATION_LOG.md` |
-| Economic damage (depth-damage on fetched exposure) | `jalraksha/impact/damage.py`, `gee/built_up.py`, `tasks.py::_damage_estimate` | **Working, labelled** | Per sector (residential / non-residential / cropland) from GHS-BUILT-S surface and WorldCover cropland over the run's own grid. Measured on `a87fb5a5` (Khadakwasla, 300 m): ₹171 cr total, ₹120–222 cr band. The curve is an unpublished saturating exponential (`model_is_published: false`, row 36) and the unit costs are unvetted placeholders echoed for rescaling (row 35); Huizinga 2017 is quarantined behind `HUIZINGA_2017_VERIFIED = False` (row 10). A sector whose exposure cannot be fetched shows its reason and no figure, and the TOTAL is withheld unless every sector succeeded |
-| Building exposure | `jalraksha/gee/built_up.py` | **Working as SURFACE, not as a count** | GHS-BUILT-S R2023A built-up surface, m² per 100 m cell, on the run's grid; residential = published total minus published non-residential band, so the sector split is data rather than a chosen ratio. A building **count** remains not built: that needs Google Open Buildings (CC BY 4.0), and a count derived from population density would be a number invented from another number |
+| FD2320 hazard classification | `floodview/impact/hazard.py` | **Working** | Rendered on the map with a legend coloured from the classifier's own palette *"so the legend cannot drift from the pixels"* |
+| Population at risk (GHSL) | `floodview/impact/population.py`, `floodview/gee/population.py` | **Working** | GHSL P2023A epoch 2020. **The "resampled by sum" this row used to claim was never happening:** `reduceResolution(ee.Reducer.sum())` is area-weighted and returns a mean, so every figure below — and every PAR artifact written before 2026-09-06 — is low by (grid / 100 m)², measured at 25.003x on a 500 m grid. Fixed in `gee/grid_fetch.py` by density-then-mean-then-cell-area; verified to 1.006 of the native-resolution total. Superseded figures, kept for the record: Tehri 220 PAR at 260 m head, 322 PAR at 120 m head, of 295,025 in domain. See VERIFICATION_LOG row 37 |
+| Loss of life (Graham / Jonkman / DeKay–McClelland) | `floodview/impact/fatality.py` | **Partial** | Graham (USBR DSO-99-06) joined to warning-urgency bands, *"shown as a range across all three severity assumptions, never a single number."* Coefficients #7–9 are ⏳ DEFERRED in `VERIFICATION_LOG.md` |
+| Economic damage (depth-damage on fetched exposure) | `floodview/impact/damage.py`, `gee/built_up.py`, `tasks.py::_damage_estimate` | **Working, labelled** | Per sector (residential / non-residential / cropland) from GHS-BUILT-S surface and WorldCover cropland over the run's own grid. Measured on `a87fb5a5` (Khadakwasla, 300 m): ₹171 cr total, ₹120–222 cr band. The curve is an unpublished saturating exponential (`model_is_published: false`, row 36) and the unit costs are unvetted placeholders echoed for rescaling (row 35); Huizinga 2017 is quarantined behind `HUIZINGA_2017_VERIFIED = False` (row 10). A sector whose exposure cannot be fetched shows its reason and no figure, and the TOTAL is withheld unless every sector succeeded |
+| Building exposure | `floodview/gee/built_up.py` | **Working as SURFACE, not as a count** | GHS-BUILT-S R2023A built-up surface, m² per 100 m cell, on the run's grid; residential = published total minus published non-residential band, so the sector split is data rather than a chosen ratio. A building **count** remains not built: that needs Google Open Buildings (CC BY 4.0), and a count derived from population density would be a number invented from another number |
 | Per-gauge population at risk | — | **Deliberately not built** | *"Per-gauge PAR is deliberately null: splitting a domain figure across gauges needs a catchment radius per gauge that no source defines"* |
-| Shapefile export | `jalraksha/export/shapefile.py` | **Working** | Downloads tab verified; `.zip` 200 `application/x-zip-compressed` |
-| KML/KMZ export | `jalraksha/export/kml.py` | **Working** | `.kml` 200 |
-| Cloud-Optimized GeoTIFF export | `jalraksha/export/geotiff.py` | **Working** | `.tif` 200 `image/tiff` |
-| Georeferencing helper | `jalraksha/export/georef.py` | **Working** | `grid` dict carries `x0, y0, crs`; Tehri keyframe bounds verified centred on 78.481 E, 30.378 N |
-| Keyframe PNG stack | `jalraksha/export/keyframes.py` | **Working (post-fix)** | Was dead code (no depth time series recorded); now 30 keyframes generated and served over HTTP in a real run. PNGs previously rendered upside-down (image row 0 is north; grid row 0 is south) — fixed |
-| XDMF + HDF5 export | `jalraksha/export/xdmf_export.py` | **Working** | Drives the ParaView pipeline; carries provenance field data |
-| MATLAB export | `jalraksha/export/matlab_export.py` | **Working** | Present in the export tree; no failure recorded |
-| Sentinel-1 SAR observed water extent | `jalraksha/gee/sar.py` | **Partial** | Split-based Otsu (Martinis 2009; Chini 2017), scored against JRC GSW before publication. Hirakud (flat plain): recall 0.557, precision 0.768 → **mask published**. Tehri (steep gorge): recall 0.945, precision 0.010 → **refused**. Terrain-corrected local-incidence-angle masking (Small 2011) is the documented fix and is *not implemented* |
+| Shapefile export | `floodview/export/shapefile.py` | **Working** | Downloads tab verified; `.zip` 200 `application/x-zip-compressed` |
+| KML/KMZ export | `floodview/export/kml.py` | **Working** | `.kml` 200 |
+| Cloud-Optimized GeoTIFF export | `floodview/export/geotiff.py` | **Working** | `.tif` 200 `image/tiff` |
+| Georeferencing helper | `floodview/export/georef.py` | **Working** | `grid` dict carries `x0, y0, crs`; Tehri keyframe bounds verified centred on 78.481 E, 30.378 N |
+| Keyframe PNG stack | `floodview/export/keyframes.py` | **Working (post-fix)** | Was dead code (no depth time series recorded); now 30 keyframes generated and served over HTTP in a real run. PNGs previously rendered upside-down (image row 0 is north; grid row 0 is south) — fixed |
+| XDMF + HDF5 export | `floodview/export/xdmf_export.py` | **Working** | Drives the ParaView pipeline; carries provenance field data |
+| MATLAB export | `floodview/export/matlab_export.py` | **Working** | Present in the export tree; no failure recorded |
+| Sentinel-1 SAR observed water extent | `floodview/gee/sar.py` | **Partial** | Split-based Otsu (Martinis 2009; Chini 2017), scored against JRC GSW before publication. Hirakud (flat plain): recall 0.557, precision 0.768 → **mask published**. Tehri (steep gorge): recall 0.945, precision 0.010 → **refused**. Terrain-corrected local-incidence-angle masking (Small 2011) is the documented fix and is *not implemented* |
 | Synthetic SAR overlay | — | **Deliberately not built** | *"No synthetic overlay is ever produced. An earlier spec asked for one; it was not built, and `GeoSarResponse`'s 'there is no fourth state' rule stands"* |
-| GEE authentication and status | `jalraksha/gee/auth.py` | **Working** | Availability means an actual `ee.Initialize(project=...)` succeeded, and the failure reason is carried out verbatim rather than collapsed to a boolean |
+| GEE authentication and status | `floodview/gee/auth.py` | **Working** | Availability means an actual `ee.Initialize(project=...)` succeeded, and the failure reason is carried out verbatim rather than collapsed to a boolean |
 
 #### 4.3 Interface, service and tooling
 
 | Feature | Implementing module | Status | Evidence |
 |---|---|---|---|
-| CLI | `jalraksha/cli.py` | **Working** | `jalraksha run --dam tehri --lat … --lon … --height … --storage …`; `validate`; `cache --list / --clear` |
-| Standard-library REST API (port 8502) | `jalraksha/api.py` | **Working (post-fix)** | `/health`, `/api/v1/dams`, `/api/v1/gauges`, `/api/v1/simulate`. Switched from `HTTPServer` to `ThreadingHTTPServer` with `daemon_threads`: 21 tests in 19.87 s → 2.05 s |
-| FastAPI service (port 8000) | `services/api/jalraksha_service/main.py` | **Working** | 12 endpoints including `POST /runs`, `GET /runs`, `GET /runs/{id}/result`, `GET /runs/{id}/comparison`, `GET /validation`, `GET /gee/status`, `GET /gee/latest`, `POST /runs/{id}/open-paraview` |
-| Subprocess run worker | `services/api/jalraksha_service/run_worker.py` | **Working** | Every endpoint answers in ~0.21 s while a run is actively solving |
-| Celery + Redis broker path | `services/api/jalraksha_service/worker.py` | **Partial** | Available via `scripts/run_api.py --broker`; not the default, *"because Redis as a demo-day dependency is what `CELERY_EAGER` exists to avoid."* `CELERY_EAGER=1` runs tasks in an in-process background thread |
-| Run persistence / DB | `services/api/jalraksha_service/db.py` | **Working (post-fix)** | `run_summary.json` persisted and served on `RunResult`; failure reasons persisted; `max_depth_m` and `par_estimate` were columns written `None` on every path since creation — now real |
+| CLI | `floodview/cli.py` | **Working** | `floodview run --dam tehri --lat … --lon … --height … --storage …`; `validate`; `cache --list / --clear` |
+| Standard-library REST API (port 8502) | `floodview/api.py` | **Working (post-fix)** | `/health`, `/api/v1/dams`, `/api/v1/gauges`, `/api/v1/simulate`. Switched from `HTTPServer` to `ThreadingHTTPServer` with `daemon_threads`: 21 tests in 19.87 s → 2.05 s |
+| FastAPI service (port 8000) | `services/api/floodview_service/main.py` | **Working** | 12 endpoints including `POST /runs`, `GET /runs`, `GET /runs/{id}/result`, `GET /runs/{id}/comparison`, `GET /validation`, `GET /gee/status`, `GET /gee/latest`, `POST /runs/{id}/open-paraview` |
+| Subprocess run worker | `services/api/floodview_service/run_worker.py` | **Working** | Every endpoint answers in ~0.21 s while a run is actively solving |
+| Celery + Redis broker path | `services/api/floodview_service/worker.py` | **Partial** | Available via `scripts/run_api.py --broker`; not the default, *"because Redis as a demo-day dependency is what `CELERY_EAGER` exists to avoid."* `CELERY_EAGER=1` runs tasks in an in-process background thread |
+| Run persistence / DB | `services/api/floodview_service/db.py` | **Working (post-fix)** | `run_summary.json` persisted and served on `RunResult`; failure reasons persisted; `max_depth_m` and `par_estimate` were columns written `None` on every path since creation — now real |
 | React + Vite dashboard | `frontend/src/` | **Working** | 8 panels; panels stay mounted and hide with CSS |
 | Leaflet 2D map | `frontend/src/panels/Map2D.jsx` | **Working** | 9 tiles, overlay changes with the clock, FD2320 legend. Leaflet's stylesheet was a `<link>` to unpkg.com — now bundled for offline |
 | Cesium 3D globe | `frontend/src/panels/Scene3D.jsx` | **Working (post-fix)** | Textured terrain, four gauge entities labelled with distances. `flyTo` bug (globe never left North America) fixed with bounded retry |
@@ -556,10 +556,10 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 | Run picker (`GET /runs`) | `services/api/.../main.py` | **Working** | Replaced typing a 32-character hex id; 6 dams, 29 runs listed |
 | Validation tab | `frontend/src/panels/ValidationPanel.jsx` | **Working** | 3 PASS / 0 FAIL, three-curve Ritter chart; mirrors the CI gates *"exactly (same seeds, same grids, same thresholds) so the badge and the merge gate can never disagree"* |
 | Progress reporting | `run_dam_break_ensemble`, `run_ensemble` `progress_cb` | **Working (post-fix)** | "Solving member 12/30" replaced a frozen "running 5%" |
-| ParaView pipeline | `paraview/`, `tools/paraview/`, `jalraksha/export/xdmf_export.py` | **Partial** | Phase 3 (static water) signed off for both dams; Phase 7 (static export, `render_static.py`) done and dam-agnostic. **Phases 6, 8 and 9 remain unbuilt** — scientific overlays, video export, LOD optimization |
-| Validation benchmarks (Malpasset, Chamoli) | `jalraksha/validation/benchmarks.py` | **Not run** | *"Only the Ritter case has been scored. Malpasset and Chamoli remain unrun"* |
-| Sensitivity analysis | `jalraksha/validation/sensitivity.py` | **Working** | `tests/test_sensitivity.py` present and passing |
-| Hardening / offline mode | `jalraksha/hardening.py` | **Working** | `tests/test_hardening.py` present and passing |
+| ParaView pipeline | `paraview/`, `tools/paraview/`, `floodview/export/xdmf_export.py` | **Partial** | Phase 3 (static water) signed off for both dams; Phase 7 (static export, `render_static.py`) done and dam-agnostic. **Phases 6, 8 and 9 remain unbuilt** — scientific overlays, video export, LOD optimization |
+| Validation benchmarks (Malpasset, Chamoli) | `floodview/validation/benchmarks.py` | **Not run** | *"Only the Ritter case has been scored. Malpasset and Chamoli remain unrun"* |
+| Sensitivity analysis | `floodview/validation/sensitivity.py` | **Working** | `tests/test_sensitivity.py` present and passing |
+| Hardening / offline mode | `floodview/hardening.py` | **Working** | `tests/test_hardening.py` present and passing |
 | Docker / Compose deployment | `Dockerfile`, `docker-compose.yml`, `services/api/Dockerfile` | **Not verified** | *"Docker is not installed here, so `docker compose up` was never run."* Open question: the `frontend` service maps `3000:3000` but nothing confirms the container serves on 3000 in production mode |
 | Blender cinematic render | — | **Not built** | *"Not attempted; no Blender binary available"* |
 | SIH presentation tooling | `tools/sih-presentation/{build_ppt,check_ppt}.py` | **Working** | Deliberately isolated so it *"can fail without breaking solver tests"* |
@@ -571,11 +571,11 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 #### 5.1 User personas
 
-**NDRF / SDRF (National and State Disaster Response Forces).** The arrival-time consumer. What they need from JalRaksha is lead time at named downstream towns with an uncertainty band, and a hazard class per area so staging and evacuation can be prioritised. The dashboard's Gauges tab is built for exactly this read: *"Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, severe."* Note that `RESEARCH-FINDINGS.md` cautions against transposing responder organisations between events: the Phuktal responders were *"Army, BRO, NDMA, CWC, DRDO, IAF, NHPC, LAHDC — NOT ITBP or NDRF"*, while ITBP/NDRF/DRDO were the Rishiganga 2021 responders.
+**NDRF / SDRF (National and State Disaster Response Forces).** The arrival-time consumer. What they need from FloodView is lead time at named downstream towns with an uncertainty band, and a hazard class per area so staging and evacuation can be prioritised. The dashboard's Gauges tab is built for exactly this read: *"Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, severe."* Note that `RESEARCH-FINDINGS.md` cautions against transposing responder organisations between events: the Phuktal responders were *"Army, BRO, NDMA, CWC, DRDO, IAF, NHPC, LAHDC — NOT ITBP or NDRF"*, while ITBP/NDRF/DRDO were the Rishiganga 2021 responders.
 
 **CWC / Central Dam Safety Organisation.** The portfolio-screening consumer. The Tier-1 framing exists for this persona: run every dam in the register, rank by downstream consequence, commission Tier-2/3 studies at the top of the list. The relevant statutory context recorded in `PS-26161-official.md` is the *"NDSA Emergency Action Plan backlog, Dam Safety Act 2021 deadline"* — but the same file is explicit that this is a **support** story, not the headline: *"Do not lead with the NDSA/EAP compliance backlog. NTRO is not the dam-safety regulator."*
 
-**State disaster management authorities.** The map consumer. `.shp` and `.kml` exports are the deliverable here — these plug into whatever GIS the state already runs, without requiring JalRaksha itself.
+**State disaster management authorities.** The map consumer. `.shp` and `.kml` exports are the deliverable here — these plug into whatever GIS the state already runs, without requiring FloodView itself.
 
 **State water resources departments and water boards (e.g. irrigation departments operating structures like Khadakwasla).** The operations consumer, interested in the "water release" case the PS Background names alongside structural failure.
 
@@ -587,21 +587,21 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 **Laptop-class hardware.** Every measured figure in §3 comes from a single machine: 16 logical cores, RAM tight enough that the ensemble worker cap is set by memory rather than cores (*"each worker is a full interpreter at ~400 MB"*), and a consumer GPU (RTX 4050) that was evaluated and rejected for float64 work. `DECISIONS.md` rejects Docker-only deployment for exactly this reason: *"Project must run on demo-day laptop without Docker (network unreliable, setup time). Python venv preferred."*
 
-**Offline-first, with the network assumed hostile.** This is stated as a hard rule in `CLAUDE.md` (*"Offline-first design: Everything must run from cache after first fetch. Demo-day network reliability is assumed low"*) and as a cache contract in `DECISIONS.md` §4 (*"SIH venues are unreliable. One network failure mid-run breaks the demo"*), with an explicit acceptance test: `jalraksha prefetch --scenario tehri && unplug network && jalraksha run --scenario tehri --offline`.
+**Offline-first, with the network assumed hostile.** This is stated as a hard rule in `CLAUDE.md` (*"Offline-first design: Everything must run from cache after first fetch. Demo-day network reliability is assumed low"*) and as a cache contract in `DECISIONS.md` §4 (*"SIH venues are unreliable. One network failure mid-run breaks the demo"*), with an explicit acceptance test: `floodview prefetch --scenario tehri && unplug network && floodview run --scenario tehri --offline`.
 
 The offline discipline is enforced in unexpected places. `node_modules/` is tracked in version control deliberately — *"offline-first vendoring, which is why dependency changes show as thousands of modified files."* Leaflet's stylesheet was pulled from a `<link>` to unpkg.com and had to be bundled, because *"the map rendered as unstyled tiles with no zoom control the moment the machine was offline, in a project whose premise is offline-first."* Every GEE scene is cached under `data/gee/` so *"once a reach has been fetched the dashboard keeps working offline and labels the layer as a cached scene, with its real acquisition date."*
 
-**Two-process launch.** `python scripts/run_api.py` (FastAPI on :8000) plus `npm run dev --prefix frontend` (Vite on :3000). `scripts/run_api.py` sets the eager-task and data-dir environment and pins the working directory to the repo root. A third optional process is the standard-library REST API on :8502 (`python -m jalraksha.api`).
+**Two-process launch.** `python scripts/run_api.py` (FastAPI on :8000) plus `npm run dev --prefix frontend` (Vite on :3000). `scripts/run_api.py` sets the eager-task and data-dir environment and pins the working directory to the repo root. A third optional process is the standard-library REST API on :8502 (`python -m floodview.api`).
 
 #### 5.3 OS support and Windows-specific constraints
 
 The reference build machine is **Windows 11** (`docs/validation_findings.md`: *"Machine: Windows 11, Python 3.14"*), and several constraints follow from it:
 
 1. **Multiprocessing entry-point guard.** `PROGRESS_SUMMARY.md`: *"Windows callers must guard their entry point with `if __name__ == '__main__':` — spawned children re-import `__main__`. Without it the pool raises, and `run_ensemble` degrades to sequential rather than failing the run."* This is a silent 2× performance loss, not a crash.
-2. **GDAL dependency resolution.** `README.md` prescribes OSGeo4W or a Conda/mamba environment on Windows: `conda create -n jalraksha python=3.11 conda-forge::gdal conda-forge::libgdal -y`. Linux gets `apt-get install -y gdal-bin libgdal-dev`.
-3. **Delft3D FM kernel paths.** Windows-only executable discovery: `dflowfm-cli.exe`, searched at `<install>\plugins\DeltaShell.Dimr\kernels\...\bin\dflowfm-cli.exe`, overridable by `JALRAKSHA_DFLOWFM_EXE`. `README.md` records a trap: *"The 'Open' editions (e.g. `2026.02 OpenHMWQ`) install the DeltaShell framework without `plugins\DeltaShell.Dimr\kernels`, so the GUI launches and the licence works but there is nothing to compute with — `DeltaShell.Console.exe` is a scripting host, not a solver."*
-4. **ParaView paths.** `JALRAKSHA_PARAVIEW_EXE` defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`.
-5. **Inherited `PROJ_LIB` corruption.** `jalraksha/__init__.py` repairs a broken inherited `PROJ_LIB`: *"This machine has PostgreSQL/PostGIS exporting one whose database layout predates what rasterio's PROJ expects, which made every CRS lookup fail."* A Windows-typical failure mode, but the repair is unconditional.
+2. **GDAL dependency resolution.** `README.md` prescribes OSGeo4W or a Conda/mamba environment on Windows: `conda create -n floodview python=3.11 conda-forge::gdal conda-forge::libgdal -y`. Linux gets `apt-get install -y gdal-bin libgdal-dev`.
+3. **Delft3D FM kernel paths.** Windows-only executable discovery: `dflowfm-cli.exe`, searched at `<install>\plugins\DeltaShell.Dimr\kernels\...\bin\dflowfm-cli.exe`, overridable by `FLOODVIEW_DFLOWFM_EXE`. `README.md` records a trap: *"The 'Open' editions (e.g. `2026.02 OpenHMWQ`) install the DeltaShell framework without `plugins\DeltaShell.Dimr\kernels`, so the GUI launches and the licence works but there is nothing to compute with — `DeltaShell.Console.exe` is a scripting host, not a solver."*
+4. **ParaView paths.** `FLOODVIEW_PARAVIEW_EXE` defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`.
+5. **Inherited `PROJ_LIB` corruption.** `floodview/__init__.py` repairs a broken inherited `PROJ_LIB`: *"This machine has PostgreSQL/PostGIS exporting one whose database layout predates what rasterio's PROJ expects, which made every CRS lookup fail."* A Windows-typical failure mode, but the repair is unconditional.
 
 #### 5.4 The Python 3.11+ / 3.14 situation
 
@@ -615,7 +615,7 @@ There is a documented gap between the *declared* and *actual* Python versions, a
 
 A second consequence is a **dependency-version drift**: `pyproject.toml` pins `pysph>=0.9b0`, while `docs/validation_findings.md` records the measured runs as *"PySPH 1.0b2 WCSPH."* The floor is satisfied but the manifest does not describe what was actually tested.
 
-A third, and the most serious for anyone installing the package: `pyproject.toml`'s `[tool.setuptools] packages` list enumerates only `["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]`. The delivered package tree also contains `jalraksha/delft3d/`, `jalraksha/gee/`, `jalraksha/impact/` and `jalraksha/validation/`. A `pip install .` would omit four subpackages — including everything behind requirements R4, R10 and R15. This is flagged as CRITICAL.
+A third, and the most serious for anyone installing the package: `pyproject.toml`'s `[tool.setuptools] packages` list enumerates only `["floodview", "floodview.solver", "floodview.terrain", "floodview.export", "floodview.sph"]`. The delivered package tree also contains `floodview/delft3d/`, `floodview/gee/`, `floodview/impact/` and `floodview/validation/`. A `pip install .` would omit four subpackages — including everything behind requirements R4, R10 and R15. This is flagged as CRITICAL.
 
 ---
 
@@ -624,48 +624,48 @@ A third, and the most serious for anyone installing the package: `pyproject.toml
 Each rule below is numbered, stated, given its rationale, and located at its enforcement point.
 
 **G1 — Approved open-data sources only.**
-*Rule (`README.md`):* *"Under NTRO directives, geofenced, broken, or login-gated services (such as India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM) are **strictly forbidden**. JalRaksha uses Copernicus GLO-30 DEM and GHSL Global Human Settlement layers via public AWS storage."*
+*Rule (`README.md`):* *"Under NTRO directives, geofenced, broken, or login-gated services (such as India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM) are **strictly forbidden**. FloodView uses Copernicus GLO-30 DEM and GHSL Global Human Settlement layers via public AWS storage."*
 *Approved set:* Copernicus GLO-30 (DEM), GHSL (population), ESA WorldCover (land cover → Manning's *n*), JRC Global Surface Water (SAR validation baseline), CWC dam registers (dam parameters), Google Open Buildings (intended building source, not yet integrated).
 *Rationale:* A geofenced or login-gated source cannot be relied on at a demo, cannot be redistributed, and cannot be reproduced by a reviewer. `DECISIONS.md` §5 is blunt: *"Anti-pattern: Using CartoDEM ('it's Indian!'). It's geo-fenced and broken."*
-*Enforced at:* `jalraksha/config.py::validate_config` — *"Check metric CRS, forbid India-WRIS/Bhuvan/CartoDEM"* (`ARCHITECTURE_IMPROVEMENTS.md`); plus a `.claude/settings.json` PreToolUse/Bash hook that warns on forbidden data sources.
+*Enforced at:* `floodview/config.py::validate_config` — *"Check metric CRS, forbid India-WRIS/Bhuvan/CartoDEM"* (`ARCHITECTURE_IMPROVEMENTS.md`); plus a `.claude/settings.json` PreToolUse/Bash hook that warns on forbidden data sources.
 
 **G2 — Copernicus GLO-30 is the DEM, and the substitution is declared, not silent.**
 *Rule:* Use Copernicus GLO-30 rather than the PS's named ASTER/SRTM, on the authority of the PS's own "or any other DEM" clause — and say so if asked.
 *Rationale (`DECISIONS.md` §5):* free/open licence with no redistribution restriction; public AWS COG endpoint with no auth and predictable tile naming; native metric CRS (UTM), no degree↔metre conversion; adequate for Tier-1. Rejected alternatives: FABDEM (CC BY-NC-SA), MERIT (CC BY-NC/ODbL), CartoDEM (proprietary, geo-fenced), GEBCO (500 m, too coarse).
-*Enforced at:* `jalraksha/dem.py`; documented in `PS-26161-official.md` and `DECISIONS.md` §5.
+*Enforced at:* `floodview/dem.py`; documented in `PS-26161-official.md` and `DECISIONS.md` §5.
 
 **G3 — Mullaperiyar is prohibited.**
 *Rule (`CLAUDE.md`):* *"**Mullaperiyar is explicitly forbidden** (active Supreme Court litigation)."* `README.md` restates it: *"Explicitly forbidden from simulation due to active litigation. All demonstrations must utilize **Tehri Dam** as the reference benchmark case."*
 *Rationale:* Publishing a modelled failure scenario for a structure under active Supreme Court litigation between two states is a legal and reputational hazard entirely disproportionate to any demonstration value.
-*Enforced at:* Convention and the preset registry — `jalraksha/presets.py` contains only Tehri and Khadakwasla. There is no code-level block on an arbitrary lat/lon, so the rule is documentary rather than mechanical. Note also that `presets.py` sets `DEFAULT_PRESET_ID = "khadakwasla"` while `README.md` names Tehri as the mandated reference benchmark.
+*Enforced at:* Convention and the preset registry — `floodview/presets.py` contains only Tehri and Khadakwasla. There is no code-level block on an arbitrary lat/lon, so the rule is documentary rather than mechanical. Note also that `presets.py` sets `DEFAULT_PRESET_ID = "khadakwasla"` while `README.md` names Tehri as the mandated reference benchmark.
 
 **G4 — Licensing: approved and avoided.**
 *Rule (`CLAUDE.md`):* *"Copernicus DEM (free) and Google Open Buildings (CC BY 4.0) are approved. Avoid FABDEM (CC BY-NC-SA), MERIT (CC BY-NC/ODbL), and OSM (ODbL share-alike) in redistributed outputs."*
-*Rationale:* Non-commercial clauses and share-alike obligations propagate into anything JalRaksha redistributes. An ODbL-derived layer inside a shipped `.shp` would encumber the whole product; PySPH was chosen over alternatives partly on licence (BSD).
+*Rationale:* Non-commercial clauses and share-alike obligations propagate into anything FloodView redistributes. An ODbL-derived layer inside a shipped `.shp` would encumber the whole product; PySPH was chosen over alternatives partly on licence (BSD).
 *Enforced at:* `DECISIONS.md` §1 and §5 source-selection tables; `prototype specs.md` (referenced as the approved-vs-forbidden list); code review.
 
 **G5 — Metric CRS only, never degrees, in the solver.**
 *Rule (`CLAUDE.md`):* *"**Metric CRS for all solver operations** — never degrees. Cell-centred finite volume on uniform Cartesian grids."* And in Gotchas: *"Always verify metric CRS (EPSG:32643 for India or equivalent UTM). Never mix degrees and metres in the solver."*
 *Rationale:* Not theoretical. `PROGRESS_SUMMARY.md` records that the pre-fix `preprocess_dem` *"divided a span in **degrees** by a resolution in **metres** (nx = 1.0/200 → 0, clamped to a 10×10 floor) and hardcoded EPSG:32643 everywhere."* The rule exists because its violation had already silently produced a 10×10 grid.
-*Enforced at:* `jalraksha/config.py::validate_config`; `jalraksha/dem.py::validate_dem` (*"Verify metric CRS, not degrees"*); `terrain/conditioning.py::load_dem_as_grid` (auto-detects the correct UTM zone from lat/lon); `presets.py`'s `epsg` field, which is *"EXPECTED CRS. Asserted against the CRS `load_dem_as_grid` auto-detects from (lat, lon); never used to force it."*
+*Enforced at:* `floodview/config.py::validate_config`; `floodview/dem.py::validate_dem` (*"Verify metric CRS, not degrees"*); `terrain/conditioning.py::load_dem_as_grid` (auto-detects the correct UTM zone from lat/lon); `presets.py`'s `epsg` field, which is *"EXPECTED CRS. Asserted against the CRS `load_dem_as_grid` auto-detects from (lat, lon); never used to force it."*
 
 **G6 — All gauges project into the *domain's* UTM zone, not their own.**
 *Rule:* Implied by G5 and made explicit by a fix.
 *Rationale:* `PROGRESS_SUMMARY.md`: *"every gauge was projected into its own UTM zone rather than the domain's (Rishikesh is zone 43, the domain is 44)."*
-*Enforced at:* `jalraksha/run.py::compute_arrival_times_at_gauges`.
+*Enforced at:* `floodview/run.py::compute_arrival_times_at_gauges`.
 
 **G7 — The Delft3D naming rule is CONDITIONAL on evidence.**
 *Rule (`CLAUDE.md`, current):*
 > `delft3d_binary_used == True` → it IS Delft3D FM. Name it, and name the build: **"Delft3D FM (dflowfm-cli, dimrset 2026.01)"**.
-> `delft3d_binary_used == False` → unchanged: **"JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
+> `delft3d_binary_used == False` → unchanged: **"FloodView built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
 *Rationale (`CLAUDE.md`):* *"The old blanket 'never claim to be Delft3D' existed because the project had never run it. Continuing to hedge once it demonstrably runs would be its own inaccuracy. `run_delft3d_simulation` returns the boolean, so the label is always checkable."*
-*Enforced at:* `jalraksha/delft3d/runner.py::run_delft3d_simulation` returns the boolean; the Comparison tab *"states which engine produced the numbers, in a banner, before showing any of them."*
-*Documentation conflict:* `DECISIONS.md` §10 still carries the superseded absolute form — *"Always qualify JalRaksha as 'Delft3D-class' (similar approach, not identical), not 'Delft3D' … ❌ 'Delft3D implementation'"* — and has not been updated. `CLAUDE.md` and `README.md` carry the conditional form. Both readings are on the record; `CLAUDE.md` is the later and is the one the code implements.
+*Enforced at:* `floodview/delft3d/runner.py::run_delft3d_simulation` returns the boolean; the Comparison tab *"states which engine produced the numbers, in a banner, before showing any of them."*
+*Documentation conflict:* `DECISIONS.md` §10 still carries the superseded absolute form — *"Always qualify FloodView as 'Delft3D-class' (similar approach, not identical), not 'Delft3D' … ❌ 'Delft3D implementation'"* — and has not been updated. `CLAUDE.md` and `README.md` carry the conditional form. Both readings are on the record; `CLAUDE.md` is the later and is the one the code implements.
 
 **G8 — Two-way SPH↔SWE coupling is never claimed. This rule is absolute and has no conditional form.**
 *Rule (`CLAUDE.md`):* *"**No overclaiming (unchanged elsewhere)**: never claim rigorous two-way SPH↔SWE coupling — the handoff is one-way only."*
 *Rationale (`DECISIONS.md` §7):* two-way coupling is research-grade and not established in the dam-break literature; one-way is defensible because near-field (breach, ~100 m, ~30 s) and far-field (routing, ~60 km, ~3 h) have different physics and do not significantly interact; two-way would add 4–8 weeks of numerical-stability and validation work. Spec language: *"SPH comparison layer, not a two-way feedback model."*
-*Enforced at:* `jalraksha/sph/coupling.py` (one-way handoff); architecture Rule 6 (SPH must not import `jalraksha.export`); `reaches_downstream_gauges` hardcoded false.
+*Enforced at:* `floodview/sph/coupling.py` (one-way handoff); architecture Rule 6 (SPH must not import `floodview.export`); `reaches_downstream_gauges` hardcoded false.
 
 **G9 — The 30 m DEM caveat: arrival times and envelopes lead, not point depths.**
 *Rule (`CLAUDE.md`):* *"**DEM resolution is 30 m Copernicus GLO-30** — adequate for Tier-1 screening, but point depths are indicative only. Lead with arrival times and inundation envelopes, not absolute flood depths."*
@@ -684,7 +684,7 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 
 **G12 — A caveat wrongly removed is worse than one wrongly kept.**
 *Rule:* Stated in `presets.py` as the reasoning for classifying Khadakwasla as `dam_type="gravity"` despite a secondary source describing it as "earth/gravity": *"Reclassifying to an embankment on an ambiguous secondary phrase would silently switch OFF breach.py's `dam_class_outside_fitted_population` caveat, and a caveat wrongly removed is a worse failure than one wrongly kept."*
-*Enforced at:* `jalraksha/presets.py`; `docs/progress.md` records the resulting caveat: *"Breach width uses Von Thun & Gillette, an EMBANKMENT fit, applied to a masonry gravity dam. Flagged wherever the ensemble is reported (`dam_class_outside_fitted_population`), not silently absorbed."*
+*Enforced at:* `floodview/presets.py`; `docs/progress.md` records the resulting caveat: *"Breach width uses Von Thun & Gillette, an EMBANKMENT fit, applied to a masonry gravity dam. Flagged wherever the ensemble is reported (`dam_class_outside_fitted_population`), not silently absorbed."*
 
 **G13 — Do not tune a threshold until the answer looks right.**
 *Rule:* Stated as an explicitly rejected fix in `docs/dashboard_integration.md` for the Khadakwasla gauge-reach problem: *"**Not taken**: widening `channel_search_m` from 1,200 m to ~3,000 m, or lowering the 0.1 m arrival threshold. Either fills the table in one line, by sampling floodplain sheet flow up to 3 km from the town and reporting it as that town's arrival. That is the same category of error as tuning a threshold until the answer looks right."*
@@ -695,8 +695,8 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 *Rationale (`docs/dashboard_integration.md`):* *"a labelled synthetic flood layer survives a screenshot badly and the codebase refuses it by design."* The related failure this guards against is recorded in `gee/auth.py`: the previous `is_gee_available()` returned True on a bare successful `import ee`, so *"every caller takes its 'live' branch, fails inside on a missing project or missing credentials, hits a bare `except: pass`, and returns synthetic `np.random` data labelled as offline. A reader sees plausible numbers and no indication that nothing was fetched."*
 
 **G15 — External engines are attempted and reported absent; nothing is silently substituted.**
-*Rule (`README.md`):* *"JalRaksha runs fully without any of these. Each one is *attempted* when configured and *reported as absent* when not — nothing is silently substituted."*
-*Enforced at:* the five environment variables (`JALRAKSHA_DFLOWFM_EXE`, `JALRAKSHA_PARAVIEW_EXE`, `JALRAKSHA_PVPYTHON_EXE`, `JALRAKSHA_GEE_PROJECT`, `JALRAKSHA_DATA_DIR`), each with a documented unset behaviour; `paraview_not_found`; `source: "unavailable"` with a reason.
+*Rule (`README.md`):* *"FloodView runs fully without any of these. Each one is *attempted* when configured and *reported as absent* when not — nothing is silently substituted."*
+*Enforced at:* the five environment variables (`FLOODVIEW_DFLOWFM_EXE`, `FLOODVIEW_PARAVIEW_EXE`, `FLOODVIEW_PVPYTHON_EXE`, `FLOODVIEW_GEE_PROJECT`, `FLOODVIEW_DATA_DIR`), each with a documented unset behaviour; `paraview_not_found`; `source: "unavailable"` with a reason.
 
 **G16 — Blocking correctness gates must pass before merge.**
 *Rule (`CLAUDE.md`, `DECISIONS.md` §12):* lake-at-rest (<0.1% velocity over any bathymetry), mass conservation (<0.1% volume loss over 1000 timesteps), dry-bed robustness (no NaNs, negative depths, or division errors). *"Lake-at-rest and mass-conservation tests must pass before any PR merge."*
@@ -723,58 +723,58 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 
 **Layer 7 — Export.** COG (`geotiff.py`), Shapefile (`shapefile.py`), KML/KMZ (`kml.py`), keyframe PNG stack + manifest (`keyframes.py`), XDMF+HDF5 for ParaView (`xdmf_export.py`), MATLAB (`matlab_export.py`), and `run_summary.json` carrying the ensemble statistics.
 
-**Layer 8 — Presentation.** FastAPI service (`services/api/jalraksha_service/`) with a subprocess run worker; React + Vite frontend with Leaflet 2D, Cesium 3D over self-hosted heightmap terrain tiles, and eight panels; a standard-library `ThreadingHTTPServer` REST API on :8502 for external integration; ParaView for offline cinematic/scientific rendering.
+**Layer 8 — Presentation.** FastAPI service (`services/api/floodview_service/`) with a subprocess run worker; React + Vite frontend with Leaflet 2D, Cesium 3D over self-hosted heightmap terrain tiles, and eight panels; a standard-library `ThreadingHTTPServer` REST API on :8502 for external integration; ParaView for offline cinematic/scientific rendering.
 
 #### 7.2 Component inventory
 
 | Path | Responsibility | Layer |
 |---|---|---|
-| `jalraksha/__init__.py` | Package init; repairs a broken inherited `PROJ_LIB` | cross-cutting |
-| `jalraksha/config.py` | Config load/validate; metric-CRS check; forbidden-source check | 1 |
-| `jalraksha/cli.py` | CLI entry point (`run`, `validate`, `cache`) | 1 / 8 |
-| `jalraksha/cache.py` | Offline-first cache contract, versioning, `get_cached_dem` | 1 |
-| `jalraksha/dem.py` | Copernicus GLO-30 fetch, tile naming, clipping, DEM validation | 1 |
-| `jalraksha/presets.py` | Dam registry (Tehri, Khadakwasla) and per-dam gauge corridors; pure data, imports nothing from the package | 1 |
-| `jalraksha/terrain/conditioning.py` | DEM → `Grid`: reprojection, nodata fill, smoothing | 2 |
-| `jalraksha/terrain/roughness.py` | ESA WorldCover class → Manning's *n* | 2 |
-| `jalraksha/terrain/domain.py` | Domain geometry; bed `b` vs depth `h` | 2 |
-| `jalraksha/terrain/breach.py` | Breach regressions, Wahl bands, storage curve, dam-class caveat | 3 |
-| `jalraksha/solver/core.py` | 2D SWE time integration | 4 |
-| `jalraksha/solver/flux.py` | Flux kernel, `@njit(parallel=True)`, `fastmath` forbidden | 4 |
-| `jalraksha/solver/types.py` | `State` / `Grid` dataclasses; float64 documented "not negotiable" | 4 |
-| `jalraksha/solver/parallel.py` | Single member-physics definition; process pool; worker pinning | 4 |
-| `jalraksha/run.py` | End-to-end orchestration; ensemble; gauge arrival times | 4 / 6 |
-| `jalraksha/delft3d/ugrid.py` | UGRID-1.0 mesh writer | 5 |
-| `jalraksha/delft3d/dfm_model.py` | Full D-Flow FM input set | 5 |
-| `jalraksha/delft3d/runner.py` | Kernel discovery, PATH setup, invocation, `*_his.nc` parsing | 5 |
-| `jalraksha/delft3d/setup.py` | Legacy setup writer (its `NetFile` was the blocking defect) | 5 |
-| `jalraksha/delft3d/comparison.py` | Two-engine comparison metrics | 6 |
-| `jalraksha/sph/{core,coupling,domain,pysph_runner}.py` | WCSPH near-field, one-way handoff from SWE | 5 |
-| `jalraksha/impact/hazard.py` | FD2320 flood hazard classification | 6 |
-| `jalraksha/impact/population.py` | Population-at-risk from GHSL, area-corrected onto the solver grid (see VERIFICATION_LOG row 37 — the old "resampled by sum" was a mean) | 6 |
-| `jalraksha/impact/fatality.py` | Graham / Jonkman / DeKay–McClelland loss-of-life ranges | 6 |
-| `jalraksha/impact/damage.py` | JRC depth-damage economic loss (UNVETTED asset values) | 6 |
-| `jalraksha/gee/auth.py` | Real `ee.Initialize` check; verbatim failure reason | 1 |
-| `jalraksha/gee/sar.py` | Sentinel-1 VV water extent; split-based Otsu; JRC precision gate | 1 / 6 |
-| `jalraksha/gee/population.py` | GHSL fetch | 1 |
-| `jalraksha/validation/benchmarks.py` | Ritter / Stoker / Thacker; Malpasset, Chamoli (unrun) | 6 |
-| `jalraksha/validation/delft3d_benchmark.py` | Ritter through both engines, scored against theory | 6 |
-| `jalraksha/validation/metrics.py` | RMSE, bias, CSI, F1, overlap | 6 |
-| `jalraksha/validation/sensitivity.py` | Parameter sensitivity sweeps | 6 |
-| `jalraksha/export/{geotiff,shapefile,kml}.py` | COG, `.shp`, `.kml`/`.kmz` | 7 |
-| `jalraksha/export/keyframes.py` | Keyframe PNG stack + manifest | 7 |
-| `jalraksha/export/georef.py` | Geo-registration helpers | 7 |
-| `jalraksha/export/xdmf_export.py` | XDMF + HDF5 for ParaView | 7 |
-| `jalraksha/export/matlab_export.py` | MATLAB-readable output | 7 |
-| `jalraksha/api.py` | Standard-library `ThreadingHTTPServer` REST API (:8502) | 8 |
-| `jalraksha/hardening.py` | Offline mode, robustness | cross-cutting |
-| `services/api/jalraksha_service/main.py` | FastAPI app, 12 endpoints, static `/files` mount, `/tiles`, CORS | 8 |
-| `services/api/jalraksha_service/tasks.py` | Task orchestration; `_run_comparison` | 8 |
-| `services/api/jalraksha_service/run_worker.py` | Subprocess run worker (own interpreter, own GIL) | 8 |
-| `services/api/jalraksha_service/worker.py` | Celery worker path (`--broker`) | 8 |
-| `services/api/jalraksha_service/db.py` | Run persistence, status, failure reasons | 8 |
-| `services/api/jalraksha_service/config.py` | `DEMO_DAMS` service preset list (separate from `presets.py`) | 8 |
-| `services/api/jalraksha_service/schemas.py` | Pydantic response models (`RunResult`, `GeoSarResponse`, …) | 8 |
+| `floodview/__init__.py` | Package init; repairs a broken inherited `PROJ_LIB` | cross-cutting |
+| `floodview/config.py` | Config load/validate; metric-CRS check; forbidden-source check | 1 |
+| `floodview/cli.py` | CLI entry point (`run`, `validate`, `cache`) | 1 / 8 |
+| `floodview/cache.py` | Offline-first cache contract, versioning, `get_cached_dem` | 1 |
+| `floodview/dem.py` | Copernicus GLO-30 fetch, tile naming, clipping, DEM validation | 1 |
+| `floodview/presets.py` | Dam registry (Tehri, Khadakwasla) and per-dam gauge corridors; pure data, imports nothing from the package | 1 |
+| `floodview/terrain/conditioning.py` | DEM → `Grid`: reprojection, nodata fill, smoothing | 2 |
+| `floodview/terrain/roughness.py` | ESA WorldCover class → Manning's *n* | 2 |
+| `floodview/terrain/domain.py` | Domain geometry; bed `b` vs depth `h` | 2 |
+| `floodview/terrain/breach.py` | Breach regressions, Wahl bands, storage curve, dam-class caveat | 3 |
+| `floodview/solver/core.py` | 2D SWE time integration | 4 |
+| `floodview/solver/flux.py` | Flux kernel, `@njit(parallel=True)`, `fastmath` forbidden | 4 |
+| `floodview/solver/types.py` | `State` / `Grid` dataclasses; float64 documented "not negotiable" | 4 |
+| `floodview/solver/parallel.py` | Single member-physics definition; process pool; worker pinning | 4 |
+| `floodview/run.py` | End-to-end orchestration; ensemble; gauge arrival times | 4 / 6 |
+| `floodview/delft3d/ugrid.py` | UGRID-1.0 mesh writer | 5 |
+| `floodview/delft3d/dfm_model.py` | Full D-Flow FM input set | 5 |
+| `floodview/delft3d/runner.py` | Kernel discovery, PATH setup, invocation, `*_his.nc` parsing | 5 |
+| `floodview/delft3d/setup.py` | Legacy setup writer (its `NetFile` was the blocking defect) | 5 |
+| `floodview/delft3d/comparison.py` | Two-engine comparison metrics | 6 |
+| `floodview/sph/{core,coupling,domain,pysph_runner}.py` | WCSPH near-field, one-way handoff from SWE | 5 |
+| `floodview/impact/hazard.py` | FD2320 flood hazard classification | 6 |
+| `floodview/impact/population.py` | Population-at-risk from GHSL, area-corrected onto the solver grid (see VERIFICATION_LOG row 37 — the old "resampled by sum" was a mean) | 6 |
+| `floodview/impact/fatality.py` | Graham / Jonkman / DeKay–McClelland loss-of-life ranges | 6 |
+| `floodview/impact/damage.py` | JRC depth-damage economic loss (UNVETTED asset values) | 6 |
+| `floodview/gee/auth.py` | Real `ee.Initialize` check; verbatim failure reason | 1 |
+| `floodview/gee/sar.py` | Sentinel-1 VV water extent; split-based Otsu; JRC precision gate | 1 / 6 |
+| `floodview/gee/population.py` | GHSL fetch | 1 |
+| `floodview/validation/benchmarks.py` | Ritter / Stoker / Thacker; Malpasset, Chamoli (unrun) | 6 |
+| `floodview/validation/delft3d_benchmark.py` | Ritter through both engines, scored against theory | 6 |
+| `floodview/validation/metrics.py` | RMSE, bias, CSI, F1, overlap | 6 |
+| `floodview/validation/sensitivity.py` | Parameter sensitivity sweeps | 6 |
+| `floodview/export/{geotiff,shapefile,kml}.py` | COG, `.shp`, `.kml`/`.kmz` | 7 |
+| `floodview/export/keyframes.py` | Keyframe PNG stack + manifest | 7 |
+| `floodview/export/georef.py` | Geo-registration helpers | 7 |
+| `floodview/export/xdmf_export.py` | XDMF + HDF5 for ParaView | 7 |
+| `floodview/export/matlab_export.py` | MATLAB-readable output | 7 |
+| `floodview/api.py` | Standard-library `ThreadingHTTPServer` REST API (:8502) | 8 |
+| `floodview/hardening.py` | Offline mode, robustness | cross-cutting |
+| `services/api/floodview_service/main.py` | FastAPI app, 12 endpoints, static `/files` mount, `/tiles`, CORS | 8 |
+| `services/api/floodview_service/tasks.py` | Task orchestration; `_run_comparison` | 8 |
+| `services/api/floodview_service/run_worker.py` | Subprocess run worker (own interpreter, own GIL) | 8 |
+| `services/api/floodview_service/worker.py` | Celery worker path (`--broker`) | 8 |
+| `services/api/floodview_service/db.py` | Run persistence, status, failure reasons | 8 |
+| `services/api/floodview_service/config.py` | `DEMO_DAMS` service preset list (separate from `presets.py`) | 8 |
+| `services/api/floodview_service/schemas.py` | Pydantic response models (`RunResult`, `GeoSarResponse`, …) | 8 |
 | `frontend/src/panels/*.jsx` | Ten panels: ControlPanel, Map2D, Scene3D, Gauges, Ensemble, Impact, Sph, Comparison, Validation, Downloads | 8 |
 | `frontend/src/api.js` | `resolveApiUrl()` — resolves `/files/...` paths | 8 |
 | `frontend/src/state/` | Shared `SimulationClock` driving 2D and 3D in lock-step | 8 |
@@ -783,7 +783,7 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 | `tools/paraview/{make_dataset,reservoir,base_block,synthetic_flood}.py` | Dataset build, pool location, geometry | 7 / 8 |
 | `paraview/{render_static,camera_presets}.py` | Static render, camera presets; dam-agnostic | 8 |
 | `tools/sih-presentation/{build_ppt,check_ppt}.py` | Deck generation and validation; isolated from solver CI | out of band |
-| `scripts/run_api.py` | Two-process launcher; sets `JALRAKSHA_GEE_PROJECT` and data dir | 8 |
+| `scripts/run_api.py` | Two-process launcher; sets `FLOODVIEW_GEE_PROJECT` and data dir | 8 |
 | `scripts/validate_against_delft3d.py` | The Ritter cross-check entry point | 6 |
 | `scripts/{backfill_xdmf,make_keyframes_transparent,rerun_comparison}.py` | Maintenance utilities | 7 |
 | `tests/` | 23 test modules co-located by phase | cross-cutting |
@@ -961,14 +961,14 @@ Two documents give completion state, and they disagree substantially. Both are r
 `CLAUDE.md` §"Architecture Rules (Deep Modules Principle)" states eight rules, prefaced: *"These rules ensure the codebase stays navigable and testable as it grows across 18 phases."* `ARCHITECTURE_IMPROVEMENTS.md` records their origin — an `/improve-architecture explore phase 0` pass on 23 August 2026 that found a repository root dominated by presentation code (`build_ppt.py` 750 lines, `check_ppt.py` 177 lines) with *"no solver code, no package structure"* and *"nowhere to put Phase 0 skeleton."*
 
 **Rule 1 — Module Depth (functionality vs interface).**
-*Statement:* *"Each module should have **high functionality relative to interface complexity**."* Deep: *"CLI accepts `jalraksha run --dam tehri`, internally handles DEM fetch, config validation, cache setup (simple interface, lots of work)."* Shallow: *"3 small functions scattered across 5 files that do nearly the same thing."*
+*Statement:* *"Each module should have **high functionality relative to interface complexity**."* Deep: *"CLI accepts `floodview run --dam tehri`, internally handles DEM fetch, config validation, cache setup (simple interface, lots of work)."* Shallow: *"3 small functions scattered across 5 files that do nearly the same thing."*
 *Rationale:* Interface surface is the cost a caller pays; functionality is the value received. Ousterhout's deep-module principle applied to a phased scientific build.
 *Enforcement:* `/improve-architecture` *"surfaces shallow modules before they grow."*
 
 **Rule 2 — Dependency Direction (no backwards imports).**
-*Statement:* *"Phases build on earlier phases only. Phase 0 → no dependencies on Phase 1+. Phase 1 (`jalraksha.solver`) → may depend on Phase 0, but NOT Phases 2+. Phase 4 → may depend on Phases 0–3, but NOT Phases 5+. **Violation**: Phase 1 importing Phase 5 export logic = circular, hard to test."*
+*Statement:* *"Phases build on earlier phases only. Phase 0 → no dependencies on Phase 1+. Phase 1 (`floodview.solver`) → may depend on Phase 0, but NOT Phases 2+. Phase 4 → may depend on Phases 0–3, but NOT Phases 5+. **Violation**: Phase 1 importing Phase 5 export logic = circular, hard to test."*
 *Rationale:* Acyclicity is what lets any phase be tested without loading the whole system.
-*Enforcement:* *"CI gate: Import graph must be acyclic."* Visible in code: `presets.py`'s docstring says *"This module imports nothing from the rest of `jalraksha`, so it can be imported forward by Phase 2 (`terrain.domain`), Phase 4 (`run.py`), and by `tools/` without ever creating a cycle (see Architecture Rule 2 in CLAUDE.md)."*
+*Enforcement:* *"CI gate: Import graph must be acyclic."* Visible in code: `presets.py`'s docstring says *"This module imports nothing from the rest of `floodview`, so it can be imported forward by Phase 2 (`terrain.domain`), Phase 4 (`run.py`), and by `tools/` without ever creating a cycle (see Architecture Rule 2 in CLAUDE.md)."*
 
 **Rule 3 — Layer Isolation (seams).**
 *Statement:* *"Each phase has a clear seam (boundary) with the next. **Phase 0 ↔ Phase 1**: CLI passes config to solver; solver returns results. **Phase 1 ↔ Phase 2**: Solver produces raster; Phase 2 reads raster for terrain conditioning. **Violating example**: Phase 1 calling Phase 5 GeoTIFF writer directly (no buffer)."*
@@ -976,27 +976,27 @@ Two documents give completion state, and they disagree substantially. Both are r
 *Enforcement:* `/code-quality-deep-dive` *"checks for layer violations."*
 
 **Rule 4 — Test Co-Location (locality).**
-*Statement:* *"Tests live next to modules they test. `tests/test_cache.py` imports `jalraksha.cache`. `tests/test_solver.py` imports `jalraksha.solver.core` (NOT through CLI or export). **Anti-pattern**: Tests importing from main entry point (forces everything to load)."*
+*Statement:* *"Tests live next to modules they test. `tests/test_cache.py` imports `floodview.cache`. `tests/test_solver.py` imports `floodview.solver.core` (NOT through CLI or export). **Anti-pattern**: Tests importing from main entry point (forces everything to load)."*
 *Rationale:* A test that reaches its subject through the CLI is an integration test wearing a unit test's name, and it fails for reasons unrelated to its subject.
 *Enforcement:* The 23 files in `tests/` are named per module/phase (`test_cache`, `test_dem`, `test_solver`, `test_terrain`, `test_breach`, `test_phase4`, `test_export`, `test_impact`, `test_sph`, `test_delft3d`, `test_delft3d_model`, `test_gee`, `test_keyframes`, `test_parallel`, `test_paraview_state`, `test_presets`, `test_sensitivity`, `test_validation`, `test_xdmf_export`, `test_hardening`, `test_api`, `test_integration`).
 
 **Rule 5 — Configuration Isolation.**
-*Statement:* *"Configuration is data, not code. Unvetted coefficients live in `jalraksha/config.py` (not hardcoded in solver). Manning's n, breach regression params flagged with `# TODO: UNVETTED — source?`. Each param must have a source citation."*
+*Statement:* *"Configuration is data, not code. Unvetted coefficients live in `floodview/config.py` (not hardcoded in solver). Manning's n, breach regression params flagged with `# TODO: UNVETTED — source?`. Each param must have a source citation."*
 *Rationale:* A hardcoded constant cannot be audited, gated, or overridden. `presets.py` documents the violation this rule exists to prevent: *"before this module, `tools/paraview/make_dataset.py` carried a module-level `TEHRI = {...}` dict used unconditionally at five call sites, with no way to select a different dam."*
 *Enforcement:* The `--allow-unvetted` gate; `docs/VERIFICATION_LOG.md`; a test pinning Khadakwasla's UNVETTED tag.
 
 **Rule 6 — Reusability (SPH Independence).**
-*Statement:* *"SPH (Phase 7) must be independent of SWE (Phase 1). Phase 7 can import `jalraksha.solver.types.State`, but NOT `jalraksha.export`. One-way handoff only: SWE produces raster → SPH reads raster (no bidirectional coupling). If you remove Phase 5 (export), SPH still works."*
+*Statement:* *"SPH (Phase 7) must be independent of SWE (Phase 1). Phase 7 can import `floodview.solver.types.State`, but NOT `floodview.export`. One-way handoff only: SWE produces raster → SPH reads raster (no bidirectional coupling). If you remove Phase 5 (export), SPH still works."*
 *Rationale:* This rule is doing double duty. It is an architecture rule *and* the mechanical enforcement of governance rule G8 — the code physically cannot express two-way coupling if SPH may only read a raster the SWE side produced.
 *Enforcement:* Import-graph CI gate; `sph/coupling.py`'s interface.
 
 **Rule 7 — Documentation Locality.**
-*Statement:* *"Each module is self-documenting. `jalraksha/cli.py` docstring explains Phase 0 CLI contract. `jalraksha/solver/__init__.py` lists gating tests (Ritter, Stoker, Thacker). `tests/conftest.py` explains fixtures."*
+*Statement:* *"Each module is self-documenting. `floodview/cli.py` docstring explains Phase 0 CLI contract. `floodview/solver/__init__.py` lists gating tests (Ritter, Stoker, Thacker). `tests/conftest.py` explains fixtures."*
 *Rationale:* Documentation kept away from its subject drifts. The codebase honours this heavily — `presets.py` carries roughly 200 lines of provenance commentary alongside two dataclass records, including rejected coordinate candidates and the DEM measurements that rejected them.
-*Enforcement:* Convention and review; `jalraksha/solver/PHASE1_STATUS.md` lives inside the solver package rather than in `docs/`.
+*Enforcement:* Convention and review; `floodview/solver/PHASE1_STATUS.md` lives inside the solver package rather than in `docs/`.
 
 **Rule 8 — Separation of Concerns.**
-*Statement:* *"Presentation, solver, and export are in separate trees. **Solver logic**: `jalraksha/solver/`. **Export logic**: `jalraksha/export/`. **Presentation/tooling**: `tools/sih-presentation/`. SIH deck build can fail without breaking solver tests."*
+*Statement:* *"Presentation, solver, and export are in separate trees. **Solver logic**: `floodview/solver/`. **Export logic**: `floodview/export/`. **Presentation/tooling**: `tools/sih-presentation/`. SIH deck build can fail without breaking solver tests."*
 *Rationale:* The deck-building code is the most volatile and least important code in the repository. It must not be able to break CI.
 *Enforcement:* Directory structure; `tools/` excluded from the solver test path; `ARCHITECTURE_IMPROVEMENTS.md` records the move of `build_ppt.py` and `check_ppt.py` out of the root.
 
@@ -1014,10 +1014,10 @@ Two documents give completion state, and they disagree substantially. Both are r
 
 | Date | Event | Source |
 |---|---|---|
-| 23 Aug 2026, 18:52 UTC | `/improve-architecture` pass: `jalraksha/` package created, Phase 0 modules written, presentation tooling moved to `tools/`, 8 architecture rules documented | `ARCHITECTURE_IMPROVEMENTS.md` |
+| 23 Aug 2026, 18:52 UTC | `/improve-architecture` pass: `floodview/` package created, Phase 0 modules written, presentation tooling moved to `tools/`, 8 architecture rules documented | `ARCHITECTURE_IMPROVEMENTS.md` |
 | 24 Aug 2026 | `DECISIONS.md` v1.0 written (12 ADRs); `VERIFICATION_LOG.md` opened with 18 queued coefficients | `DECISIONS.md`, `VERIFICATION_LOG.md` |
 | 24 Aug 2026 | `BUILD_STATUS.md`: Phases 0–3 complete, Phase 4 queued, 235/239 tests, ~10 h "Antigravity phase" | `BUILD_STATUS.md` |
-| 28 Aug 2026 | Khadakwasla structural figures revised from 51.3 m / 33.5 MCM to 39.6 m / 85.31 MCM | `jalraksha/presets.py` |
+| 28 Aug 2026 | Khadakwasla structural figures revised from 51.3 m / 33.5 MCM to 39.6 m / 85.31 MCM | `floodview/presets.py` |
 | — (this pass) | Real-terrain integration: headline `domain.py` bug found; every prior result voided; DEM fetch, breach injection, gauge geometry, keyframes, parallel engine all fixed | `PROGRESS_SUMMARY.md` |
 | 29 Aug 2026 | Dashboard integration DONE — 8 tabs, run picker, live GEE, real Delft3D FM; 4 defects found by driving it end to end | `docs/progress.md`, `docs/dashboard_integration.md` |
 | 29 Aug 2026 | Delft3D FM validation harness added; Ritter cross-check passing | `docs/progress.md`, `docs/validation_findings.md` |
@@ -1043,7 +1043,7 @@ Two documents give completion state, and they disagree substantially. Both are r
 | B14 | **Gauge snapping artifact** | Gauges snapped to the geometrically nearest cell. *"At 200–400 m the Bhagirathi gorge is sub-grid… Koteshwar snapped to 853 m with the valley floor at 752 m three cells away and reported 'no arrival' while the flood ran 70 m deep past it — while Devprayag, 15 km further downstream, happened to land on the channel and did report one"* | *"A far gauge wet and a near one dry is the signature of a sampling artifact"* | Snap to the **lowest bed cell** within 1.2 km | `PROGRESS_SUMMARY.md` |
 | B15 | **Per-gauge UTM zone error** | *"every gauge was projected into **its own** UTM zone rather than the domain's (Rishikesh is zone 43, the domain is 44)"* | Systematic gauge position error of hundreds of km | Project into the domain's zone | `PROGRESS_SUMMARY.md` |
 | B16 | **Step-cap truncation** | *"the per-member step cap was sized from the dry-bed timestep, truncating runs after a handful of real steps"* | Runs stopped almost immediately once the domain wetted | Cap re-derived | `PROGRESS_SUMMARY.md` |
-| B17 | **Broken inherited `PROJ_LIB`** | *"This machine has PostgreSQL/PostGIS exporting one whose database layout predates what rasterio's PROJ expects, which made every CRS lookup fail"* | Every CRS operation failed | `jalraksha/__init__.py` repairs it | `PROGRESS_SUMMARY.md` |
+| B17 | **Broken inherited `PROJ_LIB`** | *"This machine has PostgreSQL/PostGIS exporting one whose database layout predates what rasterio's PROJ expects, which made every CRS lookup fail"* | Every CRS operation failed | `floodview/__init__.py` repairs it | `PROGRESS_SUMMARY.md` |
 | B18 | **Two vacuous tests** | `test_arrival_times_monotonic` *"placed its gauges outside the domain, so all three snapped to the same corner cell and `t[1] >= t[0]*0.9` held trivially."* `test_arrival_times_mock_results` *"only checked that dict keys existed"* | Two green tests asserting nothing | Gauges repositioned inside the domain with strict ordering asserted; real arrival values and downstream ordering asserted | `PROGRESS_SUMMARY.md` |
 | B19 | **Two stale endpoint tests** | *"encoded a dead endpoint (`cloud.sdsc.edu`, now 401) and were asserting against the **old** tile-naming convention — the code was right, the tests were stale"* | Two red tests blaming correct code | Updated to the AWS convention | `PROGRESS_SUMMARY.md` |
 | B20 | **`delft3d/setup.py`'s NetFile was unreadable** | It writes a `[Grid] GridType=rectangular` INI as the `NetFile`; *"D-Flow FM cannot read that — it wants a UGRID netCDF mesh — so the kernel failed at mesh load **every time** and the run quietly became the built-in solver wearing a Delft3D label"* | Every "Delft3D" run was silently the built-in solver | `dfm_model.py::build_dfm_model` with a real `ugrid.py` writer | `docs/dashboard_integration.md` |
@@ -1057,7 +1057,7 @@ Two documents give completion state, and they disagree substantially. Both are r
 | B28 | **Delft3D comparison run too short** | 1 hour simulated, against a corridor the SWE side takes 109 minutes to traverse | *"'no arrival' was the honest answer to the wrong question"* | Matched to the SWE run's 3 h | `docs/dashboard_integration.md` |
 | B29 | **Bare `except Exception` hid a `TypeError`** | `load_dem_as_grid` returns a `Grid` dataclass, not a dict; subscripting raised `TypeError` | *"the comparison ran on invented terrain while reporting success"* | Narrowed to `FileNotFoundError` | `docs/dashboard_integration.md` |
 | B30 | **Fabricated gauge names on the Delft3D path** | `tasks.py` built a stripped five-key config that dropped `dam_id`; `get_downstream_gauges(lat, lon, None)` fell back to the Tehri bounding box, and Pune is outside it | *"Selecting Khadakwasla + Delft3D produced a gauge table reading `Gauge_10km`, `Gauge_25km`, `Gauge_50km`, `Gauge_100km`. … **A judge would have seen four fictional towns**"* | Config passed through intact | `docs/dashboard_integration.md` |
-| B31 | **Duplicated gauge list in six places** | The Tehri corridor was hardcoded in `jalraksha/run.py`, `jalraksha/api.py` (twice), `services/api/.../config.py`, `.../tasks.py`, `frontend/src/data/entities.js` | *"A Khadakwasla run therefore reported arrival times at Himalayan towns ~1,500 km outside its own domain"* | Single definition in `presets.py::GAUGES` | `jalraksha/presets.py` |
+| B31 | **Duplicated gauge list in six places** | The Tehri corridor was hardcoded in `floodview/run.py`, `floodview/api.py` (twice), `services/api/.../config.py`, `.../tasks.py`, `frontend/src/data/entities.js` | *"A Khadakwasla run therefore reported arrival times at Himalayan towns ~1,500 km outside its own domain"* | Single definition in `presets.py::GAUGES` | `floodview/presets.py` |
 | B32 | **Progress stuck at "running 5%"** | *"`db.update_run_status` was called exactly three times — 5% at the start, 100% at the end, 0% on error"* | Every run appeared frozen | `progress_cb` with a `phase` string; *"'running 5%' became 'Solving member 12/30'"* | `docs/dashboard_integration.md` |
 | B33 | **API stalled during any run** | Runs executed on a `threading.Thread` inside uvicorn; *"A dam-break run is CPU-bound throughout and holds the GIL — the flux kernels are `@njit` **without** `nogil=True`"* | `GET /validation` returned nothing after 120 s | Subprocess `run_worker.py`; every endpoint ~0.21 s while solving | `docs/dashboard_integration.md` |
 | B34 | **Delft3D runs took ~20 minutes** | `_run_comparison` called `_run_near_field_sph` unconditionally — a 14,149-particle PySPH sim on every Delft3D run | 20-minute demo stall | SPH gated to `solver="both"`; **47 seconds** | `docs/dashboard_integration.md` |
@@ -1076,9 +1076,9 @@ Two documents give completion state, and they disagree substantially. Both are r
 | B47 | **Leaflet stylesheet loaded from unpkg.com** | A `<link>` to a CDN in an offline-first project | *"the map rendered as unstyled tiles with no zoom control the moment the machine was offline"* | Bundled | `docs/dashboard_integration.md` |
 | B48 | **Data computed and thrown away** | `run_dam_break_ensemble` computed `q_peak` p05/p95, `t_fail`, `regressions_used`, `num_completed`/`num_ensemble`, `h_max_stats`, grid + WGS84 bounds — and `tasks.py` dropped all of it. `max_depth_m` and `par_estimate` *"were DB columns written `None` on every path since they were created"* | *"A run where 3 of 100 members converged was indistinguishable from one where all 100 did"*; failure reasons were unrecoverable from any endpoint | Persisted to `run_summary.json` and served on `RunResult` | `docs/dashboard_integration.md` |
 | B49 | **`m_max`/keyframe export was dead code** | *"the pipeline never recorded a depth time series, so export silently never fired"* | No keyframes ever produced | `record_depth_snapshots=True, n_snapshots=N`; 30 keyframes verified over HTTP | `PROGRESS_SUMMARY.md` |
-| B50 | **The first Ritter comparison numbers were wrong** | An outermost-cell accumulation artifact in the closed D-Flow FM domain: *"1.06 m on a 2000 m domain, still 0.41 m at 4000 m, while its immediate neighbours sat at 0.001–0.03 m"* | *"JalRaksha 0.0445 vs Delft3D 0.0897 — Delft3D looking twice as bad"* | Three boundary cells trimmed each end (`BOUNDARY_MARGIN_CELLS`), with the excluded strips **shaded on the figure** | `docs/progress.md`, `docs/validation_findings.md` |
-| B51 | **`is_gee_available()` returned True on a bare `import ee`** | No session was ever initialised | *"every caller takes its 'live' branch, fails inside on a missing project or missing credentials, hits a bare `except: pass`, and returns synthetic `np.random` data labelled as offline. A reader sees plausible numbers and no indication that nothing was fetched"* | Availability now means an actual `ee.Initialize(project=...)` succeeded; failure reason carried verbatim | `jalraksha/gee/auth.py` |
-| B52 | **Whole-scene Otsu on SAR** | Otsu assumes two classes of comparable mass; over Tehri the VV histogram is unimodal | *"whole-scene Otsu cut straight through the middle of that land peak at −10.1 dB, classifying 45% of a mountain valley as water. The mask looked like a real product and was nonsense"* | Split-based thresholding (Martinis 2009; Chini 2017); raises rather than emitting an unjustifiable threshold; JRC precision gate at 0.5 | `jalraksha/gee/sar.py`, `docs/validation_findings.md` |
+| B50 | **The first Ritter comparison numbers were wrong** | An outermost-cell accumulation artifact in the closed D-Flow FM domain: *"1.06 m on a 2000 m domain, still 0.41 m at 4000 m, while its immediate neighbours sat at 0.001–0.03 m"* | *"FloodView 0.0445 vs Delft3D 0.0897 — Delft3D looking twice as bad"* | Three boundary cells trimmed each end (`BOUNDARY_MARGIN_CELLS`), with the excluded strips **shaded on the figure** | `docs/progress.md`, `docs/validation_findings.md` |
+| B51 | **`is_gee_available()` returned True on a bare `import ee`** | No session was ever initialised | *"every caller takes its 'live' branch, fails inside on a missing project or missing credentials, hits a bare `except: pass`, and returns synthetic `np.random` data labelled as offline. A reader sees plausible numbers and no indication that nothing was fetched"* | Availability now means an actual `ee.Initialize(project=...)` succeeded; failure reason carried verbatim | `floodview/gee/auth.py` |
+| B52 | **Whole-scene Otsu on SAR** | Otsu assumes two classes of comparable mass; over Tehri the VV histogram is unimodal | *"whole-scene Otsu cut straight through the middle of that land peak at −10.1 dB, classifying 45% of a mountain valley as water. The mask looked like a real product and was nonsense"* | Split-based thresholding (Martinis 2009; Chini 2017); raises rather than emitting an unjustifiable threshold; JRC precision gate at 0.5 | `floodview/gee/sar.py`, `docs/validation_findings.md` |
 | B53 | **SPH pressure fit reported spurious numbers at low resolution** | *"the interior band collapses to about one particle layer and the fit returned 27% and 123% for the same physics at two run lengths"* | A meaningless number presented as a measurement | *"It now reports `None` with a reason rather than a number"* | `docs/validation_findings.md` |
 
 #### 9.3 Current test status — three conflicting counts
@@ -1095,7 +1095,7 @@ The three are consistent with a growing suite over time (235 → 344 → 435) bu
 
 `PROGRESS_SUMMARY.md` has a section headed **"Not done — needs tools unavailable in the build environment"** with three entries:
 
-> **M6 — Live GEE SAR.** `jalraksha/gee/{auth,population,sar}.py` still return mock data. No Earth Engine credentials available. `GET /gee/latest` returns the stub gracefully.
+> **M6 — Live GEE SAR.** `floodview/gee/{auth,population,sar}.py` still return mock data. No Earth Engine credentials available. `GET /gee/latest` returns the stub gracefully.
 >
 > **M7 — Docker/Compose.** `docker-compose.yml` and `services/api/Dockerfile` exist and read correctly, but **Docker is not installed here, so `docker compose up` was never run.** Known open question: the `frontend` service maps `3000:3000` but nothing confirms the container actually serves on 3000 in production mode.
 >
@@ -1103,13 +1103,13 @@ The three are consistent with a growing suite over time (235 → 344 → 435) bu
 
 **The GEE entry is contradicted by three later documents.** All three state Earth Engine is live:
 
-- `CLAUDE.md`: *"**Earth Engine is live.** `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in `scripts/run_api.py` because `.claude/launch.json` has no env field. Both the Sentinel-1 overlay and GHSL population-at-risk depend on it."*
-- `docs/progress.md`: *"**Earth Engine is live** — `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in `scripts/run_api.py`."*
+- `CLAUDE.md`: *"**Earth Engine is live.** `FLOODVIEW_GEE_PROJECT=sih-prototype-506812`, set in `scripts/run_api.py` because `.claude/launch.json` has no env field. Both the Sentinel-1 overlay and GHSL population-at-risk depend on it."*
+- `docs/progress.md`: *"**Earth Engine is live** — `FLOODVIEW_GEE_PROJECT=sih-prototype-506812`, set in `scripts/run_api.py`."*
 - `docs/dashboard_integration.md`: *"Now live. `earthengine authenticate` had already been run; the only thing missing was the project id."*
 
 Corroborating evidence for "live" over "stubbed": measured GHSL population figures (322 PAR of 295,025 at Tehri), measured SAR precision/recall against JRC for two named reaches (Hirakud 0.768, Tehri 0.010), and a rewritten `gee/auth.py` whose docstring explicitly describes the moment `earthengine-api` became installed — *"which is now"*. `gee/sar.py` and `gee/auth.py` are both attributed to "Phase 9" in their docstrings, and `docs/validation_findings.md` §2 records measurements only obtainable from live queries.
 
-**Reading.** `PROGRESS_SUMMARY.md`'s M6 entry describes an earlier state and was not updated when GEE went live. GEE should be treated as **live but conditional** — it needs `earthengine-api` installed, an interactive `earthengine authenticate`, a Google Cloud project with the Earth Engine API enabled, and `JALRAKSHA_GEE_PROJECT` set. Without those, `GET /gee/latest` answers `source: "unavailable"` with the reason and *"runs publish no population-at-risk figure. Nothing is estimated in their place."*
+**Reading.** `PROGRESS_SUMMARY.md`'s M6 entry describes an earlier state and was not updated when GEE went live. GEE should be treated as **live but conditional** — it needs `earthengine-api` installed, an interactive `earthengine authenticate`, a Google Cloud project with the Earth Engine API enabled, and `FLOODVIEW_GEE_PROJECT` set. Without those, `GET /gee/latest` answers `source: "unavailable"` with the reason and *"runs publish no population-at-risk figure. Nothing is estimated in their place."*
 
 **The Docker and Blender entries are not contradicted anywhere.** Docker: `docker-compose.yml`, `Dockerfile` and `services/api/Dockerfile` exist and are referenced by `BUILD_STATUS.md`'s deployment section, but no document records a successful `docker compose up`. Blender: absent from every other document; there is no Blender code in the tree.
 
@@ -1146,7 +1146,7 @@ That is the governing lesson of this project's history, and the reason the hones
 ### 2b. The Orchestration Layer
 
 This chapter documents everything that sits *above* the numerics: the package
-bootstrap, the end-to-end pipeline driver (`jalraksha/run.py`), the argparse
+bootstrap, the end-to-end pipeline driver (`floodview/run.py`), the argparse
 CLI, the standalone stdlib REST API, the dam presets registry, the hardening
 guards, and the demo/smoke entry points. Where a claim could not be verified
 from source, this chapter says so explicitly rather than guessing.
@@ -1156,9 +1156,9 @@ All line references are to the files as read on 2026-08-29 under
 
 ---
 
-### 2b.1 Package initialisation — `jalraksha/__init__.py`
+### 2b.1 Package initialisation — `floodview/__init__.py`
 
-**File**: `/mnt/user-data/uploads/SIH prototype/jalraksha/__init__.py` (95 lines)
+**File**: `/mnt/user-data/uploads/SIH prototype/floodview/__init__.py` (95 lines)
 
 #### 2b.1.1 Exported symbols
 
@@ -1166,7 +1166,7 @@ The package exports exactly two module-level names:
 
 ```python
 __version__ = "0.0.1-alpha"
-__author__  = "JalRaksha Team (SIH 2026)"
+__author__  = "FloodView Team (SIH 2026)"
 ```
 
 There is **no** `__all__`, and — deliberately — **no re-export of any
@@ -1178,11 +1178,11 @@ submodule**. The trailing comment records the policy:
 # Phase 1+: solver, terrain, export, sph (as they stabilize)
 ```
 
-Consequently `import jalraksha` gives you a namespace containing only
+Consequently `import floodview` gives you a namespace containing only
 `__version__`, `__author__`, and the private helper `_repair_proj_data_path`.
 Every consumer must import the submodule it wants
-(`from jalraksha.run import run_dam_break_ensemble`, etc.). This is what keeps
-`import jalraksha` cheap: it does not drag in numpy, rasterio, numba or pyproj.
+(`from floodview.run import run_dam_break_ensemble`, etc.). This is what keeps
+`import floodview` cheap: it does not drag in numpy, rasterio, numba or pyproj.
 That cheapness is load-bearing, because of the PROJ repair described next.
 
 #### 2b.1.2 Phase-boundary documentation
@@ -1199,19 +1199,19 @@ Phases:
   Phase 5+: Export, impact, SPH, GEE, dashboard
 ```
 
-It also names the public API surface by module: `jalraksha.cli`,
-`jalraksha.config`, `jalraksha.cache`, `jalraksha.dem`,
-`jalraksha.solver.core`, `jalraksha.export`. Note that `jalraksha.run`,
-`jalraksha.presets`, `jalraksha.api` and `jalraksha.hardening` — four of the
+It also names the public API surface by module: `floodview.cli`,
+`floodview.config`, `floodview.cache`, `floodview.dem`,
+`floodview.solver.core`, `floodview.export`. Note that `floodview.run`,
+`floodview.presets`, `floodview.api` and `floodview.hardening` — four of the
 five modules this chapter covers — are **not** listed in that docstring. The
 docstring is stale relative to the code.
 
 The dependency-direction rule ("phases build on earlier phases only") is
 violated exactly once and knowingly: `run.py::write_export_products` (Phase 4)
-imports `jalraksha.export` (Phase 5). The justification is written into the
+imports `floodview.export` (Phase 5). The justification is written into the
 function docstring at `run.py:93-99` — `run.py` is treated as the *top-level
 orchestrator* rather than a Phase-4 layer module, and because
-`jalraksha.export` never imports `jalraksha.run`, the import graph stays
+`floodview.export` never imports `floodview.run`, the import graph stays
 acyclic.
 
 #### 2b.1.3 `_repair_proj_data_path()` — the PROJ_LIB repair
@@ -1283,9 +1283,9 @@ is no warning emitted at step 5.
 
 ---
 
-### 2b.2 The end-to-end lifecycle — `jalraksha/run.py`
+### 2b.2 The end-to-end lifecycle — `floodview/run.py`
 
-**File**: `/mnt/user-data/uploads/SIH prototype/jalraksha/run.py` (833 lines,
+**File**: `/mnt/user-data/uploads/SIH prototype/floodview/run.py` (833 lines,
 37 KB). Module docstring calls this "the MANDATORY core deliverable (Spec §4)".
 
 Module-level imports (`run.py:18-30`):
@@ -1295,12 +1295,12 @@ import os, warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
-from jalraksha.solver.types import Grid, create_state
-from jalraksha.solver.core import SWESolver
-from jalraksha.solver.parallel import run_ensemble
-from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
-from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
-from jalraksha.presets import get_gauges
+from floodview.solver.types import Grid, create_state
+from floodview.solver.core import SWESolver
+from floodview.solver.parallel import run_ensemble
+from floodview.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
+from floodview.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+from floodview.presets import get_gauges
 ```
 
 `SWESolver`, `create_state` and `Tuple` are imported but never used in this
@@ -1345,7 +1345,7 @@ def run_dam_break_ensemble(
 Note there is **no argument validation at all** at function entry. The very
 first statement is a print that dereferences `dam_config['name']`
 (`run.py:585`), so a missing `name` produces a bare `KeyError` rather than the
-`HardeningError` that `jalraksha/hardening.py` exists to raise. See §2b.8.4.
+`HardeningError` that `floodview/hardening.py` exists to raise. See §2b.8.4.
 
 #### 2b.2.2 The `progress_cb` contract
 
@@ -1403,7 +1403,7 @@ the **caller's** job: `DamPreset.to_dam_config()` (`presets.py:128-180`)
 produces the dict, and the caller passes it in. Three callers do this
 correctly (`tools/paraview/make_dataset.py:288`,
 `scripts/backfill_xdmf.py:97`, `services/api/.../tasks.py:1219`);
-`jalraksha/cli.py:106-114` does **not** — it hand-builds a dict with no
+`floodview/cli.py:106-114` does **not** — it hand-builds a dict with no
 `dam_id`, which silently disables this dam's gauge corridor (§2b.6.4).
 
 The only preset-derived lookup inside `run.py` is
@@ -1413,7 +1413,7 @@ The only preset-derived lookup inside `run.py` is
 #### 2b.2.4 Step 0b — DEM fetch (also not here)
 
 `run_dam_break_ensemble` takes `dem_path: str` and never fetches. DEM
-acquisition is Phase 0 (`jalraksha.dem.fetch_dem`), invoked by
+acquisition is Phase 0 (`floodview.dem.fetch_dem`), invoked by
 `cli.py:100` and by `tasks.py::_resolve_dem`. `run.py` performs **no**
 existence check on `dem_path`; a bad path surfaces as an exception inside
 `build_domain`, which is caught at `run.py:625` and converted to
@@ -1432,7 +1432,7 @@ grid, state_init, manning_field = build_domain(
 )
 ```
 
-`build_domain` (`jalraksha/terrain/domain.py:72`) signature:
+`build_domain` (`floodview/terrain/domain.py:72`) signature:
 
 ```python
 def build_domain(
@@ -1556,11 +1556,11 @@ representative member is snapshotted." At 30 frames × 3 fields
 13 GB.
 
 **Dispatch** (`run.py:683-695`) is a single call to
-`jalraksha.solver.parallel.run_ensemble`.
+`floodview.solver.parallel.run_ensemble`.
 
 #### 2b.2.8 `run_ensemble()` — full documentation
 
-**File**: `/mnt/user-data/uploads/SIH prototype/jalraksha/solver/parallel.py`
+**File**: `/mnt/user-data/uploads/SIH prototype/floodview/solver/parallel.py`
 (415 lines).
 
 ```python
@@ -1826,19 +1826,19 @@ one of them. `run.py` returns the raw material for impact work —
 `h_max_median`, `t_arrival_median`, `terrain_elevation` and `grid` — and the
 consumers do the analysis:
 
-* **Population at risk** — `services/api/jalraksha_service/tasks.py:170`,
+* **Population at risk** — `services/api/floodview_service/tasks.py:170`,
   `_population_at_risk(run_id, result, dam_config)`. Fetches GHSL P2023A
   population onto the run's own grid via
-  `jalraksha.gee.population.fetch_population_on_grid(grid_dict, crs_epsg,
+  `floodview.gee.population.fetch_population_on_grid(grid_dict, crs_epsg,
   cache_dir)`, then calls
-  `jalraksha.impact.population.compute_population_exposure(h_max, zeros, zeros,
+  `floodview.impact.population.compute_population_exposure(h_max, zeros, zeros,
   pop_grid)` and `compute_par(pop_grid, t_arrival,
   warning_lead_time_s=WARNING_LEAD_TIME_S, h_max_grid=h_max)`. If Earth Engine
   is unavailable it returns `{"available": False, "reason": ...}` and
   **publishes no headcount at all** — "a fabricated headcount behind a 'people
   at risk' number is the worst thing in this codebase to get wrong."
-* **Hazard classification** — `jalraksha.impact.hazard.HazardClassifier`,
-  applied inside `jalraksha.export.keyframes.export_keyframes` at
+* **Hazard classification** — `floodview.impact.hazard.HazardClassifier`,
+  applied inside `floodview.export.keyframes.export_keyframes` at
   `tasks.py:~1345`; the last keyframe's `hazard_summary` becomes the run's
   hazard summary.
 * **Per-gauge peak depth** — `tasks.py:993 _gauge_max_depths(result)`, which
@@ -1901,7 +1901,7 @@ carries neither attributes (`.dbf`) nor CRS (`.prj`)". Every kind is prefixed
 raster from a vector from an Earth overlay.
 
 The problem-statement driver: PS 26161 requires "Output should be converted to
-.shp or .Kml file". Before this function existed, `jalraksha.run` fabricated
+.shp or .Kml file". Before this function existed, `floodview.run` fabricated
 four `.tif` path strings that nothing ever wrote, and the service recorded them
 — so the API advertised downloads that 404'd for every run ever made.
 
@@ -1948,9 +1948,9 @@ for it; `cli.py` does not (§2b.6.5).
 
 ### 2b.3 Solver mode dispatch
 
-The four solver modes are **not** implemented in `jalraksha/run.py`. They are a
+The four solver modes are **not** implemented in `floodview/run.py`. They are a
 service-layer concept, declared in
-`services/api/jalraksha_service/config.py:233`:
+`services/api/floodview_service/config.py:233`:
 
 ```python
 SOLVERS: List[str] = ["swe", "delft3d", "both", "sph"]
@@ -1961,7 +1961,7 @@ last: the near-field window is 600 m over 15 s and can never reach a downstream
 gauge, so it answers a different question from the other three and must not
 read as a drop-in alternative to them."
 
-Dispatch lives at `services/api/jalraksha_service/tasks.py:1218`:
+Dispatch lives at `services/api/floodview_service/tasks.py:1218`:
 
 ```python
 if solver in ("swe", "sph", "both"):
@@ -2024,13 +2024,13 @@ feeds." Because it returns `{"rapid_estimate": est}` with no `depth_series`, the
 keyframe and XDMF blocks are naturally skipped.
 
 **Which mode triggers the Delft3D kernel**: `delft3d` and `both`, both via
-`_run_comparison` → `jalraksha.delft3d.runner.run_delft3d_simulation(d3d_setup,
+`_run_comparison` → `floodview.delft3d.runner.run_delft3d_simulation(d3d_setup,
 dam_config, gauge_locations=gauges_list, total_time_s=_delft3d_duration(...),
 dflowfm_path=settings.DFLOWFM_EXE or None)`. The real `dflowfm` binary is
 attempted whenever one is available (on `PATH`, or at
-`JALRAKSHA_DFLOWFM_EXE`); the fallback to JalRaksha's own 2D SWE solver happens
+`FLOODVIEW_DFLOWFM_EXE`); the fallback to FloodView's own 2D SWE solver happens
 only when it genuinely is not, **with the reason recorded** and labelled
-"JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM" in the Comparison
+"FloodView built-in 2D SWE — Delft3D-class, NOT Delft3D FM" in the Comparison
 tab. Per CLAUDE.md the built-in solver may be described as *Delft3D-class* (it
 solves the same depth-averaged 2D Saint-Venant equations); it must never be
 presented as Delft3D itself. A previous version passed `force_fallback=True`
@@ -2057,16 +2057,16 @@ def define_downstream_gauges(
 
 Resolution order:
 
-1. `gauges = get_gauges(dam_id)` — the registry in `jalraksha.presets.GAUGES`.
+1. `gauges = get_gauges(dam_id)` — the registry in `floodview.presets.GAUGES`.
 2. If empty **and** `29.0 <= dam_lat <= 31.5 and 77.0 <= dam_lon <= 80.0`
    (the Tehri bounding box), `gauges = get_gauges("tehri")`. This exists for
    "the shape of every call site that predates `dam_id` existing", and it is
    resolved *through the registry* rather than a literal copy. It mirrors the
-   identical fallback in `jalraksha/api.py::get_downstream_gauges`.
+   identical fallback in `floodview/api.py::get_downstream_gauges`.
 3. If still empty: `warnings.warn(f"No downstream gauge corridor is defined for
    dam_id={dam_id!r} at ({dam_lat}, {dam_lon}). Arrival times will be reported
-   at no gauges. Add one to jalraksha.presets.GAUGES.")` and **return `[]`**.
-   Deliberately no invented placeholders: "`jalraksha/api.py`'s generic
+   at no gauges. Add one to floodview.presets.GAUGES.")` and **return `[]`**.
+   Deliberately no invented placeholders: "`floodview/api.py`'s generic
    `Gauge_Nkm` placeholders are a display convenience for the legacy HTTP
    layer; putting made-up coordinates into the solver's arrival-time table
    would be presenting invented locations as results."
@@ -2215,10 +2215,10 @@ from it, higher than the reservoir surface itself."
 
 ---
 
-### 2b.5 The dam presets registry — `jalraksha/presets.py`
+### 2b.5 The dam presets registry — `floodview/presets.py`
 
 **File**: 481 lines, 25 KB. Pure data; imports nothing from the rest of
-`jalraksha`, so Phase 2 (`terrain.domain`), Phase 4 (`run.py`) and `tools/` can
+`floodview`, so Phase 2 (`terrain.domain`), Phase 4 (`run.py`) and `tools/` can
 all import it forward without a cycle.
 
 #### 2b.5.1 `DamPreset` — the complete field list
@@ -2258,7 +2258,7 @@ Methods:
   `lon`, `height_m`, `storage_mm3`, `dam_type`, `failure_mode`,
   `domain_radius_km`, and `surface_area_km2` **only when known**.
 * `dem_filename() -> str` — `f"dem_{lat:.2f}_{lon:.2f}_clipped.tif"`; "Must
-  mirror `jalraksha/dem.py::fetch_dem`'s clipped-cache filename."
+  mirror `floodview/dem.py::fetch_dem`'s clipped-cache filename."
 * `with_location(lat, lon) -> DamPreset` — `dataclasses.replace` copy;
   returns `self` unchanged when both are `None`.
 
@@ -2390,7 +2390,7 @@ falsy `dam_id` or an unknown one. "Returns empty rather than raising, and empty
 rather than substituting another dam's towns."
 
 The registry exists because this list "was previously duplicated in six places
-(`jalraksha/run.py`, `jalraksha/api.py` twice, `services/api/.../config.py`,
+(`floodview/run.py`, `floodview/api.py` twice, `services/api/.../config.py`,
 `services/api/.../tasks.py`, `frontend/src/data/entities.js`) and every copy was
 the Tehri corridor, unconditionally."
 
@@ -2404,7 +2404,7 @@ The prohibition is stated in two governance documents:
 * `CLAUDE.md:14` — "**Mullaperiyar is explicitly forbidden** (active Supreme
   Court litigation)."
 
-**Where it is enforced in code**: `jalraksha/hardening.py:276`, inside
+**Where it is enforced in code**: `floodview/hardening.py:276`, inside
 `check_forbidden_sources`'s literal list:
 
 ```python
@@ -2428,23 +2428,23 @@ and runs. See §2b.11 finding **F-01**.
 
 ---
 
-### 2b.6 The CLI — `jalraksha/cli.py`
+### 2b.6 The CLI — `floodview/cli.py`
 
 **File**: 169 lines. Entry point declared in `pyproject.toml:82-83`:
 
 ```toml
 [project.scripts]
-jalraksha = "jalraksha.cli:main"
+floodview = "floodview.cli:main"
 ```
 
 Built on **argparse**, not click (despite `tests/test_integration.py:77`'s
 docstring saying "via click").
 
-#### 2b.6.1 `jalraksha run`
+#### 2b.6.1 `floodview run`
 
 | Flag | Type | Default | Help |
 |---|---|---|---|
-| `--config` | `str` | `None` | "Path to jalraksha.yaml config file" |
+| `--config` | `str` | `None` | "Path to floodview.yaml config file" |
 | `--dam` | `str` | `None` | "Dam name (e.g., 'tehri')" |
 | `--lat` | `float` | `None` | "Dam latitude (metric CRS)" |
 | `--lon` | `float` | `None` | "Dam longitude (metric CRS)" |
@@ -2478,13 +2478,13 @@ Behaviour (`cmd_run`, `cli.py:71-132`):
 7. `print("\n[SUCCESS] Simulation completed successfully!")` — **unconditional**;
    the returned dict is never inspected for `"error"`.
 
-#### 2b.6.2 `jalraksha validate`
+#### 2b.6.2 `floodview validate`
 
 One flag: `--config` (`str`, `required=True`). Calls `load_config(args.config)`
 and prints `[OK] Config is valid` or `[ERROR] Config error: {e}` + `exit(1)`.
 Note the local variable `config` is assigned and unused.
 
-#### 2b.6.3 `jalraksha cache`
+#### 2b.6.3 `floodview cache`
 
 Mutually exclusive group: `--list` (`store_true`) and `--clear` (`store_true`),
 plus `--cache-dir` (`str`, default `"./data"`).
@@ -2499,7 +2499,7 @@ plus `--cache-dir` (`str`, default `"./data"`).
 
 | Code | When |
 |---|---|
-| `0` | success; also `jalraksha` with no subcommand (prints help); also `cache` with no flag |
+| `0` | success; also `floodview` with no subcommand (prints help); also `cache` with no flag |
 | `1` | `ConfigError` or any `Exception` in `cmd_run`; `ConfigError` in `cmd_validate` |
 | `2` | argparse's own usage errors (unknown flag, missing `--config` on `validate`) |
 
@@ -2509,21 +2509,21 @@ Termination uses the builtin `exit(1)` (from `site`), not `sys.exit(1)`.
 
 ```bash
 # Validate a config file only
-jalraksha validate --config jalraksha.yaml
+floodview validate --config floodview.yaml
 
 # Tehri, 10 members, defaults elsewhere
-jalraksha run --dam tehri --lat 30.3789 --lon 78.4789 \
+floodview run --dam tehri --lat 30.3789 --lon 78.4789 \
               --height 260 --storage 3540
 
 # 50-member run into a project directory
-jalraksha run --config jalraksha.yaml --ensemble-size 50 --output-dir ./run01
+floodview run --config floodview.yaml --ensemble-size 50 --output-dir ./run01
 
 # Cache management
-jalraksha cache --list --cache-dir ./data
-jalraksha cache --clear --cache-dir ./data
+floodview cache --list --cache-dir ./data
+floodview cache --clear --cache-dir ./data
 
 # Equivalent module invocation
-python -m jalraksha.cli run --dam tehri --lat 30.3789 --lon 78.4789 \
+python -m floodview.cli run --dam tehri --lat 30.3789 --lon 78.4789 \
        --height 260 --storage 3540
 ```
 
@@ -2538,7 +2538,7 @@ fallback.
 
 ---
 
-### 2b.7 The standalone REST API — `jalraksha/api.py`
+### 2b.7 The standalone REST API — `floodview/api.py`
 
 **File**: 326 lines. Python-stdlib `http.server`; default port **8502**.
 Docstring: "This is a minimal synchronous API suitable for local/demo use. For
@@ -2548,11 +2548,11 @@ production, replace with FastAPI + async workers."
 
 ```python
 def start_api_server(host: str = "127.0.0.1", port: int = 8502) -> HTTPServer:
-    server = ThreadingHTTPServer((host, port), JalRakshaAPIHandler)
+    server = ThreadingHTTPServer((host, port), FloodViewAPIHandler)
     server.daemon_threads = True
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    print(f"[JalRaksha API] Listening on http://{host}:{port}")
+    print(f"[FloodView API] Listening on http://{host}:{port}")
     return server
 
 def stop_api_server(server: HTTPServer) -> None:
@@ -2575,7 +2575,7 @@ request queue limit, no rate limiting, no authentication. `stop_api_server`
 calls `shutdown()` but never `server_close()`, so the listening socket is not
 released.
 
-`JalRakshaAPIHandler.log_message` is overridden to a no-op: "Suppress default
+`FloodViewAPIHandler.log_message` is overridden to a no-op: "Suppress default
 server log; use print for important messages." There is therefore **no access
 log**.
 
@@ -2597,7 +2597,7 @@ Paths are normalised with `urlparse(self.path).path.rstrip("/")`, so
 #### 2b.7.2 `GET /health`
 
 * Request: none.
-* `200` → `{"status": "ok", "service": "JalRaksha API v1"}`.
+* `200` → `{"status": "ok", "service": "FloodView API v1"}`.
 
 #### 2b.7.3 `GET /api/v1/dams`
 
@@ -2610,8 +2610,8 @@ Paths are normalised with `urlparse(self.path).path.rstrip("/")`, so
 | `bhakra` | Bhakra Dam | 31.4167 | 76.4333 | 226.0 | 9340.0 | gravity | Sutlej | Himachal Pradesh |
 
 Each also carries a `note`. This is a **third** dam registry, independent of
-`jalraksha.presets.PRESETS` (tehri, khadakwasla) and
-`services/api/jalraksha_service/config.py::DEMO_DAMS` (tehri, khadakwasla,
+`floodview.presets.PRESETS` (tehri, khadakwasla) and
+`services/api/floodview_service/config.py::DEMO_DAMS` (tehri, khadakwasla,
 bhakra, idukki, hirakud). It omits `khadakwasla`, which is
 `DEFAULT_PRESET_ID`.
 
@@ -2625,7 +2625,7 @@ bhakra, idukki, hirakud). It omits `khadakwasla`, which is
 `get_downstream_gauges(lat: float, lon: float, dam_id: Optional[str] = None) ->
 List[Dict]` (`api.py:60`) resolves in three tiers:
 
-1. `jalraksha.presets.get_gauges(dam_id)` → `{name, distance_km, lat, lon,
+1. `floodview.presets.get_gauges(dam_id)` → `{name, distance_km, lat, lon,
    river}` plus `note` where defined.
 2. The Tehri bounding box `29.0 <= lat <= 31.5 and 77.0 <= lon <= 80.0` →
    `get_gauges("tehri")`. "Kept because it is the only thing that made a
@@ -2656,7 +2656,7 @@ display convenience only; `run.py` explicitly refuses to use it.
 * `400` → `{"error": "Request body must be JSON."}` (empty or unparseable body)
   or `{"error": "Missing fields: [...]"}`.
 * `422` → `{"error": "<HardeningError message>"}` from
-  `jalraksha.hardening.validate_dam_config(body)`.
+  `floodview.hardening.validate_dam_config(body)`.
 * `500` → `{"error": "Simulation error: <exc>"}`.
 * `200` → the `rapid_estimate` payload.
 * `404` → `{"error": "Unknown POST endpoint: {path}"}` for any other path.
@@ -2702,13 +2702,13 @@ literals, applied to whatever dam was passed in — and this is the live path fo
 
 #### 2b.7.6 How this differs from the FastAPI service in `services/`
 
-| | `jalraksha/api.py` | `services/api/jalraksha_service/` |
+| | `floodview/api.py` | `services/api/floodview_service/` |
 |---|---|---|
 | Framework | stdlib `http.server` + `ThreadingHTTPServer` | FastAPI + uvicorn |
 | Port | 8502 | 8000 (`scripts/run_api.py --port`) |
 | Execution | synchronous, in the request thread | Celery task (`CELERY_EAGER=1` runs in-process) |
 | Physics | `rapid_estimate` only — **never** the SWE solver | `run_dam_break_ensemble` for `swe`/`sph`/`both` |
-| Persistence | none | SQLite at `data/jalraksha.db`, exports table, `/files/` URLs |
+| Persistence | none | SQLite at `data/floodview.db`, exports table, `/files/` URLs |
 | Progress | none | `progress_pct` + `phase` per run |
 | Schemas | hand-rolled dict validation + `validate_dam_config` | pydantic models (`schemas.py`) |
 | Dam registry | its own `DEMO_DAMS` (tehri, bhakra) | `config.py::DEMO_DAMS` (5 dams, derived from presets) |
@@ -2717,11 +2717,11 @@ literals, applied to whatever dam was passed in — and this is the live path fo
 | Intended use | local/demo, dashboard prototyping | the production path |
 
 The two are wired together in one direction only: `tasks.py` imports
-`jalraksha.api.rapid_estimate` for the `delft3d` branch.
+`floodview.api.rapid_estimate` for the `delft3d` branch.
 
 ---
 
-### 2b.8 Hardening — `jalraksha/hardening.py`
+### 2b.8 Hardening — `floodview/hardening.py`
 
 **File**: 283 lines. "Phase 11: Hardening — Input Validation, Error Recovery &
 CLI Robustness." All validators raise `HardeningError(ValueError)`.
@@ -2780,7 +2780,7 @@ Python), so `{"lat": True}` passes the latitude check as `1.0`.
   bytes named `.tif` passes.
 * `validate_output_dir(output_dir: str) -> str` — `os.path.abspath`, then
   `os.makedirs(exist_ok=True)` wrapped in `try/except OSError`, then an actual
-  write test (`.jalraksha_write_test` written and removed). Returns the absolute
+  write test (`.floodview_write_test` written and removed). Returns the absolute
   path. This is the only validator that touches the filesystem for real.
 * `safe_run(func, *args, context: str = "", **kwargs)` — re-raises
   `HardeningError` unchanged ("don't double-wrap"); converts `MemoryError` to
@@ -2808,7 +2808,7 @@ and resource limits specifically:
 * **No CPU/process limits** (no `resource.setrlimit`, no cgroup awareness).
 * **No request-size limit** in `api.py::_read_json_body`.
 * **No wiring.** Grepping the tree for call sites of the six public functions
-  finds exactly one outside `tests/`: `jalraksha/api.py:273` calls
+  finds exactly one outside `tests/`: `floodview/api.py:273` calls
   `validate_dam_config`. `validate_ensemble_params`, `validate_dem_path`,
   `validate_output_dir`, `safe_run` and `check_forbidden_sources` are **dead
   code in production**. Neither `cli.py` nor `run.py` calls any of them.
@@ -2877,7 +2877,7 @@ directory does not exist in this checkout — so both fail out of the box.
 
 #### 2b.9.3 `scripts/run_api.py` — environment pinning
 
-Wrapper around uvicorn for the **FastAPI** service (not `jalraksha/api.py`).
+Wrapper around uvicorn for the **FastAPI** service (not `floodview/api.py`).
 Flags: `--port` (int, default `8000`), `--host` (default `127.0.0.1`),
 `--reload` (`store_true`, "development only"), `--broker` (`store_true`, "Use a
 real Celery broker/worker instead of running tasks eagerly in-process. Requires
@@ -2888,13 +2888,13 @@ variables, and the API needs two of them set before any module is imported":
 
 1. **`os.chdir(REPO_ROOT)`** where `REPO_ROOT = Path(__file__).resolve().parents[1]`.
    **Why the working directory matters**: "the export paths recorded in
-   `data/jalraksha.db` are **RELATIVE**, and `main.py` resolves them against the
+   `data/floodview.db` are **RELATIVE**, and `main.py` resolves them against the
    process CWD, so starting the API from anywhere else silently breaks every
    `/files/...` URL the frontend requests."
-2. `os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")` — "where the pre-baked
+2. `os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")` — "where the pre-baked
    DEMs, keyframes, exports and the SQLite database live (`config.py`, ~line
    17)".
-3. `os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")` —
+3. `os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")` —
    Earth Engine needs a Cloud project with the EE API enabled; without it
    `gee_status()` reports "not set" and "BOTH the Sentinel-1 overlay and the
    GHSL population-at-risk panel go dark, even though the credentials are
@@ -2903,11 +2903,11 @@ variables, and the API needs two of them set before any module is imported":
    Celery tasks synchronously in-process, so `POST /runs` works without a Redis
    broker and a separate worker (`worker.py`, ~line 27)." Note this one is a
    hard assignment, not a `setdefault`.
-5. Verifies `services/api/jalraksha_service/main.py` exists, raising
+5. Verifies `services/api/floodview_service/main.py` exists, raising
    `SystemExit(f"API package not found under {api_dir}")` if not, then
    `sys.path.insert(0, str(api_dir))`.
 6. Prints a banner (repo root, data dir, eager flag, GEE project, listen URL)
-   and calls `uvicorn.run("jalraksha_service.main:app", host, port, reload,
+   and calls `uvicorn.run("floodview_service.main:app", host, port, reload,
    app_dir=str(api_dir))`.
 
 ---
@@ -2932,7 +2932,7 @@ into a test failure, which teaches the team to ignore red CI."
 | Test | Asserts |
 |---|---|
 | `TestHealthEndpoint::test_health_returns_200` | `data["status"] == "ok"` |
-| `…::test_health_contains_service_name` | `"JalRaksha" in data["service"]` |
+| `…::test_health_contains_service_name` | `"FloodView" in data["service"]` |
 | `TestDamsEndpoint::test_dams_returns_list` | `"dams" in data`, is a `list` |
 | `…::test_dams_contains_tehri` | `"tehri"` in the id list |
 | `…::test_dams_have_required_fields` | every dam has `id, name, lat, lon, height_m` |
@@ -3011,7 +3011,7 @@ tags, cross-registry consistency, and geometric relationships, not just types.
 #### 2b.10.4 `tests/test_integration.py` (189 lines)
 
 * `TestFullPackageImports` — 32 parametrised cases importing every module from
-  `jalraksha` through `jalraksha.gee.population`, asserting `mod is not None`.
+  `floodview` through `floodview.gee.population`, asserting `mod is not None`.
   This is the broadest guard in the repo and the one that would catch a
   PROJ-repair regression at import time.
 * `TestCLIIntegration::test_cli_module_importable` — `callable(main)`.
@@ -3078,7 +3078,7 @@ Each finding gives `file:line`, severity, and a concrete fix.
 ---
 
 **F-01 — CRITICAL — The Mullaperiyar prohibition is never enforced.**
-`jalraksha/hardening.py:258-282`. `check_forbidden_sources` has zero production
+`floodview/hardening.py:258-282`. `check_forbidden_sources` has zero production
 call sites (verified: only `tests/test_hardening.py:169` references it) and it
 returns a list rather than raising. A `POST /api/v1/simulate` naming
 Mullaperiyar passes `validate_dam_config` and runs.
@@ -3107,7 +3107,7 @@ if str(config.get("dam_id", "")).lower() in FORBIDDEN_DAM_IDS:
 ---
 
 **F-02 — HIGH — `cli.py` reports success on a failed run.**
-`jalraksha/cli.py:116-125`. `run_dam_break_ensemble` returns `{"error": ...}` on
+`floodview/cli.py:116-125`. `run_dam_break_ensemble` returns `{"error": ...}` on
 three paths (`run.py:627`, `654`, `728`); `cmd_run` never inspects the result
 and unconditionally prints `[SUCCESS] Simulation completed successfully!` and
 exits 0.
@@ -3124,14 +3124,14 @@ print(f"\n[SUCCESS] {results['num_completed']}/{results['num_ensemble']} members
 ---
 
 **F-03 — HIGH — The CLI cannot resolve a dam preset, so non-Tehri runs report no
-gauges.** `jalraksha/cli.py:106-114`. The hand-built `dam_config` omits
+gauges.** `floodview/cli.py:106-114`. The hand-built `dam_config` omits
 `dam_id`, `domain_radius_km` and `surface_area_km2`, so
 `define_downstream_gauges` (`run.py:638`) receives `None` and returns `[]` for
 any dam outside the Tehri bounding box — and the run uses a 60 km domain even
 for Khadakwasla, whose DEM supports 27.9 km.
 
 ```python
-from jalraksha.presets import PRESETS, get_preset, PresetError
+from floodview.presets import PRESETS, get_preset, PresetError
 
 if args.dam and args.dam.lower() in PRESETS and not (args.lat or args.lon):
     preset = get_preset(args.dam.lower())
@@ -3150,7 +3150,7 @@ results = run_dam_break_ensemble(
 ---
 
 **F-04 — HIGH — `rapid_estimate` publishes fabricated impact numbers.**
-`jalraksha/api.py:169-179`:
+`floodview/api.py:169-179`:
 
 ```python
 inundation_km2 = round(0.0012 * q_peak, 2)
@@ -3170,7 +3170,7 @@ result = {
     ...,
     "inundation_area_km2": round(AREA_PER_PEAK_DISCHARGE_KM2_PER_M3S * q_peak, 2),
     # Removed: affected_population and economic_loss_crore_inr had no source.
-    # A headcount must come from jalraksha.impact.population over a real
+    # A headcount must come from floodview.impact.population over a real
     # GHSL grid (see tasks.py::_population_at_risk), never from an area
     # multiplied by an assumed density.
     "affected_population": None,
@@ -3183,7 +3183,7 @@ result = {
 ---
 
 **F-05 — HIGH — `rapid_estimate` fabricates a ±20 % uncertainty band.**
-`jalraksha/api.py:160-166`. `spread = 0.2 * t_s` is emitted as `p05_min` /
+`floodview/api.py:160-166`. `spread = 0.2 * t_s` is emitted as `p05_min` /
 `p95_min`, the same field names the real ensemble uses, so a consumer cannot
 distinguish a Monte-Carlo band from a hardcoded multiplier.
 
@@ -3208,7 +3208,7 @@ and the whole `progress_cb` contract are untested.
 ```python
 @pytest.mark.integration
 def test_run_dam_break_ensemble_on_synthetic_terrain(tmp_path):
-    from jalraksha.run import run_dam_break_ensemble
+    from floodview.run import run_dam_break_ensemble
     seen = []
     result = run_dam_break_ensemble(
         {"dam_id": "tehri", "name": "Tehri Dam", "lat": 30.3789, "lon": 78.4789,
@@ -3233,14 +3233,14 @@ def test_run_dam_break_ensemble_on_synthetic_terrain(tmp_path):
 ---
 
 **F-07 — HIGH — `hardening.py` is almost entirely unwired.**
-`jalraksha/hardening.py` (whole module) vs `jalraksha/run.py:585` and
-`jalraksha/cli.py:71`. Only `validate_dam_config` is called anywhere, and only
+`floodview/hardening.py` (whole module) vs `floodview/run.py:585` and
+`floodview/cli.py:71`. Only `validate_dam_config` is called anywhere, and only
 from `api.py:273`. `run_dam_break_ensemble`'s first statement dereferences
 `dam_config['name']`, so a malformed config yields a bare `KeyError`.
 
 ```python
 # run.py, immediately after the docstring
-from jalraksha.hardening import (
+from floodview.hardening import (
     validate_dam_config, validate_ensemble_params, validate_dem_path,
     validate_output_dir,
 )
@@ -3254,7 +3254,7 @@ output_dir = validate_output_dir(output_dir)
 ---
 
 **F-08 — MEDIUM — `validate_dem_path` never opens the raster despite its
-docstring.** `jalraksha/hardening.py:156-186`; proven by
+docstring.** `floodview/hardening.py:156-186`; proven by
 `tests/test_hardening.py:135-138`, where 16 null bytes named `.tif` passes. A
 truncated or non-raster file reaches `build_domain` and fails there.
 
@@ -3278,7 +3278,7 @@ except Exception as exc:
 ---
 
 **F-09 — MEDIUM — `threshold_h` is dead in `compute_arrival_times_at_gauges`.**
-`jalraksha/run.py:280`. The parameter is documented as "Depth threshold for
+`floodview/run.py:280`. The parameter is documented as "Depth threshold for
 arrival (m)" and never referenced; the real threshold is
 `solver/parallel.py:37::ARRIVAL_THRESHOLD_M = 0.1`, applied when `t_arrival` is
 built. Passing `threshold_h=1.0` silently does nothing.
@@ -3339,19 +3339,19 @@ does not exist.** `run_demo.py:25` and `run_smoke.py:14` both hardcode
 scripts fail immediately.
 
 ```python
-from jalraksha.presets import TEHRI
+from floodview.presets import TEHRI
 import os, sys
 cfg = TEHRI.to_dam_config()
-dem = os.path.join(os.environ.get("JALRAKSHA_DATA_DIR", "./data"), "dem", TEHRI.dem_filename())
+dem = os.path.join(os.environ.get("FLOODVIEW_DATA_DIR", "./data"), "dem", TEHRI.dem_filename())
 if not os.path.exists(dem):
-    sys.exit(f"DEM not cached: {dem}\nRun: jalraksha run --dam tehri ... (fetches it)")
+    sys.exit(f"DEM not cached: {dem}\nRun: floodview run --dam tehri ... (fetches it)")
 grid, state, manning = build_domain(cfg, dem, target_resolution=200.0)
 ```
 
 ---
 
 **F-13 — MEDIUM — Unbounded request body in the stdlib API.**
-`jalraksha/api.py:211-219`. `length = int(self.headers.get("Content-Length", 0))`
+`floodview/api.py:211-219`. `length = int(self.headers.get("Content-Length", 0))`
 then `self.rfile.read(length)` — a client can declare a multi-gigabyte body and
 exhaust memory; a non-numeric or negative `Content-Length` raises `ValueError`
 out of the handler.
@@ -3375,8 +3375,8 @@ def _read_json_body(self) -> Optional[Dict]:
 ---
 
 **F-14 — MEDIUM — Three independent dam registries.**
-`jalraksha/presets.py:369` (tehri, khadakwasla), `jalraksha/api.py:30`
-(tehri, bhakra), `services/api/jalraksha_service/config.py::DEMO_DAMS`
+`floodview/presets.py:369` (tehri, khadakwasla), `floodview/api.py:30`
+(tehri, bhakra), `services/api/floodview_service/config.py::DEMO_DAMS`
 (tehri, khadakwasla, bhakra, idukki, hirakud). Only the last two are
 cross-checked (`tests/test_presets.py:192-237`); `api.py::DEMO_DAMS` is checked
 by nothing and omits the default preset. Tehri's height/storage are written out
@@ -3384,7 +3384,7 @@ three times.
 
 ```python
 # api.py — derive rather than duplicate
-from jalraksha.presets import PRESETS
+from floodview.presets import PRESETS
 
 DEMO_DAMS = [
     {"id": p.dam_id, "name": p.name, "lat": p.lat, "lon": p.lon,
@@ -3398,7 +3398,7 @@ DEMO_DAMS = [
 ---
 
 **F-15 — MEDIUM — `stop_api_server` leaks the listening socket.**
-`jalraksha/api.py:323-325`. `shutdown()` stops `serve_forever` but does not close
+`floodview/api.py:323-325`. `shutdown()` stops `serve_forever` but does not close
 the socket, so a subsequent bind to the same port can fail with
 `OSError: [Errno 98] Address already in use`.
 
@@ -3412,14 +3412,14 @@ def stop_api_server(server: HTTPServer) -> None:
 ---
 
 **F-16 — MEDIUM — Duplicated Froehlich regression literal in `api.py`.**
-`jalraksha/api.py:143`:
+`floodview/api.py:143`:
 `q_peak = 0.607 * (storage * 1e6) ** 0.295 * height ** 0.838`. A second,
 uncited copy of `terrain/breach.py::froehlich_1995_peak_outflow`, which will
 silently diverge if the vetted one is corrected.
 
 ```python
 except Exception:
-    from jalraksha.terrain.breach import froehlich_1995_peak_outflow
+    from floodview.terrain.breach import froehlich_1995_peak_outflow
     q_peak = froehlich_1995_peak_outflow(
         storage_mcm=dam_config.get("storage_mm3", 1000.0),
         height_m=dam_config.get("height_m", 100.0),
@@ -3429,8 +3429,8 @@ except Exception:
 ---
 
 **F-17 — MEDIUM — `grid.crs` parsing is brittle in two places.**
-`jalraksha/run.py:316` and
-`services/api/jalraksha_service/tasks.py:1015`:
+`floodview/run.py:316` and
+`services/api/floodview_service/tasks.py:1015`:
 `int(str(grid.crs).split(":")[-1]) % 100`. A WKT or PROJ-string CRS raises
 `ValueError`; a geographic CRS such as `EPSG:4326` silently yields "zone 26".
 
@@ -3448,7 +3448,7 @@ def _utm_zone_from_crs(crs: str) -> int:
 ---
 
 **F-18 — MEDIUM — Unbounded single-cell depth injection.**
-`jalraksha/run.py:515-518`. `delta_h = q_current * dt_s / (dx*dy)` with no cap.
+`floodview/run.py:515-518`. `delta_h = q_current * dt_s / (dx*dy)` with no cap.
 At Tehri peak outflow (~10⁵ m³/s), `dt_s = 30 s` and 200 m cells, one step adds
 ~75 m of water to one cell — a shock the CFL controller then has to absorb, and
 the likeliest cause of the "timestep has probably collapsed" warning
@@ -3472,14 +3472,14 @@ state.h[j_breach, i_breach] += delta_h
 
 **F-19 — MEDIUM — Personal Google Cloud project ID baked into the repo.**
 `scripts/run_api.py:53`:
-`os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")`. Any
+`os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")`. Any
 other user silently inherits a project they cannot access, and Earth Engine
 fails with a permissions error rather than the clean "not set" path.
 
 ```python
 # Leave unset by default; the operator supplies their own EE project.
-if "JALRAKSHA_GEE_PROJECT" not in os.environ:
-    print("[run_api] JALRAKSHA_GEE_PROJECT unset — Sentinel-1 overlay and "
+if "FLOODVIEW_GEE_PROJECT" not in os.environ:
+    print("[run_api] FLOODVIEW_GEE_PROJECT unset — Sentinel-1 overlay and "
           "GHSL population-at-risk will report 'unavailable'. "
           "Set it to your own Earth Engine Cloud project to enable them.")
 ```
@@ -3487,7 +3487,7 @@ if "JALRAKSHA_GEE_PROJECT" not in os.environ:
 ---
 
 **F-20 — MEDIUM — Hardcoded solver parameters in the CLI.**
-`jalraksha/cli.py:121-122`: `solver_duration_s=1800.0` and
+`floodview/cli.py:121-122`: `solver_duration_s=1800.0` and
 `target_resolution=200.0` with no flags; `domain_radius_km` falls to 60.0. A
 30-minute simulation cannot reach Haridwar at 58.4 km.
 
@@ -3505,12 +3505,12 @@ run_parser.add_argument("--workers", type=int, default=None,
 ---
 
 **F-21 — LOW — Hardcoded `"EPSG:32643"` in the CLI's ad-hoc config.**
-`jalraksha/cli.py:88`. Tehri is zone 44 (`EPSG:32644`, per
+`floodview/cli.py:88`. Tehri is zone 44 (`EPSG:32644`, per
 `TEHRI.epsg`). Harmless today because `load_dem_as_grid` auto-detects, but it is
 a wrong value sitting in a config dict.
 
 ```python
-from jalraksha.terrain.domain import latlon_to_utm
+from floodview.terrain.domain import latlon_to_utm
 zone, _, _ = latlon_to_utm(args.lat, args.lon)
 config = {..., "crs": f"EPSG:{(32600 if args.lat >= 0 else 32700) + zone}"}
 ```
@@ -3518,7 +3518,7 @@ config = {..., "crs": f"EPSG:{(32600 if args.lat >= 0 else 32700) + zone}"}
 ---
 
 **F-22 — LOW — Falsy-value bug in the CLI's required-argument check.**
-`jalraksha/cli.py:78`: `if not all([args.dam, args.lat, args.lon, args.height,
+`floodview/cli.py:78`: `if not all([args.dam, args.lat, args.lon, args.height,
 args.storage])`. A dam at longitude `0.0` (Greenwich) or latitude `0.0` is
 rejected as "missing".
 
@@ -3534,7 +3534,7 @@ if missing:
 ---
 
 **F-23 — LOW — `run_dam_break_ensemble` never reports 100 % and never reports
-failure through `progress_cb`.** `jalraksha/run.py:781` is the last `_report`
+failure through `progress_cb`.** `floodview/run.py:781` is the last `_report`
 (92.0); the three `{"error": ...}` returns emit nothing.
 
 ```python
@@ -3548,7 +3548,7 @@ _report(100.0, "Complete")
 ---
 
 **F-24 — LOW — `GET /api/v1/gauges` defaults to Tehri when `lat`/`lon` are
-absent.** `jalraksha/api.py:242-243`:
+absent.** `floodview/api.py:242-243`:
 `float(params.get("lat", [30.3789])[0])`. A parameter-less request silently
 returns the Tehri corridor as though it were a general answer.
 
@@ -3561,20 +3561,20 @@ if "lat" not in params or "lon" not in params:
 ---
 
 **F-25 — LOW — Generic gauge placeholders assume the flood flows due south.**
-`jalraksha/api.py:108-113`: `{"lat": lat - 0.09, "lon": lon}` etc. Correct only
+`floodview/api.py:108-113`: `{"lat": lat - 0.09, "lon": lon}` etc. Correct only
 for a north-to-south river.
 
 ```python
 # Name them so nothing can mistake the geometry for a survey.
 {"name": "Gauge_10km", "distance_km": 10.0, "lat": None, "lon": None,
  "note": "Placeholder: no surveyed corridor for this dam. Distance only; "
-         "no coordinate is implied. Add a corridor to jalraksha.presets.GAUGES."}
+         "no coordinate is implied. Add a corridor to floodview.presets.GAUGES."}
 ```
 
 ---
 
 **F-26 — LOW — `DAM_HEIGHT_MAX_M = 400.0` contradicts its own comment.**
-`jalraksha/hardening.py:28`: `# Maximum dam height (m) — tallest is ~300 m`.
+`floodview/hardening.py:28`: `# Maximum dam height (m) — tallest is ~300 m`.
 Jinping-I is 305 m; 400 m has no stated basis.
 
 ```python
@@ -3584,7 +3584,7 @@ DAM_HEIGHT_MAX_M = 320.0  # Jinping-I (305 m) is the tallest built; +5% headroom
 ---
 
 **F-27 — LOW — `check_forbidden_sources` substring matching produces false
-positives.** `jalraksha/hardening.py:277-278`: `"merit"` matches
+positives.** `floodview/hardening.py:277-278`: `"merit"` matches
 "meritorious", "merit review"; `"bhuvan"` would match a place name.
 
 ```python
@@ -3605,7 +3605,7 @@ found = [name for name, pat in _FORBIDDEN_PATTERNS.items()
 ---
 
 **F-28 — LOW — Stale domain figure in the Baramati note.**
-`jalraksha/presets.py:450-451`: "at 91.7 km it lies beyond the **30 km** solver
+`floodview/presets.py:450-451`: "at 91.7 km it lies beyond the **30 km** solver
 domain" — `KHADAKWASLA.domain_radius_km` is `27.0`. Fix the literal to 27 km, or
 better, drop the number from the note and let
 `compute_arrival_times_at_gauges`'s own out-of-domain message carry it.
@@ -3613,7 +3613,7 @@ better, drop the number from the note and let
 ---
 
 **F-29 — LOW — Unvetted coefficients still shipping.**
-`jalraksha/presets.py:213-219` (`TEHRI.frl_m = 830.0`,
+`floodview/presets.py:213-219` (`TEHRI.frl_m = 830.0`,
 `crest_m = 839.5`, both marked `TODO: UNVETTED`),
 `presets.py:275-282` (`KHADAKWASLA.height_m = 39.6`,
 `storage_mm3 = 85.31`, "STILL UNVETTED as primary sources"),
@@ -3626,7 +3626,7 @@ is quoted as a screening result.
 ---
 
 **F-30 — LOW — Dead imports and a vacuous test.**
-`jalraksha/run.py:25-26` imports `create_state` and `SWESolver`, neither used;
+`floodview/run.py:25-26` imports `create_state` and `SWESolver`, neither used;
 `Tuple` (`run.py:21`) unused. `tests/test_integration.py:79`
 (`assert hasattr(main, "commands") or callable(main)`) is vacuously true and its
 docstring wrongly says the CLI uses click. `tests/test_phase4.py:207`
@@ -3634,14 +3634,14 @@ docstring wrongly says the CLI uses click. `tests/test_phase4.py:207`
 
 ```python
 # run.py
-from jalraksha.solver.types import Grid          # create_state, SWESolver unused
+from floodview.solver.types import Grid          # create_state, SWESolver unused
 from typing import Callable, Dict, List, Optional
 
 # test_integration.py
 def test_cli_has_run_command(self, capsys):
     import pytest, sys
-    from jalraksha.cli import main
-    sys.argv = ["jalraksha", "run", "--help"]
+    from floodview.cli import main
+    sys.argv = ["floodview", "run", "--help"]
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 0
@@ -3660,8 +3660,8 @@ available and are flagged rather than asserted:
   recorded anywhere** — `run_ensemble_member` keeps running maxima without their
   timestamps. Neither is extracted per gauge by any code in this subsystem.
 * The **SPH "~600 m over ~15 s"** figure is quoted from
-  `services/api/jalraksha_service/config.py:230-232` and corroborated in prose
-  at `tasks.py:764-768`. `jalraksha/sph/` was not read for this chapter, so the
+  `services/api/floodview_service/config.py:230-232` and corroborated in prose
+  at `tasks.py:764-768`. `floodview/sph/` was not read for this chapter, so the
   numbers are reported as documented, not as measured.
 * `SWESolver`'s `CFL_MAX` and `dt_min` values are referenced by
   `solver/parallel.py:118` and `:141` but `solver/core.py` was outside this
@@ -3747,12 +3747,12 @@ breach gap; none of the three appear anywhere in the original text.
 
 ### 2C. The Backend Service Layer
 
-This chapter documents the FastAPI service that fronts the JalRaksha simulation
+This chapter documents the FastAPI service that fronts the FloodView simulation
 library: its configuration surface, its complete REST contract, its Pydantic wire
 types, its SQLite/Postgres metadata store, its two distinct task-execution paths,
 its static-asset serving, and its container/deployment definition. Every claim
 below is anchored to a file and line in the source tree under
-`services/api/jalraksha_service/`, `services/api/`, and the repository root.
+`services/api/floodview_service/`, `services/api/`, and the repository root.
 
 The service's own stated design rule (`__init__.py:8-10`) is that **nothing in it
 reimplements simulation logic**:
@@ -3774,14 +3774,14 @@ is never given knowledge of the HTTP surface.
 
 | File | Lines | Role |
 |---|---:|---|
-| `jalraksha_service/__init__.py` | 23 | Package docstring; re-exports `settings` |
-| `jalraksha_service/config.py` | 242 | Env-driven `Settings` singleton, `DEMO_DAMS` registry |
-| `jalraksha_service/db.py` | 290 | Thin metadata store (sqlite3 / psycopg), 3 tables |
-| `jalraksha_service/schemas.py` | 427 | 15 Pydantic v2 models |
-| `jalraksha_service/main.py` | 936 | FastAPI app: 12 routes, 2 static mounts, validation gates |
-| `jalraksha_service/tasks.py` | 1439 | Celery task `jalraksha.run_dam_break` + helpers |
-| `jalraksha_service/worker.py` | 31 | Celery app construction, `CELERY_EAGER` switch |
-| `jalraksha_service/run_worker.py` | 128 | Out-of-process single-run entry point |
+| `floodview_service/__init__.py` | 23 | Package docstring; re-exports `settings` |
+| `floodview_service/config.py` | 242 | Env-driven `Settings` singleton, `DEMO_DAMS` registry |
+| `floodview_service/db.py` | 290 | Thin metadata store (sqlite3 / psycopg), 3 tables |
+| `floodview_service/schemas.py` | 427 | 15 Pydantic v2 models |
+| `floodview_service/main.py` | 936 | FastAPI app: 12 routes, 2 static mounts, validation gates |
+| `floodview_service/tasks.py` | 1439 | Celery task `floodview.run_dam_break` + helpers |
+| `floodview_service/worker.py` | 31 | Celery app construction, `CELERY_EAGER` switch |
+| `floodview_service/run_worker.py` | 128 | Out-of-process single-run entry point |
 | `services/api/Dockerfile` | 30 | API + worker image |
 | `services/api/requirements.txt` | 15 | Service-layer pins |
 | `Dockerfile` (root) | 32 | Library/CLI-only image, **unreferenced by compose** |
@@ -3808,14 +3808,14 @@ a malformed value. `settings = Settings()` is instantiated once at `config.py:24
 
 | Attribute | Type | Env var | Default | Effect |
 |---|---|---|---|---|
-| `DATA_DIR` | `Path` | `JALRAKSHA_DATA_DIR` | `Path("./data")` | Root for exports, keyframes, tiles, DEMs, the SQLite DB, GEE caches, the ParaView `.pvsm` states, and the subprocess payload scratch dir. Mounted as `/files` (`main.py:83`). Relative by default, therefore **CWD-dependent**. |
+| `DATA_DIR` | `Path` | `FLOODVIEW_DATA_DIR` | `Path("./data")` | Root for exports, keyframes, tiles, DEMs, the SQLite DB, GEE caches, the ParaView `.pvsm` states, and the subprocess payload scratch dir. Mounted as `/files` (`main.py:83`). Relative by default, therefore **CWD-dependent**. |
 | `REDIS_URL` | `str` | `REDIS_URL` | `redis://localhost:6379/0` | Celery broker **and** result backend (`worker.py:12-13`). |
-| `DATABASE_URL` | `str` | `DATABASE_URL` | `sqlite:///./data/jalraksha.db` | Selects the backend in `db._connect` (`db.py:29-40`) by string prefix and the placeholder style in `db._placeholder` (`db.py:43-44`). |
+| `DATABASE_URL` | `str` | `DATABASE_URL` | `sqlite:///./data/floodview.db` | Selects the backend in `db._connect` (`db.py:29-40`) by string prefix and the placeholder style in `db._placeholder` (`db.py:43-44`). |
 | `DEMO_DAMS` | `List[dict]` | — | 5 entries | Backs `GET /dams`, `RunRequest.to_dam_config`, `_run_preset`, and `_resolve_reach`. Not env-configurable. |
-| `PARAVIEW_EXE` | `str` | `JALRAKSHA_PARAVIEW_EXE` | `C:/Program Files/ParaView 6.2.0/bin/paraview.exe` | GUI binary launched by `POST /runs/{id}/open-paraview` (`main.py:930`). Existence-checked at `main.py:842`. |
-| `PVPYTHON_EXE` | `str` | `JALRAKSHA_PVPYTHON_EXE` | `C:/Program Files/ParaView 6.2.0/bin/pvpython.exe` | Headless ParaView Python used to build the `.pvsm` state (`main.py:910`). **Not** existence-checked. |
-| `DFLOWFM_EXE` | `str` | `JALRAKSHA_DFLOWFM_EXE` | `""` (empty) | Passed to `run_delft3d_simulation(..., dflowfm_path=settings.DFLOWFM_EXE or None)` (`tasks.py:799`). Empty means "auto-discover". |
-| `GEE_PROJECT` | `str` | `JALRAKSHA_GEE_PROJECT` | `""` (empty) | Google Cloud project with the Earth Engine API enabled. Note: **the service never reads this attribute** — `jalraksha.gee.auth` reads the same environment variable directly (`config.py:220-221`, `jalraksha/gee/auth.py:41`). The `Settings` attribute is documentation, not a code path. |
+| `PARAVIEW_EXE` | `str` | `FLOODVIEW_PARAVIEW_EXE` | `C:/Program Files/ParaView 6.2.0/bin/paraview.exe` | GUI binary launched by `POST /runs/{id}/open-paraview` (`main.py:930`). Existence-checked at `main.py:842`. |
+| `PVPYTHON_EXE` | `str` | `FLOODVIEW_PVPYTHON_EXE` | `C:/Program Files/ParaView 6.2.0/bin/pvpython.exe` | Headless ParaView Python used to build the `.pvsm` state (`main.py:910`). **Not** existence-checked. |
+| `DFLOWFM_EXE` | `str` | `FLOODVIEW_DFLOWFM_EXE` | `""` (empty) | Passed to `run_delft3d_simulation(..., dflowfm_path=settings.DFLOWFM_EXE or None)` (`tasks.py:799`). Empty means "auto-discover". |
+| `GEE_PROJECT` | `str` | `FLOODVIEW_GEE_PROJECT` | `""` (empty) | Google Cloud project with the Earth Engine API enabled. Note: **the service never reads this attribute** — `floodview.gee.auth` reads the same environment variable directly (`config.py:220-221`, `floodview/gee/auth.py:41`). The `Settings` attribute is documentation, not a code path. |
 | `SOLVERS` | `List[str]` | — | `["swe", "delft3d", "both", "sph"]` | Whitelist enforced in `submit_run` (`main.py:126-127`). |
 
 `CELERY_EAGER` is **not** a `Settings` attribute. It is read directly from the
@@ -3840,7 +3840,7 @@ module import, before the FastAPI app is constructed — the `/tiles` mount at
 
 **Delft3D FM.** `DFLOWFM_EXE` defaults to the empty string, which `tasks.py:799`
 converts to `None` via `settings.DFLOWFM_EXE or None`. Resolution then happens in
-`jalraksha/delft3d/runner.py::resolve_dflowfm` (lines 26-65), in this order:
+`floodview/delft3d/runner.py::resolve_dflowfm` (lines 26-65), in this order:
 
 1. If `custom_path` is truthy and `os.path.isfile(custom_path)` — return
    `os.path.abspath(custom_path)`.
@@ -3855,7 +3855,7 @@ converts to `None` via `settings.DFLOWFM_EXE or None`. Resolution then happens i
 4. Otherwise `_discover_installed_kernel()`, which globs the standard Deltares
    install locations (`runner.py:76-79`), e.g.
    `C:\Program Files\Deltares\*\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe`.
-5. If nothing is found, `run_delft3d_simulation` falls back to JalRaksha's own 2D
+5. If nothing is found, `run_delft3d_simulation` falls back to FloodView's own 2D
    SWE solver and records `delft3d_binary_used=False` with a `fallback_reason`
    (`runner.py:451-457`). Per `config.py:203-206`, the fallback result must be
    labelled "Delft3D-class, NOT Delft3D FM" and never presented as Delft3D itself.
@@ -3866,7 +3866,7 @@ converts to `None` via `settings.DFLOWFM_EXE or None`. Resolution then happens i
 is passed straight to `subprocess.run` (`main.py:910, 920`) with no existence check
 at all — see finding S-16.
 
-**Earth Engine.** No discovery; `jalraksha.gee.auth.gee_status()` reports
+**Earth Engine.** No discovery; `floodview.gee.auth.gee_status()` reports
 `available=False` with a human-readable reason naming the missing variable and the
 free registration URL (`config.py:216-219`).
 
@@ -3904,7 +3904,7 @@ scientific inconsistency between two dams in the same registry (finding S-40).
 The application is constructed at `main.py:42`:
 
 ```python
-app = FastAPI(title="JalRaksha API", version="1.0",
+app = FastAPI(title="FloodView API", version="1.0",
               description="Dam-break screening + 3D viz service")
 ```
 
@@ -3943,7 +3943,7 @@ pagination cursor.
 ```python
 @app.get("/health")
 def health() -> Dict[str, str]:
-    return {"status": "ok", "service": "JalRaksha API v1"}
+    return {"status": "ok", "service": "FloodView API v1"}
 ```
 
 No response model, no dependency, no database touch. It is a *liveness* probe only —
@@ -3951,7 +3951,7 @@ it will answer 200 while Postgres is unreachable and every other endpoint 500s.
 
 Response (200):
 ```json
-{"status": "ok", "service": "JalRaksha API v1"}
+{"status": "ok", "service": "FloodView API v1"}
 ```
 
 #### 2C.3.3 `GET /dams`
@@ -4005,7 +4005,7 @@ Body: `RunRequest` (§2C.4.1). Processing, in order:
    if celery_app.conf.task_always_eager:
        _spawn_run_subprocess(run_id, task_args)
    else:
-       celery_app.send_task("jalraksha.run_dam_break", args=task_args)
+       celery_app.send_task("floodview.run_dam_break", args=task_args)
    ```
 6. Returns `RunStatus(run_id=..., status="queued", progress_pct=0.0,
    solver=req.solver, phase="Queued")`.
@@ -4178,7 +4178,7 @@ Example response (200), heavily abridged:
   "grid": {"nx": 600, "ny": 600, "dx": 200.0, "dy": 200.0,
            "x0": 210000.0, "y0": 3320000.0, "crs": "EPSG:32644",
            "bounds_wgs84": [77.86, 29.84, 79.10, 30.92]},
-  "engine": {"name": "jalraksha_swe", "label": "JalRaksha built-in 2D SWE",
+  "engine": {"name": "floodview_swe", "label": "FloodView built-in 2D SWE",
              "delft3d_binary_used": false, "fallback_reason": null},
   "population_at_risk": {"available": true, "total_population_in_domain": 1284003.0,
                          "warning_lead_time_s": 1800.0, "population_source": "GHSL P2023A"},
@@ -4251,14 +4251,14 @@ An unknown-but-existing run with no gauges returns `[]` with 200.
 
 #### 2C.3.10 `GET /gee/status`
 
-Imports `jalraksha.gee.auth` lazily inside the handler (`main.py:436`) and returns
+Imports `floodview.gee.auth` lazily inside the handler (`main.py:436`) and returns
 `GeeStatus(available, reason, project)`. Any exception from Earth Engine
 initialisation that `gee_status()` does not itself catch escapes as an unhandled
 500.
 
 ```json
 {"available": false,
- "reason": "JALRAKSHA_GEE_PROJECT is not set. Register a free non-commercial Cloud project at https://code.earthengine.google.com/register and set the variable.",
+ "reason": "FLOODVIEW_GEE_PROJECT is not set. Register a free non-commercial Cloud project at https://code.earthengine.google.com/register and set the variable.",
  "project": null}
 ```
 
@@ -4323,7 +4323,7 @@ The three gates:
 |---|---|---|---|
 | Lake at rest | `_check_lake_at_rest` :529 | seed 42, 50×50 grid @ 50 m, bed `U(0,5)` m, η=10 m, `manning_n=0.03`, `cfl=0.9`, 1000 steps | `max|u| < 1e-8` m/s **and** `max|Δη| < 1e-6` m |
 | Mass conservation | `_check_mass_conservation` :583 | 200×1 grid @ 0.5 m, `x0=-50.0`, `manning_n=0.0`, `boundary="reflective"`, 1000 steps | relative volume drift < 1e-3 |
-| Ritter | `_check_ritter` :638 | `compare_ritter(tmpdir)`; launches the real Delft3D kernel when present | JalRaksha RMSE < 0.10 m |
+| Ritter | `_check_ritter` :638 | `compare_ritter(tmpdir)`; launches the real Delft3D kernel when present | FloodView RMSE < 0.10 m |
 
 Each gate catches its own exception and returns a `ValidationCheck` carrying
 `error=f"{type(exc).__name__}: {exc}"` instead of `passed`. The mass-conservation
@@ -4353,12 +4353,12 @@ Response when done (200), abridged:
      "metrics": {"volume_initial_m3": 50.0, "volume_final_m3": 49.99999,
                  "drift_pct": 2.1e-05, "threshold_pct": 0.1, "steps": 1000}},
     {"name": "Ritter dam-break (analytical)", "passed": true,
-     "detail": "JalRaksha RMSE 0.0412 m vs the exact solution at t=20.0 s (gate: < 0.10 m); Delft3D FM 0.0588 m on the same case",
-     "metrics": {"jalraksha_rmse_m": 0.0412, "delft3d_rmse_m": 0.0588,
+     "detail": "FloodView RMSE 0.0412 m vs the exact solution at t=20.0 s (gate: < 0.10 m); Delft3D FM 0.0588 m on the same case",
+     "metrics": {"floodview_rmse_m": 0.0412, "delft3d_rmse_m": 0.0588,
                  "exact_depth_at_dam_m": 4.444, "threshold_rmse_m": 0.1,
                  "delft3d_executable": "C:/Program Files/Deltares/.../dflowfm-cli.exe"},
      "series": {"x_m": [-100.0, "..."], "analytical_m": [10.0, "..."],
-                "jalraksha_m": [9.998, "..."], "delft3d_m": [9.991, "..."]}}
+                "floodview_m": [9.998, "..."], "delft3d_m": [9.991, "..."]}}
   ]
 }
 ```
@@ -4676,7 +4676,7 @@ This is the subtlest part of the service, and it has three distinct paths.
 backend:
 
 ```python
-celery_app = Celery("jalraksha", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
+celery_app = Celery("floodview", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 celery_app.conf.update(
     task_serializer="json", result_serializer="json", accept_content=["json"],
     task_track_started=True, worker_prefetch_multiplier=1,
@@ -4691,7 +4691,7 @@ solver_duration_s: float, target_resolution: float]`.
 
 The single task is declared at `tasks.py:1163-1167`:
 ```python
-@celery_app.task(bind=True, name="jalraksha.run_dam_break")
+@celery_app.task(bind=True, name="floodview.run_dam_break")
 def run_dam_break_task(
     self, run_id: str, dam_config: Dict[str, Any], ensemble_size: int, solver: str,
     solver_duration_s: float = 1800.0, target_resolution: float = 200.0,
@@ -4702,8 +4702,8 @@ in `run_worker.py` (see below). Task registration happens through the deferred
 import at the bottom of `worker.py:31`.
 
 In the broker path (`docker-compose.yml`, no `CELERY_EAGER`), `submit_run` calls
-`celery_app.send_task("jalraksha.run_dam_break", args=task_args)` (`main.py:157`)
-and the `worker` container running `celery -A jalraksha_service.worker worker -l info`
+`celery_app.send_task("floodview.run_dam_break", args=task_args)` (`main.py:157`)
+and the `worker` container running `celery -A floodview_service.worker worker -l info`
 picks it up. The Celery result backend is written but **never read** by anything —
 status flows exclusively through the database.
 
@@ -4768,7 +4768,7 @@ the project's own testing and I am reporting it as such.
 4. Spawn:
    ```python
    subprocess.Popen(
-       [sys.executable, "-m", "jalraksha_service.run_worker", handle.name],
+       [sys.executable, "-m", "floodview_service.run_worker", handle.name],
        cwd=str(repo_root), env=env, stdout=None, stderr=None,
    )
    ```
@@ -4783,9 +4783,9 @@ the project's own testing and I am reporting it as such.
 
 #### 2C.6.4 The child: `run_worker.py`
 
-`python -m jalraksha_service.run_worker <payload.json>`. The `__main__` guard
+`python -m floodview_service.run_worker <payload.json>`. The `__main__` guard
 (`run_worker.py:117-127`) inserts `services/api` and the repo root onto `sys.path`
-and `os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")` before calling `main()`.
+and `os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")` before calling `main()`.
 
 `main()` (`run_worker.py:51-114`):
 
@@ -4796,7 +4796,7 @@ and `os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")` before calling `main
   (`run_worker.py:69-71`).
 - Invokes the task via Celery's own eager machinery:
   ```python
-  result = celery_app.tasks["jalraksha.run_dam_break"].apply(args=[
+  result = celery_app.tasks["floodview.run_dam_break"].apply(args=[
       run_id, payload["dam_config"], payload["ensemble_size"],
       payload["solver"], payload["solver_duration_s"], payload["target_resolution"],
   ])
@@ -4954,7 +4954,7 @@ able to load them.
 
 | Path | Written by | Served at |
 |---|---|---|
-| `data/jalraksha.db` | `db._connect` (default `DATABASE_URL`) | `/files/jalraksha.db` |
+| `data/floodview.db` | `db._connect` (default `DATABASE_URL`) | `/files/floodview.db` |
 | `data/dem/*.tif` | `fetch_dem`; read by `_resolve_dem` (`tasks.py:40-43`) | `/files/dem/...` |
 | `data/exports/<run_id>/*` | `write_export_products`, `_run_comparison`, PAR/summary writers | `/files/exports/...` |
 | `data/keyframes/<run_id>/manifest.json` + PNGs | `export_keyframes` (`tasks.py:1346-1351`) | `/files/keyframes/...` |
@@ -5056,7 +5056,7 @@ the Vite dev server and is blocked without them. The frontend defaults
 3  FROM python:3.11-slim
 5  ENV PYTHONUNBUFFERED=1 \
 6      PYTHONDONTWRITEBYTECODE=1 \
-7      JALRAKSHA_DATA_DIR=/data
+7      FLOODVIEW_DATA_DIR=/data
 10 RUN apt-get update && apt-get install -y --no-install-recommends \
 11     gdal-bin libgdal-dev gcc g++ \
 12     && rm -rf /var/lib/apt/lists/*
@@ -5064,17 +5064,17 @@ the Vite dev server and is blocked without them. The frontend defaults
 17 COPY services/api/requirements.txt /app/services/api/requirements.txt
 18 RUN pip install --no-cache-dir -r /app/services/api/requirements.txt
 21 COPY pyproject.toml /app/pyproject.toml
-22 COPY jalraksha /app/jalraksha
+22 COPY floodview /app/floodview
 23 RUN pip install --no-cache-dir -e .
-26 COPY services/api/jalraksha_service /app/services/api/jalraksha_service
+26 COPY services/api/floodview_service /app/services/api/floodview_service
 29 EXPOSE 8000
-30 CMD ["uvicorn", "jalraksha_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+30 CMD ["uvicorn", "floodview_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 Line by line: `python:3.11-slim` matches `requires-python = ">=3.11"`.
 `PYTHONUNBUFFERED=1` is load-bearing here — every progress and diagnostic message
 in this subsystem is a bare `print()`, and without it they would be lost in a
-buffer. `JALRAKSHA_DATA_DIR=/data` is baked in and matched by the compose bind
+buffer. `FLOODVIEW_DATA_DIR=/data` is baked in and matched by the compose bind
 mount. GDAL/GEOS plus a C toolchain are needed for rasterio/geopandas wheels that
 may build from source. Requirements are installed before the package for layer
 caching. `pip install -e .` from `/app` is an **editable** install of the library.
@@ -5082,10 +5082,10 @@ caching. `pip install -e .` from `/app` is an **editable** install of the librar
 Two problems are visible in these thirty lines. First, `pyproject.toml:9` declares
 `readme = "README.md"` but the Dockerfile never copies `README.md`, so setuptools
 has no readme file to read at build time. Second, `/app/services/api` is never
-added to `PYTHONPATH` and `jalraksha_service` is not a pip-installed package, so
-`uvicorn jalraksha_service.main:app` resolves only because the process CWD is
-`/app`… which does not contain `jalraksha_service` either — it contains
-`services/api/jalraksha_service`. See findings S-25 and S-26; I flag both as
+added to `PYTHONPATH` and `floodview_service` is not a pip-installed package, so
+`uvicorn floodview_service.main:app` resolves only because the process CWD is
+`/app`… which does not contain `floodview_service` either — it contains
+`services/api/floodview_service`. See findings S-25 and S-26; I flag both as
 build/runtime risks I could not execute here to confirm.
 
 Also missing from the image: `paraview/`, `tools/`, and `scripts/`. `main.py:871`
@@ -5102,9 +5102,9 @@ FROM python:3.11-slim
 RUN apt-get ... gdal-bin libgdal-dev gcc g++ git ...
 WORKDIR /app
 COPY pyproject.toml /app/
-COPY jalraksha /app/jalraksha
+COPY floodview /app/floodview
 RUN pip install --no-cache-dir -e .
-CMD ["python", "-m", "jalraksha.cli", "--help"]
+CMD ["python", "-m", "floodview.cli", "--help"]
 ```
 
 It differs from the service image only by adding `git` and by its `CMD`. Its own
@@ -5119,9 +5119,9 @@ has the same missing-README problem as the service image.
 | Service | Image / build | Command | Ports | Volumes | Environment | depends_on |
 |---|---|---|---|---|---|---|
 | `redis` | `redis:7-alpine` | default | `6379:6379` | — | — | — |
-| `postgres` | `postgres:16-alpine` | default | `5432:5432` | `pgdata:/var/lib/postgresql/data` | `POSTGRES_DB/USER/PASSWORD = jalraksha` | — |
-| `api` | build `.` / `services/api/Dockerfile` | `uvicorn jalraksha_service.main:app --host 0.0.0.0 --port 8000` | `8000:8000` | `./data:/data` | `REDIS_URL=redis://redis:6379/0`, `DATABASE_URL=postgresql://jalraksha:jalraksha@postgres:5432/jalraksha`, `JALRAKSHA_DATA_DIR=/data` | `redis`, `postgres` |
-| `worker` | same image | `celery -A jalraksha_service.worker worker -l info` | none | `./data:/data` | same three | `redis`, `postgres` |
+| `postgres` | `postgres:16-alpine` | default | `5432:5432` | `pgdata:/var/lib/postgresql/data` | `POSTGRES_DB/USER/PASSWORD = floodview` | — |
+| `api` | build `.` / `services/api/Dockerfile` | `uvicorn floodview_service.main:app --host 0.0.0.0 --port 8000` | `8000:8000` | `./data:/data` | `REDIS_URL=redis://redis:6379/0`, `DATABASE_URL=postgresql://floodview:floodview@postgres:5432/floodview`, `FLOODVIEW_DATA_DIR=/data` | `redis`, `postgres` |
+| `worker` | same image | `celery -A floodview_service.worker worker -l info` | none | `./data:/data` | same three | `redis`, `postgres` |
 | `tiles` | `nginx:alpine` | default | `8080:80` | `./data/tiles:/usr/share/nginx/html:ro` | — | — |
 | `frontend` | build `./frontend` | (image default) | `3000:3000` | — | `VITE_API_URL=http://localhost:8000`, `VITE_TILES_URL=http://localhost:8080` | — |
 
@@ -5186,9 +5186,9 @@ reproducible across rebuilds. `matplotlib`, imported unconditionally by
 **Build system** (lines 1-3): `setuptools>=65.0` + `wheel`, backend
 `setuptools.build_meta`.
 
-**Project metadata** (lines 5-24): name `jalraksha`, version `0.0.1-alpha`,
+**Project metadata** (lines 5-24): name `floodview`, version `0.0.1-alpha`,
 `requires-python = ">=3.11"`, MIT licence, one author
-(`jalraksha@sih2026.local`), 6 keywords, 8 trove classifiers including
+(`floodview@sih2026.local`), 6 keywords, 8 trove classifiers including
 `Development Status :: 3 - Alpha`.
 
 **Core dependencies** (lines 26-53), grouped by the file's own comments:
@@ -5212,32 +5212,32 @@ reproducible across rebuilds. `matplotlib`, imported unconditionally by
 
 Neither Dockerfile installs any extra, so `matplotlib` is absent from both images.
 
-**URLs** (76-80): homepage/docs/repo/tracker under `github.com/sih2026/jalraksha`.
-**Scripts** (82-83): `jalraksha = "jalraksha.cli:main"`.
+**URLs** (76-80): homepage/docs/repo/tracker under `github.com/sih2026/floodview`.
+**Scripts** (82-83): `floodview = "floodview.cli:main"`.
 
 **Packaging** (85-90):
 ```toml
-packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]
+packages = ["floodview", "floodview.solver", "floodview.terrain", "floodview.export", "floodview.sph"]
 package-dir = {"" = "."}
 [tool.setuptools.package-data]
-jalraksha = ["*.yaml", "*.yml"]
+floodview = ["*.yaml", "*.yml"]
 ```
 The tree contains four further packages with `__init__.py` that are **not listed**:
-`jalraksha.delft3d`, `jalraksha.gee`, `jalraksha.impact`, `jalraksha.validation`.
+`floodview.delft3d`, `floodview.gee`, `floodview.impact`, `floodview.validation`.
 All four are imported by the service (`tasks.py:771-772`, `tasks.py:189-193`,
 `main.py:436`, `main.py:651`). Editable installs commonly paper over this by adding
 the project root to `sys.path`, which is why the images work; a wheel build would
 omit them.
 
 **pytest** (92-103): `testpaths = ["tests"]`, standard discovery patterns,
-`addopts = "-v --tb=short --cov=jalraksha --cov-report=term-missing"`, and four
+`addopts = "-v --tb=short --cov=floodview --cov-report=term-missing"`, and four
 markers — `analytical`, `blocking`, `integration`, `slow`. Note that `addopts`
 requires `pytest-cov`, which is only in the `dev`/`test` extras.
 
 **ruff** (105-131): `line-length = 100`, `target-version = "py311"`,
 `select = ["E","W","F","I","B","C4","UP"]`,
 `ignore = ["E501","W503"]`, an exclude list, and
-`[tool.ruff.isort] known-first-party = ["jalraksha"]`. Two staleness issues:
+`[tool.ruff.isort] known-first-party = ["floodview"]`. Two staleness issues:
 `select`/`ignore` moved under `[tool.ruff.lint]` in ruff 0.2+ (and
 `[tool.ruff.isort]` to `[tool.ruff.lint.isort]`), while the pin is only
 `ruff>=0.1.0`; and `W503` is a flake8 code with no ruff equivalent, so that ignore
@@ -5270,11 +5270,11 @@ compute-triggering routes:
 ```python
 from fastapi import Depends, Header
 
-API_KEY = os.environ.get("JALRAKSHA_API_KEY", "")
+API_KEY = os.environ.get("FLOODVIEW_API_KEY", "")
 
 def require_key(x_api_key: str = Header(default="")) -> None:
     if not API_KEY:
-        raise HTTPException(503, "JALRAKSHA_API_KEY is not configured")
+        raise HTTPException(503, "FLOODVIEW_API_KEY is not configured")
     if not secrets.compare_digest(x_api_key, API_KEY):
         raise HTTPException(401, "Invalid or missing X-API-Key")
 
@@ -5283,8 +5283,8 @@ app = FastAPI(..., dependencies=[Depends(require_key)])
 
 #### S-2 (HIGH) The `/files` mount publishes the SQLite database
 `main.py:83` + `config.py:85`. `DATABASE_URL` defaults to
-`sqlite:///./data/jalraksha.db`, which sits **inside** `DATA_DIR`, so
-`GET /files/jalraksha.db` downloads the entire metadata store. The same mount also
+`sqlite:///./data/floodview.db`, which sits **inside** `DATA_DIR`, so
+`GET /files/floodview.db` downloads the entire metadata store. The same mount also
 exposes `validation_cache.json`, the GEE caches, the Delft3D model directories, and
 the transient run payloads under `data/runs/`.
 
@@ -5295,7 +5295,7 @@ app.mount("/files/exports",   StaticFiles(directory=str(settings.DATA_DIR / "exp
 app.mount("/files/keyframes", StaticFiles(directory=str(settings.DATA_DIR / "keyframes")), name="keyframes")
 app.mount("/files/gee",       StaticFiles(directory=str(settings.DATA_DIR / "gee")),       name="gee")
 # config.py
-DATABASE_URL: str = _env("DATABASE_URL", "sqlite:///./var/jalraksha.db")
+DATABASE_URL: str = _env("DATABASE_URL", "sqlite:///./var/floodview.db")
 ```
 
 #### S-3 (HIGH) Wildcard CORS with wildcard methods and headers
@@ -5305,7 +5305,7 @@ Mitigated only by `allow_credentials` defaulting to `False`.
 *Fix.*
 ```python
 _ORIGINS = [o for o in os.environ.get(
-    "JALRAKSHA_CORS_ORIGINS", "http://localhost:3000,http://localhost:5173"
+    "FLOODVIEW_CORS_ORIGINS", "http://localhost:3000,http://localhost:5173"
 ).split(",") if o]
 app.add_middleware(CORSMiddleware, allow_origins=_ORIGINS,
                    allow_methods=["GET", "POST"], allow_headers=["Content-Type", "X-API-Key"])
@@ -5329,7 +5329,7 @@ mode it is bounded by worker concurrency but the queue is unbounded.
 
 *Fix.* A process semaphore plus a queue-depth check:
 ```python
-_MAX_CONCURRENT = int(os.environ.get("JALRAKSHA_MAX_CONCURRENT_RUNS", "2"))
+_MAX_CONCURRENT = int(os.environ.get("FLOODVIEW_MAX_CONCURRENT_RUNS", "2"))
 _ACTIVE: set[str] = set()
 _ACTIVE_LOCK = threading.Lock()
 
@@ -5469,7 +5469,7 @@ defeating the endpoint's whole structured-result design.
 ```python
 if not os.path.exists(settings.PVPYTHON_EXE):
     return {"launched": False, "reason": "pvpython_not_found",
-            "detail": f"pvpython is not at {settings.PVPYTHON_EXE!r}; set JALRAKSHA_PVPYTHON_EXE."}
+            "detail": f"pvpython is not at {settings.PVPYTHON_EXE!r}; set FLOODVIEW_PVPYTHON_EXE."}
 try:
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 except (OSError, subprocess.TimeoutExpired) as exc:
@@ -5500,7 +5500,7 @@ except Exception as exc:
 `run_worker.py:6-23` exists to eliminate.
 
 *Fix.* Run the gates through the same out-of-process mechanism, e.g. a small
-`jalraksha_service.run_validation` module spawned with `subprocess.Popen` writing
+`floodview_service.run_validation` module spawned with `subprocess.Popen` writing
 `validation_cache.json`, mirroring `_spawn_run_subprocess`.
 
 #### S-19 (MEDIUM) `_VALIDATION_LOCK` / `_VALIDATION_RUNNING` are process-local
@@ -5578,10 +5578,10 @@ documented setuptools error.
 
 *Fix.* `COPY README.md /app/README.md` before the `pip install -e .` in both files.
 
-#### S-26 (MEDIUM) `jalraksha_service` is not importable from the image's WORKDIR
+#### S-26 (MEDIUM) `floodview_service` is not importable from the image's WORKDIR
 `services/api/Dockerfile:14, 26, 30`. Source lands at
-`/app/services/api/jalraksha_service`, the CWD is `/app`, and nothing sets
-`PYTHONPATH`, so `uvicorn jalraksha_service.main:app` has no obvious import root.
+`/app/services/api/floodview_service`, the CWD is `/app`, and nothing sets
+`PYTHONPATH`, so `uvicorn floodview_service.main:app` has no obvious import root.
 
 *Fix.* `ENV PYTHONPATH=/app/services/api` (or `WORKDIR /app/services/api`) in the
 Dockerfile.
@@ -5619,19 +5619,19 @@ artifact — so the failure is silent-ish and permanent.
 extra: `RUN pip install --no-cache-dir -e ".[viz]"`.
 
 #### S-29 (MEDIUM) `pyproject.toml` omits four real subpackages
-`pyproject.toml:86` lists five packages; `jalraksha.delft3d`, `jalraksha.gee`,
-`jalraksha.impact` and `jalraksha.validation` all have `__init__.py` and are all
+`pyproject.toml:86` lists five packages; `floodview.delft3d`, `floodview.gee`,
+`floodview.impact` and `floodview.validation` all have `__init__.py` and are all
 imported by the service. Editable installs mask this; a wheel would not.
 
 *Fix.*
 ```toml
 [tool.setuptools.packages.find]
-include = ["jalraksha*"]
+include = ["floodview*"]
 ```
 
 #### S-30 (HIGH) Postgres and Redis are published to the host with default/no credentials
 `docker-compose.yml:17-18` (`6379:6379`, Redis with no `requirepass`) and
-`docker-compose.yml:20-29` (`5432:5432`, `jalraksha`/`jalraksha`). Both are also
+`docker-compose.yml:20-29` (`5432:5432`, `floodview`/`floodview`). Both are also
 reachable on the compose network without the port publication.
 
 *Fix.* Drop the `ports:` blocks (inter-service traffic uses the network), source
@@ -5659,8 +5659,8 @@ from `http://localhost:3000` will be blocked.
 `services/api/Dockerfile` and root `Dockerfile` — no `USER` directive, and
 `./data:/data` is a host bind mount, so the container writes host files as root.
 
-*Fix.* `RUN useradd -m -u 10001 jalraksha && chown -R jalraksha /app` then
-`USER jalraksha`.
+*Fix.* `RUN useradd -m -u 10001 floodview && chown -R floodview /app` then
+`USER floodview`.
 
 #### S-34 (MEDIUM) `except Exception: pass` in the comparison endpoint
 `main.py:369-370`. A corrupt `comparison_metrics.json` is indistinguishable from an
@@ -5725,10 +5725,10 @@ CWC citation. It shifts population between urgency buckets in every
 
 *Fix.* Make it a required, sourced input and refuse to bucket without one:
 ```python
-WARNING_LEAD_TIME_S = float(os.environ.get("JALRAKSHA_WARNING_LEAD_TIME_S", "0")) or None
+WARNING_LEAD_TIME_S = float(os.environ.get("FLOODVIEW_WARNING_LEAD_TIME_S", "0")) or None
 ...
 "warning_lead_time_s": WARNING_LEAD_TIME_S,
-"warning_lead_time_source": os.environ.get("JALRAKSHA_WARNING_LEAD_TIME_SOURCE"),
+"warning_lead_time_source": os.environ.get("FLOODVIEW_WARNING_LEAD_TIME_SOURCE"),
 ```
 and omit the PAR buckets (keeping total exposure) when unset.
 
@@ -5774,18 +5774,18 @@ and the comment.
 
 #### S-45 (LOW) Hardcoded GCP project id in the launcher
 `scripts/run_api.py:53` sets
-`os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")`. A project
+`os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")`. A project
 id is not a secret, but it hardcodes one team's cloud tenancy into the repo.
 
 *Fix.* Drop the default and print an explicit "Earth Engine disabled: set
-JALRAKSHA_GEE_PROJECT" when unset.
+FLOODVIEW_GEE_PROJECT" when unset.
 
 #### S-46 (LOW) Diagnostics use `print()` throughout
 Every module in this subsystem (`main.py:111, 275, 462, 472, 488`; `tasks.py`
 passim; `run_worker.py:101`) prints instead of logging. There are no levels, no
 structure, and no correlation ids beyond the run id embedded in the message text.
 
-*Fix.* A module-level `logger = logging.getLogger("jalraksha.service")` with
+*Fix.* A module-level `logger = logging.getLogger("floodview.service")` with
 `uvicorn`'s log config, so severity and destination become configurable.
 
 #### S-47 (LOW) Stale documentation in `main.py`'s module docstring and compose header
@@ -5889,12 +5889,12 @@ incorrectly.
 
 ### 2.4 The React + Vite Dashboard Frontend
 
-The JalRaksha frontend is a single-page React 18 application, built by Vite 5, that renders every
+The FloodView frontend is a single-page React 18 application, built by Vite 5, that renders every
 output of the dam-break pipeline: a Leaflet 2D map with time-stepped inundation overlays, a CesiumJS
 3D globe driven by the same clock, and six analytical panels (gauges, ensemble, impact, near-field
 SPH, engine comparison, validation) plus a downloads index. It lives entirely under
 `/mnt/user-data/uploads/SIH prototype/frontend/` and talks to exactly one backend — the FastAPI
-service at `services/api/jalraksha_service/main.py` — over plain `fetch`.
+service at `services/api/floodview_service/main.py` — over plain `fetch`.
 
 There is no router, no state-management library, no CSS framework, no test harness and no linter
 configuration. Every style in the application is an inline `style={{...}}` object. That is a
@@ -5912,7 +5912,7 @@ build-time ones.
 
 ```json
 {
-  "name": "jalraksha-frontend",
+  "name": "floodview-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -6104,7 +6104,7 @@ all are frozen at build time.
 | `VITE_CESIUM_ION_ASSET_ID` | `""` | `Scene3D.jsx:9` | Numeric ion asset id of the uploaded conditioned DEM. |
 
 The default for `VITE_TILES_URL` deserves a note. `vite.config.js:38-41` defaults it to the API's own
-`/tiles` static mount (which exists — `services/api/jalraksha_service/main.py:90` mounts
+`/tiles` static mount (which exists — `services/api/floodview_service/main.py:90` mounts
 `StaticFiles(DATA_DIR / "tiles")`), so a bare local dev session needs no separate tile server.
 `docker-compose.yml:74` overrides it to `http://localhost:8080`, the nginx `tiles` service. But
 `Scene3D.jsx:7` carries a *different* fallback:
@@ -6158,7 +6158,7 @@ Twelve lines, and essentially the Vite React template:
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JalRaksha — Dam-Break Screening & 3D Visualization</title>
+    <title>FloodView — Dam-Break Screening & 3D Visualization</title>
   </head>
   <body>
     <div id="root"></div>
@@ -6389,7 +6389,7 @@ const onRunLoaded = (runResult) => {
 
 The URL resolution is two-stage and deliberate (comment at `:45-48`): the manifest's own URL is
 API-relative (`/files/...`), so `resolveApiUrl()` prefixes the API origin; but `png_url` *inside* each
-keyframe is a bare filename written by `jalraksha/export/keyframes.py`, so it is resolved against the
+keyframe is a bare filename written by `floodview/export/keyframes.py`, so it is resolved against the
 manifest's own absolute URL with `new URL(relative, base)`. That keeps the manifest web-server-agnostic
 — the same JSON works whether it is served from the API's `/files` mount, from nginx, or from a
 filesystem path.
@@ -6448,7 +6448,7 @@ export function resolveApiUrl(pathOrUrl) {
 ```
 
 Every endpoint that returns a file path returns it as `/files/...` — the API's `StaticFiles` mount at
-`services/api/jalraksha_service/main.py:83` — rather than as an absolute URL, because the API does not
+`services/api/floodview_service/main.py:83` — rather than as an absolute URL, because the API does not
 know its own public origin. `resolveApiUrl` is the client-side half of that contract: pass through
 anything already absolute (`http://` or `https://`), otherwise prefix the API origin. The falsy guard
 returns the input unchanged so `undefined` stays `undefined` rather than becoming
@@ -6478,7 +6478,7 @@ consistently emits leading slashes, but it is an unchecked contract.
 | `openInParaview(runId)` `:99` | POST | `/runs/{id}/open-paraview` | — | **yes**, with body-aware error | `{launched, reason, detail}` |
 
 All twelve endpoints exist server-side; I verified the route table in
-`services/api/jalraksha_service/main.py` (lines 114–786). `getGauges()` is **dead code** — zero call
+`services/api/floodview_service/main.py` (lines 114–786). `getGauges()` is **dead code** — zero call
 sites in any panel (finding F-45); the gauge data reaches the UI through `RunResult.gauges` instead.
 `getRun()` is only reached indirectly, through `pollUntilDone`.
 
@@ -7171,7 +7171,7 @@ defined for this dam."*
 
 `hazardClass(depth)` (`:112-120`) mirrors the FD2320 bands with hardcoded thresholds
 0.1 / 0.5 / 2.0 / 5.0 / 10.0 m → dry / low / moderate / significant / severe / extreme. The docstring
-at `:106-111` is candid: *"matching jalraksha.impact.hazard.HazardClassifier's CODED thresholds ...
+at `:106-111` is candid: *"matching floodview.impact.hazard.HazardClassifier's CODED thresholds ...
 Note that module's docstring lists different numbers from its own implementation; the code is what
 runs, so the code is what is mirrored here."* This is a duplicated scientific constant table in the
 presentation layer, and it will drift (finding F-25).
@@ -7332,7 +7332,7 @@ warning side):
 
 - **green** — *"✅ Engine: Delft3D FM (official dflowfm binary)"* / *"The official Deltares D-Flow FM
   engine produced the depth field below."*
-- **amber** — *"⚠️ Delft3D FM was NOT used — these numbers come from JalRaksha's own solver"*, with
+- **amber** — *"⚠️ Delft3D FM was NOT used — these numbers come from FloodView's own solver"*, with
   body text stating the built-in 2D SWE solver *"solves the same depth-averaged Saint-Venant equations
   as Delft3D FM and is therefore Delft3D-class — but it is **not Delft3D** and must not be reported as
   such."* Plus `delft3d_fallback_reason` and the raw `engine_label` in `<code>`.
@@ -7389,7 +7389,7 @@ the button asks for it."* `api.js:64-66` carries the same warning.
 
 | Gate | What it proves | Documented result |
 | :--- | :--- | :--- |
-| **Ritter** | The exact analytical dry-bed dam-break solution, with JalRaksha and the real Delft3D FM kernel both scored against the same curve on a shared axis | PASS — JalRaksha RMSE **0.0317 m**, Delft3D FM **0.0349 m** |
+| **Ritter** | The exact analytical dry-bed dam-break solution, with FloodView and the real Delft3D FM kernel both scored against the same curve on a shared axis | PASS — FloodView RMSE **0.0317 m**, Delft3D FM **0.0349 m** |
 | **Lake at rest** | Still water over irregular bathymetry must stay still — the C-property; the test a scheme fails when it manufactures currents out of terrain | PASS — 5.98e-14 m/s spurious velocity, 1000 steps |
 | **Mass conservation** | Total volume must not drift in a closed domain | PASS — 0.000000% drift, 1000 steps |
 
@@ -7426,7 +7426,7 @@ metrics row with underscores replaced by spaces and numbers formatted by `fmtNum
 1e-4 or above 1e6, one decimal above 100, otherwise four decimals with trailing zeros stripped).
 
 Finally the **Ritter chart** (`:145-187`), a recharts `LineChart` overlaying three series on a shared
-axis: `analytical_m` (black, 2.5px, drawn first *"so the engines overlay it"*), `jalraksha_m` (blue,
+axis: `analytical_m` (black, 2.5px, drawn first *"so the engines overlay it"*), `floodview_m` (blue,
 1.6px), and `delft3d_m` (orange dashed, rendered only when the array is present). The lede: *"Curves
 that lie on top of each other are the result."* The Ritter check is located by
 `data.checks.find((c) => c.series?.x_m)` (`:58`) — identified by the *shape* of its payload rather than
@@ -7919,15 +7919,15 @@ gate expensive effects on an `active` prop passed down from `Pane`.
 
 ### 3. Data Ingestion, the DEM Pipeline, Terrain Conditioning and Breach Hydrograph Generation
 
-This chapter documents the entire input pipeline of JalRaksha: everything that happens between "a user names a dam" and "the shallow-water solver is handed a `Grid`, a `State`, a Manning's n field, a breach cell and an ensemble of discharge hydrographs". It covers seven modules — `jalraksha/config.py`, `jalraksha/cache.py`, `jalraksha/dem.py`, `jalraksha/terrain/{__init__,conditioning,domain,roughness,breach}.py` — plus the two consumers in `jalraksha/run.py` that close the loop (gauge snapping and volume-source injection), and the four test modules that guard them.
+This chapter documents the entire input pipeline of FloodView: everything that happens between "a user names a dam" and "the shallow-water solver is handed a `Grid`, a `State`, a Manning's n field, a breach cell and an ensemble of discharge hydrographs". It covers seven modules — `floodview/config.py`, `floodview/cache.py`, `floodview/dem.py`, `floodview/terrain/{__init__,conditioning,domain,roughness,breach}.py` — plus the two consumers in `floodview/run.py` that close the loop (gauge snapping and volume-source injection), and the four test modules that guard them.
 
 A word on the sources. Several of these modules carry unusually long docstrings that narrate bugs the project has already fixed ("this previously divided a span in degrees by a resolution in metres", "the old implementation assigned the elevation field to `state_init.h`"). Those narratives are quoted here because they are load-bearing documentation — they tell a reader what the current code is *not* doing and why. Where I have verified the narrative against the current code I say so; where I could not, I say that too.
 
 ---
 
-#### 3.1 Configuration system (`jalraksha/config.py`, 148 lines)
+#### 3.1 Configuration system (`floodview/config.py`, 148 lines)
 
-`config.py` is the smallest and, as delivered, the least-used module in the ingestion path. It defines one exception, three functions and no dataclass or schema object. It is important to state up front what it is not: **it is not the configuration system the running application actually uses.** The FastAPI service under `services/api/jalraksha_service/config.py` has its own `Settings` class, and `jalraksha/run.py` takes a plain `dam_config: Dict`. `jalraksha/config.py` is the Phase-0 loader described in the project plan; nothing in `dem.py`, `cache.py`, `terrain/` or `run.py` imports it.
+`config.py` is the smallest and, as delivered, the least-used module in the ingestion path. It defines one exception, three functions and no dataclass or schema object. It is important to state up front what it is not: **it is not the configuration system the running application actually uses.** The FastAPI service under `services/api/floodview_service/config.py` has its own `Settings` class, and `floodview/run.py` takes a plain `dam_config: Dict`. `floodview/config.py` is the Phase-0 loader described in the project plan; nothing in `dem.py`, `cache.py`, `terrain/` or `run.py` imports it.
 
 ##### 3.1.1 Public surface
 
@@ -7939,7 +7939,7 @@ def validate_config(config: Dict[str, Any]) -> None
 def setup_cache(output_dir: Optional[str] = None) -> Path
 ```
 
-`load_config(config_path)` — if `config_path` is `None`, defaults to `Path("jalraksha.yaml")` in the current working directory (`config.py:54-55`). Raises `ConfigError` if the file does not exist. Dispatch is on suffix: `.yaml`/`.yml` → `yaml.safe_load`, `.json` → `json.load`, anything else → `ConfigError(f"Unsupported format: {suffix}")`. Parse errors of either kind are re-raised as `ConfigError`. On success it calls `validate_config(config)` and returns the raw dict — there is no normalisation, no key renaming, no defaulting, and no type coercion.
+`load_config(config_path)` — if `config_path` is `None`, defaults to `Path("floodview.yaml")` in the current working directory (`config.py:54-55`). Raises `ConfigError` if the file does not exist. Dispatch is on suffix: `.yaml`/`.yml` → `yaml.safe_load`, `.json` → `json.load`, anything else → `ConfigError(f"Unsupported format: {suffix}")`. Parse errors of either kind are re-raised as `ConfigError`. On success it calls `validate_config(config)` and returns the raw dict — there is no normalisation, no key renaming, no defaulting, and no type coercion.
 
 `validate_config(config)` — returns `None`, raises `ConfigError`. It prints a `[OK] Config validated: …` line on success (`config.py:121-124`), which makes it unsuitable for library use inside a server process.
 
@@ -7965,16 +7965,16 @@ The forbidden-source check (`config.py:110-114`) stringifies the whole config wi
 
 ##### 3.1.3 Environment variables
 
-**No environment variable is read anywhere in `jalraksha/config.py`, `cache.py`, `terrain/conditioning.py`, `terrain/domain.py`, `terrain/roughness.py` or `terrain/breach.py`.** The only module in this chapter's scope that touches the environment is `dem.py`, and it does so at import time (§3.3.2). For completeness, the environment variables the wider codebase reads are:
+**No environment variable is read anywhere in `floodview/config.py`, `cache.py`, `terrain/conditioning.py`, `terrain/domain.py`, `terrain/roughness.py` or `terrain/breach.py`.** The only module in this chapter's scope that touches the environment is `dem.py`, and it does so at import time (§3.3.2). For completeness, the environment variables the wider codebase reads are:
 
 | Variable | Read at | Default | Purpose |
 |---|---|---|---|
-| `JALRAKSHA_DATA_DIR` | `services/api/jalraksha_service/config.py:78`; set via `setdefault` in `scripts/run_api.py:46`, `scripts/backfill_xdmf.py:52`, `services/api/jalraksha_service/run_worker.py:127` | `./data` | Root for results, exports, keyframe manifests, terrain tiles. **The library's own cache path is *not* derived from it** — `fetch_dem` defaults to `Path("./data")` independently (`dem.py:361-362`) and `cache.get_cached_dem` to `Path("./data/dem")`. |
-| `JALRAKSHA_GEE_PROJECT` | `jalraksha/gee/auth.py:41,52`; service `config.py:222` | `""` | Earth Engine project; empty means GEE unavailable. |
-| `JALRAKSHA_DFLOWFM_EXE` | service `config.py:210`; `jalraksha/delft3d/runner.py` | `""` (search `PATH`) | Delft3D FM kernel. |
-| `JALRAKSHA_PARAVIEW_EXE` / `JALRAKSHA_PVPYTHON_EXE` | service `config.py:194,196` | `C:/Program Files/ParaView 6.2.0/bin/…` | ParaView launch. |
-| `REDIS_URL`, `DATABASE_URL`, `CELERY_EAGER` | service `config.py:82,86`, `worker.py:27` | `redis://localhost:6379/0`, `sqlite:///./data/jalraksha.db`, unset | Task queue / DB. |
-| `PROJ_LIB`, `PROJ_DATA` | **written** by `jalraksha/__init__.py:85-86`, **deleted** by `jalraksha/dem.py:50-51` | — | PROJ database location. See §3.3.2 — these two behaviours are in direct conflict. |
+| `FLOODVIEW_DATA_DIR` | `services/api/floodview_service/config.py:78`; set via `setdefault` in `scripts/run_api.py:46`, `scripts/backfill_xdmf.py:52`, `services/api/floodview_service/run_worker.py:127` | `./data` | Root for results, exports, keyframe manifests, terrain tiles. **The library's own cache path is *not* derived from it** — `fetch_dem` defaults to `Path("./data")` independently (`dem.py:361-362`) and `cache.get_cached_dem` to `Path("./data/dem")`. |
+| `FLOODVIEW_GEE_PROJECT` | `floodview/gee/auth.py:41,52`; service `config.py:222` | `""` | Earth Engine project; empty means GEE unavailable. |
+| `FLOODVIEW_DFLOWFM_EXE` | service `config.py:210`; `floodview/delft3d/runner.py` | `""` (search `PATH`) | Delft3D FM kernel. |
+| `FLOODVIEW_PARAVIEW_EXE` / `FLOODVIEW_PVPYTHON_EXE` | service `config.py:194,196` | `C:/Program Files/ParaView 6.2.0/bin/…` | ParaView launch. |
+| `REDIS_URL`, `DATABASE_URL`, `CELERY_EAGER` | service `config.py:82,86`, `worker.py:27` | `redis://localhost:6379/0`, `sqlite:///./data/floodview.db`, unset | Task queue / DB. |
+| `PROJ_LIB`, `PROJ_DATA` | **written** by `floodview/__init__.py:85-86`, **deleted** by `floodview/dem.py:50-51` | — | PROJ database location. See §3.3.2 — these two behaviours are in direct conflict. |
 | `GDAL_DISABLE_READDIR_ON_OPEN` | `os.environ.setdefault` at `dem.py:54`, and again per-open in `rasterio.Env` at `dem.py:283` | `EMPTY_DIR` | See §3.3.4. |
 
 ##### 3.1.4 Defects in the configuration layer
@@ -7983,13 +7983,13 @@ The forbidden-source check (`config.py:110-114`) stringifies the whole config wi
 
 2. **The CRS whitelist rejects the correct UTM zone for the demo dam.** `config.py:93` accepts a CRS string only if it contains `"32643"` or `"UTM"`. Tehri sits at 78.4789 °E; `dem.latlon_to_utm_zone` computes `floor((78.4789+180)/6)+1 = 44`, and `conditioning.load_dem_as_grid` therefore builds the domain in **EPSG:32644**. A config that honestly declares `crs: "EPSG:32644"` raises `ConfigError`. The test suite's own `sample_config` fixture (`tests/conftest.py`) declares `"crs": "EPSG:32643"` and comments it "UTM zone 43N (India)", cementing the wrong zone.
 
-3. **`import yaml  # To be added to pyproject.toml`** (`config.py:31`) is a module-scope import of a dependency the comment admits may not be declared. Any import of `jalraksha.config` on a machine without PyYAML is an `ImportError`, not a graceful degradation.
+3. **`import yaml  # To be added to pyproject.toml`** (`config.py:31`) is a module-scope import of a dependency the comment admits may not be declared. Any import of `floodview.config` on a machine without PyYAML is an `ImportError`, not a graceful degradation.
 
 4. `validate_config` uses `print()` rather than `logging`, so validation output cannot be silenced or captured in a service context.
 
 ---
 
-#### 3.2 The cache layer (`jalraksha/cache.py`, 308 lines)
+#### 3.2 The cache layer (`floodview/cache.py`, 308 lines)
 
 ##### 3.2.1 Directory layout and the metadata file
 
@@ -8018,11 +8018,11 @@ There is no hashing of keys. **The metadata key *is* the source URL string, verb
 
 ```python
 product_key = (
-    f"jalraksha://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/r{domain_radius_km:g}km"
+    f"floodview://dem/clipped/{dam_lat:.4f}_{dam_lon:.4f}/r{domain_radius_km:g}km"
 )
 ```
 
-The `jalraksha://` scheme is never fetched; it exists purely so the finished product participates in the same index. Note the asymmetry: the key carries the radius at 4-decimal lat/lon precision, but the *file* it points at is `dem_{lat:.2f}_{lon:.2f}_clipped.tif` (`dem.py:371`) — two decimals, **no radius**. §3.3.9 covers the consequence.
+The `floodview://` scheme is never fetched; it exists purely so the finished product participates in the same index. Note the asymmetry: the key carries the radius at 4-decimal lat/lon precision, but the *file* it points at is `dem_{lat:.2f}_{lon:.2f}_clipped.tif` (`dem.py:371`) — two decimals, **no radius**. §3.3.9 covers the consequence.
 
 ##### 3.2.3 Public functions
 
@@ -8107,7 +8107,7 @@ A real hole in the guarantee: **a synthetic fallback tile is cached and register
 
 ---
 
-#### 3.3 DEM acquisition (`jalraksha/dem.py`, 607 lines)
+#### 3.3 DEM acquisition (`floodview/dem.py`, 607 lines)
 
 ##### 3.3.1 Source selection
 
@@ -8126,7 +8126,7 @@ os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
 
 `GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR` tells GDAL not to list the containing directory when opening a dataset. Over `/vsicurl` against an S3 bucket, "listing the directory" means issuing a bucket-prefix listing before the first byte-range request. The in-function comment at `dem.py:276-281` is emphatic that this is not tuning: "without `GDAL_DISABLE_READDIR_ON_OPEN`, `/vsicurl` lists the whole bucket prefix before opening the object, which against `copernicus-dem-30m` hangs long enough to look like a network failure — and would silently trip the synthetic-terrain fallback below." That is the operative reason: the setting converts a pathological latency into a normal open, and its absence would be laundered into fabricated terrain rather than an error.
 
-The two `os.environ.pop` calls, however, **directly contradict `jalraksha/__init__.py`**, whose `_repair_proj_data_path()` (lines 30-90) exists to *set* `PROJ_DATA`/`PROJ_LIB` to rasterio's or pyproj's bundled `proj_data` when the inherited one has `DATABASE.LAYOUT.VERSION.MINOR < 6`. `import jalraksha` runs the repair; `import jalraksha.dem` then deletes it. Because PROJ resolves its search path once when the native library first loads, the observable outcome depends on import order and on whether rasterio was already imported — which is exactly the fragility `__init__.py`'s docstring warns about. I could not determine from static reading alone which of the two wins in any given process; that needs a runtime check.
+The two `os.environ.pop` calls, however, **directly contradict `floodview/__init__.py`**, whose `_repair_proj_data_path()` (lines 30-90) exists to *set* `PROJ_DATA`/`PROJ_LIB` to rasterio's or pyproj's bundled `proj_data` when the inherited one has `DATABASE.LAYOUT.VERSION.MINOR < 6`. `import floodview` runs the repair; `import floodview.dem` then deletes it. Because PROJ resolves its search path once when the native library first loads, the observable outcome depends on import order and on whether rasterio was already imported — which is exactly the fragility `__init__.py`'s docstring warns about. I could not determine from static reading alone which of the two wins in any given process; that needs a runtime check.
 
 ##### 3.3.3 Tile naming and URL construction
 
@@ -8300,7 +8300,7 @@ Then: if no cell is valid → `DEMError`. Otherwise fully-nodata edge rows and c
 
 ---
 
-#### 3.4 Terrain conditioning (`jalraksha/terrain/conditioning.py`, 409 lines)
+#### 3.4 Terrain conditioning (`floodview/terrain/conditioning.py`, 409 lines)
 
 ##### 3.4.1 `load_dem_as_grid` — the single honest DEM → Grid path
 
@@ -8454,7 +8454,7 @@ Computes `np.gradient` in both axes, takes the magnitude, returns `grad_mag > th
 
 ---
 
-#### 3.5 Domain construction (`jalraksha/terrain/domain.py`, 224 lines)
+#### 3.5 Domain construction (`floodview/terrain/domain.py`, 224 lines)
 
 ##### 3.5.1 `build_domain`
 
@@ -8550,7 +8550,7 @@ def compute_utm_zone(lat: float, lon: float) -> int
 
 ---
 
-#### 3.6 Roughness (`jalraksha/terrain/roughness.py`, 99 lines)
+#### 3.6 Roughness (`floodview/terrain/roughness.py`, 99 lines)
 
 Two tables and three functions:
 
@@ -8589,7 +8589,7 @@ Finally: **nothing in the pipeline calls `assign_manning_from_worldcover`.** Bot
 
 ---
 
-#### 3.7 Breach modelling (`jalraksha/terrain/breach.py`, 1396 lines)
+#### 3.7 Breach modelling (`floodview/terrain/breach.py`, 1396 lines)
 
 This is the centrepiece of the ingestion pipeline and the most carefully written module in this chapter. Its module docstring sets the epistemic frame:
 
@@ -8768,7 +8768,7 @@ Required config keys — validated up front, raising `HardeningError` if absent:
 
 Regression family assignment is **deterministic round-robin**, not random: `family = families[i % len(families)]`. With the default four families and `num_samples=100`, each family gets exactly 25 members. The inter-method spread — which the module argues is the dominant uncertainty term — is thus sampled uniformly by construction rather than drawn.
 
-`test_reproducible_under_seed` verifies bitwise-equal `Q_t` across two seeded calls. **However, `jalraksha/run.py:647` calls `synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)` with no `random_seed`**, so the production pipeline is *not* reproducible.
+`test_reproducible_under_seed` verifies bitwise-equal `Q_t` across two seeded calls. **However, `floodview/run.py:647` calls `synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)` with no `random_seed`**, so the production pipeline is *not* reproducible.
 
 Note also that a member which raises is caught (`except Exception`) and replaced by `_generate_fallback_hydrograph`, which consumes no randomness — so a mid-stream failure desynchronises the RNG stream for all subsequent members, breaking seed reproducibility in exactly the case where you would most want it.
 
@@ -9059,7 +9059,7 @@ This is by a wide margin the strongest test file in the ingestion path: it asser
 
 Each entry gives `file:line`, a severity, and a concrete fix.
 
-**F-01 — CRITICAL — `jalraksha/terrain/breach.py:389-405` (`_generate_triangle_hydrograph`).** The fallback hydrograph overshoots its own peak by 70% and is unbounded by storage. With `duration_ratio=0.5` and `t_peak=0.15D` the rise mask is empty, and the fall assignment (applied last) evaluates to `1.7·q_peak` immediately after `t_peak`. Fix — replace the mask arithmetic with an explicit two-segment triangle scaled to the storage:
+**F-01 — CRITICAL — `floodview/terrain/breach.py:389-405` (`_generate_triangle_hydrograph`).** The fallback hydrograph overshoots its own peak by 70% and is unbounded by storage. With `duration_ratio=0.5` and `t_peak=0.15D` the rise mask is empty, and the fall assignment (applied last) evaluates to `1.7·q_peak` immediately after `t_peak`. Fix — replace the mask arithmetic with an explicit two-segment triangle scaled to the storage:
 
 ```python
 def _generate_triangle_hydrograph(t_array, q_peak, t_peak, duration_ratio=0.7):
@@ -9073,7 +9073,7 @@ def _generate_triangle_hydrograph(t_array, q_peak, t_peak, duration_ratio=0.7):
 ```
 and, in `_generate_fallback_hydrograph`, rescale so `np.trapezoid(Q, t) <= storage_mm3 * MCM_TO_M3`.
 
-**F-02 — HIGH — `jalraksha/dem.py:437-450`.** A bare `except Exception` routes *every* failure — including an HTTP 404 for a tile that legitimately does not exist over ocean — into fabricated terrain. Fix: classify first.
+**F-02 — HIGH — `floodview/dem.py:437-450`.** A bare `except Exception` routes *every* failure — including an HTTP 404 for a tile that legitimately does not exist over ocean — into fabricated terrain. Fix: classify first.
 
 ```python
 except Exception as e:
@@ -9085,11 +9085,11 @@ except Exception as e:
     warnings.warn(...)  # network-failure path only
 ```
 
-**F-03 — HIGH — `jalraksha/cache.py:41-116` + `jalraksha/dem.py:466`.** Synthetic tiles are cached with `"synthetic": True` but `check_cache` never reads the flag, so later runs (including `offline_mode=True`) hit fabricated terrain with no warning. Fix: have `check_cache` return the entry dict, or add `if cached_entry.get("synthetic"): warnings.warn(...)` before the `[OK] Cache hit` print, and have `fetch_dem` re-raise the synthetic warning when any hit tile is flagged.
+**F-03 — HIGH — `floodview/cache.py:41-116` + `floodview/dem.py:466`.** Synthetic tiles are cached with `"synthetic": True` but `check_cache` never reads the flag, so later runs (including `offline_mode=True`) hit fabricated terrain with no warning. Fix: have `check_cache` return the entry dict, or add `if cached_entry.get("synthetic"): warnings.warn(...)` before the `[OK] Cache hit` print, and have `fetch_dem` re-raise the synthetic warning when any hit tile is flagged.
 
-**F-04 — HIGH — `jalraksha/terrain/breach.py:177`.** `failure_time_frac = min(max(failure_time_frac, 0.002), 0.6)` silently caps `t_fail` at 6480 s (1.8 h), truncating any caller-requested `breach_formation_time_s` above that — including VTG's own 3.5-4.9 h values for Tehri quoted at `breach.py:155-156`. Fix: apply the absolute clamp relative to the requested median, e.g. `hi = max(0.6, 4.0 * frac_median)`, and emit a warning when the request is truncated.
+**F-04 — HIGH — `floodview/terrain/breach.py:177`.** `failure_time_frac = min(max(failure_time_frac, 0.002), 0.6)` silently caps `t_fail` at 6480 s (1.8 h), truncating any caller-requested `breach_formation_time_s` above that — including VTG's own 3.5-4.9 h values for Tehri quoted at `breach.py:155-156`. Fix: apply the absolute clamp relative to the requested median, e.g. `hi = max(0.6, 4.0 * frac_median)`, and emit a warning when the request is truncated.
 
-**F-05 — HIGH — `jalraksha/terrain/roughness.py:14-25`.** The ESA WorldCover class→description mapping appears shifted by one class relative to the published legend (10 Tree cover, 20 Shrubland, 30 Grassland, 40 Cropland, 50 Built-up, 60 Bare/sparse, 70 Snow/ice, 80 Permanent water, 90 Herbaceous wetland, 95 Mangroves, 100 Moss/lichen). As coded, built-up (50) would get n=0.01 and cropland (40) would get the urban 0.06. Verify against the ESA WorldCover Product User Manual, then:
+**F-05 — HIGH — `floodview/terrain/roughness.py:14-25`.** The ESA WorldCover class→description mapping appears shifted by one class relative to the published legend (10 Tree cover, 20 Shrubland, 30 Grassland, 40 Cropland, 50 Built-up, 60 Bare/sparse, 70 Snow/ice, 80 Permanent water, 90 Herbaceous wetland, 95 Mangroves, 100 Moss/lichen). As coded, built-up (50) would get n=0.01 and cropland (40) would get the urban 0.06. Verify against the ESA WorldCover Product User Manual, then:
 
 ```python
 MANNING_TABLE_ESA = {
@@ -9107,17 +9107,17 @@ MANNING_TABLE_ESA = {
 }   # TODO: UNVETTED — each value needs a page-level citation
 ```
 
-**F-06 — HIGH — `jalraksha/run.py:647`.** `synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)` is called with no `random_seed`, so no production run is reproducible even though the module supports it. Fix: `random_seed=dam_config.get("random_seed", 20260101)` and record it in the result metadata.
+**F-06 — HIGH — `floodview/run.py:647`.** `synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)` is called with no `random_seed`, so no production run is reproducible even though the module supports it. Fix: `random_seed=dam_config.get("random_seed", 20260101)` and record it in the result metadata.
 
 **F-07 — HIGH — `tests/test_terrain.py:168-191`.** `test_build_domain_synthetic` wraps its assertions in `except Exception` and asserts `state.h.min() > 0`, which is the *pre-fix* inverted h/b behaviour. It can never fail and encodes the wrong contract. Fix: delete the try/except and assert `state.h.max() == 0.0` and `state.b.min() > 0`.
 
-**F-08 — HIGH — `jalraksha/terrain/breach.py:61-66`.** All four Wahl uncertainty bands are `TODO: UNVETTED` placeholders, and they are what the Teton bracketing gate depends on. Fix: transcribe Wahl (2004) Table 3 and add a test asserting each constant equals the published value.
+**F-08 — HIGH — `floodview/terrain/breach.py:61-66`.** All four Wahl uncertainty bands are `TODO: UNVETTED` placeholders, and they are what the Teton bracketing gate depends on. Fix: transcribe Wahl (2004) Table 3 and add a test asserting each constant equals the published value.
 
-**F-09 — HIGH — `jalraksha/dem.py:50-51` vs `jalraksha/__init__.py:85-86`.** `dem.py` deletes the `PROJ_DATA`/`PROJ_LIB` that `__init__.py` deliberately set to repair a broken PROJ database. Fix: delete the two `pop` calls from `dem.py` and let the package-level repair own the variables; if a clean environment is genuinely needed, do it inside `rasterio.Env` rather than by mutating `os.environ` at import.
+**F-09 — HIGH — `floodview/dem.py:50-51` vs `floodview/__init__.py:85-86`.** `dem.py` deletes the `PROJ_DATA`/`PROJ_LIB` that `__init__.py` deliberately set to repair a broken PROJ database. Fix: delete the two `pop` calls from `dem.py` and let the package-level repair own the variables; if a clean environment is genuinely needed, do it inside `rasterio.Env` rather than by mutating `os.environ` at import.
 
-**F-10 — MEDIUM — `jalraksha/config.py:110`.** `"cartoudem"` should be `"cartodem"`; the forbidden-source check does not fire for the source it names. Fix: `forbidden = ["india-wris", "bhuvan", "cartodem", "cartosat"]`.
+**F-10 — MEDIUM — `floodview/config.py:110`.** `"cartoudem"` should be `"cartodem"`; the forbidden-source check does not fire for the source it names. Fix: `forbidden = ["india-wris", "bhuvan", "cartodem", "cartosat"]`.
 
-**F-11 — MEDIUM — `jalraksha/config.py:93`.** The CRS whitelist rejects EPSG:32644, the correct zone for the demo dam. Fix: accept any `326xx`/`327xx` code:
+**F-11 — MEDIUM — `floodview/config.py:93`.** The CRS whitelist rejects EPSG:32644, the correct zone for the demo dam. Fix: accept any `326xx`/`327xx` code:
 
 ```python
 import re
@@ -9125,15 +9125,15 @@ if not re.search(r"32[67]\d{2}", crs_str) and "UTM" not in crs_str.upper():
     raise ConfigError(...)
 ```
 
-**F-12 — MEDIUM — `jalraksha/dem.py:371` vs `:372-374`.** The clipped filename omits `domain_radius_km` while the product key includes it, so two radii at one dam collide on disk and thrash the hash check. Fix: `clipped_path = cache_dem_dir / f"dem_{dam_lat:.2f}_{dam_lon:.2f}_r{domain_radius_km:g}km_clipped.tif"`.
+**F-12 — MEDIUM — `floodview/dem.py:371` vs `:372-374`.** The clipped filename omits `domain_radius_km` while the product key includes it, so two radii at one dam collide on disk and thrash the hash check. Fix: `clipped_path = cache_dem_dir / f"dem_{dam_lat:.2f}_{dam_lon:.2f}_r{domain_radius_km:g}km_clipped.tif"`.
 
-**F-13 — MEDIUM — `jalraksha/dem.py:486-495`.** `merge()` adopts `mosaics[0]`'s resolution and profile, so a mixed synthetic (1/1200°) and real (1/3600°) tile set silently resamples the whole mosaic. Fix: pass `res=(1/3600, 1/3600)` explicitly to `merge`, or refuse to mosaic mixed provenance.
+**F-13 — MEDIUM — `floodview/dem.py:486-495`.** `merge()` adopts `mosaics[0]`'s resolution and profile, so a mixed synthetic (1/1200°) and real (1/3600°) tile set silently resamples the whole mosaic. Fix: pass `res=(1/3600, 1/3600)` explicitly to `merge`, or refuse to mosaic mixed provenance.
 
-**F-14 — MEDIUM — `jalraksha/cache.py:94-105`.** `check_cache` MD5s the entire cached file on every call — hundreds of MB per run on a warm cache. Fix: compare `size_bytes` and `st_mtime` first and only hash when they differ, or store `mtime_ns` in the entry and skip the hash when it matches.
+**F-14 — MEDIUM — `floodview/cache.py:94-105`.** `check_cache` MD5s the entire cached file on every call — hundreds of MB per run on a warm cache. Fix: compare `size_bytes` and `st_mtime` first and only hash when they differ, or store `mtime_ns` in the entry and skip the hash when it matches.
 
-**F-15 — MEDIUM — `jalraksha/cache.py:262-273`.** The proximity branch of `get_cached_dem` is dead: nothing writes `lat`/`lon` into a cache entry. Fix: add `"lat": dam_lat, "lon": dam_lon` to the `store_cache` metadata in `fetch_dem` (both the tile and the product registration).
+**F-15 — MEDIUM — `floodview/cache.py:262-273`.** The proximity branch of `get_cached_dem` is dead: nothing writes `lat`/`lon` into a cache entry. Fix: add `"lat": dam_lat, "lon": dam_lon` to the `store_cache` metadata in `fetch_dem` (both the tile and the product registration).
 
-**F-16 — MEDIUM — `jalraksha/terrain/domain.py:216-221`.** `compute_breach_location` returns the geometric centre cell with no terrain search, despite its name and its tests' docstring; `dam_lat`, `dam_lon` and `utm_zone` are unused. At 200 m in a gorge the centre cell can sit tens of metres above the channel. Fix — reuse the gauge snapping rule:
+**F-16 — MEDIUM — `floodview/terrain/domain.py:216-221`.** `compute_breach_location` returns the geometric centre cell with no terrain search, despite its name and its tests' docstring; `dam_lat`, `dam_lon` and `utm_zone` are unused. At 200 m in a gorge the centre cell can sit tens of metres above the channel. Fix — reuse the gauge snapping rule:
 
 ```python
 radius = max(1, int(round(600.0 / min(grid.dx, grid.dy))))  # ~600 m dam footprint
@@ -9145,13 +9145,13 @@ j_breach, i_breach = j0 + dj, i0 + di
 ```
 with the search radius exposed as a parameter and recorded in the result metadata.
 
-**F-17 — MEDIUM — `jalraksha/run.py:316`.** `int(str(grid.crs).split(":")[-1]) % 100` raises `ValueError` for a WKT-valued `grid.crs`, which `_grid_from_projected_dem` can produce and the test fixtures do produce. Fix: `from pyproj import CRS; domain_zone = CRS.from_user_input(grid.crs).to_epsg() % 100`, with an explicit error if `to_epsg()` returns `None`.
+**F-17 — MEDIUM — `floodview/run.py:316`.** `int(str(grid.crs).split(":")[-1]) % 100` raises `ValueError` for a WKT-valued `grid.crs`, which `_grid_from_projected_dem` can produce and the test fixtures do produce. Fix: `from pyproj import CRS; domain_zone = CRS.from_user_input(grid.crs).to_epsg() % 100`, with an explicit error if `to_epsg()` returns `None`.
 
-**F-18 — MEDIUM — `jalraksha/terrain/conditioning.py:170-235,387-409`.** `manning_table` is accepted by `preprocess_dem` and `build_domain_state` and never used — a silent no-op. Fix: either wire it through to `assign_manning_from_worldcover` or raise `NotImplementedError` when a caller passes a non-`None` table.
+**F-18 — MEDIUM — `floodview/terrain/conditioning.py:170-235,387-409`.** `manning_table` is accepted by `preprocess_dem` and `build_domain_state` and never used — a silent no-op. Fix: either wire it through to `assign_manning_from_worldcover` or raise `NotImplementedError` when a caller passes a non-`None` table.
 
-**F-19 — MEDIUM — `jalraksha/terrain/roughness.py:59-63`.** `assign_manning_from_worldcover` ignores `worldcover_path` and returns a uniform 0.03 float32 field, with no signal to the caller that no land cover was read. Fix: return `(field, provenance)` where provenance is `"uniform_fallback"` or `"esa_worldcover"`, and have `build_domain` propagate it into the run metadata.
+**F-19 — MEDIUM — `floodview/terrain/roughness.py:59-63`.** `assign_manning_from_worldcover` ignores `worldcover_path` and returns a uniform 0.03 float32 field, with no signal to the caller that no land cover was read. Fix: return `(field, provenance)` where provenance is `"uniform_fallback"` or `"esa_worldcover"`, and have `build_domain` propagate it into the run metadata.
 
-**F-20 — MEDIUM — `jalraksha/terrain/breach.py:29`.** `from numba import njit` is a hard module-scope import, contradicting the docstring's claim (line 22-23) that the module "runs from a bare NumPy install (offline-first constraint)". Fix: guard it —
+**F-20 — MEDIUM — `floodview/terrain/breach.py:29`.** `from numba import njit` is a hard module-scope import, contradicting the docstring's claim (line 22-23) that the module "runs from a bare NumPy install (offline-first constraint)". Fix: guard it —
 
 ```python
 try:
@@ -9161,9 +9161,9 @@ except ImportError:
         return (lambda f: f) if not a else a[0]
 ```
 
-**F-21 — MEDIUM — `jalraksha/terrain/breach.py:751`.** SCS's uncertainty band is keyed on `"xu_zhang_2009"`, so editing a quarantined family's band silently moves a cross-check's band. Fix: add an explicit `"scs_1981": 0.50` key with its own `TODO: UNVETTED` note.
+**F-21 — MEDIUM — `floodview/terrain/breach.py:751`.** SCS's uncertainty band is keyed on `"xu_zhang_2009"`, so editing a quarantined family's band silently moves a cross-check's band. Fix: add an explicit `"scs_1981": 0.50` key with its own `TODO: UNVETTED` note.
 
-**F-22 — MEDIUM — `jalraksha/run.py:515-518`.** The breach source is a single cell with no momentum; at Tehri's peak this adds ~11 m of depth per second to one 200 m cell. Fix: distribute over a breach-width footprint,
+**F-22 — MEDIUM — `floodview/run.py:515-518`.** The breach source is a single cell with no momentum; at Tehri's peak this adds ~11 m of depth per second to one 200 m cell. Fix: distribute over a breach-width footprint,
 
 ```python
 n_cells_wide = max(1, int(round(breach_width_m / grid.dx)))
@@ -9173,25 +9173,25 @@ state.h[j_breach, i_breach-half:i_breach+half+1] += \
 ```
 with `breach_width_m` taken from the VTG geometry already computed in the ensemble.
 
-**F-23 — MEDIUM — `jalraksha/terrain/conditioning.py:322-363`.** `interpolate_dem_to_grid` returns float32 (against the stated float64 policy) and converts any exception into a flat plane at the DEM's mean elevation. Fix: drop the blanket `except Exception`, let the error surface, and return float64.
+**F-23 — MEDIUM — `floodview/terrain/conditioning.py:322-363`.** `interpolate_dem_to_grid` returns float32 (against the stated float64 policy) and converts any exception into a flat plane at the DEM's mean elevation. Fix: drop the blanket `except Exception`, let the error surface, and return float64.
 
-**F-24 — LOW — `jalraksha/terrain/breach.py:681-686`.** For `mode="lower"` with a non-embankment `dam_type`, MacDonald returns the *un*-widened `value` alongside a widened `q_lo`, so `value != lower`. Fix: recompute `value` from `mode` after the widening.
+**F-24 — LOW — `floodview/terrain/breach.py:681-686`.** For `mode="lower"` with a non-embankment `dam_type`, MacDonald returns the *un*-widened `value` alongside a widened `q_lo`, so `value != lower`. Fix: recompute `value` from `mode` after the widening.
 
-**F-25 — LOW — `jalraksha/dem.py:132-134`.** `compute_copdem_tiles` cannot express an antimeridian-crossing box; `range()` silently yields the wrong set. Fix: normalise longitudes to `[-180, 180)` and iterate modulo 360, or raise a clear `DEMError`.
+**F-25 — LOW — `floodview/dem.py:132-134`.** `compute_copdem_tiles` cannot express an antimeridian-crossing box; `range()` silently yields the wrong set. Fix: normalise longitudes to `[-180, 180)` and iterate modulo 360, or raise a clear `DEMError`.
 
-**F-26 — LOW — `jalraksha/dem.py:486-503`.** Mosaic dataset handles are closed only on the success path; an exception mid-merge leaks them. Fix: `with contextlib.ExitStack() as stack:` around the opens.
+**F-26 — LOW — `floodview/dem.py:486-503`.** Mosaic dataset handles are closed only on the success path; an exception mid-merge leaks them. Fix: `with contextlib.ExitStack() as stack:` around the opens.
 
-**F-27 — LOW — `jalraksha/cache.py:167`.** `datetime.utcnow()` is deprecated from Python 3.12 and returns a naive datetime. Fix: `datetime.now(timezone.utc).isoformat()`.
+**F-27 — LOW — `floodview/cache.py:167`.** `datetime.utcnow()` is deprecated from Python 3.12 and returns a naive datetime. Fix: `datetime.now(timezone.utc).isoformat()`.
 
-**F-28 — LOW — `jalraksha/cache.py:165-172`.** Caller `metadata` is splatted last and can overwrite `path`/`hash`/`timestamp`. Fix: splat first, then set the four managed keys.
+**F-28 — LOW — `floodview/cache.py:165-172`.** Caller `metadata` is splatted last and can overwrite `path`/`hash`/`timestamp`. Fix: splat first, then set the four managed keys.
 
-**F-29 — LOW — `jalraksha/config.py:31`.** `import yaml  # To be added to pyproject.toml` — an undeclared dependency at module scope. Fix: declare `pyyaml` in `pyproject.toml`, or import lazily inside the `.yaml` branch.
+**F-29 — LOW — `floodview/config.py:31`.** `import yaml  # To be added to pyproject.toml` — an undeclared dependency at module scope. Fix: declare `pyyaml` in `pyproject.toml`, or import lazily inside the `.yaml` branch.
 
-**F-30 — LOW — `jalraksha/terrain/domain.py:67-69` vs `jalraksha/dem.py:84`.** Three implementations of the UTM zone formula, two of them unclamped and truncating rather than flooring. Fix: keep `dem.latlon_to_utm_zone` and have the other two call it.
+**F-30 — LOW — `floodview/terrain/domain.py:67-69` vs `floodview/dem.py:84`.** Three implementations of the UTM zone formula, two of them unclamped and truncating rather than flooring. Fix: keep `dem.latlon_to_utm_zone` and have the other two call it.
 
-**F-31 — LOW — `jalraksha/run.py:466-479`.** `inject_breach_hydrograph`'s docstring claims it modifies `state.u`, `state.v` and `state.h`; it modifies only `h`. Fix: update the docstring.
+**F-31 — LOW — `floodview/run.py:466-479`.** `inject_breach_hydrograph`'s docstring claims it modifies `state.u`, `state.v` and `state.h`; it modifies only `h`. Fix: update the docstring.
 
-**F-32 — LOW — `jalraksha/terrain/conditioning.py:366-384`.** `apply_edge_detection` has no consumer, and its 5.0 m threshold is per-cell so its physical meaning changes with `target_resolution`. Fix: express the threshold as a slope (`m/m`) by dividing the gradient by `dx`, and either wire it into `load_dem_as_grid` or delete it.
+**F-32 — LOW — `floodview/terrain/conditioning.py:366-384`.** `apply_edge_detection` has no consumer, and its 5.0 m threshold is per-cell so its physical meaning changes with `target_resolution`. Fix: express the threshold as a slope (`m/m`) by dividing the gradient by `dx`, and either wire it into `load_dem_as_grid` or delete it.
 
 **Unvetted coefficients, consolidated.** Every one of the following is marked `TODO: UNVETTED` in the source and must not be quoted as a sourced value: `UNCERTAINTY_LOG_CYCLES` all four entries (`breach.py:62-65`); Costa's band reuse (`breach.py:717-718`); SCS's band reuse (`breach.py:750-751`); `CRITICAL_FAILURE_FRAC = 0.15` (`breach.py:76`); `MANNINGS_N_STD = 0.005` (`breach.py:80`); all six `_XU_ZHANG_B3_DAM_TYPE` entries (`breach.py:884-891`); all three `_XU_ZHANG_B4_FAILURE_MODE` entries (`breach.py:892-896`); all three `_XU_ZHANG_B5_ERODIBILITY` entries (`breach.py:897-901`); the hardcoded `"high"` erodibility assumption (`breach.py:958-961`); the uniform Manning 0.03 in `conditioning.py:281-284` and `domain.py:147-153`; and the entire `roughness.py` table, whose `source_citation()` itself ends in a `TODO`. Additionally unsourced but *not* marked: the per-member peak noise `rng.lognormal(0, 0.15)` (`breach.py:312`) and the formation-time spread `rng.lognormal(0, 0.2)` (`breach.py:171`).
 
@@ -9287,7 +9287,7 @@ Covered by `tests/test_terrain.py`:
 
 ### 4a. The 2D Shallow-Water Solver Core
 
-This chapter documents the numerical heart of JalRaksha: the cell-centred finite-volume
+This chapter documents the numerical heart of FloodView: the cell-centred finite-volume
 solver that integrates the two-dimensional shallow-water equations over a Cartesian
 raster of a Himalayan valley and produces the arrival-time and inundation-envelope
 rasters that are the project's Tier-1 deliverable.
@@ -9296,12 +9296,12 @@ Five files constitute the subsystem:
 
 | File | Lines | Role |
 |---|---|---|
-| `jalraksha/solver/__init__.py` | 20 | Public surface: `SWESolver`, `Grid`, `State` |
-| `jalraksha/solver/types.py` | 348 | `Grid`, `State`, `Result` dataclasses; precision policy |
-| `jalraksha/solver/flux.py` | 722 | Numba-jitted HLLC / Audusse / MUSCL kernels, friction, CFL |
-| `jalraksha/solver/core.py` | 603 | `SWESolver`: SSP-RK2 driver, boundaries, run loop |
-| `jalraksha/solver/parallel.py` | 414 | Monte-Carlo ensemble execution, sequential or pooled |
-| `jalraksha/solver/PHASE1_STATUS.md` | 190 | Historical handoff note (**stale** — see §8) |
+| `floodview/solver/__init__.py` | 20 | Public surface: `SWESolver`, `Grid`, `State` |
+| `floodview/solver/types.py` | 348 | `Grid`, `State`, `Result` dataclasses; precision policy |
+| `floodview/solver/flux.py` | 722 | Numba-jitted HLLC / Audusse / MUSCL kernels, friction, CFL |
+| `floodview/solver/core.py` | 603 | `SWESolver`: SSP-RK2 driver, boundaries, run loop |
+| `floodview/solver/parallel.py` | 414 | Monte-Carlo ensemble execution, sequential or pooled |
+| `floodview/solver/PHASE1_STATUS.md` | 190 | Historical handoff note (**stale** — see §8) |
 
 The gates live in `tests/test_solver.py` (886 lines) and `tests/test_parallel.py` (141 lines).
 
@@ -10333,7 +10333,7 @@ No absolute number or machine is given.
 
 **Whole-build gate values** (`CLAUDE.md:279-281`, outside this subsystem but reporting on
 it): *"lake-at-rest 5.98e-14 m/s, mass conservation 0.000000%, Ritter RMSE 0.0317 m
-(JalRaksha) vs 0.0349 m (Delft3D FM)."*
+(FloodView) vs 0.0349 m (Delft3D FM)."*
 
 **Stale figures** (`PHASE1_STATUS.md`, dated 2026-08-24): reports the lake-at-rest test
 FAILING at **1.66 m/s** max u-velocity, coverage 25%, and module sizes of 250/280/340/350
@@ -10419,7 +10419,7 @@ ARRIVAL_THRESHOLD_M = 0.1   # Spec §4.3
 ...
 newly_wet = (state.h > ARRIVAL_THRESHOLD_M) & ~np.isfinite(self.t_arrival)
 ```
-and in `parallel.py`, `from jalraksha.solver.types import ARRIVAL_THRESHOLD_M`.
+and in `parallel.py`, `from floodview.solver.types import ARRIVAL_THRESHOLD_M`.
 
 **F5 — HIGH. `test_parallel_matches_sequential` never exercises the process pool.**
 `tests/test_parallel.py:104-118` uses 2 hydrographs and `n_workers=2`. In `run_ensemble`,
@@ -10432,7 +10432,7 @@ pooled dispatch must not change the answer"* compares sequential against sequent
 
 ```python
     def test_parallel_matches_sequential(self, monkeypatch):
-        import jalraksha.solver.parallel as P
+        import floodview.solver.parallel as P
         monkeypatch.setattr(P, "WORKER_STARTUP_SECONDS", 0.0)
         monkeypatch.setattr(P, "INTRA_MEMBER_THREAD_SPEEDUP", 0.01)
         hydrographs = _hydrographs(6)          # enough members to make the pool win
@@ -10529,7 +10529,7 @@ the flux kernels.
 `min(pool_size, 8)` fallback (`parallel.py:239-240`) are all hardcoded from one 16-core
 Windows box. On a 128-core Linux node the model will systematically under-use the pool.
 *Fix:* read them from the environment with the current values as defaults, e.g.
-`WORKER_STARTUP_SECONDS = float(os.environ.get("JALRAKSHA_WORKER_STARTUP_S", 15.0))`, and
+`WORKER_STARTUP_SECONDS = float(os.environ.get("FLOODVIEW_WORKER_STARTUP_S", 15.0))`, and
 on POSIX (where `multiprocessing` forks) default it to ~1.0 s.
 
 **F13 — MEDIUM. The cost probe absorbs numba JIT compilation on a cold cache.**
@@ -10685,11 +10685,11 @@ fixed before any result from this solver is quoted.
 
 ### 4B. Consequence Modelling and Google Earth Engine Integration
 
-This chapter documents two subsystems that sit at the far end of the JalRaksha
-pipeline. The first, `jalraksha/impact/`, turns hydrodynamic fields (depth,
+This chapter documents two subsystems that sit at the far end of the FloodView
+pipeline. The first, `floodview/impact/`, turns hydrodynamic fields (depth,
 velocity, arrival time) into consequence metrics: a hazard class per cell, an
 economic loss figure, a population-at-risk count, and an estimated loss of life.
-The second, `jalraksha/gee/`, is the observational counterweight: it fetches a
+The second, `floodview/gee/`, is the observational counterweight: it fetches a
 Sentinel-1 SAR observed water extent and a GHSL gridded population count from
 Google Earth Engine, so that the consequence numbers rest on a published census
 product rather than on an assumed density, and so that the modelled inundation
@@ -10722,11 +10722,11 @@ requested for documentation do not exist in the code:
   #11 on the verification queue.
 * `sar.py` computes **precision and recall against JRC Global Surface Water, but
   not CSI**. A Critical Success Index implementation does exist in the repository
-  (`jalraksha/validation/metrics.py:25`), but `sar.py` does not call it and does
+  (`floodview/validation/metrics.py:25`), but `sar.py` does not call it and does
   not compute TP/FP/FN counts of its own.
 * `sar.py` applies **no speckle filtering of any kind**. There is no Refined Lee,
   no boxcar, no `focal_mean`, no Gamma-MAP. `grep -ri "speckle|focal_me|lee"` over
-  `jalraksha/gee/` returns nothing. The VV band is thresholded raw.
+  `floodview/gee/` returns nothing. The VV band is thresholded raw.
 
 Where a claim in the brief could not be verified from the code, it is stated as
 such rather than reconstructed.
@@ -10736,32 +10736,32 @@ such rather than reconstructed.
 #### 4B.1 Package layout and import graph
 
 ```
-jalraksha/impact/__init__.py      19 lines   exports 3 classes
-jalraksha/impact/hazard.py       249 lines   FD2320 classification
-jalraksha/impact/fatality.py     159 lines   Graham + Jonkman LOL
-jalraksha/impact/damage.py       309 lines   depth-damage / economic loss
-jalraksha/impact/population.py   438 lines   PAR, exposure, demographics
+floodview/impact/__init__.py      19 lines   exports 3 classes
+floodview/impact/hazard.py       249 lines   FD2320 classification
+floodview/impact/fatality.py     159 lines   Graham + Jonkman LOL
+floodview/impact/damage.py       309 lines   depth-damage / economic loss
+floodview/impact/population.py   438 lines   PAR, exposure, demographics
 
-jalraksha/gee/__init__.py         22 lines   exports 4 functions
-jalraksha/gee/auth.py            139 lines   EE session probe
-jalraksha/gee/population.py      321 lines   GHSL P2023A fetch
-jalraksha/gee/sar.py             729 lines   Sentinel-1 observed water extent
+floodview/gee/__init__.py         22 lines   exports 4 functions
+floodview/gee/auth.py            139 lines   EE session probe
+floodview/gee/population.py      321 lines   GHSL P2023A fetch
+floodview/gee/sar.py             729 lines   Sentinel-1 observed water extent
 ```
 
-`jalraksha/impact/__init__.py` re-exports exactly three names:
+`floodview/impact/__init__.py` re-exports exactly three names:
 
 ```python
-from jalraksha.impact.hazard import HazardClassifier
-from jalraksha.impact.damage import DepthDamageAnalyzer
-from jalraksha.impact.population import PopulationEstimator
+from floodview.impact.hazard import HazardClassifier
+from floodview.impact.damage import DepthDamageAnalyzer
+from floodview.impact.population import PopulationEstimator
 
 __all__ = ["HazardClassifier", "DepthDamageAnalyzer", "PopulationEstimator"]
 ```
 
 Note that `fatality.py` is **not** re-exported. Callers must import
-`jalraksha.impact.fatality` directly, which `tests/test_impact.py:16` does. Note
+`floodview.impact.fatality` directly, which `tests/test_impact.py:16` does. Note
 also that the three re-exported names are the three *class-based* APIs, while
-every consumer in the application — `services/api/jalraksha_service/tasks.py` and
+every consumer in the application — `services/api/floodview_service/tasks.py` and
 `tests/test_impact.py` alike — uses the *functional wrappers* defined at the
 bottom of each module (`compute_fd2320_hazard_rating`, `compute_depth_damage`,
 `calculate_economic_loss`, `compute_population_exposure`, `compute_par`). The
@@ -10773,11 +10773,11 @@ are where the defects concentrate.
 every other statement about `impact/` is conditional on it:
 
 ```
-$ python3 -c "import jalraksha.impact"
+$ python3 -c "import floodview.impact"
 Traceback (most recent call last):
-  File "/…/jalraksha/impact/__init__.py", line 12, in <module>
-    from jalraksha.impact.hazard import HazardClassifier
-  File "/…/jalraksha/impact/hazard.py", line 143, in HazardClassifier
+  File "/…/floodview/impact/__init__.py", line 12, in <module>
+    from floodview.impact.hazard import HazardClassifier
+  File "/…/floodview/impact/hazard.py", line 143, in HazardClassifier
     def get_color(self, hazard_level: HazardLevel) -> List[int]:
                                                       ^^^^
 NameError: name 'List' is not defined
@@ -10787,8 +10787,8 @@ NameError: name 'List' is not defined
 the module has no `from __future__ import annotations`, so the annotation on line
 143 is evaluated eagerly during class-body execution and raises. Because
 `impact/__init__.py:12` is the first line of the package initialiser, *every*
-import of *any* `jalraksha.impact` submodule fails — including
-`jalraksha.impact.fatality` and `jalraksha.impact.damage`, which are themselves
+import of *any* `floodview.impact` submodule fails — including
+`floodview.impact.fatality` and `floodview.impact.damage`, which are themselves
 clean. `tests/test_impact.py` therefore cannot collect, and the entire Phase 6
 test suite is dead. Verified on Python 3.11.15.
 
@@ -10800,10 +10800,10 @@ initialiser) raises `NameError: name 'Tuple' is not defined` at line 184.
 Both are one-token fixes:
 
 ```python
-# jalraksha/impact/hazard.py:21
+# floodview/impact/hazard.py:21
 from typing import Dict, Any, Optional, List
 
-# jalraksha/impact/population.py:13
+# floodview/impact/population.py:13
 from typing import Dict, Any, Optional, List, Tuple
 ```
 
@@ -10813,7 +10813,7 @@ imports patched in, which is noted where relevant.
 
 ---
 
-#### 4B.2 Hazard classification — `jalraksha/impact/hazard.py`
+#### 4B.2 Hazard classification — `floodview/impact/hazard.py`
 
 ##### 4B.2.1 The two parallel classification schemes
 
@@ -11005,13 +11005,13 @@ Other observations on this class:
 
 ---
 
-#### 4B.3 Fatality modelling — `jalraksha/impact/fatality.py`
+#### 4B.3 Fatality modelling — `floodview/impact/fatality.py`
 
 The module docstring (lines 4–16) advertises three models. **Two are
 implemented.** The third, DeKay & McClelland (1993), is described at line 9 as
 "Log-linear fatality rate regression" and cited at lines 15–16 — but no function
 in the file computes it, and `grep -rn "dekay\|DeKay\|mcclelland"` over
-`jalraksha/` finds it nowhere else. It exists only as a citation and as
+`floodview/` finds it nowhere else. It exists only as a citation and as
 verification-queue item #9. Any documentation or slide that lists three
 implemented fatality models is overstating by one.
 
@@ -11214,7 +11214,7 @@ the running application.
 
 ---
 
-#### 4B.4 Economic damage — `jalraksha/impact/damage.py`
+#### 4B.4 Economic damage — `floodview/impact/damage.py`
 
 ##### 4B.4.1 What is actually implemented
 
@@ -11388,7 +11388,7 @@ elsewhere in the same file, but the parameter is at least exposed.
 
 ---
 
-#### 4B.5 Population at risk — `jalraksha/impact/population.py`
+#### 4B.5 Population at risk — `floodview/impact/population.py`
 
 ##### 4B.5.1 The two routes, and which one the application uses
 
@@ -11396,14 +11396,14 @@ The module docstring of `estimate_population` (lines 80–88) is unusually candi
 and is worth quoting because it is the design decision that matters:
 
 > PREFER `compute_population_exposure()` / `compute_par()` BELOW when a real
-> per-cell population count is available (`jalraksha.gee.population` fetches GHSL
+> per-cell population count is available (`floodview.gee.population` fetches GHSL
 > onto the solver grid). Those take census-derived counts directly. This method
 > instead infers density from settlement TYPE using the hardcoded per-type
 > figures in `__init__`, every one of which is flagged UNVETTED — so it is a
 > fallback for when no gridded population exists, not the preferred route to a
 > population-at-risk number.
 
-The API takes the preferred route. `services/api/jalraksha_service/tasks.py:189–223`
+The API takes the preferred route. `services/api/floodview_service/tasks.py:189–223`
 fetches GHSL onto the run's own grid and calls only the two functional wrappers.
 `PopulationEstimator` is used by no production caller.
 
@@ -11522,7 +11522,7 @@ should be preserved.
 The brief asks how grids of different resolution and CRS are reconciled. The
 answer is that **no resampling happens in `impact/population.py` at all** — and
 that is by design. The alignment is pushed entirely upstream into
-`jalraksha/gee/population.py:_fetch_ghsl_live`, which hands Earth Engine the
+`floodview/gee/population.py:_fetch_ghsl_live`, which hands Earth Engine the
 solver grid's own affine transform and EPSG code so that the raster comes back
 already on the target grid (§4B.7.2). `compute_par` and
 `compute_population_exposure` then do plain element-wise numpy indexing between
@@ -11548,7 +11548,7 @@ if population_grid.shape != arrival_time_grid.shape:
     )
 ```
 
-Row order is handled once, in `to_north_up` (`jalraksha/export/georef.py:84`),
+Row order is handled once, in `to_north_up` (`floodview/export/georef.py:84`),
 which flips between the solver's south-up convention (row 0 = southernmost) and
 the north-up raster convention. `gee/population.py:138` and `:223` both route the
 downloaded GeoTIFF through it, with an accurate comment that the flip is its own
@@ -11667,7 +11667,7 @@ different populations. `gee/population.py:309` gets this right
 
 ---
 
-#### 4B.6 GEE authentication — `jalraksha/gee/auth.py`
+#### 4B.6 GEE authentication — `floodview/gee/auth.py`
 
 ##### 4B.6.1 The contract
 
@@ -11689,7 +11689,7 @@ boolean.
 ##### 4B.6.2 The environment variable and setup requirements
 
 ```python
-GEE_PROJECT_ENV = "JALRAKSHA_GEE_PROJECT"      # auth.py:41
+GEE_PROJECT_ENV = "FLOODVIEW_GEE_PROJECT"      # auth.py:41
 
 def gee_project() -> str:
     """The configured Cloud project, or "" if none is set."""
@@ -11701,13 +11701,13 @@ Three prerequisites are documented (lines 21–25), all required:
 ```
 pip install earthengine-api
 earthengine authenticate                      # interactive browser sign-in
-set JALRAKSHA_GEE_PROJECT=<your-gcp-project>  # with the EE API enabled
+set FLOODVIEW_GEE_PROJECT=<your-gcp-project>  # with the EE API enabled
 ```
 
 The comment at lines 38–40 explains why there is no default project: "Earth
 Engine has required a Cloud project since the 2023 access change, so there is no
 sensible default to fall back on." `CLAUDE.md:268` records the project actually
-used in the demo — `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
+used in the demo — `FLOODVIEW_GEE_PROJECT=sih-prototype-506812`, set in
 `scripts/run_api.py` because `.claude/launch.json` has no env field.
 
 ##### 4B.6.3 The initialisation sequence
@@ -11716,10 +11716,10 @@ used in the demo — `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
 
 1. `import ee` → on `ImportError`, return
    `(False, "earthengine-api is not installed ({exc}). Install it with: pip install earthengine-api")`.
-2. `project = gee_project()` → if empty, return `(False, "JALRAKSHA_GEE_PROJECT is
+2. `project = gee_project()` → if empty, return `(False, "FLOODVIEW_GEE_PROJECT is
    not set. Earth Engine requires a Google Cloud project with the Earth Engine API
    enabled; register a free non-commercial one at
-   https://code.earthengine.google.com/register and set JALRAKSHA_GEE_PROJECT to
+   https://code.earthengine.google.com/register and set FLOODVIEW_GEE_PROJECT to
    its project ID.")`.
 3. `ee.Initialize(project=project)` inside a broad `try/except Exception` → on
    failure, return `(False, f"ee.Initialize(project={project!r}) failed: {exc}")`.
@@ -11794,7 +11794,7 @@ set timeouts (180 s and 300 s respectively); the initialisation does not.
 
 ---
 
-#### 4B.7 GHSL population via GEE — `jalraksha/gee/population.py`
+#### 4B.7 GHSL population via GEE — `floodview/gee/population.py`
 
 ##### 4B.7.1 Dataset, band, epoch
 
@@ -11852,7 +11852,7 @@ affine = grid_affine(grid_dict)
 crs_transform = [affine.a, affine.b, affine.c, affine.d, affine.e, affine.f]
 ```
 
-`grid_affine` (`jalraksha/export/georef.py:47`) builds
+`grid_affine` (`floodview/export/georef.py:47`) builds
 `Affine.translation(x0, y0 + ny·dy) * Affine.scale(dx, −dy)`, so
 a = dx, b = 0, c = x0, d = 0, e = −dy, f = y0 + ny·dy. The comment at lines
 164–166 records the ordering equivalence: "Earth Engine's `crsTransform` is
@@ -11982,7 +11982,7 @@ imported again, correctly, at line 160 in `_fetch_ghsl_live`.
 
 ---
 
-#### 4B.8 Sentinel-1 SAR observed flood extent — `jalraksha/gee/sar.py`
+#### 4B.8 Sentinel-1 SAR observed flood extent — `floodview/gee/sar.py`
 
 This is the largest and most carefully argued file in either subsystem. It is
 also the one whose central behaviour — *refusing* to publish a product — is most
@@ -12216,7 +12216,7 @@ area fraction of the window occupied by that class. So:
 
 **There is no CSI/threat-score computation here.** The brief asks for
 precision/recall/CSI; only the first two exist. `CSI = TP/(TP+FP+FN)` is
-implemented at `jalraksha/validation/metrics.py:25` for solver-vs-observation
+implemented at `floodview/validation/metrics.py:25` for solver-vs-observation
 comparison, and is not called from `sar.py`. It could be derived from the three
 fractions already computed — `CSI = I / (m + r − I)` — in one line, and would be
 a more informative single number than precision alone:
@@ -12298,7 +12298,7 @@ longer accurate and the comment should be updated.
 
 ##### 4B.8.6 `GeoSarResponse` and the "no fourth state" rule
 
-The response model lives at `services/api/jalraksha_service/schemas.py:394`:
+The response model lives at `services/api/floodview_service/schemas.py:394`:
 
 ```python
 class GeoSarResponse(BaseModel):
@@ -12371,7 +12371,7 @@ line 667. `process_sentinel1_sar_flood` returns a raw dict with
 `source="SYNTHETIC_not_observed"` and `water_mask`/`backscatter_delta_db` numpy
 arrays — a schema that does not fit `GeoSarResponse` at all — and
 `grep -rn "process_sentinel1_sar_flood"` finds it referenced only in
-`jalraksha/gee/__init__.py` (re-export) and `tests/test_gee.py`. It is called by
+`floodview/gee/__init__.py` (re-export) and `tests/test_gee.py`. It is called by
 no service, no task, and no endpoint. The default `allow_synthetic=False` raises
 `SarUnavailableError` when EE is unavailable. The "no fourth state" rule therefore
 holds, and holds structurally — not by convention but because the synthetic path
@@ -12510,7 +12510,7 @@ reach the viewer.
 ##### 4B.9.1 `tests/test_impact.py` — 129 lines, 4 classes, 8 tests
 
 **Status: the entire file is uncollectable**, because line 13 imports
-`jalraksha.impact.hazard`, which triggers the package initialiser and the `List`
+`floodview.impact.hazard`, which triggers the package initialiser and the `List`
 `NameError` (§4B.1). Every test below is described as written, not as passing.
 
 `TestFD2320HazardRating`:
@@ -12590,7 +12590,7 @@ the file. Two mechanisms are used instead:
    `monkeypatch.delenv(GEE_PROJECT_ENV)` and calls `reset_gee_status()` before and
    after the test. Because `auth._probe` checks the project *before* attempting
    `ee.Initialize`, deleting the env var deterministically produces
-   `(False, "JALRAKSHA_GEE_PROJECT is not set…")` on any host, whether or not
+   `(False, "FLOODVIEW_GEE_PROJECT is not set…")` on any host, whether or not
    `earthengine-api` is installed and authenticated. This is a genuinely elegant
    choice: it exercises the real code path rather than a stub.
 2. **`monkeypatch.setattr(sar_module, "gee_status", lambda: (False, "simulated
@@ -12613,7 +12613,7 @@ recording that the terrain difference — not the code — is what makes one wor
 the other fail.
 
 `TestGEEAuth` (6 tests): a reason is always a non-empty `str`; the unavailable
-reason must literally contain `JALRAKSHA_GEE_PROJECT` (asserting *actionability*,
+reason must literally contain `FLOODVIEW_GEE_PROJECT` (asserting *actionability*,
 not just falsity); `gee_project() == ""` and `is_gee_available() is False` under
 `no_gee` — the docstring names this "the regression this whole rewrite exists
 for"; `init_gee(offline_fallback=True)` returns `(False, msg)`;
@@ -12677,7 +12677,7 @@ suite. A single additional assertion would have caught all three:
 ```python
 # tests/test_gee.py, in TestPopulationAtRisk
 def test_settlement_estimator_produces_a_nonzero_population(self):
-    from jalraksha.impact.population import PopulationEstimator
+    from floodview.impact.population import PopulationEstimator
     settlements = np.zeros((20, 20), dtype=int)          # all "village"
     depth = np.zeros((20, 20)); depth[5:15, 5:15] = 2.0
     r = PopulationEstimator().estimate_population(
@@ -12709,89 +12709,89 @@ MEDIUM = a real defect with bounded blast radius; LOW = hygiene.
 
 ##### 4B.10.1 Import-blocking defects
 
-**C1 — `jalraksha/impact/hazard.py:143` — CRITICAL.** `-> List[int]` with `List`
+**C1 — `floodview/impact/hazard.py:143` — CRITICAL.** `-> List[int]` with `List`
 not imported. Raises `NameError` at class-body execution, which propagates through
-`impact/__init__.py:12` and makes the *entire* `jalraksha.impact` package
+`impact/__init__.py:12` and makes the *entire* `floodview.impact` package
 unimportable, taking `tests/test_impact.py` with it. Fix: `from typing import
 Dict, Any, Optional, List` at line 21.
 
-**C2 — `jalraksha/impact/population.py:184` — CRITICAL.** `shape: Tuple[int, int]`
+**C2 — `floodview/impact/population.py:184` — CRITICAL.** `shape: Tuple[int, int]`
 with `Tuple` not imported. Same failure mode. Fix: add `Tuple` to line 13. Adding
 `from __future__ import annotations` to both files would prevent recurrence and
 is the better structural fix.
 
 ##### 4B.10.2 Wrong numbers
 
-**C3 — `jalraksha/impact/damage.py:134,152` — CRITICAL.** `damage_grid =
+**C3 — `floodview/impact/damage.py:134,152` — CRITICAL.** `damage_grid =
 base_value * (a + b·h)^b` multiplies the *whole asset class's* value into *every
 cell*, and dry cells get `V·a^b > 0`. Measured: a 240×240 fully dry grid reports
 ₹44,216 crore of damage and `damage_percentage = 35,373 %`. Fix in §4B.4.4.
 
-**C4 — `jalraksha/impact/population.py:227` — CRITICAL.** Integer settlement codes
+**C4 — `floodview/impact/population.py:227` — CRITICAL.** Integer settlement codes
 tested against string dictionary keys; the branch is never taken and every
 population density is 0.0. Measured: `total_population: 0` for every input. Fix in
 §4B.5.5(a).
 
-**C5 — `jalraksha/impact/population.py:261-267` — CRITICAL.** Nested depth
+**C5 — `floodview/impact/population.py:261-267` — CRITICAL.** Nested depth
 thresholds accumulate, counting deep cells up to four times. Measured 6,912
 against a true 1,728, giving `par = 1.0` for a quarter-domain flood. Fix: make the
 bands disjoint (`(depth >= t_i) & (depth < t_{i+1})`) and report them separately
 instead of summing.
 
-**C6 — `jalraksha/impact/hazard.py:105` — CRITICAL (latent).** The velocity
+**C6 — `floodview/impact/hazard.py:105` — CRITICAL (latent).** The velocity
 condition is a ceiling with no catch-all, so a cell at h = 3 m and v = 10 m/s is
 classified `DRY`. Verified. Latent only because the module does not import. Fix in
 §4B.2.4.
 
-**H1 — `jalraksha/impact/damage.py:111` — HIGH.** `calculate_damage()` with its
+**H1 — `floodview/impact/damage.py:111` — HIGH.** `calculate_damage()` with its
 documented default `damage_type=DamageType.TOTAL` raises
 `KeyError: <DamageType.TOTAL>` — `TOTAL` is absent from both `graham_coeffs` and
 `asset_values`. Fix: either add a `TOTAL` entry summing the three classes, or
 change the default to `RESIDENTIAL` and raise a clear `ValueError` for `TOTAL`.
 
-**H2 — `jalraksha/impact/damage.py:112,114` — HIGH.** `damage_type in
+**H2 — `floodview/impact/damage.py:112,114` — HIGH.** `damage_type in
 self.alternative_curves[damage_type]` raises `KeyError` for three of four enum
 members and is always `False` for the fourth; the Wang/Jiang sensitivity curves
 are unreachable. Fix:
 `elif curve_version in self.alternative_curves.get(damage_type, {}): curve = self.alternative_curves[damage_type][curve_version]`.
 
-**H3 — `jalraksha/impact/population.py:275` — HIGH.** `cell_area_km2 = 200.0**2/1e6`
+**H3 — `floodview/impact/population.py:275` — HIGH.** `cell_area_km2 = 200.0**2/1e6`
 re-hardcoded inside the function whose caller passes the correct value, so the PAR
 denominator is wrong for any grid that is not 200 m. Fix: delete line 275; the
 argument is already in scope.
 
-**H4 — `jalraksha/impact/population.py:319` — HIGH.** `demographics["total"]` sums
+**H4 — `floodview/impact/population.py:319` — HIGH.** `demographics["total"]` sums
 overlapping groups (women ∩ children ≠ ∅). Measured 9,694 for a 6,912 population.
 Fix: report the groups without a `total`, or set `total` to the input
 `total_affected_population`.
 
-**M1 — `jalraksha/impact/damage.py:148,219` — MEDIUM.** Cell area hardcoded at
+**M1 — `floodview/impact/damage.py:148,219` — MEDIUM.** Cell area hardcoded at
 200 m in two places with no parameter. Fix: add `cell_size_m: float = 200.0` to
 both methods and derive `cell_area_km2` from it, matching the fix already applied
 to `PopulationEstimator.estimate_population`.
 
-**M2 — `jalraksha/impact/damage.py:209` — MEDIUM.** `calculate_par` silently
+**M2 — `floodview/impact/damage.py:209` — MEDIUM.** `calculate_par` silently
 substitutes 450 persons/km² when no population grid is supplied — precisely the
 substitution the GEE package exists to prevent. Fix: raise, mirroring
 `estimate_population`'s `allow_synthetic_settlements` pattern.
 
-**M3 — `jalraksha/gee/population.py:267,291` — MEDIUM.** `grid_shape` is documented
+**M3 — `floodview/gee/population.py:267,291` — MEDIUM.** `grid_shape` is documented
 as the output shape but is ignored on the live path; `sampleRectangle` determines
 the shape and fails above ~262 k pixels with an untranslated EE error. Fix: route
 through `getDownloadURL` with explicit `dimensions`, or document and enforce a
 pixel budget.
 
-**M4 — `jalraksha/impact/population.py:202` — MEDIUM.** `np.random.random()` with
+**M4 — `floodview/impact/population.py:202` — MEDIUM.** `np.random.random()` with
 no seed makes the synthetic settlement layout irreproducible run to run. Fix:
 `rng = np.random.default_rng(0)` as `gee/population.py:309` already does.
 
-**M5 — `jalraksha/gee/sar.py:587-589` — MEDIUM.** A quality-gate refusal re-raises
+**M5 — `floodview/gee/sar.py:587-589` — MEDIUM.** A quality-gate refusal re-raises
 without consulting the cache, so a previously verified scene is shadowed by
 today's refusal. Fix: either fall through to cache with an explicit
 `reason` naming the refusal, or document the current behaviour as deliberate in
 the function docstring.
 
-**M6 — `jalraksha/gee/sar.py:468` vs `:510` — MEDIUM.** `water_fraction` is
+**M6 — `floodview/gee/sar.py:468` vs `:510` — MEDIUM.** `water_fraction` is
 recomputed exactly from the delivered raster, but `precision_vs_jrc` — the number
 the gate fires on — still comes from a `bestEffort=True` reduction that the code's
 own comment says disagreed by 2× over Hirakud. With Khadakwasla failing by 2.8 %,
@@ -12799,55 +12799,55 @@ sampling error in the gate metric is not academic. Fix: recompute precision from
 the delivered raster against a JRC raster downloaded on the same grid, or set
 `bestEffort=False` with an explicit `maxPixels` for the agreement reduction.
 
-**M7 — `jalraksha/impact/population.py:390` — MEDIUM.** `compute_par` does not
+**M7 — `floodview/impact/population.py:390` — MEDIUM.** `compute_par` does not
 assert that `population_grid` and `arrival_time_grid` have the same shape; a
 broadcastable mismatch produces a wrong number silently. Fix in §4B.5.4.
 
-**M8 — `jalraksha/impact/fatality.py:73` — MEDIUM.** An unrecognised
+**M8 — `floodview/impact/fatality.py:73` — MEDIUM.** An unrecognised
 `flood_severity` string falls silently to the *low* row (a 75× understatement
 against the high row). Fix: `raise ValueError` naming the accepted spellings.
 
-**L1 — `jalraksha/gee/sar.py:297` — LOW.** `_agreement_with_jrc(vv, water, region,
+**L1 — `floodview/gee/sar.py:297` — LOW.** `_agreement_with_jrc(vv, water, region,
 scale_m)` never uses `vv`. Fix: drop the parameter.
 
-**L2 — `jalraksha/gee/population.py:112` — LOW.** `grid_affine` imported and
+**L2 — `floodview/gee/population.py:112` — LOW.** `grid_affine` imported and
 unused in `fetch_population_on_grid`.
 
-**L3 — `jalraksha/impact/hazard.py:163-165` — LOW.** Dead `if … : pass` whose
+**L3 — `floodview/impact/hazard.py:163-165` — LOW.** Dead `if … : pass` whose
 comment describes behaviour it does not implement.
 
-**L4 — `jalraksha/impact/hazard.py:189-192` — LOW.** `apply_to_rgb` is a nested
+**L4 — `floodview/impact/hazard.py:189-192` — LOW.** `apply_to_rgb` is a nested
 Python loop over every pixel. Fix: vectorise via an integer class grid and a
 palette array.
 
-**L5 — `jalraksha/gee/auth.py:102` — LOW.** `ee.Initialize` has no timeout and is
+**L5 — `floodview/gee/auth.py:102` — LOW.** `ee.Initialize` has no timeout and is
 called under `_LOCK`; a hung endpoint blocks every concurrent request. Fix: wrap
 in a bounded-time executor, or document the exposure.
 
-**L6 — `jalraksha/gee/population.py:138` — LOW.** The cache path does not apply
+**L6 — `floodview/gee/population.py:138` — LOW.** The cache path does not apply
 `np.nan_to_num`, unlike the live path at line 224.
 
 ##### 4B.10.3 Documentation that contradicts the code
 
-**D1 — `jalraksha/impact/hazard.py:11-17` vs `:46-52` — HIGH.** The module
+**D1 — `floodview/impact/hazard.py:11-17` vs `:46-52` — HIGH.** The module
 docstring's class table is offset by one band from the code's. Unresolvable from
 the file; requires a decision against FD2320 and then a single source of truth.
 
-**D2 — `jalraksha/impact/fatality.py:112-113` — HIGH.** The Jonkman docstring
+**D2 — `floodview/impact/fatality.py:112-113` — HIGH.** The Jonkman docstring
 states `F(d,v) = Phi((ln(d·v) − mu)/sigma)`; the code implements an unrelated
 saturating exponential. A reader who trusts the docstring will believe a
 log-normal Jonkman model is running. Fix: either implement the stated model, or
 rewrite the docstring to state the ad-hoc form and drop the Jonkman attribution
 from the function name.
 
-**D3 — `jalraksha/impact/fatality.py:9,15-16` — HIGH.** DeKay–McClelland (1993) is
+**D3 — `floodview/impact/fatality.py:9,15-16` — HIGH.** DeKay–McClelland (1993) is
 listed as implemented model #3 and cited; no implementation exists.
 
-**D4 — `jalraksha/impact/fatality.py:5,30` vs `:12` — LOW.** "Graham (1989)" in
+**D4 — `floodview/impact/fatality.py:5,30` vs `:12` — LOW.** "Graham (1989)" in
 two places, "Graham, W.J. (1999) … DSO-99-06" in the reference list. DSO-99-06 is
 1999. Also propagated to `tests/test_impact.py:8,109`.
 
-**D5 — `jalraksha/impact/fatality.py:138` — MEDIUM.** The comment names a
+**D5 — `floodview/impact/fatality.py:138` — MEDIUM.** The comment names a
 coefficient (0.12) that does not appear in the code (0.5 is used).
 
 **D6 — `tests/test_impact.py:50` — LOW.** "HR = 3.0 × (2.5 + 0.5) + 2.0 = 11.0";
@@ -12856,10 +12856,10 @@ the code gives 9.5. The loose assertion hides it.
 **D7 — `tests/test_impact.py:7,59` — LOW.** Tests labelled "JRC damage functions"
 exercise an uncited exponential.
 
-**D8 — `jalraksha/gee/sar.py:76-78` — LOW.** "60 m … comfortably finer than the
+**D8 — `floodview/gee/sar.py:76-78` — LOW.** "60 m … comfortably finer than the
 30 m DEM" — 60 m is coarser than 30 m.
 
-**D9 — `jalraksha/gee/sar.py:228-232` — LOW.** "0.5 separates the two measured
+**D9 — `floodview/gee/sar.py:228-232` — LOW.** "0.5 separates the two measured
 cases (0.010 vs 0.77) with wide margin" is stale: Khadakwasla at 0.486 sits 2.8 %
 below the gate.
 
@@ -12935,12 +12935,12 @@ user, is to add the missing markers and to make the disclaimer inseparable from
 the number:
 
 ```python
-# jalraksha/impact/hazard.py, after the imports
+# floodview/impact/hazard.py, after the imports
 # TODO: UNVETTED — the FD2320 debris factor is pinned to 0.5 with no selection
 # logic, and the HR class boundaries (0.75/1.25/2.5) carry no citation.
 # Verification queue item #11 (docs/VERIFICATION_LOG.md:25).
 
-# jalraksha/impact/fatality.py, after the imports
+# floodview/impact/fatality.py, after the imports
 # TODO: UNVETTED — the Graham rate table (queue #7), the understanding
 # multipliers, and every Jonkman coefficient (queue #8) are transcribed from no
 # verified source. DeKay-McClelland (queue #9) is cited but NOT implemented.
@@ -12965,7 +12965,7 @@ reports damage on dry ground; and its coefficients are, with the single partial
 exception of Graham's 0.75, untraceable. The one part of it that is both correct
 and in production use is the pair of functional wrappers `compute_population_exposure`
 and `compute_par`, which are simple, well-tested, and fed by a real census
-product. The honest characterisation for a reviewer is that JalRaksha currently
+product. The honest characterisation for a reviewer is that FloodView currently
 has a working *population-at-risk* capability and does **not** have a working
 fatality-estimation or economic-damage capability, regardless of what the module
 names suggest.
@@ -12976,7 +12976,7 @@ names suggest.
 
 ### 4C. The Output and Visualization Pipeline
 
-This chapter documents everything downstream of the solver: how a JalRaksha
+This chapter documents everything downstream of the solver: how a FloodView
 result stops being a NumPy array in RAM and becomes a file a GIS analyst, a
 browser, a ParaView session or a MATLAB script can open. It covers the shared
 georeferencing core, the four "GIS deliverable" writers (COG, Shapefile,
@@ -13001,7 +13001,7 @@ recorded in this chapter is an instance of one of them:
 
 ---
 
-### 4C.1 Georeferencing core — `jalraksha/export/georef.py`
+### 4C.1 Georeferencing core — `floodview/export/georef.py`
 
 `georef.py` exists because the same three decisions were previously made
 independently in three writers, and two of them were made wrongly. Its module
@@ -13115,8 +13115,8 @@ adjustment, consistent with the corner convention (`georef.py:181-184`).
 `georef.py:193`. Accepts an `int` or a string of the form `"EPSG:32644"`,
 splits on the last `:`, and `int()`s the remainder. Raises `GeoreferenceError`
 on failure — "Guessing a default here would place every export in the wrong
-hemisphere without complaint." Called from `jalraksha/run.py:134` and
-`services/api/jalraksha_service/tasks.py:203,1157`.
+hemisphere without complaint." Called from `floodview/run.py:134` and
+`services/api/floodview_service/tasks.py:203,1157`.
 
 ### 4C.1.8 `zip_shapefile(shp_path, output_path=None) -> str`
 
@@ -13127,7 +13127,7 @@ hemisphere without complaint." Called from `jalraksha/run.py:134` and
 tries to open it." It then writes whichever of the seven `SHAPEFILE_SIDECARS`
 actually exist, with `arcname=basename` so the archive is flat.
 
-`jalraksha/run.py:159,169` calls this for every vector product, so what the
+`floodview/run.py:159,169` calls this for every vector product, so what the
 dashboard serves is always a `.zip`, never a bare `.shp`.
 
 ### 4C.1.9 The x0/y0/crs metadata that travels with the grid
@@ -13137,14 +13137,14 @@ The `grid` dict that crosses every export boundary is
 `PROGRESS_SUMMARY.md:49` records that `run_dam_break_ensemble`'s returned `grid`
 dict "now carries `x0, y0, crs`, so keyframes geo-register correctly" — before
 that change the keyframe bounds were meaningless. Note that
-`jalraksha/run.py:135-138` builds the `grid_dict` for the GIS export path
+`floodview/run.py:135-138` builds the `grid_dict` for the GIS export path
 **without** `"crs"` and passes `crs_epsg` as a separate argument; the keyframe
 path (`tasks.py`) passes the full result dict including `grid["crs"]`. Two
 conventions for the same object, which is a latent trap for any new writer.
 
 ---
 
-### 4C.2 Cloud-Optimized GeoTIFF — `jalraksha/export/geotiff.py`
+### 4C.2 Cloud-Optimized GeoTIFF — `floodview/export/geotiff.py`
 
 ### 4C.2.1 `export_raster_to_cog(...)`
 
@@ -13296,7 +13296,7 @@ would normally reject.
 
 ---
 
-### 4C.3 Shapefile export — `jalraksha/export/shapefile.py`
+### 4C.3 Shapefile export — `floodview/export/shapefile.py`
 
 ### 4C.3.1 `raster_to_inundation_polygon(...)` — the retained legacy path
 
@@ -13458,7 +13458,7 @@ Note that `ny, nx, dx, dy, x0, y0` are unpacked at `shapefile.py:319-324` and
 never used — dead code left from the pre-`wet_mask_polygons` implementation.
 
 **These thresholds do not agree with the FD2320 bands used by
-`HazardClassifier`** (`jalraksha/impact/hazard.py:47-51`, which uses
+`HazardClassifier`** (`floodview/impact/hazard.py:47-51`, which uses
 0.1/0.5/2.0/5.0/10.0 m with six levels). The keyframe PNGs and the hazard
 shapefiles therefore classify the same flood into two different, mutually
 inconsistent schemes, both labelled FD2320.
@@ -13506,7 +13506,7 @@ current figure, so a long `iso_times_s` list leaks figures.
 
 ---
 
-### 4C.4 KML / KMZ — `jalraksha/export/kml.py`
+### 4C.4 KML / KMZ — `floodview/export/kml.py`
 
 ### 4C.4.1 Document structure
 
@@ -13713,7 +13713,7 @@ caught into a warning and return `None`.
 
 ---
 
-### 4C.5 Dashboard keyframes — `jalraksha/export/keyframes.py`
+### 4C.5 Dashboard keyframes — `floodview/export/keyframes.py`
 
 This is the module that drives *both* front-end panels: Leaflet's `ImageOverlay`
 in the 2D map and Cesium's `SingleTileImageryProvider` in the 3D scene. Its
@@ -13753,14 +13753,14 @@ class KeyframeManifest:
 | `simulation_info.simulation_duration_s` | `[float, float]` | `[first_series_time, last_series_time]`. Note: a **list of two**, despite the singular name. |
 | `simulation_info.grid_resolution_m` | `float` | `grid["dx"]`, default 0.0. |
 | `simulation_info.classification_scheme` | `str` | Literal `"FD2320"`. |
-| `simulation_info.color_source` | `str` | Literal `"jalraksha.impact.hazard.HazardClassifier"`. |
+| `simulation_info.color_source` | `str` | Literal `"floodview.impact.hazard.HazardClassifier"`. |
 | `simulation_info.crs_source` | `str` | `f"EPSG:{_parse_epsg(grid)}"` — the *source* CRS, not the bounds' CRS. |
 | `keyframes[]` | array | One object per frame. |
 | `keyframes[].time_s` | `float` | The **requested** key time, not the recorded snapshot's time. |
 | `keyframes[].png_url` | `str` | Bare filename, e.g. `keyframe_0007_004200s.png`. |
 | `keyframes[].bounds` | `[w, s, e, n]` | WGS84 degrees. Identical for every frame. |
 | `keyframes[].hazard_summary` | object | `HazardClassifier.summarize()` output; includes `weighted_hazard_index` and per-level counts/areas. |
-| `metadata.description` | `str` | `"Flood keyframes for JalRaksha dam-break visualization"`. |
+| `metadata.description` | `str` | `"Flood keyframes for FloodView dam-break visualization"`. |
 | `metadata.license` | `str` | `"CC BY 4.0 (data: Copernicus DEM, ESA WorldCover)"`. |
 | `metadata.note` | `str` | `"FD2320 depth-velocity hazard classification; terrain-matched."` |
 
@@ -13785,7 +13785,7 @@ def export_keyframes(
 ```
 
 **Snapshot count.** The default is 30 keyframes, and the production call site
-(`services/api/jalraksha_service/tasks.py:1347-1350`) passes `n_keyframes=30`
+(`services/api/floodview_service/tasks.py:1347-1350`) passes `n_keyframes=30`
 explicitly. This matches the solver's own snapshot budget: `tasks.py:1226` calls
 `run_dam_break_ensemble(record_depth_snapshots=True, n_snapshots=30)`, and
 `scripts/backfill_xdmf.py:158-159` uses the same 30. `make_dataset.py` instead
@@ -13811,7 +13811,7 @@ For each selected key time:
 ### 4C.5.4 Colour ramp and hazard palette
 
 There is no ramp — the palette is a six-entry lookup owned by
-`HazardClassifier` (`jalraksha/impact/hazard.py:55-61`):
+`HazardClassifier` (`floodview/impact/hazard.py:55-61`):
 
 | Level | Depth band (depth-only) | RGB |
 |---|---|---|
@@ -13875,8 +13875,8 @@ sub-metre, but it is not the same computation `georef.wgs84_bounds` performs.
 **Verification of the documented Tehri check.** `PROGRESS_SUMMARY.md:50` states:
 "Verified: a Tehri run's keyframe bounds centre on 78.481 E, 30.378 N." I can
 confirm this is *consistent* with the rest of the repository but cannot re-derive
-it from source alone: `jalraksha/presets.py:204-205` gives Tehri as
-30.3789 N, 78.4789 E, and `jalraksha/terrain/domain.py` centres the domain on
+it from source alone: `floodview/presets.py:204-205` gives Tehri as
+30.3789 N, 78.4789 E, and `floodview/terrain/domain.py` centres the domain on
 the dam, so a symmetric domain's centre reprojects to approximately the dam's own
 coordinate. 78.481/30.378 is within ~0.002° (≈200 m) of 78.4789/30.3789, which is
 the expected residual from UTM-rectangle-to-lat/lon envelope skew over a 120 km
@@ -13953,13 +13953,13 @@ windows using gauge arrival times." No such downstream densification exists.
 
 `PROGRESS_SUMMARY.md:39-51` records the situation precisely:
 
-> `jalraksha/export/keyframes.py` produces the manifest + PNG stack that drives
+> `floodview/export/keyframes.py` produces the manifest + PNG stack that drives
 > both the 2D slider and the 3D overlay. **This was previously dead code**: the
 > pipeline never recorded a depth time series, so export silently never fired.
 
 Two changes made it live:
 
-* **`record_depth_snapshots` / `n_snapshots`.** `jalraksha/run.py:528-529` adds
+* **`record_depth_snapshots` / `n_snapshots`.** `floodview/run.py:528-529` adds
   these parameters to `run_dam_break_ensemble`. When `record_depth_snapshots` is
   true and hydrographs exist (`run.py:672`), the pipeline picks a
   *representative member* — `snapshot_sample_id = argmin(|q_peak - q_target|)`,
@@ -14013,7 +14013,7 @@ reports "skipped" while other frames were converted.
 
 ---
 
-### 4C.6 XDMF + HDF5 — `jalraksha/export/xdmf_export.py`
+### 4C.6 XDMF + HDF5 — `floodview/export/xdmf_export.py`
 
 ### 4C.6.1 Why XDMF
 
@@ -14174,9 +14174,9 @@ result holding `terrain_elevation` and `depth_series` is a local variable inside
 the Celery task, discarded the moment it returns. Nothing on disk or in the
 database retains it." So backfilling means re-running the solver.
 
-* `_bootstrap()` (`:49`) — `chdir(REPO_ROOT)`, set `JALRAKSHA_DATA_DIR`, put
+* `_bootstrap()` (`:49`) — `chdir(REPO_ROOT)`, set `FLOODVIEW_DATA_DIR`, put
   `services/api` on `sys.path`. Matches `scripts/run_api.py`.
-* `_candidates(db, settings)` (`:58`) — opens `data/jalraksha.db` directly with
+* `_candidates(db, settings)` (`:58`) — opens `data/floodview.db` directly with
   `sqlite3`, lists `status='done'` runs and whether an `xdmf` export row exists.
 * `_replace_xdmf_export(run_id, export)` (`:78`) — deletes existing `xdmf` rows
   then re-inserts, because "the exports table has no uniqueness constraint — so
@@ -14198,7 +14198,7 @@ draws are stochastic, so gauge numbers may differ slightly."
 
 ---
 
-### 4C.7 MATLAB export — `jalraksha/export/matlab_export.py`
+### 4C.7 MATLAB export — `floodview/export/matlab_export.py`
 
 ### 4C.7.1 The `.mat` structure
 
@@ -14219,7 +14219,7 @@ docstring:
 | `sim.provenance` | struct | — | see below |
 
 `sim.provenance` fields (`matlab_export.py:193-202`): `dem_path`, `solver`
-(literal `"jalraksha SWE (HLLC + Audusse, well-balanced)"`), `dam_name`,
+(literal `"floodview SWE (HLLC + Audusse, well-balanced)"`), `dam_name`,
 `git_sha`, `created_utc`, `num_ensemble`, `num_completed`, and `dam_config`
 (every value stringified).
 
@@ -14417,7 +14417,7 @@ those children fall inside the DEM's bbox.
 {
   "tilejson": "2.1.0",
   "name": "<dem stem>",
-  "description": "JalRaksha self-hosted terrain (Copernicus GLO-30, same DEM as solver)",
+  "description": "FloodView self-hosted terrain (Copernicus GLO-30, same DEM as solver)",
   "version": "1.0.0",
   "format": "heightmap-1.0",
   "attribution": "Copernicus DEM GLO-30 (c) ESA",
@@ -14465,7 +14465,7 @@ verification script itself is not in the repository**; only its recorded result
 is. That result cannot be independently reproduced from what is checked in.
 
 The tiles are served by the API at `/tiles`, CORS-enabled
-(`services/api/jalraksha_service/main.py:90`), with an nginx `tiles` service in
+(`services/api/floodview_service/main.py:90`), with an nginx `tiles` service in
 Docker Compose.
 
 ### 4C.8.8 `upload_terrain_to_ion.py` — explicitly UNVERIFIED
@@ -14501,12 +14501,12 @@ transcript captures the secret.
 
 ```
 Copernicus GLO-30 GeoTIFF (EPSG:4326)
-  -> jalraksha/dem.py::fetch_dem()            windowed /vsicurl read, mosaic, clip
+  -> floodview/dem.py::fetch_dem()            windowed /vsicurl read, mosaic, clip
   -> conditioning.py::load_dem_as_grid()      reproject to auto-detected UTM,
                                               nearest-valid NoData fill, no smoothing
   -> Grid(nx, ny, dx, dy, x0, y0, crs)        metres throughout
   -> tools/paraview/make_dataset.py           terrain-only | reservoir | synthetic | solver
-  -> jalraksha/export/xdmf_export.py          <stem>.xdmf + <stem>.h5
+  -> floodview/export/xdmf_export.py          <stem>.xdmf + <stem>.h5
   -> paraview/render_static.py (pvpython)     reader -> warp -> overlays -> camera
        -> SaveScreenshot(.png)  and/or  SaveState(.pvsm)
 ```
@@ -14608,7 +14608,7 @@ file — it will produce a DEM clipped to a radius the preset does not expect.
 > `main.py` is in the `.pvsm` staleness check, so changing those arguments
 > invalidates cached states.
 
-The API-side comment (`services/api/jalraksha_service/main.py:903-916`) adds the
+The API-side comment (`services/api/floodview_service/main.py:903-916`) adds the
 measurement: "confirmed in the generated `.pvsm` files, where both dams'
 `WarpByScalar.ScaleFactor` read 1.5… Its terrain has 1,170 m of relief across
 54 km (Tehri: 6,495 m across 120 km), so at 1.5x it renders as a near-flat plate
@@ -14616,7 +14616,7 @@ measurement: "confirmed in the generated `.pvsm` files, where both dams'
 at 53% saturation, washing the water out to pale blue; its preset asks for 18.5 m."
 
 The fix is `_run_preset(run)` (`main.py:386-405`), which reads
-`settings.DEMO_DAMS` (not `jalraksha.presets`, because the service registry
+`settings.DEMO_DAMS` (not `floodview.presets`, because the service registry
 covers dams like bhakra/idukki/hirakud that have no `DamPreset`) and falls back
 to `_PARAVIEW_FALLBACK = {"vertical_exaggeration": 1.5, "nominal_depth_m": 25.0}`
 (`main.py:383`). **The 1.5/25.0 literals therefore still exist**, both as that
@@ -14660,8 +14660,8 @@ Omitting it meant that when those switched from hardcoded literals to per-dam
 preset values, every already-cached `.pvsm` kept its old 1.5x terrain warp
 forever — the fix would have looked like it did nothing."
 
-Note the check does **not** include `jalraksha/presets.py` or
-`jalraksha_service/config.py`, where the exaggeration values actually live.
+Note the check does **not** include `floodview/presets.py` or
+`floodview_service/config.py`, where the exaggeration values actually live.
 Editing a preset's `vertical_exaggeration` without touching `main.py` leaves every
 cached state stale-but-considered-fresh — the exact class of bug the check was
 added to close.
@@ -14685,11 +14685,11 @@ then `subprocess.Popen([paraview_exe, f"--state={state_path}"])`.
 `config.py:194-196`:
 
 ```python
-PARAVIEW_EXE = _env("JALRAKSHA_PARAVIEW_EXE", "C:/Program Files/ParaView 6.2.0/bin/paraview.exe")
-PVPYTHON_EXE = _env("JALRAKSHA_PVPYTHON_EXE", "C:/Program Files/ParaView 6.2.0/bin/pvpython.exe")
+PARAVIEW_EXE = _env("FLOODVIEW_PARAVIEW_EXE", "C:/Program Files/ParaView 6.2.0/bin/paraview.exe")
+PVPYTHON_EXE = _env("FLOODVIEW_PVPYTHON_EXE", "C:/Program Files/ParaView 6.2.0/bin/pvpython.exe")
 ```
 
-`tests/test_paraview_state.py:35-36` reads `JALRAKSHA_PVPYTHON_EXE` with the same
+`tests/test_paraview_state.py:35-36` reads `FLOODVIEW_PVPYTHON_EXE` with the same
 Windows default and skips the whole module when it is absent.
 
 The endpoint returns a **structured result rather than raising**, with five
@@ -14701,7 +14701,7 @@ documented reasons (`main.py:803-809`): `launched`, `not_done`, `no_dataset`,
 {
   "launched": false,
   "reason": "paraview_not_found",
-  "detail": "ParaView is not at '<path>'. Set JALRAKSHA_PARAVIEW_EXE to the full path of paraview.exe (the GUI — not pvpython.exe, which is headless). If the API is running in a container or on a remote host, this endpoint cannot work at all: it opens a desktop window on the API's own machine."
+  "detail": "ParaView is not at '<path>'. Set FLOODVIEW_PARAVIEW_EXE to the full path of paraview.exe (the GUI — not pvpython.exe, which is headless). If the API is running in a container or on a remote host, this endpoint cannot work at all: it opens a desktop window on the API's own machine."
 }
 ```
 
@@ -14852,7 +14852,7 @@ into `sys.path` and imports the bare module name.
 
 **Duplicated constant** (`:69-73`): `DRY_DEPTH_M = 0.01` mirrors
 `xdmf_export.DRY_DEPTH_M`, "Duplicated, not imported: pvpython's bundled Python
-cannot import the jalraksha package — `jalraksha.export` pulls in rasterio, which
+cannot import the floodview package — `floodview.export` pulls in rasterio, which
 is not installed in ParaView's Python. Keep this in sync … by hand."
 `TARGET_GLYPH_COUNT = 400` (`:79`).
 
@@ -15251,7 +15251,7 @@ regression pins for two defects that actually shipped.
 
 ### 4C.11.4 `tests/test_paraview_state.py` — 5 tests
 
-Double-skipped unless both `JALRAKSHA_PVPYTHON_EXE` exists and
+Double-skipped unless both `FLOODVIEW_PVPYTHON_EXE` exists and
 `data/simulation/khadakwasla_terrain.xdmf` is staged (data/ is gitignored). It
 deliberately builds every state **from a relative input path**, "that is exactly
 what the API used to do, and what previously poisoned the state."
@@ -15312,7 +15312,7 @@ visually confirm the banner.
 ---
 
 **2. Keyframe bounds fallback returns geographically nonsensical coordinates.
-(CRITICAL)** — `jalraksha/export/keyframes.py:117-130`.
+(CRITICAL)** — `floodview/export/keyframes.py:117-130`.
 
 The `except Exception` branch treats a UTM easting as degrees-from-Greenwich
 metres and a northing as metres-north-of-30°N. For Tehri it yields roughly
@@ -15330,7 +15330,7 @@ metres and a northing as metres-north-of-30°N. For Tehri it yields roughly
 ---
 
 **3. COG products are not Cloud-Optimized GeoTIFFs. (HIGH)** —
-`jalraksha/export/geotiff.py:109-136`, `256-277`.
+`floodview/export/geotiff.py:109-136`, `256-277`.
 
 No overviews are built and the plain `GTiff` driver is used, so IFD layout is not
 COG-conformant. Either stop calling them COGs, or actually build them:
@@ -15353,7 +15353,7 @@ The rigorous alternative is `driver="COG"` with
 ---
 
 **4. Every ensemble COG is tagged with the wrong unit. (HIGH)** —
-`jalraksha/export/geotiff.py:103-105`.
+`floodview/export/geotiff.py:103-105`.
 
 `data_name` arrives as `"h_max_p50"` / `"v_max_p50"` / `"t_arrival_p50"`, none of
 which match the equality test or the `"velocity" in` test, so all nine files are
@@ -15374,8 +15374,8 @@ tagged `UNIT = "s"`. Match on prefixes:
 ---
 
 **5. Three mutually inconsistent "FD2320" hazard schemes. (HIGH)** —
-`jalraksha/export/shapefile.py:266-317` (4 classes) vs
-`jalraksha/impact/hazard.py:47-51` (6 levels) vs `jalraksha/export/kml.py:140-151`
+`floodview/export/shapefile.py:266-317` (4 classes) vs
+`floodview/impact/hazard.py:47-51` (6 levels) vs `floodview/export/kml.py:140-151`
 (one red). A Shapefile "high" cell and a keyframe `SEVERE` cell are not the same
 cell, and both products claim FD2320.
 
@@ -15383,7 +15383,7 @@ Make `HazardClassifier` the single source, as `keyframes.py`'s docstring already
 requires:
 
 ```python
-from jalraksha.impact.hazard import HazardClassifier, HazardLevel
+from floodview.impact.hazard import HazardClassifier, HazardLevel
 
 classifier = HazardClassifier()
 cls = classifier.classify(h_max, v_mag)          # depth x velocity
@@ -15397,16 +15397,16 @@ single hardcoded red.
 ---
 
 **6. `.pvsm` staleness check omits the files that define the preset values.
-(HIGH)** — `services/api/jalraksha_service/main.py:891-895`.
+(HIGH)** — `services/api/floodview_service/main.py:891-895`.
 
 `generators` covers `render_static.py`, `camera_presets.py` and `main.py`, but
 `--exaggeration` and `--depth-max` come from `settings.DEMO_DAMS` /
-`jalraksha/presets.py`. Editing a preset leaves every cached state stale but
+`floodview/presets.py`. Editing a preset leaves every cached state stale but
 considered fresh:
 
 ```python
-    import jalraksha.presets as _presets
-    from jalraksha_service import config as _config
+    import floodview.presets as _presets
+    from floodview_service import config as _config
     generators = [
         render_script,
         render_script.parent / "camera_presets.py",
@@ -15419,7 +15419,7 @@ considered fresh:
 ---
 
 **7. `bbox_inches="tight"` breaks GroundOverlay geo-registration. (HIGH)** —
-`jalraksha/export/kml.py:321-322`.
+`floodview/export/kml.py:321-322`.
 
 `subplots_adjust(0,0,1,1)` makes the axes fill the figure; `bbox_inches="tight"`
 then re-crops to the drawn artists' extent, which for a masked array need not be
@@ -15435,7 +15435,7 @@ the full domain rectangle. The PNG can therefore cover a smaller area than the
 ---
 
 **8. `export_ensemble_to_cogs` silently substitutes zeros for missing fields.
-(MEDIUM)** — `jalraksha/export/geotiff.py:171-175`.
+(MEDIUM)** — `floodview/export/geotiff.py:171-175`.
 
 `r.get("h_max", np.zeros(...))` turns a member that failed to produce a field
 into a member that reports no flood, dragging the median down without a word:
@@ -15454,7 +15454,7 @@ into a member that reports no flood, dragging the median down without a word:
 ---
 
 **9. `_select_keyframe_times` contradicts its own docstring. (MEDIUM)** —
-`jalraksha/export/keyframes.py:164-180`. The docstring promises adaptive
+`floodview/export/keyframes.py:164-180`. The docstring promises adaptive
 densification around the flood-front window; the body is a uniform `linspace`.
 Either implement it or correct the docstring. The minimal honest fix:
 
@@ -15471,11 +15471,11 @@ Either implement it or correct the docstring. The minimal honest fix:
 ---
 
 **10. Manifest advertises depth-velocity classification but computes
-depth-only. (MEDIUM)** — `jalraksha/export/keyframes.py:291` vs `:337`.
+depth-only. (MEDIUM)** — `floodview/export/keyframes.py:291` vs `:337`.
 
 ```python
         metadata={
-            "description": "Flood keyframes for JalRaksha dam-break visualization",
+            "description": "Flood keyframes for FloodView dam-break visualization",
             "license": "CC BY 4.0 (data: Copernicus DEM, ESA WorldCover)",
             "note": "FD2320 DEPTH-ONLY hazard classification (conservative); "
                     "terrain-matched. Velocity is not used.",
@@ -15489,13 +15489,13 @@ depth-only. (MEDIUM)** — `jalraksha/export/keyframes.py:291` vs `:337`.
 `render_static.py:73` (`0.01`, hand-copied), `kml.py:311` (`0.1`, inline
 literal), `shapefile.py:201` (`0.1`, default arg).
 
-`render_static.py` genuinely cannot import `jalraksha` (rasterio is absent from
+`render_static.py` genuinely cannot import `floodview` (rasterio is absent from
 pvpython), so the duplication there is unavoidable — but it can be *verified*:
 
 ```python
 # tests/test_thresholds.py
 import re, pathlib
-from jalraksha.export.xdmf_export import DRY_DEPTH_M
+from floodview.export.xdmf_export import DRY_DEPTH_M
 
 def test_render_static_dry_depth_matches_writer():
     src = (pathlib.Path(__file__).parents[1] /
@@ -15544,7 +15544,7 @@ Cesium indexes `available[i]` as level `i`. The list is appended from
 ---
 
 **14. `matlab_export.py` is unreferenced dead code with no MATLAB counterpart.
-(MEDIUM)** — `jalraksha/export/matlab_export.py:113`.
+(MEDIUM)** — `floodview/export/matlab_export.py:113`.
 
 No call site, no `.m` file, not in `export/__init__.py`, no test. Either wire it
 in beside the XDMF write in `tasks.py::_write_xdmf`, or mark it clearly:
@@ -15564,7 +15564,7 @@ tests, since `scipy.io.savemat` round-trips cheaply.
 ---
 
 **15. Base block is offset half a cell from the terrain it skirts. (MEDIUM)** —
-`tools/paraview/base_block.py:87, 90` vs `jalraksha/export/xdmf_export.py:276`.
+`tools/paraview/base_block.py:87, 90` vs `floodview/export/xdmf_export.py:276`.
 
 The XDMF origin is the first cell **centre** (`x[0] = x0 + 0.5*dx`); the block
 uses `x0 + i*dx`:
@@ -15583,7 +15583,7 @@ the two must be reconciled deliberately, not by coincidence.
 ---
 
 **16. `1.5` / `25.0` still live as fallbacks for un-presetted dams. (MEDIUM)** —
-`services/api/jalraksha_service/main.py:383`, `paraview/render_static.py:219,238`.
+`services/api/floodview_service/main.py:383`, `paraview/render_static.py:219,238`.
 
 Bhakra, Idukki and Hirakud still render at the values that flattened
 Khadakwasla. Derive them from the data instead of a literal:
@@ -15637,7 +15637,7 @@ datetime.datetime.now(datetime.timezone.utc).isoformat()
 ---
 
 **20. Matplotlib figure leak in the contour loop. (LOW)** —
-`jalraksha/export/shapefile.py:412-420`.
+`floodview/export/shapefile.py:412-420`.
 
 Hoist the import out of the loop and use an explicit figure:
 
@@ -15657,7 +15657,7 @@ Hoist the import out of the loop and use an explicit figure:
 ---
 
 **21. `raster_to_inundation_polygon` mislabels corner coordinates as centres.
-(LOW)** — `jalraksha/export/shapefile.py:100`. Superseded and unused in
+(LOW)** — `floodview/export/shapefile.py:100`. Superseded and unused in
 production, but the comment is actively misleading:
 
 ```python
@@ -15683,7 +15683,7 @@ Delete all of them.
 ---
 
 **23. Domain radius disagreement for Khadakwasla. (LOW)** —
-`jalraksha/presets.py:320` (27.0) vs `paraview/README.md:29` (30 km) and
+`floodview/presets.py:320` (27.0) vs `paraview/README.md:29` (30 km) and
 `paraview/README.md:70` (`domain_radius_km=30.0`). Because `dem_filename()` keys
 only on lat/lon, the mismatch produces a DEM clipped to the wrong radius rather
 than a missing-file error. Fix the README to 27.0, or add the radius to the
@@ -15783,7 +15783,7 @@ def test_cog_is_north_up_and_corner_anchored(tmp_path):
 
 ### Chapter 4D — The Near-Field SPH Engine, the Delft3D FM Integration, and the Validation Framework
 
-This chapter documents the three subsystems that together constitute JalRaksha's scientific-credibility argument: the Lagrangian near-field solver (`jalraksha/sph/`), the adapter to the Deltares D-Flow FM kernel (`jalraksha/delft3d/`), and the analytical/benchmark validation framework (`jalraksha/validation/`, `scripts/validate_against_delft3d.py`). It is written to be read by a reviewer who will check the claims against the source, so every claim below is anchored to a file and a line, quoted where the exact text is load-bearing, and every place where the code does not do what the documentation says it does is called out rather than smoothed over.
+This chapter documents the three subsystems that together constitute FloodView's scientific-credibility argument: the Lagrangian near-field solver (`floodview/sph/`), the adapter to the Deltares D-Flow FM kernel (`floodview/delft3d/`), and the analytical/benchmark validation framework (`floodview/validation/`, `scripts/validate_against_delft3d.py`). It is written to be read by a reviewer who will check the claims against the source, so every claim below is anchored to a file and a line, quoted where the exact text is load-bearing, and every place where the code does not do what the documentation says it does is called out rather than smoothed over.
 
 A note on method before anything else. Several of the statements in the task brief — for example that `delft3d/comparison.py` synthesises its SPH side from `np.random` — originate in the project's own `PROGRESS_SUMMARY.md`. Those statements were verified line by line against the code as shipped. Where the code and the project's own documentation disagree, this chapter reports the code and says which document is stale. Where a claim could not be verified at all (for example anything requiring a Windows machine with a Deltares install, or a working PySPH toolchain), it is marked as unverifiable here rather than repeated as fact.
 
@@ -15797,13 +15797,13 @@ The shallow-water equations (SWE, Saint-Venant) are derived by depth-averaging t
 
 It is not excellent immediately downstream of a breach. The breach jet has a vertical scale comparable to its horizontal scale over the first few hundred metres; the flow separates from the breach lip, plunges, forms a hydraulic jump, entrains air, and reattaches. Vertical accelerations there are of the same order as `g`. Depth-averaging that region does not merely lose detail — it removes the dominant term. The pressure field is not hydrostatic, so a hydrostatic solver produces a formally invalid answer, however well-resolved its grid.
 
-This is the reasoning the project cites, and it cites it explicitly in three places. `jalraksha/sph/coupling.py:10` lists as its first reference:
+This is the reasoning the project cites, and it cites it explicitly in three places. `floodview/sph/coupling.py:10` lists as its first reference:
 
 ```
   - Maranzoni & Tomirotti (2023) "3D Numerical Modelling of Real-Field Dam-Break Flows", Water.
 ```
 
-`jalraksha/sph/pysph_runner.py:39-40` gives the full citation with the volume and article number and states what it is being cited *for*:
+`floodview/sph/pysph_runner.py:39-40` gives the full citation with the volume and article number and states what it is being cited *for*:
 
 ```
   - Maranzoni & Tomirotti (2023) "3D Numerical Modelling of Real-Field
@@ -15824,7 +15824,7 @@ That is an important honesty: with a derived particle spacing that can fall to 1
 
 ### A2. The WCSPH formulation as implemented
 
-The near-field engine is Weakly Compressible SPH (WCSPH) executed through PySPH's `WCSPHScheme`. JalRaksha does not implement the SPH discretisation itself — a deliberate decision recorded at length in `jalraksha/sph/core.py`, discussed in A3 below. What JalRaksha *does* own is the choice of every scheme parameter, and those choices are all in `pysph_runner.py`'s module-level constants and in `_NearFieldDamBreak.create_scheme`.
+The near-field engine is Weakly Compressible SPH (WCSPH) executed through PySPH's `WCSPHScheme`. FloodView does not implement the SPH discretisation itself — a deliberate decision recorded at length in `floodview/sph/core.py`, discussed in A3 below. What FloodView *does* own is the choice of every scheme parameter, and those choices are all in `pysph_runner.py`'s module-level constants and in `_NearFieldDamBreak.create_scheme`.
 
 **Reference density and gravity** (`pysph_runner.py:50-51`):
 
@@ -15896,7 +15896,7 @@ BETA_VISCOSITY = 0.0
 
 This is the most important caveat in the whole SPH subsystem and the code states it rather than hiding it. α is the *only* dissipation mechanism in the model — there is no turbulence closure, no δ-SPH density diffusion, no laminar viscous term. At the scale of a laboratory dam break (the PySPH example this value is borrowed from), α = 0.25 is a reasonable numerical-stabilisation choice. At a 260 m Tehri head it is doing the job of a sub-grid eddy viscosity with no calibration behind it, and the reported near-field depths and speeds are correspondingly sensitive to a number nobody has fitted. `docs/validation_findings.md:148-149` repeats the admission in the "Not verified" section: "**The SPH near-field is not validated against a published experiment.** `ALPHA_VISCOSITY = 0.25` carries a `TODO: UNVETTED`."
 
-**Time integrator and timestep.** The integrator is whatever `WCSPHScheme` configures by default (PySPH's WCSPH predictor–corrector); JalRaksha sets the timestep policy, at `pysph_runner.py:447-458`:
+**Time integrator and timestep.** The integrator is whatever `WCSPHScheme` configures by default (PySPH's WCSPH predictor–corrector); FloodView sets the timestep policy, at `pysph_runner.py:447-458`:
 
 ```python
             # Initial CFL on the acoustic speed (Monaghan 1994 eq. 3.19)...
@@ -15913,7 +15913,7 @@ This is the most important caveat in the whole SPH subsystem and the code states
             )
 ```
 
-`dt = 0.25 h₀ / (1.1 c₀)` is the acoustic CFL condition. Adaptive timestepping then tightens it against the force and viscous limits during the collapse. `pfreq=10**9` disables intermediate dumps entirely — a deliberate choice with a consequence documented downstream (`services/api/jalraksha_service/tasks.py:1043-1045`): there is no per-timestep particle cloud, only the final state, so the SPH panel shows one snapshot rather than an animation, and says so.
+`dt = 0.25 h₀ / (1.1 c₀)` is the acoustic CFL condition. Adaptive timestepping then tightens it against the force and viscous limits during the collapse. `pfreq=10**9` disables intermediate dumps entirely — a deliberate choice with a consequence documented downstream (`services/api/floodview_service/tasks.py:1043-1045`): there is no per-timestep particle cloud, only the final state, so the SPH panel shows one snapshot rather than an animation, and says so.
 
 **Damping ramp.** `pysph_runner.py:66-71`:
 
@@ -15943,7 +15943,7 @@ The spacing is the cube root of the per-particle volume implied by filling the r
 
 **Boundary particle treatment.** Dynamic boundary particles — the boundary is a second `get_particle_array_wcsph` array registered with the scheme as a solid (`pysph_runner.py:441`: `WCSPHScheme(["fluid"], ["boundary"], ...)`), created with the same mass and smoothing length as the fluid but at uniform ρ₀ (`pysph_runner.py:430-436`). `hg_correction=True` (`pysph_runner.py:445`) enables PySPH's Hughes–Graham boundary correction, which prevents the artificially low densities that otherwise develop in fluid particles near a solid wall.
 
-The geometry of the boundary set is the part JalRaksha owns, and it is unusually well justified (`pysph_runner.py:329-338`):
+The geometry of the boundary set is the part FloodView owns, and it is unusually well justified (`pysph_runner.py:329-338`):
 
 ```
     # ---- Boundary. The bed, plus walls closing the domain on three sides.
@@ -16081,7 +16081,7 @@ The reason (`:690-695`) is that at low resolution the interior band collapses to
 
 **`_assert_did_not_diverge(...)`** (`:731-777`), **`_sample_bed(...)`** (`:780-786`), **`_scratch_dir(...)`** (`:789-797`) — documented above.
 
-**Run-duration and spatial-extent limits.** These are set by the caller, not the module, and they live in `services/api/jalraksha_service/tasks.py:82-84`:
+**Run-duration and spatial-extent limits.** These are set by the caller, not the module, and they live in `services/api/floodview_service/tasks.py:82-84`:
 
 ```python
 SPH_WINDOW_RADIUS_KM = 0.6
@@ -16137,7 +16137,7 @@ Two design decisions are recorded here. The clamp to `√(2gH)` prevents the reg
 - The function returns a plain `Dict[str, Any]` of NumPy arrays and Python scalars. It has no side effects on any solver state.
 - In the service layer, `_run_near_field_sph` (`tasks.py:87-157`) is called at exactly two sites: `tasks.py:808` inside `_run_comparison`, and `tasks.py:1284` in the `solver == "sph"` branch. In both cases the returned dict is serialised to JSON or handed to `compare_sph_vs_delft3d`. It is never fed back into `SWESolver`, `run_dam_break_ensemble`, or the breach ensemble.
 - The SWE solve is complete *before* SPH runs. In the `solver == "sph"` branch the SPH call is at progress 95% (`tasks.py:1278`), after the full ensemble, the gauge table, the exports, and the population-at-risk computation. In the `solver == "both"` branch it is at 88% (`tasks.py:1299`), likewise after the SWE run. There is no iteration, no outer loop, no convergence criterion between the two engines. A two-way coupling would require at minimum a loop; there is none.
-- Grep confirms it: the only importers of `jalraksha.sph.*` outside `tests/` are `tasks.py:107` (`run_near_field_sph`, `SPHUnavailableError`), `validation/delft3d_benchmark.py:404` (`orient_downhill`, used purely as a terrain utility), and the package's own `__init__.py`. No solver module imports anything from `jalraksha.sph`.
+- Grep confirms it: the only importers of `floodview.sph.*` outside `tests/` are `tasks.py:107` (`run_near_field_sph`, `SPHUnavailableError`), `validation/delft3d_benchmark.py:404` (`orient_downhill`, used purely as a terrain utility), and the package's own `__init__.py`. No solver module imports anything from `floodview.sph`.
 
 **The consequence, stated in the project docs and enforced in the payload.** `pysph_runner.py:23-27`:
 
@@ -16150,7 +16150,7 @@ Two design decisions are recorded here. The clamp to `√(2gH)` prevents the reg
 
 The payload carries `"reaches_downstream_gauges": False` as a hardcoded literal (`:566`), the test asserts both that flag and the absence of any `gauge_arrivals` key (`tests/test_sph.py:220-227`), the service layer repeats the rule in `_run_comparison`'s docstring (`tasks.py:764-768`), `comparison.py:380-382` documents that the arrival-time column is not an SPH deliverable, and `frontend/src/panels/ComparisonPanel.jsx:132-140` renders a standing warning that "The **SPH arrival column is empty by construction**, not by omission." This is as thoroughly defended as a negative claim can reasonably be made in a codebase.
 
-**A caveat on `coupling.py` and `domain.py`.** Both modules exist, both are exported from `jalraksha/sph/__init__.py:15-33`, and both are documented as the coupling interface — but neither is on the production path. `handoff_swe_to_sph` (`coupling.py:19-53`) and `extract_sph_free_surface` (`coupling.py:56-94`) are called only from `tests/test_sph.py:105-125`. `NearFieldDomain` and `generate_near_field_particles` (`domain.py:24-163`) likewise. `pysph_runner.py:377-400` re-implements the `u = Q/(h·w)` relation and the breach mask inline rather than calling `coupling.handoff_swe_to_sph`, and its comments reference the coupling module as *documentation* ("the same relation sph/coupling.py::handoff_swe_to_sph documents", "exactly as coupling.handoff_swe_to_sph masks by |x - centre| < w/2") rather than as a dependency. The two implementations agree today; nothing enforces that they continue to. A reviewer reading `jalraksha/sph/__init__.py` would reasonably conclude that `handoff_swe_to_sph` is the handoff; it is not, and there is no comment in `__init__.py` saying so.
+**A caveat on `coupling.py` and `domain.py`.** Both modules exist, both are exported from `floodview/sph/__init__.py:15-33`, and both are documented as the coupling interface — but neither is on the production path. `handoff_swe_to_sph` (`coupling.py:19-53`) and `extract_sph_free_surface` (`coupling.py:56-94`) are called only from `tests/test_sph.py:105-125`. `NearFieldDomain` and `generate_near_field_particles` (`domain.py:24-163`) likewise. `pysph_runner.py:377-400` re-implements the `u = Q/(h·w)` relation and the breach mask inline rather than calling `coupling.handoff_swe_to_sph`, and its comments reference the coupling module as *documentation* ("the same relation sph/coupling.py::handoff_swe_to_sph documents", "exactly as coupling.handoff_swe_to_sph masks by |x - centre| < w/2") rather than as a dependency. The two implementations agree today; nothing enforces that they continue to. A reviewer reading `floodview/sph/__init__.py` would reasonably conclude that `handoff_swe_to_sph` is the handoff; it is not, and there is no comment in `__init__.py` saying so.
 
 ### A5. Where SPH actually runs in the pipeline
 
@@ -16193,11 +16193,11 @@ The 47-second and 20-minute figures come from `docs/dashboard_integration.md:304
 
 The task brief cites `PROGRESS_SUMMARY.md:87-91`:
 
-> Note: the SPH side of this comparison is synthesized (particle positions from `np.random`, arrivals from a wave-celerity approximation). This is a pre-existing limitation of `jalraksha/delft3d/comparison.py`, reached via `services/api/jalraksha_service/tasks.py::_run_comparison` — not introduced by the frontend, and not a real PySPH run.
+> Note: the SPH side of this comparison is synthesized (particle positions from `np.random`, arrivals from a wave-celerity approximation). This is a pre-existing limitation of `floodview/delft3d/comparison.py`, reached via `services/api/floodview_service/tasks.py::_run_comparison` — not introduced by the frontend, and not a real PySPH run.
 
 **Verified against the code: this claim is STALE.** As shipped:
 
-- `jalraksha/delft3d/comparison.py` contains no `np.random` anywhere. Grep across the whole repository for `np.random` in the delft3d package returns nothing.
+- `floodview/delft3d/comparison.py` contains no `np.random` anywhere. Grep across the whole repository for `np.random` in the delft3d package returns nothing.
 - `rasterize_sph_particles` (`comparison.py:23-81`) consumes real particle positions from the `sph_result` dict and *refuses* to proceed without the run-derived per-particle volume (`comparison.py:63-70`):
 
 ```python
@@ -16207,13 +16207,13 @@ The task brief cites `PROGRESS_SUMMARY.md:87-91`:
             "sph_result has no 'particle_volume_m3'. Depth cannot be derived "
             "from particle positions without knowing the volume each particle "
             "represents, and assuming one would silently rescale every depth "
-            "in this comparison. jalraksha.sph.pysph_runner reports it."
+            "in this comparison. floodview.sph.pysph_runner reports it."
         )
 ```
 
   The comment above it (`comparison.py:57-62`) records that this used to be a literal `particle_volume = 1.0  # m³ (approximate)`.
 - `compare_sph_vs_delft3d` names the SPH engine from the run rather than from a literal (`comparison.py:376-378`): "Named from the run, not hardcoded. The bare literal `"SPH_WCSPH"` that used to sit here described a result that was np.random output."
-- `_run_comparison`'s own docstring (`tasks.py:757-762`) states the fix: "The SPH side is a REAL PySPH WCSPH run over the dam's own terrain (jalraksha.sph.pysph_runner). It used to be fabricated: particle positions drawn from np.random.uniform, and 'gauge arrivals' from a wave-celerity formula plus np.random.normal noise."
+- `_run_comparison`'s own docstring (`tasks.py:757-762`) states the fix: "The SPH side is a REAL PySPH WCSPH run over the dam's own terrain (floodview.sph.pysph_runner). It used to be fabricated: particle positions drawn from np.random.uniform, and 'gauge arrivals' from a wave-celerity formula plus np.random.normal noise."
 - `tests/test_sph.py:232-242` (`test_is_deterministic`) runs the same configuration twice and asserts bit-identical particle arrays, which an `np.random` implementation could not pass.
 
 **So what remains synthetic?** Three things, and they should be named precisely because two of them are surfaced in the UI.
@@ -16258,10 +16258,10 @@ The project treats the naming of the Delft3D engine as a hard constraint, and it
 ```
 - **No overclaiming — but the Delft3D rule is now CONDITIONAL.** A real Deltares kernel is installed and running (`dflowfm-cli.exe`, dimrset 2026.01, build 1.2.184), so the naming follows the evidence:
   - `delft3d_binary_used == True` → it IS Delft3D FM. Name it, and name the build: **"Delft3D FM (dflowfm-cli, dimrset 2026.01)"**.
-  - `delft3d_binary_used == False` → unchanged: **"JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
+  - `delft3d_binary_used == False` → unchanged: **"FloodView built-in 2D SWE — Delft3D-class, NOT Delft3D FM"**, plus the reason it fell back.
 ```
 
-**Where the boolean is produced.** In exactly one place: `run_delft3d_simulation` in `jalraksha/delft3d/runner.py`. There are precisely two assignments.
+**Where the boolean is produced.** In exactly one place: `run_delft3d_simulation` in `floodview/delft3d/runner.py`. There are precisely two assignments.
 
 Tier A success (`runner.py:474-486`) — the kernel was resolved, ran, exited zero, and its NetCDF output parsed:
 
@@ -16285,7 +16285,7 @@ The four routes are: `force_fallback=True` requested by the caller (`:448-449`);
 The Tier B `engine_label` is set inside `_run_builtin_swe_fallback` (`runner.py:387`) and matches the required string exactly:
 
 ```python
-        "engine_label": "JalRaksha built-in 2D SWE - Delft3D-class, NOT Delft3D FM",
+        "engine_label": "FloodView built-in 2D SWE - Delft3D-class, NOT Delft3D FM",
 ```
 
 **Propagation to the UI banner.** Five hops, all explicit:
@@ -16308,7 +16308,7 @@ The `_delft3d_only_comparison` path does the same (`tasks.py:276`), so a `solver
     Returning the path rather than a bare bool is the point. The previous
     arrangement had `is_dflowfm_available(custom_path)` honour an explicit
     location while `_run_dflowfm_binary` went on to invoke the literal string
-    "dflowfm" — so an install pointed at by JALRAKSHA_DFLOWFM_EXE would be
+    "dflowfm" — so an install pointed at by FLOODVIEW_DFLOWFM_EXE would be
     detected as present and then launched as a bare PATH lookup that fails.
     Detection and execution now agree by construction, because they use the
     same value.
@@ -16316,7 +16316,7 @@ The `_delft3d_only_comparison` path does the same (`tasks.py:276`), so a `solver
 
 The resolution order is:
 
-1. **`custom_path`** — from `JALRAKSHA_DFLOWFM_EXE` via `settings.DFLOWFM_EXE` (`tasks.py:799`). If it is a file, its absolute path is returned. If it is set but not a file, the function prints a diagnostic and returns `None` — it deliberately does **not** fall through to PATH (`runner.py:45-55`): "An explicitly configured path that is wrong is a configuration error, not a reason to quietly search PATH instead and run something else." `tests/test_delft3d_model.py:267-272` asserts this.
+1. **`custom_path`** — from `FLOODVIEW_DFLOWFM_EXE` via `settings.DFLOWFM_EXE` (`tasks.py:799`). If it is a file, its absolute path is returned. If it is set but not a file, the function prints a diagnostic and returns `None` — it deliberately does **not** fall through to PATH (`runner.py:45-55`): "An explicitly configured path that is wrong is a configuration error, not a reason to quietly search PATH instead and run something else." `tests/test_delft3d_model.py:267-272` asserts this.
 2. **PATH lookup, in order `dflowfm-cli` then `dflowfm`** (`runner.py:57-63`). The comment records the defect this fixed: "The FM Suite ships the executable as dflowfm-cli.exe, not 'dflowfm'. Looking only for the latter is why a perfectly good local install went undetected."
 3. **`_discover_installed_kernel()`** (`runner.py:89-101`) — globs the standard Deltares install locations from `_KERNEL_GLOBS` (`runner.py:76-86`), sorts matches lexically, and takes the last (newest suite version, since install directory names carry `year.version`).
 
@@ -16345,11 +16345,11 @@ The README adds the operational consequence: the GUI launches, the licence works
 
 ### B3. Model construction — `setup.py`, `dfm_model.py`, and `ugrid.py`
 
-**The documented history.** `jalraksha/delft3d/setup.py` was the original model writer. Its MDU declares `NetFile = {grid_path.name}` (`setup.py:223`), where `grid_path` points at a file written by `_write_grid_file` (`setup.py:312-325`) containing:
+**The documented history.** `floodview/delft3d/setup.py` was the original model writer. Its MDU declares `NetFile = {grid_path.name}` (`setup.py:223`), where `grid_path` points at a file written by `_write_grid_file` (`setup.py:312-325`) containing:
 
 ```
 # Rectangular grid definition
-# Generated by JalRaksha
+# Generated by FloodView
 [Grid]
 GridType = rectangular
 NX = ...
@@ -16368,12 +16368,12 @@ that would have hit it was disabled by a hardcoded `force_fallback=True`.
 
 `tasks.py:355-366` and `CLAUDE.md:283-287` repeat it. The current production path calls `build_dfm_model` (`tasks.py:436`), not `setup_delft3d_model`.
 
-**`setup.py` is still shipped, still exported, and still the model builder the test suite uses.** `jalraksha/delft3d/__init__.py:5` still lists it in the package docstring, and the entirety of `tests/test_delft3d.py::TestDelft3DSetup`, `TestDelft3DRunner`, and `TestDelft3DIntegration` builds models with it. Because those tests all pass `force_fallback=True`, the unreadable NetFile is never exercised and the tests pass. A reader who follows the package docstring to `setup.py` will find a module that produces an input deck the kernel cannot read, with no in-file warning. Beyond the NetFile, `setup.py`'s MDU contains an invented `[Dambreak]` section (`setup.py:258-265`) with keys — `DamName`, `DamHeight_m`, `BreachRow`, `BreachWidth_m`, `FailureTime_s` — that are not D-Flow FM MDU keys, and `[Geometry] BathymetryFile` / `WaterLevIniFile` pointing at an `.xyz` and a hand-rolled `.ini` in a format FM does not consume. It looks like a Delft3D input deck and is not one. The module also defines `_check_hydrolib_available` (`setup.py:30-36`) which is never called anywhere.
+**`setup.py` is still shipped, still exported, and still the model builder the test suite uses.** `floodview/delft3d/__init__.py:5` still lists it in the package docstring, and the entirety of `tests/test_delft3d.py::TestDelft3DSetup`, `TestDelft3DRunner`, and `TestDelft3DIntegration` builds models with it. Because those tests all pass `force_fallback=True`, the unreadable NetFile is never exercised and the tests pass. A reader who follows the package docstring to `setup.py` will find a module that produces an input deck the kernel cannot read, with no in-file warning. Beyond the NetFile, `setup.py`'s MDU contains an invented `[Dambreak]` section (`setup.py:258-265`) with keys — `DamName`, `DamHeight_m`, `BreachRow`, `BreachWidth_m`, `FailureTime_s` — that are not D-Flow FM MDU keys, and `[Geometry] BathymetryFile` / `WaterLevIniFile` pointing at an `.xyz` and a hand-rolled `.ini` in a format FM does not consume. It looks like a Delft3D input deck and is not one. The module also defines `_check_hydrolib_available` (`setup.py:30-36`) which is never called anywhere.
 
 **`dfm_model.py` — the real writer.** `build_dfm_model` (`dfm_model.py:47-162`) produces the complete input set the kernel needs, enumerated in the module docstring (`dfm_model.py:6-11`):
 
 ```
-    <name>_net.nc      UGRID mesh with bed level on nodes (jalraksha.delft3d.ugrid)
+    <name>_net.nc      UGRID mesh with bed level on nodes (floodview.delft3d.ugrid)
     <name>.mdu         master definition
     initial.ini        initial-field definition, pointing at...
     waterlevel.xyz     ...a dense sample set carrying the dam-break step
@@ -16469,7 +16469,7 @@ A station that never wets is recorded with `median_s: None` and an explanatory n
 
 The grid metadata carry-through has its own recorded history (`runner.py:722-727`): downstream, `compare_sph_vs_delft3d` reads those keys with `.get()` defaults of 100×200 at 30 m, "so omitting them, as this function used to, meant a SUCCESSFUL real Delft3D run was rasterised and compared on a grid of entirely the wrong size."
 
-**`_run_builtin_swe_fallback(...)`** (`runner.py:274-405`). Tier B. Builds a `jalraksha.solver` `Grid` and `State` from the model setup's grid, bathymetry and initial water level (depth = `max(0, wl − bed)`), guards `nx < 5 or ny < 5` by returning `_analytic_fallback`, then time-steps with `SWESolver(swe_grid, manning_n=manning_n, cfl=0.5)` accumulating `max_depth`, `max_velocity` and a first-wet `arrival_time` at a 0.1 m threshold, capped at 500,000 steps, with a NaN guard. On any exception it prints a traceback and drops to `_analytic_fallback` — with a comment (`runner.py:365-367`) that "Dropping to a closed-form estimate without naming it turns 'the solver diverged' into a plausible-looking table of arrival times."
+**`_run_builtin_swe_fallback(...)`** (`runner.py:274-405`). Tier B. Builds a `floodview.solver` `Grid` and `State` from the model setup's grid, bathymetry and initial water level (depth = `max(0, wl − bed)`), guards `nx < 5 or ny < 5` by returning `_analytic_fallback`, then time-steps with `SWESolver(swe_grid, manning_n=manning_n, cfl=0.5)` accumulating `max_depth`, `max_velocity` and a first-wet `arrival_time` at a 0.1 m threshold, capped at 500,000 steps, with a NaN guard. On any exception it prints a traceback and drops to `_analytic_fallback` — with a comment (`runner.py:365-367`) that "Dropping to a closed-form estimate without naming it turns 'the solver diverged' into a plausible-looking table of arrival times."
 
 A latent defect: `"total_time_s": t` at `runner.py:392` reads a variable bound only inside the `while` loop. If `total_time_s <= 0`, the loop never executes and this raises `UnboundLocalError` after an otherwise-successful setup.
 
@@ -16527,7 +16527,7 @@ Both figures are written by `tasks._run_comparison:827-833` to `comparison_depth
 
 ### C1. `benchmarks.py` — analytical and historical benchmarks
 
-A clarification is needed first, because the task brief asks for Ritter, Stoker and Thacker as coded in `benchmarks.py`. **They are not there.** `jalraksha/validation/benchmarks.py` contains only two *historical field* benchmarks — Malpasset (1959) and Chamoli (2021) — plus an evaluator. There is no Stoker wet-bed solution and no Thacker parabolic-bowl solution anywhere in the repository; a search across the tree finds no `stoker` or `thacker` identifier. The analytical dam-break solution lives in a different module: `jalraksha/validation/delft3d_benchmark.py::ritter_exact`. This chapter documents what exists and states the absence rather than inventing equations to fill the section.
+A clarification is needed first, because the task brief asks for Ritter, Stoker and Thacker as coded in `benchmarks.py`. **They are not there.** `floodview/validation/benchmarks.py` contains only two *historical field* benchmarks — Malpasset (1959) and Chamoli (2021) — plus an evaluator. There is no Stoker wet-bed solution and no Thacker parabolic-bowl solution anywhere in the repository; a search across the tree finds no `stoker` or `thacker` identifier. The analytical dam-break solution lives in a different module: `floodview/validation/delft3d_benchmark.py::ritter_exact`. This chapter documents what exists and states the absence rather than inventing equations to fill the section.
 
 **Ritter (1892) dry-bed dam-break — `delft3d_benchmark.py:46-85`.** Initial condition `h = h_L` for `x < 0`, `h = 0` for `x > 0`, `u = 0`, frictionless flat bed. With `c₀ = √(g h_L)` and the similarity variable `ξ = x/t`, the solution has three regions, exactly as the docstring states (`delft3d_benchmark.py:52-58`):
 
@@ -16567,7 +16567,7 @@ Any missing simulated value is replaced by the *observed* value. A run that prod
 
 ### C2. `metrics.py` — the metric functions
 
-Four functions, all in `jalraksha/validation/metrics.py`.
+Four functions, all in `floodview/validation/metrics.py`.
 
 **`compute_csi(observed, simulated, threshold=0.1)` — `:19-48`.** `CSI = TP / (TP + FP + FN)` over binary wet masks at the given threshold. Returns `1.0` when the denominator is zero (`:45-47`).
 
@@ -16583,7 +16583,7 @@ Four functions, all in `jalraksha/validation/metrics.py`.
 NameError: name 'Optional' is not defined
 ```
 
-This was verified by execution: importing `jalraksha.validation.metrics`, `jalraksha.validation`, or `jalraksha.validation.benchmarks` all fail with that error. Consequently `tests/test_validation.py` cannot even be collected, and the entire Phase-8 validation package — CSI, F1, RMSE, NSE, Malpasset, Chamoli — is unreachable from anywhere in the running system. This is a one-line fix (`from typing import Dict, Optional, Union`) and it is CRITICAL, because the project's documentation (`docs/progress.md:75`) reports "435 passed, 4 skipped", which cannot be true of a tree in this state. Either the defect was introduced after that test run, or the reported count is stale. Note also that no production code imports `validation/metrics.py` — `delft3d/comparison.py` re-implements RMSE/bias/CSI/F1 inline — so the failure is currently invisible outside the test suite.
+This was verified by execution: importing `floodview.validation.metrics`, `floodview.validation`, or `floodview.validation.benchmarks` all fail with that error. Consequently `tests/test_validation.py` cannot even be collected, and the entire Phase-8 validation package — CSI, F1, RMSE, NSE, Malpasset, Chamoli — is unreachable from anywhere in the running system. This is a one-line fix (`from typing import Dict, Optional, Union`) and it is CRITICAL, because the project's documentation (`docs/progress.md:75`) reports "435 passed, 4 skipped", which cannot be true of a tree in this state. Either the defect was introduced after that test run, or the reported count is stale. Note also that no production code imports `validation/metrics.py` — `delft3d/comparison.py` re-implements RMSE/bias/CSI/F1 inline — so the failure is currently invisible outside the test suite.
 
 ### C3. `delft3d_benchmark.py` and `scripts/validate_against_delft3d.py` — the cross-check
 
@@ -16604,7 +16604,7 @@ honestly as engine-vs-engine agreement only.
 
 Both engines run the same case:
 
-- **JalRaksha** (`run_ritter_jalraksha`, `:88-101`): a 1×`nx` `Grid` with `x0 = x_centres[0] − dx/2`, `h_init = where(x < 0, h_left, 0)`, and `SWESolver(grid, manning_n=0.0, cfl=0.9)` — frictionless, "matching the analytical assumption and the Delft3D setup" (`:99`).
+- **FloodView** (`run_ritter_floodview`, `:88-101`): a 1×`nx` `Grid` with `x0 = x_centres[0] − dx/2`, `h_init = where(x < 0, h_left, 0)`, and `SWESolver(grid, manning_n=0.0, cfl=0.9)` — frictionless, "matching the analytical assumption and the Delft3D setup" (`:99`).
 - **Delft3D FM** (`run_ritter_delft3d`, `:104-168`): the same 1D problem as a narrow 2D channel, `n_cross = 3` rows, `manning_n=0.0`, `crs_epsg=None`, `map_interval_s = max(t_end/8, 1)`. Built through `build_dfm_model` and run through `_run_dflowfm_binary` with a 1800 s timeout. The centreline is extracted afterwards by `_read_map_centreline` (`:171-191`), which selects faces where `face_y` is close to the median and sorts by `face_x`. If no kernel resolves, or the run fails, or no map file exists, `BenchmarkUnavailableError` is raised — "Never returns a substitute" (`:115`).
 
 The Delft3D profile is then sampled onto the same `x_centres` by linear interpolation (`:244`), after shifting `face_x` back into dam-at-zero coordinates by `x_offset` (`:164`).
@@ -16635,7 +16635,7 @@ The three criteria applied — does the artifact grow as the domain shortens, do
 MEASURED, on this machine, with dimrset 2026.01 (dflowfm-cli 1.2.184), on a
 10 m dam-break at t = 40 s, dx = 10 m, scored over the interior:
 
-    JalRaksha   vs exact   RMSE 0.0317 m   h@dam 4.532 m
+    FloodView   vs exact   RMSE 0.0317 m   h@dam 4.532 m
     Delft3D FM  vs exact   RMSE 0.0349 m   h@dam 4.515 m
     engine vs engine       RMSE 0.0294 m
     exact                                  h@dam 4.444 m  (= 4*h0/9)
@@ -16643,14 +16643,14 @@ MEASURED, on this machine, with dimrset 2026.01 (dflowfm-cli 1.2.184), on a
 Both engines land within ~0.3% of theory and within 0.03 m of each other.
 ```
 
-`docs/validation_findings.md:23-27` adds the max absolute errors: 0.2644 m for JalRaksha, 0.2265 m for Delft3D FM. The relative error at the dam is 1.98% for JalRaksha and 1.60% for Delft3D FM — note that "within ~0.3% of theory" refers to the RMSE relative to `h₀ = 10 m` (0.317% and 0.349%), not to the depth-at-dam error, which is about six times larger. That is a fair characterisation of an RMSE-over-the-profile figure, but a reader could easily take "~0.3% of theory" to mean the dam depth, and the slide would be more defensible if it said which.
+`docs/validation_findings.md:23-27` adds the max absolute errors: 0.2644 m for FloodView, 0.2265 m for Delft3D FM. The relative error at the dam is 1.98% for FloodView and 1.60% for Delft3D FM — note that "within ~0.3% of theory" refers to the RMSE relative to `h₀ = 10 m` (0.317% and 0.349%), not to the depth-at-dam error, which is about six times larger. That is a fair characterisation of an RMSE-over-the-profile figure, but a reader could easily take "~0.3% of theory" to mean the dam depth, and the slide would be more defensible if it said which.
 
-The finding that the *first* numbers were wrong is recorded rather than buried (`docs/validation_findings.md:34-48`): JalRaksha 0.0445 m against Delft3D 0.0897 m, with Delft3D apparently twice as bad, entirely from the edge-cell artifact. Reporting the superseded numbers alongside the corrected ones is the right practice and materially strengthens the claim.
+The finding that the *first* numbers were wrong is recorded rather than buried (`docs/validation_findings.md:34-48`): FloodView 0.0445 m against Delft3D 0.0897 m, with Delft3D apparently twice as bad, entirely from the edge-cell artifact. Reporting the superseded numbers alongside the corrected ones is the right practice and materially strengthens the claim.
 
 **Output artefacts.** `scripts/validate_against_delft3d.py` writes two files under `data/validation/` (default `--out`):
 
-- `ritter_validation.png` (`:129`, produced by `_plot_ritter`, `:37-102`) — a two-panel figure: depth profile with three curves (exact in black, Delft3D FM red dashed, JalRaksha blue dash-dot), a dam vline, a `4h₀/9` hline annotated with its value, shaded excluded strips, and a title carrying the full case description; below it an error panel plotting each engine minus exact. A footer line reports both RMSEs and the engine-agreement RMSE.
-- `validation_metrics.json` (`:161-163`) — `json.dumps(_jsonable(results))`, where `_jsonable` (`:105-113`) converts NumPy arrays to lists of 6-dp floats and NumPy scalars to floats. Because `compare_ritter` returns the full `x`, `analytical`, `jalraksha`, `delft3d` and `scored_mask` arrays, the JSON contains all 400 sample points per curve — the figure is fully reproducible from it.
+- `ritter_validation.png` (`:129`, produced by `_plot_ritter`, `:37-102`) — a two-panel figure: depth profile with three curves (exact in black, Delft3D FM red dashed, FloodView blue dash-dot), a dam vline, a `4h₀/9` hline annotated with its value, shaded excluded strips, and a title carrying the full case description; below it an error panel plotting each engine minus exact. A footer line reports both RMSEs and the engine-agreement RMSE.
+- `validation_metrics.json` (`:161-163`) — `json.dumps(_jsonable(results))`, where `_jsonable` (`:105-113`) converts NumPy arrays to lists of 6-dp floats and NumPy scalars to floats. Because `compare_ritter` returns the full `x`, `analytical`, `floodview`, `delft3d` and `scored_mask` arrays, the JSON contains all 400 sample points per curve — the figure is fully reproducible from it.
 
 The `--case tehri` path additionally writes `tehri_validation.png` via `plot_tehri_gauges` (`delft3d_benchmark.py:569-608`).
 
@@ -16668,7 +16668,7 @@ The `--case tehri` path additionally writes `tehri_validation.png` via `plot_teh
 
 The KNOWN LIMITATION note above it (`:467-473`) states that the axis-aligned dam row "is a poor stand-in for a dam wall", that locating the barrier along the real impoundment is the correct fix, that it is not implemented, and that "this case is expected to refuse on steep sinuous terrain such as Tehri." Three separate bugs found on the way there are recorded with their symptoms: splitting the domain by array index put Koteshwar (13 km *downstream*, but south of the dam) inside the reservoir so both engines reported arrival at 0.0 min (`:395-403`); taking the median of the dam row for the reservoir surface averaged the thalweg with the ridges and put the surface near 1760 m instead of ~830 m, so "Delft3D duly reported water levels rising to 1533 m at Koteshwar — the model was not wrong, the initial condition was" (`:409-415`); and the axis-aligned fill leaking into the downstream valley (`:430-439`). Refusing to publish a comparison of two models of still water is exactly the right call, and documenting the three near-misses is what makes the Ritter result credible.
 
-One defect in this path: the JalRaksha time loop (`:500-508`) accumulates `t_sim += dt` using a `dt` computed from the *previous* state, while `solver.step(state)` recomputes its own CFL timestep internally from the current state (`solver/core.py:471-485`). The two clocks can drift, and `t_sim` — not `state.t` — is what is written into `t_arrival` and compared against Delft3D. On a case that currently refuses to run this is latent, but it would silently bias the arrival-time comparison once the impoundment fix lands.
+One defect in this path: the FloodView time loop (`:500-508`) accumulates `t_sim += dt` using a `dt` computed from the *previous* state, while `solver.step(state)` recomputes its own CFL timestep internally from the current state (`solver/core.py:471-485`). The two clocks can drift, and `t_sim` — not `state.t` — is what is written into `t_arrival` and compared against Delft3D. On a case that currently refuses to run this is latent, but it would silently bias the arrival-time comparison once the impoundment fix lands.
 
 A smaller one: `run_ritter_delft3d` reads the map file from a hardcoded `Path(model["output_dir"]) / f"DFM_OUTPUT_ritter" / "ritter_map.nc"` (`:158-159`) — an f-string with no placeholders — rather than through `runner._resolve_output_dir`, which exists precisely to handle kernel editions that write elsewhere.
 
@@ -16676,11 +16676,11 @@ A smaller one: `run_ritter_delft3d` reads the map file from a hardcoded `Path(mo
 
 Three gates, run identically from CI and from the dashboard's Validation tab.
 
-**Lake at rest.** `services/api/jalraksha_service/main.py:529-580`. Seeded RNG (`default_rng(42)`), 50×50 grid at 50 m, 5 m of uniform random bed relief, water surface flat at η = 10 m, `SWESolver(grid, manning_n=0.03, cfl=0.9)`, 1000 steps. Gates: `max|V| < 1e-8 m/s` and `max|Δη| < 1e-6 m`. The docstring names the property (`main.py:532-534`): "The C-property (Bermudez & Vazquez 1994), and the single most diagnostic test of a shallow-water code: a scheme that fails it manufactures currents out of terrain, which on a 30 m Himalayan DEM means manufacturing a flood." **Measured: 5.98e-14 m/s** (`docs/dashboard_integration.md:110`, `CLAUDE.md:279`, `docs/progress.md:91`) — six orders of magnitude inside the gate, i.e. machine precision.
+**Lake at rest.** `services/api/floodview_service/main.py:529-580`. Seeded RNG (`default_rng(42)`), 50×50 grid at 50 m, 5 m of uniform random bed relief, water surface flat at η = 10 m, `SWESolver(grid, manning_n=0.03, cfl=0.9)`, 1000 steps. Gates: `max|V| < 1e-8 m/s` and `max|Δη| < 1e-6 m`. The docstring names the property (`main.py:532-534`): "The C-property (Bermudez & Vazquez 1994), and the single most diagnostic test of a shallow-water code: a scheme that fails it manufactures currents out of terrain, which on a 30 m Himalayan DEM means manufacturing a flood." **Measured: 5.98e-14 m/s** (`docs/dashboard_integration.md:110`, `CLAUDE.md:279`, `docs/progress.md:91`) — six orders of magnitude inside the gate, i.e. machine precision.
 
 **Mass conservation.** `main.py:583-637`. 200×1 grid at 0.5 m with `x0 = −50.0`, `h = 1.0` for `x < 0` and 0 otherwise, `manning_n=0.0`, `cfl=0.9`, `boundary="reflective"`, 1000 steps. Gate: relative volume drift < 1e-3. Two reasons are recorded: reflective walls are essential because "with transmissive boundaries the front leaves the domain and volume SHOULD drop, so a transmissive run tells you nothing about the discretisation" (`main.py:586-589`); and the negative `x0` is essential because "with the default x0=0 every cell centre is positive, the `x < 0` initial condition is empty, and the check would divide by a zero initial volume and pass vacuously" (`main.py:592-595`) — and the function explicitly guards that case at `:610-614`. **Measured: 0.000000% drift**.
 
-**Ritter.** `main.py:639-691`. Calls `compare_ritter(tmp)` in a temporary directory, gates on `jalraksha_rmse_m < 0.10 m`, and returns the three curves as `series` for the panel to plot. When no kernel is present the JalRaksha-vs-analytical half still returns and the UI draws two curves instead of three (`main.py:643-646`). **Measured: JalRaksha 0.0317 m, Delft3D FM 0.0349 m.**
+**Ritter.** `main.py:639-691`. Calls `compare_ritter(tmp)` in a temporary directory, gates on `floodview_rmse_m < 0.10 m`, and returns the three curves as `series` for the panel to plot. When no kernel is present the FloodView-vs-analytical half still returns and the UI draws two curves instead of three (`main.py:643-646`). **Measured: FloodView 0.0317 m, Delft3D FM 0.0349 m.**
 
 **How they are run from both CI and the dashboard.** The gates mirror the pytest tests exactly. `_check_lake_at_rest`'s docstring (`main.py:536-540`) states the invariant: "Mirrors tests/test_solver.py::TestLakeAtRest::test_lake_at_rest_random_bathymetry exactly - same seed, same grid, same 1000 steps, same thresholds - so the badge on the dashboard and the blocking CI gate can never disagree about whether the solver is sound." `_check_mass_conservation` says the same for `test_mass_conservation_dam_break_walls`.
 
@@ -16690,7 +16690,7 @@ Every check is wrapped so that an exception becomes `ValidationCheck(name=..., e
 
 ### C5. `sensitivity.py` — the parameter sweep design
 
-`jalraksha/validation/sensitivity.py` provides four capabilities.
+`floodview/validation/sensitivity.py` provides four capabilities.
 
 **One-at-a-time (OAT) sensitivity.** `oat_sensitivity(base_config, param_name, param_values, output_fn, output_key)` (`:26-94`). For each value in `param_values`, copies `base_config`, overrides the one key, calls `output_fn(config)`, and reads `result[output_key]`. Requires at least two values (`:55-56`). Reports:
 
@@ -16741,63 +16741,63 @@ This file is the best-designed of the five. Almost everything runs offline, and 
 
 Each item gives file:line, the defect, and a concrete fix. Severity is CRITICAL / HIGH / MEDIUM / LOW.
 
-**1. CRITICAL — `jalraksha/validation/metrics.py:88`.** `mask: Optional[np.ndarray] = None` with `from typing import Dict, Union` at line 16 and no `from __future__ import annotations`. Importing the module raises `NameError: name 'Optional' is not defined`, which propagates to `jalraksha/validation/__init__.py`, `benchmarks.py`, and `tests/test_validation.py`. Verified by execution. **Fix:** change line 16 to `from typing import Dict, Optional, Union`. Add a smoke test that imports every module in the package, so a bare-annotation defect cannot recur silently.
+**1. CRITICAL — `floodview/validation/metrics.py:88`.** `mask: Optional[np.ndarray] = None` with `from typing import Dict, Union` at line 16 and no `from __future__ import annotations`. Importing the module raises `NameError: name 'Optional' is not defined`, which propagates to `floodview/validation/__init__.py`, `benchmarks.py`, and `tests/test_validation.py`. Verified by execution. **Fix:** change line 16 to `from typing import Dict, Optional, Union`. Add a smoke test that imports every module in the package, so a bare-annotation defect cannot recur silently.
 
-**2. HIGH — `jalraksha/delft3d/comparison.py:72-73` (with `:348-354`).** SPH particles are in the near-field local frame (origin at the window's upstream-left corner, extent a few hundred metres) but are binned as though they were in the Delft3D grid's own coordinates. The whole particle patch lands in the corner cells of a 15–70 km UTM domain. Every headline metric on the Comparison tab — RMSE, bias, CSI, overlap — is computed between two fields that do not describe the same ground. **Fix:** have `run_near_field_sph` return `origin_x`, `origin_y` and `crs_epsg` alongside the local arrays; offset by `(x − x0)/dx`, `(y − y0)/dy` in `rasterize_sph_particles`; and if the origin is absent, raise with a message in the same style as the existing `particle_volume_m3` refusal rather than producing a number.
+**2. HIGH — `floodview/delft3d/comparison.py:72-73` (with `:348-354`).** SPH particles are in the near-field local frame (origin at the window's upstream-left corner, extent a few hundred metres) but are binned as though they were in the Delft3D grid's own coordinates. The whole particle patch lands in the corner cells of a 15–70 km UTM domain. Every headline metric on the Comparison tab — RMSE, bias, CSI, overlap — is computed between two fields that do not describe the same ground. **Fix:** have `run_near_field_sph` return `origin_x`, `origin_y` and `crs_epsg` alongside the local arrays; offset by `(x − x0)/dx`, `(y − y0)/dy` in `rasterize_sph_particles`; and if the origin is absent, raise with a message in the same style as the existing `particle_volume_m3` refusal rather than producing a number.
 
-**3. HIGH — `jalraksha/delft3d/comparison.py:290-306`, surfaced at `frontend/src/panels/ComparisonPanel.jsx:100-106`.** The "Downstream Hydrograph Overlays" figure is a synthetic triangular-rise/exponential-recession shape function built from an arrival time, for both engines. No discharge time series exists on either side. The code comment says "Synthetic hydrograph shape" but nothing reaches the browser. **Fix:** either plot real depth series (available on the Delft3D side from `_his.nc`), or stamp "SCHEMATIC — shape function, not model output" onto the figure itself and add a caveat paragraph in `ComparisonPanel.jsx` mirroring the one already present for `ritter_celerity_estimate`.
+**3. HIGH — `floodview/delft3d/comparison.py:290-306`, surfaced at `frontend/src/panels/ComparisonPanel.jsx:100-106`.** The "Downstream Hydrograph Overlays" figure is a synthetic triangular-rise/exponential-recession shape function built from an arrival time, for both engines. No discharge time series exists on either side. The code comment says "Synthetic hydrograph shape" but nothing reaches the browser. **Fix:** either plot real depth series (available on the Delft3D side from `_his.nc`), or stamp "SCHEMATIC — shape function, not model output" onto the figure itself and add a caveat paragraph in `ComparisonPanel.jsx` mirroring the one already present for `ritter_celerity_estimate`.
 
-**4. HIGH — `jalraksha/delft3d/comparison.py:104-116`.** "Grid alignment" is `ravel()` plus truncation to the shorter array, under a comment reading "Ensure same size (pad shorter)" that describes padding. If either field is a legitimately unstructured 1-D FM array, the comparison proceeds element-by-element with no geometric correspondence and no error. **Fix:** require both inputs to be 2-D and identically shaped; raise otherwise.
+**4. HIGH — `floodview/delft3d/comparison.py:104-116`.** "Grid alignment" is `ravel()` plus truncation to the shorter array, under a comment reading "Ensure same size (pad shorter)" that describes padding. If either field is a legitimately unstructured 1-D FM array, the comparison proceeds element-by-element with no geometric correspondence and no error. **Fix:** require both inputs to be 2-D and identically shaped; raise otherwise.
 
-**5. HIGH — `jalraksha/delft3d/runner.py:481` and `frontend/src/panels/ComparisonPanel.jsx:236`.** The Tier A label is `"Delft3D FM (official dflowfm binary)"`, not the build-naming string `CLAUDE.md:17` requires. No code path reads a version from the kernel; the captured stdout banner is discarded at `runner.py:163`. **Fix:** parse the version from the kernel's stdout banner (or a `--version` invocation) into a `dflowfm_version` field, and build the label as `f"Delft3D FM ({exe_name}, {version})"`. Under-claiming is safer than over-claiming, but this is still a documented hard constraint the code does not meet.
+**5. HIGH — `floodview/delft3d/runner.py:481` and `frontend/src/panels/ComparisonPanel.jsx:236`.** The Tier A label is `"Delft3D FM (official dflowfm binary)"`, not the build-naming string `CLAUDE.md:17` requires. No code path reads a version from the kernel; the captured stdout banner is discarded at `runner.py:163`. **Fix:** parse the version from the kernel's stdout banner (or a `--version` invocation) into a `dflowfm_version` field, and build the label as `f"Delft3D FM ({exe_name}, {version})"`. Under-claiming is safer than over-claiming, but this is still a documented hard constraint the code does not meet.
 
-**6. MEDIUM — `jalraksha/validation/benchmarks.py:22` vs `:27-35`.** Docstring claims "17 high-resolution field survey points"; seven gauges are coded, and `tests/test_validation.py:82` asserts seven. **Fix:** correct the docstring to seven, or add the remaining ten with per-point citations.
+**6. MEDIUM — `floodview/validation/benchmarks.py:22` vs `:27-35`.** Docstring claims "17 high-resolution field survey points"; seven gauges are coded, and `tests/test_validation.py:82` asserts seven. **Fix:** correct the docstring to seven, or add the remaining ten with per-point citations.
 
-**7. MEDIUM — `jalraksha/validation/benchmarks.py:28-35` and `:54-59`.** Malpasset elevations/arrival times and Chamoli travel times are hardcoded literals with no per-value citation and, uniquely among the project's unsourced numbers, no `TODO: UNVETTED` tag, while `docs/validation_findings.md:146-147` states both cases "remain unrun". **Fix:** add the tag and a per-table source line, and either wire the datasets into a scored run or move the module under a clearly-labelled `not_yet_used/`.
+**7. MEDIUM — `floodview/validation/benchmarks.py:28-35` and `:54-59`.** Malpasset elevations/arrival times and Chamoli travel times are hardcoded literals with no per-value citation and, uniquely among the project's unsourced numbers, no `TODO: UNVETTED` tag, while `docs/validation_findings.md:146-147` states both cases "remain unrun". **Fix:** add the tag and a per-table source line, and either wire the datasets into a scored run or move the module under a clearly-labelled `not_yet_used/`.
 
-**8. MEDIUM — `jalraksha/validation/benchmarks.py:92` and `:94`.** `evaluate_benchmark` substitutes the observed value whenever a simulated one is missing, so an empty simulation scores RMSE 0.0, NSE 1.0 and 0.0% error. **Fix:** drop unmatched gauges from the score and report `num_gauges_evaluated` as the matched count; raise or return `None` when nothing matched. Update `tests/test_validation.py:89-97` to test a genuinely-simulated case rather than the identity.
+**8. MEDIUM — `floodview/validation/benchmarks.py:92` and `:94`.** `evaluate_benchmark` substitutes the observed value whenever a simulated one is missing, so an empty simulation scores RMSE 0.0, NSE 1.0 and 0.0% error. **Fix:** drop unmatched gauges from the score and report `num_gauges_evaluated` as the matched count; raise or return `None` when nothing matched. Update `tests/test_validation.py:89-97` to test a genuinely-simulated case rather than the identity.
 
-**9. MEDIUM — `jalraksha/delft3d/runner.py:211`.** `spread = 0.2 * t_s` is rendered into `p05_min` / `p95_min` — the same field names used elsewhere for genuine ensemble percentiles — and carries its own `TODO: UNVETTED` (`:200-202`). The UI does caveat the method, but the field names imply an uncertainty quantification. **Fix:** rename to `nominal_low_min` / `nominal_high_min` on estimate-method entries so the shape of the data cannot be mistaken for an ensemble band.
+**9. MEDIUM — `floodview/delft3d/runner.py:211`.** `spread = 0.2 * t_s` is rendered into `p05_min` / `p95_min` — the same field names used elsewhere for genuine ensemble percentiles — and carries its own `TODO: UNVETTED` (`:200-202`). The UI does caveat the method, but the field names imply an uncertainty quantification. **Fix:** rename to `nominal_low_min` / `nominal_high_min` on estimate-method entries so the shape of the data cannot be mistaken for an ensemble band.
 
-**10. MEDIUM — `jalraksha/sph/pysph_runner.py:63`.** `ALPHA_VISCOSITY = 0.25`, `TODO: UNVETTED`, is the only dissipation in the near-field model and acts as an uncalibrated eddy-viscosity surrogate at real-field heads. No published-experiment validation exists. **Fix:** run an α sweep (0.05 / 0.1 / 0.25 / 0.5) on the still-water gate and on one near-field case, publish the sensitivity of `max_speed_m_s` and `front_speed_m_s`, and state the resulting band alongside every reported SPH number. Validating against a published laboratory dam break (Koshizuka & Oka, or the SPHERIC test cases) would be the stronger fix.
+**10. MEDIUM — `floodview/sph/pysph_runner.py:63`.** `ALPHA_VISCOSITY = 0.25`, `TODO: UNVETTED`, is the only dissipation in the near-field model and acts as an uncalibrated eddy-viscosity surrogate at real-field heads. No published-experiment validation exists. **Fix:** run an α sweep (0.05 / 0.1 / 0.25 / 0.5) on the still-water gate and on one near-field case, publish the sensitivity of `max_speed_m_s` and `front_speed_m_s`, and state the resulting band alongside every reported SPH number. Validating against a published laboratory dam break (Koshizuka & Oka, or the SPHERIC test cases) would be the stronger fix.
 
-**11. MEDIUM — `jalraksha/sph/coupling.py` and `jalraksha/sph/domain.py` (whole modules), exported at `jalraksha/sph/__init__.py:15-33`.** Neither is called from production; `pysph_runner.py:377-400` re-implements the handoff inline. The public API advertises a coupling interface the pipeline does not use, and nothing keeps the two implementations in step. **Fix:** either have `run_near_field_sph` call `coupling.handoff_swe_to_sph`, or add a module-level note to both files stating they are reference/test-only and are not the production handoff.
+**11. MEDIUM — `floodview/sph/coupling.py` and `floodview/sph/domain.py` (whole modules), exported at `floodview/sph/__init__.py:15-33`.** Neither is called from production; `pysph_runner.py:377-400` re-implements the handoff inline. The public API advertises a coupling interface the pipeline does not use, and nothing keeps the two implementations in step. **Fix:** either have `run_near_field_sph` call `coupling.handoff_swe_to_sph`, or add a module-level note to both files stating they are reference/test-only and are not the production handoff.
 
-**12. MEDIUM — `jalraksha/delft3d/setup.py:223` (with `:312-325`).** `NetFile` points at an INI stub D-Flow FM cannot read; a model built by `setup_delft3d_model` fails at mesh load. The module is still exported (`delft3d/__init__.py:5`) and is still the model builder for all of `tests/test_delft3d.py`, which never notices because every test passes `force_fallback=True`. **Fix:** make `setup_delft3d_model` delegate its mesh writing to `ugrid.write_ugrid_net`, or delete the module and port the tests to `dfm_model.build_dfm_model`. At minimum, add a module-level warning naming the defect.
+**12. MEDIUM — `floodview/delft3d/setup.py:223` (with `:312-325`).** `NetFile` points at an INI stub D-Flow FM cannot read; a model built by `setup_delft3d_model` fails at mesh load. The module is still exported (`delft3d/__init__.py:5`) and is still the model builder for all of `tests/test_delft3d.py`, which never notices because every test passes `force_fallback=True`. **Fix:** make `setup_delft3d_model` delegate its mesh writing to `ugrid.write_ugrid_net`, or delete the module and port the tests to `dfm_model.build_dfm_model`. At minimum, add a module-level warning naming the defect.
 
-**13. MEDIUM — `jalraksha/delft3d/setup.py:258-265` (and `:222-225`).** The `[Dambreak]` section and its five keys are not D-Flow FM MDU keys; neither are the `BathymetryFile` / `WaterLevIniFile` entries as written. The file looks like a Delft3D input deck and is not one. **Fix:** as (12).
+**13. MEDIUM — `floodview/delft3d/setup.py:258-265` (and `:222-225`).** The `[Dambreak]` section and its five keys are not D-Flow FM MDU keys; neither are the `BathymetryFile` / `WaterLevIniFile` entries as written. The file looks like a Delft3D input deck and is not one. **Fix:** as (12).
 
-**14. MEDIUM — `jalraksha/delft3d/runner.py:392`.** `"total_time_s": t` reads a loop-local variable; `UnboundLocalError` if the loop body never executes (`total_time_s <= 0`). **Fix:** initialise `t = float(state.t)` before the loop.
+**14. MEDIUM — `floodview/delft3d/runner.py:392`.** `"total_time_s": t` reads a loop-local variable; `UnboundLocalError` if the loop body never executes (`total_time_s <= 0`). **Fix:** initialise `t = float(state.t)` before the loop.
 
-**15. MEDIUM — `jalraksha/delft3d/comparison.py:348-351`.** `.get("grid_nx", 100)`, `.get("grid_ny", 200)`, 30.0 m defaults silently rasterise onto a fabricated grid whenever the keys are absent. `_parse_delft3d_output` now carries the real values, but the defaults remain as a silent-wrong-answer path. **Fix:** raise when the grid keys are missing, in the style of the `particle_volume_m3` refusal.
+**15. MEDIUM — `floodview/delft3d/comparison.py:348-351`.** `.get("grid_nx", 100)`, `.get("grid_ny", 200)`, 30.0 m defaults silently rasterise onto a fabricated grid whenever the keys are absent. `_parse_delft3d_output` now carries the real values, but the defaults remain as a silent-wrong-answer path. **Fix:** raise when the grid keys are missing, in the style of the `particle_volume_m3` refusal.
 
-**16. MEDIUM — `services/api/jalraksha_service/tasks.py:462-464` (call into `runner.py:130-134`).** The production Delft3D invocation passes no timeout, defaulting to 3600 s, while every other caller chooses one (1800 / 7200 / 900). A 400×400 grid over up to 24 h of simulated time will be killed at one hour and reported as a fallback. **Fix:** derive a timeout from `_delft3d_duration(dam_config)` and pass it explicitly.
+**16. MEDIUM — `services/api/floodview_service/tasks.py:462-464` (call into `runner.py:130-134`).** The production Delft3D invocation passes no timeout, defaulting to 3600 s, while every other caller chooses one (1800 / 7200 / 900). A 400×400 grid over up to 24 h of simulated time will be killed at one hour and reported as a fallback. **Fix:** derive a timeout from `_delft3d_duration(dam_config)` and pass it explicitly.
 
-**17. MEDIUM — `jalraksha/validation/delft3d_benchmark.py:502-508`.** The Tehri JalRaksha loop accumulates `t_sim += dt` from a stale `dt` while `solver.step` recomputes its own; `t_sim`, not `state.t`, is written into `t_arrival` and compared against Delft3D. **Fix:** read `state.t` after each step.
+**17. MEDIUM — `floodview/validation/delft3d_benchmark.py:502-508`.** The Tehri FloodView loop accumulates `t_sim += dt` from a stale `dt` while `solver.step` recomputes its own; `t_sim`, not `state.t`, is written into `t_arrival` and compared against Delft3D. **Fix:** read `state.t` after each step.
 
 **18. MEDIUM — `PROGRESS_SUMMARY.md:87-91`.** Asserts the SPH side of the comparison is `np.random`-synthesised. Verified stale: no `np.random` exists in `delft3d/comparison.py`, the real PySPH path is wired, and the tests enforce determinism. A stale self-accusation in the top-level status document misdirects a reviewer away from the defects that *are* live (items 2 and 3). **Fix:** replace the note with the current state — real PySPH particles, correct per-particle volume, but an unregistered coordinate frame and a synthetic hydrograph figure.
 
-**19. LOW/MEDIUM — `jalraksha/delft3d/ugrid.py:264`.** `_cell_values_to_nodes`'s docstring says "`BedlevType=1` reads bed level at nodes", contradicting the module docstring (`:110-117`), `dfm_model.BEDLEVTYPE_NODES = 3` (`dfm_model.py:44`) and the MDU comment (`dfm_model.py:180-181`). This is the one setting the kernel aborts on. **Fix:** correct to 3.
+**19. LOW/MEDIUM — `floodview/delft3d/ugrid.py:264`.** `_cell_values_to_nodes`'s docstring says "`BedlevType=1` reads bed level at nodes", contradicting the module docstring (`:110-117`), `dfm_model.BEDLEVTYPE_NODES = 3` (`dfm_model.py:44`) and the MDU comment (`dfm_model.py:180-181`). This is the one setting the kernel aborts on. **Fix:** correct to 3.
 
-**20. LOW — `jalraksha/validation/delft3d_benchmark.py:158-159`.** Output path hardcoded as `f"DFM_OUTPUT_ritter"` (an f-string with no placeholders) rather than resolved through `runner._resolve_output_dir`, which exists for exactly this. **Fix:** call `_resolve_output_dir(model["output_dir"])`.
+**20. LOW — `floodview/validation/delft3d_benchmark.py:158-159`.** Output path hardcoded as `f"DFM_OUTPUT_ritter"` (an f-string with no placeholders) rather than resolved through `runner._resolve_output_dir`, which exists for exactly this. **Fix:** call `_resolve_output_dir(model["output_dir"])`.
 
-**21. LOW — `jalraksha/validation/sensitivity.py:124` and `:150`.** `WAHL_PEAK_OUTFLOW_FACTOR_UNCERTAINTY = 1.89` is `TODO: UNVETTED`, and the 95% scaling `* 1.06  # Approx 2σ` is unsourced. **Fix:** cite Wahl (2004) Table 3 with the specific row, or derive the 95% factor from the stated 89% interval under an explicit lognormal assumption and document it.
+**21. LOW — `floodview/validation/sensitivity.py:124` and `:150`.** `WAHL_PEAK_OUTFLOW_FACTOR_UNCERTAINTY = 1.89` is `TODO: UNVETTED`, and the 95% scaling `* 1.06  # Approx 2σ` is unsourced. **Fix:** cite Wahl (2004) Table 3 with the specific row, or derive the 95% factor from the stated 89% interval under an explicit lognormal assumption and document it.
 
-**22. LOW — `jalraksha/validation/sensitivity.py:210` and `:219`.** `is_converging` returns `True` for an empty ratio list, so a two-point sweep always converges; Richardson extrapolation hardcodes `p = 1.0` without estimating the observed order or checking the refinement ratio. **Fix:** require ≥ 3 points for `is_converging`; estimate `p = log(diffs[0]/diffs[1]) / log(r)` and report both the observed and assumed orders.
+**22. LOW — `floodview/validation/sensitivity.py:210` and `:219`.** `is_converging` returns `True` for an empty ratio list, so a two-point sweep always converges; Richardson extrapolation hardcodes `p = 1.0` without estimating the observed order or checking the refinement ratio. **Fix:** require ≥ 3 points for `is_converging`; estimate `p = log(diffs[0]/diffs[1]) / log(r)` and report both the observed and assumed orders.
 
-**23. LOW — `jalraksha/validation/sensitivity.py` (whole module).** No production caller; exercised only against `mock_output_fn` (`tests/test_sensitivity.py:26-29`). No parameter ranges are recorded anywhere. Presenting "sensitivity analysis" as a delivered capability would overstate what has been done. **Fix:** wire `oat_sensitivity` to the real breach ensemble for at least `height_m` and `storage_mm3`, publish the ranges and the resulting table, or describe the module in the feature list as scaffolding.
+**23. LOW — `floodview/validation/sensitivity.py` (whole module).** No production caller; exercised only against `mock_output_fn` (`tests/test_sensitivity.py:26-29`). No parameter ranges are recorded anywhere. Presenting "sensitivity analysis" as a delivered capability would overstate what has been done. **Fix:** wire `oat_sensitivity` to the real breach ensemble for at least `height_m` and `storage_mm3`, publish the ranges and the resulting table, or describe the module in the feature list as scaffolding.
 
-**24. LOW — `jalraksha/delft3d/comparison.py:129`, `:132-133`; `jalraksha/validation/metrics.py:45-47`, `:76-77`, `:109-110`.** Empty-denominator conventions disagree between modules (CSI → 1.0, precision/recall → 1.0 in one file and 0.0 in the other), and `compute_rmse` returns 0.0 when nothing is comparable, so "no data" is indistinguishable from "perfect". **Fix:** return `None` for undefined metrics and render an em-dash in the UI.
+**24. LOW — `floodview/delft3d/comparison.py:129`, `:132-133`; `floodview/validation/metrics.py:45-47`, `:76-77`, `:109-110`.** Empty-denominator conventions disagree between modules (CSI → 1.0, precision/recall → 1.0 in one file and 0.0 in the other), and `compute_rmse` returns 0.0 when nothing is comparable, so "no data" is indistinguishable from "perfect". **Fix:** return `None` for undefined metrics and render an em-dash in the UI.
 
-**25. LOW — `jalraksha/sph/pysph_runner.py:538-541`.** `front_speed_m_s` is a two-point secant over the whole record, including the `n_damp` ramp, and is displayed in the UI as "Surge front speed" (`ComparisonPanel.jsx:77`) without that caveat. **Fix:** fit the slope over the post-damping portion, and report both the fitted speed and its R².
+**25. LOW — `floodview/sph/pysph_runner.py:538-541`.** `front_speed_m_s` is a two-point secant over the whole record, including the `n_damp` ramp, and is displayed in the UI as "Surge front speed" (`ComparisonPanel.jsx:77`) without that caveat. **Fix:** fit the slope over the post-damping portion, and report both the fitted speed and its R².
 
-**26. LOW — `jalraksha/delft3d/runner.py:76-86`.** `_KERNEL_GLOBS` are Windows-only absolute paths; on Linux and in the project's own Docker image discovery reduces to two PATH lookups, so any containerised deployment is permanently Tier B. Not documented. **Fix:** add Linux glob patterns and a note in the module docstring and README.
+**26. LOW — `floodview/delft3d/runner.py:76-86`.** `_KERNEL_GLOBS` are Windows-only absolute paths; on Linux and in the project's own Docker image discovery reduces to two PATH lookups, so any containerised deployment is permanently Tier B. Not documented. **Fix:** add Linux glob patterns and a note in the module docstring and README.
 
 **27. LOW — `tests/test_delft3d.py:341-344`.** `test_hydrolib_core_importable` gates the suite on a dependency nothing uses; `setup._check_hydrolib_available` (`setup.py:30`) is never called. **Fix:** delete the test and the helper, or actually use hydrolib-core for MDU I/O.
 
 **28. LOW — `tests/test_delft3d.py` (whole file).** Every runner test passes `force_fallback=True`, so the Tier A branch — the one governing the naming rule — has no unit coverage. **Fix:** add a test that monkeypatches `_run_dflowfm_binary` to return a canned success and asserts `delft3d_binary_used is True`, the engine label, and the absence of a fallback reason.
 
-**29. LOW — `jalraksha/sph/domain.py:86-96` and `jalraksha/sph/coupling.py:87-92`.** Triple-nested Python loops for particle generation and an O(nx·ny·N) per-cell mask for free-surface extraction. Both are unused in production but shipped as public API. **Fix:** vectorise, or mark as reference implementations per item 11.
+**29. LOW — `floodview/sph/domain.py:86-96` and `floodview/sph/coupling.py:87-92`.** Triple-nested Python loops for particle generation and an O(nx·ny·N) per-cell mask for free-surface extraction. Both are unused in production but shipped as public API. **Fix:** vectorise, or mark as reference implementations per item 11.
 
 **30. LOW — documentation drift across `CLAUDE.md:16`, `README.md:151`, `docs/validation_findings.md:7-8`.** The kernel build is described as "dimrset 2026.01" in two places and "dimrset build 2025-10-20" in a third, and `README.md:171` contains a corrupted install path (`...\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe`) that does not match any entry in `_KERNEL_GLOBS`. **Fix:** derive the build string from the kernel at runtime (item 5) and generate the README table from `validation_metrics.json` rather than maintaining it by hand.
 
@@ -16896,7 +16896,7 @@ recorded as not written, not raised.
 
 ### 5. Current Gaps, Bugs and Known Vulnerabilities
 
-This section is the defect ledger for JalRaksha as the tree stands. It is derived
+This section is the defect ledger for FloodView as the tree stands. It is derived
 from nine independent subsystem audits covering the executive/architecture layer,
 orchestration and CLI, the FastAPI service, the React frontend, the DEM ingestion
 and terrain-conditioning pipeline, the 2D shallow-water solver core, consequence
@@ -16977,9 +16977,9 @@ Twenty-two findings are rated CRITICAL. Each is treated below with its defect,
 its exact location, the failure mechanism in full, its blast radius, its trigger
 conditions and a reproduction path.
 
-##### C-01 — `jalraksha.impact` is unimportable: missing `List` in the typing import
+##### C-01 — `floodview.impact` is unimportable: missing `List` in the typing import
 
-**Location:** `jalraksha/impact/hazard.py:143` (annotation), `jalraksha/impact/hazard.py:21` (import line).
+**Location:** `floodview/impact/hazard.py:143` (annotation), `floodview/impact/hazard.py:21` (import line).
 
 **Defect.** `HazardClassifier.get_color` is annotated `-> List[int]`. Line 21
 imports `Dict, Any, Optional` from `typing` and does not import `List`. There is
@@ -16990,8 +16990,8 @@ evaluates annotations eagerly at class-body execution time. The annotation
 `List[int]` is therefore a live name lookup during `class HazardClassifier:`
 construction, which happens on first import of the module. `List` is unbound, so
 the import raises `NameError: name 'List' is not defined` before the class object
-exists. `jalraksha/impact/__init__.py:12` imports from `hazard`, so the failure
-propagates: the entire `jalraksha.impact` package is unimportable.
+exists. `floodview/impact/__init__.py:12` imports from `hazard`, so the failure
+propagates: the entire `floodview.impact` package is unimportable.
 
 **Blast radius.** Everything downstream of the impact package. `tests/test_impact.py`
 cannot be collected, so the 344-test suite silently omits every impact assertion.
@@ -17002,16 +17002,16 @@ which will become live the instant this one-line defect is fixed. Fixing C-01
 alone, without the others, converts an obvious crash into a silent stream of
 wrong numbers. That ordering matters and is reflected in the remediation plan.
 
-**Trigger conditions.** Any `import jalraksha.impact`, on any platform, on any
+**Trigger conditions.** Any `import floodview.impact`, on any platform, on any
 Python version, unconditionally. There is no configuration under which this works.
 
-**Reproduction.** `python -c "import jalraksha.impact"` →
+**Reproduction.** `python -c "import floodview.impact"` →
 `NameError: name 'List' is not defined`. Or `python -m pytest tests/test_impact.py`
 → collection error.
 
-##### C-02 — `jalraksha.impact.population` is unimportable: missing `Tuple`
+##### C-02 — `floodview.impact.population` is unimportable: missing `Tuple`
 
-**Location:** `jalraksha/impact/population.py:184` (annotation `shape: Tuple[int, int]`), `jalraksha/impact/population.py:13` (import line).
+**Location:** `floodview/impact/population.py:184` (annotation `shape: Tuple[int, int]`), `floodview/impact/population.py:13` (import line).
 
 **Defect.** Identical shape to C-01. Line 13 imports `Dict, Any, Optional, List`
 and omits `Tuple`; `_generate_synthetic_settlements` at line 184 annotates its
@@ -17019,7 +17019,7 @@ and omits `Tuple`; `_generate_synthetic_settlements` at line 184 annotates its
 
 **Failure mechanism.** Function annotations are evaluated when the `def`
 statement executes, i.e. during class-body execution during module import.
-`Tuple` is unbound → `NameError` at import → `jalraksha.impact.__init__` fails.
+`Tuple` is unbound → `NameError` at import → `floodview.impact.__init__` fails.
 
 **Blast radius.** Same as C-01, and mutually reinforcing: even with C-01 fixed,
 the package remains unimportable until this is also fixed. Both must be repaired
@@ -17027,12 +17027,12 @@ in the same change or the package stays dark.
 
 **Trigger conditions.** Unconditional on import.
 
-**Reproduction.** After fixing C-01: `python -c "import jalraksha.impact.population"`
+**Reproduction.** After fixing C-01: `python -c "import floodview.impact.population"`
 → `NameError: name 'Tuple' is not defined`.
 
 ##### C-03 — Depth-damage grid multiplies the whole asset class into every cell, and pays out on dry ground
 
-**Location:** `jalraksha/impact/damage.py:134` (`damage_factor = (a + b * depth_grid) ** b`), `jalraksha/impact/damage.py:152` (`total_damage_percentage`).
+**Location:** `floodview/impact/damage.py:134` (`damage_factor = (a + b * depth_grid) ** b`), `floodview/impact/damage.py:152` (`total_damage_percentage`).
 
 **Defect.** `DepthDamageAnalyzer.calculate_damage` computes
 
@@ -17078,7 +17078,7 @@ figure in the wrong direction.
 
 ##### C-04 — `PopulationEstimator` returns zero population for every input
 
-**Location:** `jalraksha/impact/population.py:227` (`if settlement_type in self.settlement_data:`).
+**Location:** `floodview/impact/population.py:227` (`if settlement_type in self.settlement_data:`).
 
 **Defect.** `_get_population_density` reads `settlement_type = settlement_grid[i, j]`,
 which is an integer (0 = village, 1 = town, 2 = city, per the documented
@@ -17120,7 +17120,7 @@ assert r["total_population"] > 0   # fails: it is 0
 
 ##### C-05 — Nested depth thresholds accumulate, counting deep cells up to four times
 
-**Location:** `jalraksha/impact/population.py:261-267` (the `for threshold_name, threshold in self.exposure_thresholds.items():` loop).
+**Location:** `floodview/impact/population.py:261-267` (the `for threshold_name, threshold in self.exposure_thresholds.items():` loop).
 
 **Defect.** `_analyze_depth_impact` iterates the four exposure thresholds
 (`minimal` 0.1 m, `moderate` 0.5 m, `severe` 1.0 m, `catastrophic` 2.0 m) and for
@@ -17153,7 +17153,7 @@ over a uniform settlement grid and compare `population_affected` against
 
 ##### C-06 — FD2320 hazard classification has a velocity ceiling with no catch-all: a 3 m / 10 m/s cell classifies as DRY
 
-**Location:** `jalraksha/impact/hazard.py:105` (`velocity_ok = velocity_grid <= thresholds["max_velocity"]`).
+**Location:** `floodview/impact/hazard.py:105` (`velocity_ok = velocity_grid <= thresholds["max_velocity"]`).
 
 **Defect.** `HazardClassifier.classify` builds each level's condition as
 `depth_min & depth_max & velocity_ok`, where `velocity_ok` is a **ceiling**
@@ -17190,7 +17190,7 @@ assert out[0,0] is not HazardLevel.DRY   # fails
 
 ##### C-07 — `State.__post_init__` sanitises NaN on every step, making divergence detection dead code
 
-**Location:** `jalraksha/solver/types.py:137-140` (`np.nan_to_num(...)` × 4), called from `jalraksha/solver/core.py:469`.
+**Location:** `floodview/solver/types.py:137-140` (`np.nan_to_num(...)` × 4), called from `floodview/solver/core.py:469`.
 
 **Defect.** `State.__post_init__` runs `np.nan_to_num(..., copy=False, nan=0.0, posinf=0.0, neginf=0.0)` over `h`, `u`, `v` and `b`. Because `core.py:469` constructs a new `State` on every timestep, this runs every step, not just on construction from a DEM.
 
@@ -17231,7 +17231,7 @@ assert np.all(s.h == 0.0) # passes — silently
 
 ##### C-08 — Breach triangle hydrograph has no rise limb and overshoots the requested peak by 1.7×
 
-**Location:** `jalraksha/terrain/breach.py:389-405` (`_generate_triangle_hydrograph`).
+**Location:** `floodview/terrain/breach.py:389-405` (`_generate_triangle_hydrograph`).
 
 **Defect.** The function builds three masks and assigns to `Q_t` in sequence:
 
@@ -17283,7 +17283,7 @@ assert q[0] == 0.0 and q[:10].max() < q[100]  # fails: no rise limb
 
 ##### C-09 — Keyframe bounds fallback returns geographic nonsense as a structurally perfect manifest
 
-**Location:** `jalraksha/export/keyframes.py:117-130` (the `except Exception:` branch of `_reproject_bounds_utm_to_wgs84`).
+**Location:** `floodview/export/keyframes.py:117-130` (the `except Exception:` branch of `_reproject_bounds_utm_to_wgs84`).
 
 **Defect.** When `rasterio.warp.transform` is unavailable or raises, the fallback
 treats the UTM easting `cx` as metres east of the prime meridian and the northing
@@ -17314,8 +17314,8 @@ at all — the only marker is a source comment.
 
 **Trigger conditions.** Any failure of `from rasterio.warp import transform` or
 of the transform call itself. The most likely real trigger is the PROJ database
-breakage documented at `jalraksha/__init__.py:85-86` and
-`jalraksha/dem.py:50-51`, which is an import-order-dependent condition — see
+breakage documented at `floodview/__init__.py:85-86` and
+`floodview/dem.py:50-51`, which is an import-order-dependent condition — see
 X-06 below. A machine where PROJ is broken produces geographically wrong
 keyframes rather than an error.
 
@@ -17405,7 +17405,7 @@ HIGH/MEDIUM findings in the frontend audit and each is a live trigger.
 
 ##### C-12 — The Mullaperiyar prohibition is never enforced in code
 
-**Location:** `jalraksha/hardening.py:258-282` (`check_forbidden_sources`); zero production call sites.
+**Location:** `floodview/hardening.py:258-282` (`check_forbidden_sources`); zero production call sites.
 
 **Defect.** `check_forbidden_sources` scans a string for a forbidden list
 including `"mullaperiyar"` and returns a `list` of matches. It does not raise.
@@ -17417,7 +17417,7 @@ It is called from no production code path — `validate_dam_config`
 naming Mullaperiyar, or supplying its coordinates, passes `validate_dam_config` —
 which checks name-is-a-nonempty-string, lat/lon ranges, height and storage ranges,
 and enumerated failure mode and dam type — and proceeds to run. The CLI is worse:
-`jalraksha/cli.py` accepts arbitrary `--lat/--lon` with no check at all.
+`floodview/cli.py` accepts arbitrary `--lat/--lon` with no check at all.
 
 **Blast radius.** G3, the project's own explicitly stated prohibition, is
 documentary only. `README.md` and `CLAUDE.md` both assert the constraint;
@@ -17433,17 +17433,17 @@ constraints are enforced either.
 forbidden source. There is no configuration under which the check fires.
 
 **Reproduction.** `POST /runs` with `{"lat": 9.5299, "lon": 77.1447, "height_m": 53.6, "storage_mm3": 443.2, "dam_id": null}` — accepted and executed. Or
-`jalraksha run --dam Mullaperiyar --lat 9.5299 --lon 77.1447 --height 53.6 --storage 443.2`.
+`floodview run --dam Mullaperiyar --lat 9.5299 --lon 77.1447 --height 53.6 --storage 443.2`.
 
 Two secondary defects sit on the same function and would matter once it is wired:
 `check_forbidden_sources` uses case-insensitive substring matching, so `"merit"`
 matches "meritorious" and "merit review" and `"bhuvan"` would match a place name
-(LOW, `hardening.py:277-278`); and `jalraksha/config.py:110` contains the typo
+(LOW, `hardening.py:277-278`); and `floodview/config.py:110` contains the typo
 `"cartoudem"`, so a config naming CartoDEM passes validation (MEDIUM).
 
 ##### C-13 — No authentication or authorisation on any service endpoint
 
-**Location:** `services/api/jalraksha_service/main.py:114-936` (every route).
+**Location:** `services/api/floodview_service/main.py:114-936` (every route).
 
 **Defect.** Not one route carries a dependency, a middleware check, an API key,
 a token or any other access control. `/docs` and `/openapi.json` are served,
@@ -17465,7 +17465,7 @@ has. Three routes are individually dangerous:
 CPU, exhaust its memory (via C-14's unbounded `target_resolution`), spawn
 processes on it, and read everything the `/files` mount exposes (H-`main.py:83`:
 the entire `DATA_DIR` tree, including the SQLite metadata store at
-`/files/jalraksha.db`, `validation_cache.json`, the GEE caches, the Delft3D model
+`/files/floodview.db`, `validation_cache.json`, the GEE caches, the Delft3D model
 directories and transient run payloads). Wildcard CORS
 (`main.py:46-48`, `allow_origins=["*"]` with wildcard methods and headers) means
 any web page in a victim's browser can drive the whole API; this is mitigated
@@ -17475,7 +17475,7 @@ unconditionally so it survives any tightening of the main policy.
 
 Under `docker-compose.yml` the exposure widens further: Redis is published on
 `6379:6379` with no `requirepass` (`docker-compose.yml:17-18`) and Postgres on
-`5432:5432` with the default credentials `jalraksha`/`jalraksha` hardcoded in the
+`5432:5432` with the default credentials `floodview`/`floodview` hardcoded in the
 compose file (`:20-29`), and neither Dockerfile sets a `USER`, so containers run
 as root and write host files as root through the `./data:/data` bind mount.
 
@@ -17487,7 +17487,7 @@ Wi-Fi with the API bound to `0.0.0.0`, that is every device in the room.
 
 ##### C-14 — The service cannot reach its own database under compose: `psycopg` vs `psycopg2-binary`
 
-**Location:** `services/api/jalraksha_service/db.py:37` (`import psycopg`) vs `services/api/requirements.txt:7` (`psycopg2-binary`).
+**Location:** `services/api/floodview_service/db.py:37` (`import psycopg`) vs `services/api/requirements.txt:7` (`psycopg2-binary`).
 
 **Defect.** `_connect()` takes the Postgres branch whenever `DATABASE_URL` does
 not start with `sqlite`, and imports `psycopg` — the psycopg **3** package name.
@@ -17527,10 +17527,10 @@ exactly what `docker-compose.yml` configures.
 
 ##### C-15 — Packaging omits four real subpackages: `pip install .` ships neither Delft3D, impact, GEE nor validation
 
-**Location:** `pyproject.toml:86` — `packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]`.
+**Location:** `pyproject.toml:86` — `packages = ["floodview", "floodview.solver", "floodview.terrain", "floodview.export", "floodview.sph"]`.
 
-**Defect.** Four subpackages with real `__init__.py` files — `jalraksha.delft3d`,
-`jalraksha.gee`, `jalraksha.impact`, `jalraksha.validation` — are absent from the
+**Defect.** Four subpackages with real `__init__.py` files — `floodview.delft3d`,
+`floodview.gee`, `floodview.impact`, `floodview.validation` — are absent from the
 explicit `[tool.setuptools] packages` list.
 
 **Failure mechanism.** With an explicit `packages` list, setuptools ships exactly
@@ -17549,11 +17549,11 @@ first time by whoever installs the wheel — most likely a judge or an evaluator
 **Trigger conditions.** `pip install .` or `python -m build` followed by
 installing the wheel. Not triggered by `pip install -e .`.
 
-**Reproduction.** `python -m build && pip install dist/*.whl && python -c "import jalraksha.impact"` → `ModuleNotFoundError`.
+**Reproduction.** `python -m build && pip install dist/*.whl && python -c "import floodview.impact"` → `ModuleNotFoundError`.
 
-##### C-16 — The `jalraksha.validation` package is unimportable: missing `Optional`
+##### C-16 — The `floodview.validation` package is unimportable: missing `Optional`
 
-**Location:** `jalraksha/validation/metrics.py:88` (`mask: Optional[np.ndarray] = None`), `jalraksha/validation/metrics.py:16` (`from typing import Dict, Union`).
+**Location:** `floodview/validation/metrics.py:88` (`mask: Optional[np.ndarray] = None`), `floodview/validation/metrics.py:16` (`from typing import Dict, Union`).
 
 **Defect.** `compute_rmse` annotates its `mask` parameter `Optional[np.ndarray]`.
 Line 16 imports only `Dict` and `Union`. There is no
@@ -17562,9 +17562,9 @@ Line 16 imports only `Dict` and `Union`. There is no
 **Failure mechanism.** Same as C-01/C-02: the default-argument annotation is
 evaluated at `def` time during import → `NameError: name 'Optional' is not defined`.
 
-**Blast radius.** Propagates to `jalraksha/validation/__init__.py`,
-`jalraksha/validation/benchmarks.py`, `jalraksha/validation/delft3d_benchmark.py`,
-`jalraksha/validation/sensitivity.py` and `tests/test_validation.py`. The entire
+**Blast radius.** Propagates to `floodview/validation/__init__.py`,
+`floodview/validation/benchmarks.py`, `floodview/validation/delft3d_benchmark.py`,
+`floodview/validation/sensitivity.py` and `tests/test_validation.py`. The entire
 Phase-8 validation package is unreachable and its test file cannot be collected.
 This has a direct consequence for the project's own status reporting: the
 `docs/progress.md:75` figure of "435 passed, 4 skipped" **cannot be true of the
@@ -17575,11 +17575,11 @@ which is itself a CRITICAL governance finding (see C-19).
 
 **Trigger conditions.** Unconditional on import.
 
-**Reproduction.** `python -c "import jalraksha.validation"` → `NameError`.
+**Reproduction.** `python -c "import floodview.validation"` → `NameError`.
 
 ##### C-17 — PS deliverable D1/R2 "river blockage analysis" is unimplemented
 
-**Location:** `docs/PS-26161-official.md` (requirement) vs `jalraksha/presets.py` and the package tree (absence).
+**Location:** `docs/PS-26161-official.md` (requirement) vs `floodview/presets.py` and the package tree (absence).
 
 **Defect.** The problem statement marks "two scenario types, not one" as
 non-negotiable: engineered dam-break **and** river blockage (landslide-dam /
@@ -17671,7 +17671,7 @@ boundaries (`impact/hazard.py:225,247-249`), and `WARNING_LEAD_TIME_S`
 
 ##### C-21 — SPH particles are binned in the wrong coordinate frame, invalidating every headline comparison metric
 
-**Location:** `jalraksha/delft3d/comparison.py:72-73`.
+**Location:** `floodview/delft3d/comparison.py:72-73`.
 
 **Defect.** `sph_particles_to_depth_grid` computes cell indices as
 
@@ -17876,7 +17876,7 @@ in both classes could change by an order of magnitude without a test failing.
 
 **`main.py:83` — the `/files` mount exposes the entire `DATA_DIR` tree read-only over HTTP,**
 including the SQLite metadata store itself (`config.py:85` defaults
-`DATABASE_URL` *inside* `DATA_DIR`, so `/files/jalraksha.db` is downloadable),
+`DATABASE_URL` *inside* `DATA_DIR`, so `/files/floodview.db` is downloadable),
 `validation_cache.json`, the GEE caches, the Delft3D model directories, and
 transient run payloads written to `DATA_DIR/runs/<run_id>_*.json`
 (`main.py:199-205`) which are reachable at `/files/runs/...` until
@@ -17944,7 +17944,7 @@ silently disabled in every containerised deployment.
 
 **`docker-compose.yml:17-18` — Redis published on `6379:6379` with no `requirepass`.**
 
-**`docker-compose.yml:20-29` — Postgres published on `5432:5432` with default credentials `jalraksha`/`jalraksha` hardcoded in the compose file.**
+**`docker-compose.yml:20-29` — Postgres published on `5432:5432` with default credentials `floodview`/`floodview` hardcoded in the compose file.**
 
 ##### 5.3.3 Frontend (11 HIGH)
 
@@ -18042,10 +18042,10 @@ regressions produce a defensible spread — depends on them. A gate calibrated
 against placeholder bands does not test anything.
 
 **`dem.py:50-51` vs `__init__.py:85-86` — `dem.py` pops the `PROJ_LIB`/`PROJ_DATA` the package init deliberately set.**
-`jalraksha/__init__.py:_repair_proj_data_path` sets these to repair a broken
+`floodview/__init__.py:_repair_proj_data_path` sets these to repair a broken
 inherited PROJ database; `dem.py` unsets them at module scope. Which wins depends
 on import order, so the same code either works or raises `CRSError` depending on
-whether `jalraksha.dem` was imported before or after the repair ran. See X-06.
+whether `floodview.dem` was imported before or after the repair ran. See X-06.
 
 ##### 5.3.5 Solver core (4 HIGH)
 
@@ -18122,7 +18122,7 @@ FD2320**. A reviewer who overlays the two in QGIS sees them disagree.
 
 **`service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters actually come from.**
 It covers `render_static.py`, `camera_presets.py` and `main.py`, and omits
-`jalraksha/presets.py` and `jalraksha_service/config.py` — which is where
+`floodview/presets.py` and `floodview_service/config.py` — which is where
 `--exaggeration` and `--depth-max` originate. Editing a preset therefore leaves
 every cached ParaView state stale-but-considered-fresh: precisely the class of
 bug the check was added to close.
@@ -18285,7 +18285,7 @@ are consolidated into one row that names all their sites.
 | `api.py:143` | A second, uncited copy of the Froehlich 1995 regression duplicating `terrain/breach.py::froehlich_1995_peak_outflow` | The two will silently diverge when the vetted one is corrected |
 | `run.py:316`, `service/tasks.py:1015` | `int(str(grid.crs).split(":")[-1]) % 100` duplicated in two files | A WKT or PROJ-string CRS raises `ValueError`; `EPSG:4326` silently yields "zone 26" |
 | `run.py:515-518` | `delta_h = q_current * dt_s / cell_area` is uncapped | At Tehri peak outflow (~10⁵ m³/s), `dt_s = 30 s`, 200 m cells: ~75 m of depth added to one cell in one step — the likeliest cause of the `parallel.py:190-195` timestep-collapse warning |
-| `scripts/run_api.py:53` | A personal GCP project id baked in via `os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")` | Any other user silently inherits a project they cannot access; Earth Engine fails with a permissions error instead of the clean "not set" path |
+| `scripts/run_api.py:53` | A personal GCP project id baked in via `os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")` | Any other user silently inherits a project they cannot access; Earth Engine fails with a permissions error instead of the clean "not set" path |
 | `cli.py:121-122` | `solver_duration_s=1800.0` and `target_resolution=200.0` hardcoded with no flags; `domain_radius_km` falls to 60.0 | A 30-minute simulation cannot reach Haridwar at 58.4 km, and there is no way to ask for more |
 
 ##### 5.4.2 MEDIUM — Service layer
@@ -18305,7 +18305,7 @@ are consolidated into one row that names all their sites.
 | `main.py:214-221` | The spawned run process is fire-and-forget: `Popen` discarded, no PID, no `wait()`, no timeout, no kill path | POSIX zombies accumulate until the API exits; a hung run cannot be stopped |
 | `main.py:98-99` | `_to_file_url` returns a path outside `DATA_DIR` verbatim into the JSON response | Discloses the server's absolute filesystem layout and yields a URL the browser cannot fetch |
 | `main.py:257` | Recorded export paths are relative and resolved against the process CWD | `Path(p).exists()` depends on where the API was launched; `scripts/run_api.py:14-17` exists partly to `os.chdir(REPO_ROOT)` and compensate |
-| `services/api/Dockerfile:14` | Source lands at `/app/services/api/jalraksha_service`, CWD is `/app`, nothing sets `PYTHONPATH` | `uvicorn jalraksha_service.main:app` has no obvious import root |
+| `services/api/Dockerfile:14` | Source lands at `/app/services/api/floodview_service`, CWD is `/app`, nothing sets `PYTHONPATH` | `uvicorn floodview_service.main:app` has no obvious import root |
 | `pyproject.toml:86` | Four real subpackages omitted from `packages` | See C-15 |
 | `docker-compose.yml:40-42` | No `condition: service_healthy`, no `healthcheck` on any service | API container crashes on boot if Postgres is not yet accepting connections |
 | `docker-compose.yml:63-68` | The nginx `tiles` service serves the default config with no `Access-Control-Allow-Origin` | Cesium fetching `http://localhost:8080/layer.json` from `http://localhost:3000` is blocked |
@@ -18403,7 +18403,7 @@ are consolidated into one row that names all their sites.
 | `gee/sar.py:202,208,214,260` | `MIN_TILE_CLASS_FRACTION=0.05`, `MAX_PLAUSIBLE_WATER_FRACTION=0.80`, `JRC_PERMANENT_OCCURRENCE_PCT=80`, tile guards `size<8`/`sum()<100` | All affect whether a mask is published; none carries a `TODO: UNVETTED` marker (queue #15) |
 | `tests/test_impact.py:61-77` | Depth-damage tests assert only shape, monotonicity and positivity | The rate constants could change by 10× without failing |
 | `tests/test_gee.py` | `_agreement_with_jrc`, `_fetch_live`, `_fetch_ghsl_live`, `_read_cache` (both modules) and `_download` have no offline tests | Exercised only by three live, `@pytest.mark.slow`, skipped-by-default tests |
-| `tests/test_gee.py:49-55` | The `no_gee` fixture can only unset `JALRAKSHA_GEE_PROJECT` | The missing-credential-but-project-set path in `auth._probe` is never covered |
+| `tests/test_gee.py:49-55` | The `no_gee` fixture can only unset `FLOODVIEW_GEE_PROJECT` | The missing-credential-but-project-set path in `auth._probe` is never covered |
 
 ##### 5.4.7 MEDIUM — Export, visualisation and validation
 
@@ -18481,7 +18481,7 @@ so a parameter-less request returns the Tehri corridor as a general answer;
 `api.py:108-113` generic gauge placeholders hardcode "downstream = due south";
 `hardening.py` `isinstance(x, (int, float))` accepts `bool`, so `{"lat": True}`
 passes as `1.0`; `cli.py:78` `if not all([...])` treats `0.0` as missing so a dam
-at latitude 0.0 is rejected; `cli.py` `jalraksha cache` with neither `--list` nor
+at latitude 0.0 is rejected; `cli.py` `floodview cache` with neither `--list` nor
 `--clear` prints nothing and exits 0, `cmd_validate` assigns an unused `config`
 local, and termination uses the builtin `exit(1)` from `site` rather than
 `sys.exit(1)`; `db.py:106` `_add_column` interpolates `table`/`column`/`coltype`
@@ -18689,7 +18689,7 @@ unconditional `Access-Control-Allow-Origin: *` in the static middleware
 (`main.py:154-157`), no concurrency cap, no task timeout (`tasks.py:1429-1439`),
 no cancel endpoint, and the spawned process is fire-and-forget with no PID and no
 kill path (`main.py:214-221`). The stdlib API has the same properties:
-`jalraksha/api.py` has no authentication, no rate limiting, no concurrency cap, no
+`floodview/api.py` has no authentication, no rate limiting, no concurrency cap, no
 request queue limit and no access log (`log_message` is overridden to a no-op).
 Under compose, Redis (`6379`, no `requirepass`) and Postgres (`5432`, default
 credentials) are published to the host, and both containers run as root.
@@ -18698,7 +18698,7 @@ credentials) are published to the host, and both containers run as root.
 
 `main.py:83` mounts the entire `DATA_DIR` at `/files`. Because `config.py:85`
 defaults `DATABASE_URL` inside `DATA_DIR`, the SQLite metadata store itself is at
-`/files/jalraksha.db` and downloadable. So are `validation_cache.json`, the GEE
+`/files/floodview.db` and downloadable. So are `validation_cache.json`, the GEE
 caches, the Delft3D model directories, and the transient run payloads written to
 `DATA_DIR/runs/<run_id>_*.json` (`main.py:199-205`), which remain reachable until
 `run_worker.py:112` unlinks them and are never cleaned if the child never starts.
@@ -18829,8 +18829,8 @@ each will diverge on the first correction to one copy.
 
 | Quantity | Copies |
 |---|---|
-| Dam registry | `presets.py:369` (2 dams), `service/config.py::DEMO_DAMS` (5), `jalraksha/api.py:30` (2), plus "6 dams" in the walkthrough — four registries |
-| Froehlich 1995 regression | `terrain/breach.py::froehlich_1995_peak_outflow`, `jalraksha/api.py:143` |
+| Dam registry | `presets.py:369` (2 dams), `service/config.py::DEMO_DAMS` (5), `floodview/api.py:30` (2), plus "6 dams" in the walkthrough — four registries |
+| Froehlich 1995 regression | `terrain/breach.py::froehlich_1995_peak_outflow`, `floodview/api.py:143` |
 | FD2320 thresholds | `impact/hazard.py:46-52` (6 levels), `export/shapefile.py:266-317` (4 levels), `GaugesPanel.jsx:112-120` (client copy) |
 | Wet/dry cutoff | `keyframes.py:218` (0.1), `xdmf_export.py:56` (0.01), `render_static.py:73` (0.01), `kml.py:311` (0.1), `shapefile.py:201` (0.1) |
 | Arrival threshold | `solver/types.py:276` (0.05 m), `solver/parallel.py:37` (0.1 m) |
@@ -18894,9 +18894,9 @@ Delft3D-comparable configuration, and that output is not Delft3D. We have not
 verified which tier ran in any recorded result, because no test covers Tier A and
 no code reads the kernel version."*
 
-**What an unwary demo wrongly implies.** That the Comparison tab shows JalRaksha
+**What an unwary demo wrongly implies.** That the Comparison tab shows FloodView
 against Delft3D. On a laptop without the kernel, or in the container, it shows
-JalRaksha against JalRaksha in a different configuration — with the same panel
+FloodView against FloodView in a different configuration — with the same panel
 layout, the same metric cards and the same labels.
 
 ##### 5.6.2 The synthesized SPH side of the comparison
@@ -18992,7 +18992,7 @@ returns. The two engines are not compared over a common domain, and near-field
 depths cannot be claimed as metre-accurate because the boundary is thirty times
 coarser than the fluid."*
 
-**What an unwary demo wrongly implies.** That JalRaksha runs SPH and depth-averaged
+**What an unwary demo wrongly implies.** That FloodView runs SPH and depth-averaged
 models over the same dam-break and cross-validates them.
 
 ##### 5.6.5 The 30 m DEM and point-depth claims
@@ -19162,8 +19162,8 @@ exhaustion, or wrong-but-plausible output. Each row gives the triggering input.
 
 | Trigger | Path | Result |
 |---|---|---|
-| `import jalraksha.impact` (any) | `hazard.py:143`, `population.py:184` | `NameError` — package unimportable (C-01, C-02) |
-| `import jalraksha.validation` (any) | `metrics.py:88` | `NameError` — package unimportable (C-16) |
+| `import floodview.impact` (any) | `hazard.py:143`, `population.py:184` | `NameError` — package unimportable (C-01, C-02) |
+| `import floodview.validation` (any) | `metrics.py:88` | `NameError` — package unimportable (C-16) |
 | `calculate_damage()` with the documented default | `damage.py:111` | `KeyError: DamageType.TOTAL` |
 | `calculate_damage(..., curve_version="wang_2016", damage_type=INFRASTRUCTURE)` | `damage.py:112` | `KeyError` — `alternative_curves` has only a RESIDENTIAL key |
 | A malformed `dam_config` missing `name` | `run.py:585` | Bare `KeyError`, not the `HardeningError` the hardening module exists to produce |
@@ -19286,9 +19286,9 @@ taken on, and neither environment has been validated against the other.
 - `matplotlib` is imported unconditionally by `tasks.py:258-260` and `:825-831`
   and is in **neither** `services/api/requirements.txt` **nor** `pyproject.toml`'s
   core dependencies — it is in the `viz` extra, which neither Dockerfile installs.
-- `jalraksha/config.py:31` carries `import yaml  # To be added to pyproject.toml`:
+- `floodview/config.py:31` carries `import yaml  # To be added to pyproject.toml`:
   an undeclared dependency at module scope.
-- `pyproject.toml:92-103` — `addopts` hardcodes `--cov=jalraksha`, so the suite
+- `pyproject.toml:92-103` — `addopts` hardcodes `--cov=floodview`, so the suite
   cannot run without `pytest-cov`, which is only in the `dev`/`test` extras that
   neither Dockerfile installs.
 
@@ -19297,15 +19297,15 @@ taken on, and neither environment has been validated against the other.
 This is the most likely single cause of a demo-day failure that is not a code
 defect.
 
-`jalraksha/__init__.py:_repair_proj_data_path` exists because the process can
+`floodview/__init__.py:_repair_proj_data_path` exists because the process can
 inherit a broken `PROJ_LIB`/`PROJ_DATA` from the environment — typically from
 another GDAL installation on the same machine — which makes every CRS operation
 raise `CRSError`. The repair searches for a valid `proj.db` and sets the
 variables. Two defects sit on it:
 
-1. **`jalraksha/dem.py:50-51` pops the very variables the package init sets**
-   (HIGH). Which behaviour wins depends entirely on import order. `import jalraksha`
-   then `import jalraksha.dem` gives one outcome; importing `jalraksha.dem`
+1. **`floodview/dem.py:50-51` pops the very variables the package init sets**
+   (HIGH). Which behaviour wins depends entirely on import order. `import floodview`
+   then `import floodview.dem` gives one outcome; importing `floodview.dem`
    through a path that has not yet run the package init gives another. The same
    code either works or raises depending on how it was reached.
 2. **`_repair_proj_data_path` returns silently when no candidate `proj.db`
@@ -19387,7 +19387,7 @@ least eight defects that would surface in sequence on the first attempt:
    and the `3000:3000` mapping is consistent only with `npm run dev` in a
    container. Unresolvable from this tree.
 5. `services/api/Dockerfile:14` — nothing sets `PYTHONPATH`, so
-   `uvicorn jalraksha_service.main:app` has no obvious import root.
+   `uvicorn floodview_service.main:app` has no obvious import root.
 6. `docker-compose.yml:40-42` — no healthchecks and no `condition: service_healthy`,
    while `main.py:40` calls `db.init_db()` at import time.
 7. `matplotlib` absent from the image — every delft3d/both run writes a
@@ -19468,7 +19468,7 @@ only shape, monotonicity and positivity — the rate constants could change 10×
 **GEE.** `_agreement_with_jrc`, `_fetch_live`, `_fetch_ghsl_live`, `_read_cache`
 (both modules) and `_download` have no offline tests; they are exercised only by
 three live, `@pytest.mark.slow`, skipped-by-default tests. The `no_gee` fixture
-(`test_gee.py:49-55`) can only unset `JALRAKSHA_GEE_PROJECT`, so the
+(`test_gee.py:49-55`) can only unset `FLOODVIEW_GEE_PROJECT`, so the
 missing-credential-but-project-set path in `auth._probe` is never covered.
 
 **Delft3D.** Every runner test passes `force_fallback=True`, so the **Tier A
@@ -19611,7 +19611,7 @@ despite being trivially small: they are 0.25 h each and they gate an entire
 package plus its test file.
 
 **The override: the ordering constraint.** Three of the CRITICAL findings *mask*
-others. C-01/C-02 keep `jalraksha.impact` unimportable, which is the only reason
+others. C-01/C-02 keep `floodview.impact` unimportable, which is the only reason
 C-03, C-04, C-05 and C-06 are latent. C-04 (population always zero) masks C-05
 (4× overcount), because four times zero is still zero. Fixing a masking defect
 alone converts an obvious crash into a silent stream of wrong numbers — strictly
@@ -19696,26 +19696,26 @@ masking reason given in §6.1.1.
 
 ##### P0-01 — Restore the missing `typing` imports (C-01, C-02, C-16)
 
-**Location.** `jalraksha/impact/hazard.py:21` (annotation at `:143`);
-`jalraksha/impact/population.py:13` (annotation at `:184`);
-`jalraksha/validation/metrics.py:16` (annotation at `:88`).
+**Location.** `floodview/impact/hazard.py:21` (annotation at `:143`);
+`floodview/impact/population.py:13` (annotation at `:184`);
+`floodview/validation/metrics.py:16` (annotation at `:88`).
 
 **Root cause.** Three modules annotate a name they never imported, and none of
 the three carries `from __future__ import annotations`. Python therefore
 evaluates the annotation eagerly — at class-body execution for
 `HazardClassifier.get_color`, at `def` execution for
 `_generate_synthetic_settlements` and `compute_rmse` — so the name lookup happens
-during module import and raises `NameError`. Because `jalraksha/impact/__init__.py`
+during module import and raises `NameError`. Because `floodview/impact/__init__.py`
 imports all three impact submodules at package level, one missing name makes the
-entire `jalraksha.impact` package unimportable, which is why `tests/test_impact.py`
+entire `floodview.impact` package unimportable, which is why `tests/test_impact.py`
 has never been collected and why the four wrong-number defects inside those
 modules survived a 344-test suite.
 
 **Patch.**
 
 ```diff
---- a/jalraksha/impact/hazard.py
-+++ b/jalraksha/impact/hazard.py
+--- a/floodview/impact/hazard.py
++++ b/floodview/impact/hazard.py
 @@ -18,7 +18,7 @@
  
  import numpy as np
@@ -19725,8 +19725,8 @@ modules survived a 344-test suite.
 ```
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@ -11,7 +11,7 @@
  
  import numpy as np
@@ -19736,8 +19736,8 @@ modules survived a 344-test suite.
 ```
 
 ```diff
---- a/jalraksha/validation/metrics.py
-+++ b/jalraksha/validation/metrics.py
+--- a/floodview/validation/metrics.py
++++ b/floodview/validation/metrics.py
 @@ -14,7 +14,7 @@
  
  import numpy as np
@@ -19754,7 +19754,7 @@ them. Import the names.
 **Verification.**
 
 ```
-python -c "import jalraksha.impact, jalraksha.validation; print('ok')"
+python -c "import floodview.impact, floodview.validation; print('ok')"
 python -m pytest tests/test_impact.py tests/test_validation.py tests/test_gee.py -q
 ```
 
@@ -19768,7 +19768,7 @@ failures — that is the point; they are C-03 through C-06 becoming visible.
 
 ##### P0-02 — Depth-damage grid: per-cell asset value, wet mask, and a real percentage (C-03)
 
-**Location.** `jalraksha/impact/damage.py:111-160` (`DepthDamageAnalyzer.calculate_damage`).
+**Location.** `floodview/impact/damage.py:111-160` (`DepthDamageAnalyzer.calculate_damage`).
 
 **Root cause.** Three independent errors compound. `base_value` is
 `self.asset_values[damage_type]` — a documented *class total* of 125.0 crore INR
@@ -19973,7 +19973,7 @@ breaks):
 python -m pytest tests/test_impact.py -q -k damage
 python - <<'PY'
 import numpy as np
-from jalraksha.impact.damage import DepthDamageAnalyzer, DamageType
+from floodview.impact.damage import DepthDamageAnalyzer, DamageType
 d = DepthDamageAnalyzer()
 dry = d.calculate_damage(np.zeros((240, 240)), DamageType.RESIDENTIAL)
 assert dry["damage_crore_inr"] == 0.0, dry["damage_crore_inr"]
@@ -19995,7 +19995,7 @@ by 100.
 
 ##### P0-03 — `PopulationEstimator` returns zero for every input (C-04)
 
-**Location.** `jalraksha/impact/population.py:227`
+**Location.** `floodview/impact/population.py:227`
 (`if settlement_type in self.settlement_data:` inside `_get_population_density`).
 
 **Root cause.** `settlement_grid` is documented and produced as integer codes
@@ -20016,8 +20016,8 @@ triple-nested Python loop (a MEDIUM performance finding on the same function) in
 favour of vectorised lookup, which is both faster and easier to prove correct.
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@
 +    # Integer codes as produced by _generate_synthetic_settlements and as
 +    # documented on estimate_population. This mapping is the ONLY place the
@@ -20105,7 +20105,7 @@ favour of vectorised lookup, which is both faster and easier to prove correct.
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.impact.population import PopulationEstimator
+from floodview.impact.population import PopulationEstimator
 est = PopulationEstimator()
 r = est.estimate_population(np.full((100, 100), 5.0),
                             settlement_grid=np.full((100, 100), 2),  # all city
@@ -20128,7 +20128,7 @@ multiplier without updating the citation queue.
 
 ##### P0-04 — Nested depth thresholds, the shadowed cell area, and the demographic overcount (C-05, plus HIGH `population.py:275` and HIGH `population.py:319`)
 
-**Location.** `jalraksha/impact/population.py:255-285` (`_analyze_depth_impact`)
+**Location.** `floodview/impact/population.py:255-285` (`_analyze_depth_impact`)
 and `:290-321` (`_estimate_demographics`).
 
 **Root cause, three parts.**
@@ -20150,8 +20150,8 @@ and `:290-321` (`_estimate_demographics`).
 **Patch.**
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@
 -        # Analyze by depth thresholds
 -        for threshold_name, threshold in self.exposure_thresholds.items():
@@ -20206,8 +20206,8 @@ and `:290-321` (`_estimate_demographics`).
 For the demographic total:
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@
          demographics["working_age"] = int(demographics["working_age"] * 0.9)
  
@@ -20237,8 +20237,8 @@ There is also a residual reporting defect worth fixing in the same commit:
 100× too large.
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@
 -            "par_percentage": float(depth_analysis["par_percentage"] * 100),
 +            # par_percentage is already a percentage; the second *100 published
@@ -20251,7 +20251,7 @@ There is also a residual reporting defect worth fixing in the same commit:
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.impact.population import PopulationEstimator
+from floodview.impact.population import PopulationEstimator
 est = PopulationEstimator()
 n = 100
 depth = np.zeros((n, n)); depth[:n // 2, :] = 3.0     # exactly half the domain
@@ -20277,7 +20277,7 @@ the denominator.
 
 ##### P0-05 — FD2320 hazard classification: velocity ceilings with no catch-all classify deep fast water as DRY (C-06)
 
-**Location.** `jalraksha/impact/hazard.py:88-120` (`HazardClassifier.classify`),
+**Location.** `floodview/impact/hazard.py:88-120` (`HazardClassifier.classify`),
 thresholds at `:46-52`, docstring at `:11-17`.
 
 **Root cause.** Each level's condition is `depth_min & depth_max & velocity_ok`
@@ -20345,7 +20345,7 @@ the need for a catch-all) is identical either way.
             HazardLevel.EXTREME: {"min_depth": 5.0, "max_depth": np.inf, "max_velocity": np.inf},
         }
         # Wet/dry cutoff. Shared with export/keyframes.py and export/kml.py —
-        # see jalraksha.constants.WET_DEPTH_M once P2-WP3 lands.
+        # see floodview.constants.WET_DEPTH_M once P2-WP3 lands.
         self.dry_depth_m = 1e-3
 ```
 
@@ -20420,8 +20420,8 @@ and the classifier itself:
 functions disagree on a 0.1 m cell:
 
 ```diff
---- a/jalraksha/impact/hazard.py
-+++ b/jalraksha/impact/hazard.py
+--- a/floodview/impact/hazard.py
++++ b/floodview/impact/hazard.py
 @@
          classification = np.full(depth_grid.shape, HazardLevel.DRY, dtype=object)
 +        wet = depth_grid >= self.dry_depth_m
@@ -20454,7 +20454,7 @@ functions disagree on a 0.1 m cell:
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.impact.hazard import HazardClassifier, HazardLevel
+from floodview.impact.hazard import HazardClassifier, HazardLevel
 c = HazardClassifier()
 # The defect case from the register: deep, fast water.
 out = c.classify(np.array([[3.0]]), np.array([[10.0]]))
@@ -20482,8 +20482,8 @@ part of P0-21.
 
 ##### P0-06 — `State.__post_init__` sanitises NaN on every step, making divergence detection dead code (C-07)
 
-**Location.** `jalraksha/solver/types.py:134-141`, constructed every step from
-`jalraksha/solver/core.py:469` and checked at `core.py:551-555`.
+**Location.** `floodview/solver/types.py:134-141`, constructed every step from
+`floodview/solver/core.py:469` and checked at `core.py:551-555`.
 
 **Root cause.** The `np.nan_to_num` calls were added for a legitimate reason:
 Copernicus DEM voids over water bodies are NaN and would poison the domain on
@@ -20503,8 +20503,8 @@ that the hot path cannot silently regain it.
 **Patch.**
 
 ```diff
---- a/jalraksha/solver/types.py
-+++ b/jalraksha/solver/types.py
+--- a/floodview/solver/types.py
++++ b/floodview/solver/types.py
 @@
  @dataclass
  class State:
@@ -20563,8 +20563,8 @@ that the hot path cannot silently regain it.
 behaviour:
 
 ```diff
---- a/jalraksha/solver/types.py
-+++ b/jalraksha/solver/types.py
+--- a/floodview/solver/types.py
++++ b/floodview/solver/types.py
 @@
      def copy(self) -> "State":
          """Return a deep copy of the state."""
@@ -20579,12 +20579,12 @@ behaviour:
 ```
 
 And the terrain-ingestion path — the one place the sanitiser is genuinely correct
-— must opt in. In `jalraksha/terrain/domain.py` the state is built by
+— must opt in. In `floodview/terrain/domain.py` the state is built by
 `create_state`; that factory takes the flag and passes it through:
 
 ```diff
---- a/jalraksha/solver/types.py
-+++ b/jalraksha/solver/types.py
+--- a/floodview/solver/types.py
++++ b/floodview/solver/types.py
 @@ def create_state(
 -def create_state(grid, h=None, u=None, v=None, b=None, t=0.0):
 +def create_state(grid, h=None, u=None, v=None, b=None, t=0.0, sanitize=False):
@@ -20620,7 +20620,7 @@ is P1-14.
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.solver.types import State
+from floodview.solver.types import State
 s = State(h=np.full((4, 4), np.nan), u=np.zeros((4, 4)),
           v=np.zeros((4, 4)), b=np.zeros((4, 4)))
 assert not s.is_finite()                       # was True before the patch
@@ -20646,7 +20646,7 @@ hidden divergence.
 
 ##### P0-07 — Breach triangle hydrograph has no rise limb and overshoots the peak by 1.7× (C-08)
 
-**Location.** `jalraksha/terrain/breach.py:371-405` (`_generate_triangle_hydrograph`),
+**Location.** `floodview/terrain/breach.py:371-405` (`_generate_triangle_hydrograph`),
 reached from `_generate_fallback_hydrograph`.
 
 **Root cause.** Three compounding errors in six lines. With the default
@@ -20765,7 +20765,7 @@ the API response.
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.terrain.breach import _generate_triangle_hydrograph as tri
+from floodview.terrain.breach import _generate_triangle_hydrograph as tri
 t = np.linspace(0.0, 10800.0, 1000)
 q = tri(t, q_peak=1000.0, t_peak=3000.0)
 assert q.max() <= 1000.0 * (1 + 1e-9), q.max()
@@ -20786,7 +20786,7 @@ python -m pytest tests/test_breach.py -q
 
 ##### P0-08 — Keyframe bounds fallback returns geographic nonsense in a structurally perfect manifest (C-09)
 
-**Location.** `jalraksha/export/keyframes.py:117-130` (the `except Exception:`
+**Location.** `floodview/export/keyframes.py:117-130` (the `except Exception:`
 branch of `_reproject_bounds_utm_to_wgs84`).
 
 **Root cause.** The fallback treats a UTM easting as metres east of Greenwich and
@@ -20800,7 +20800,7 @@ Tehri flood over the North Sea.
 
 The trigger is not hypothetical: §5.8.3 establishes that the most likely
 environment failure on the demo machine — a broken inherited `PROJ_LIB`, which
-`jalraksha/__init__.py:_repair_proj_data_path` exists to work around and which
+`floodview/__init__.py:_repair_proj_data_path` exists to work around and which
 `dem.py:50-51` re-breaks depending on import order — sends `rasterio.warp.transform`
 into exactly this branch.
 
@@ -20823,8 +20823,8 @@ offline path; it is not a demo-week task.
 **Patch.**
 
 ```diff
---- a/jalraksha/export/keyframes.py
-+++ b/jalraksha/export/keyframes.py
+--- a/floodview/export/keyframes.py
++++ b/floodview/export/keyframes.py
 @@
 -    except Exception:
 -        # Fallback: very rough degrees-per-metre approximation (Tehri latitude).
@@ -20849,7 +20849,7 @@ offline path; it is not a demo-week task.
 +        # structural check downstream. Both map panels then drew the flood there.
 +        #
 +        # The most likely trigger is a broken PROJ database (see
-+        # jalraksha/__init__.py::_repair_proj_data_path and the PROJ_DATA
++        # floodview/__init__.py::_repair_proj_data_path and the PROJ_DATA
 +        # interaction with dem.py), i.e. an environment fault. Refusing turns
 +        # that environment fault into an error the operator can read, instead of
 +        # a map nobody questions.
@@ -20881,7 +20881,7 @@ class KeyframeExportError(RuntimeError):
 ```
 python - <<'PY'
 import numpy as np, pytest
-import jalraksha.export.keyframes as kf
+import floodview.export.keyframes as kf
 grid = {"x0": 260000.0, "y0": 3360000.0, "nx": 300, "ny": 300,
         "dx": 200.0, "dy": 200.0, "crs": "EPSG:32644"}
 # Correct path: the box must land on the Bhagirathi, not the North Sea.
@@ -21004,7 +21004,7 @@ Root wiring:
  ReactDOM.createRoot(document.getElementById("root")).render(
    <React.StrictMode>
 -    <App />
-+    <ErrorBoundary label="JalRaksha dashboard">
++    <ErrorBoundary label="FloodView dashboard">
 +      <App />
 +    </ErrorBoundary>
    </React.StrictMode>
@@ -21384,10 +21384,10 @@ plus removing the `custom` `<option>` from the picker.
 
 ##### P0-11 — The Mullaperiyar prohibition and the forbidden-source list are never enforced (C-12)
 
-**Location.** `jalraksha/hardening.py:258-282` (`check_forbidden_sources`, zero
-production call sites); `jalraksha/hardening.py:43` (`validate_dam_config`, the
-only hardening function wired into the service, at `jalraksha/api.py:273`);
-`jalraksha/cli.py` (no check at all).
+**Location.** `floodview/hardening.py:258-282` (`check_forbidden_sources`, zero
+production call sites); `floodview/hardening.py:43` (`validate_dam_config`, the
+only hardening function wired into the service, at `floodview/api.py:273`);
+`floodview/cli.py` (no check at all).
 
 **Root cause.** `check_forbidden_sources` scans a string and *returns a list*. It
 does not raise, and nothing calls it. G3 — the project's own explicitly stated
@@ -21399,7 +21399,7 @@ geo-fencing constraints are enforced either.
 
 Two secondary defects sit on the function: case-insensitive substring matching
 means `"merit"` matches "meritorious" and `"bhuvan"` would match a place name;
-and `jalraksha/config.py:110` contains the typo `"cartoudem"`, so a config naming
+and `floodview/config.py:110` contains the typo `"cartoudem"`, so a config naming
 CartoDEM passes.
 
 **Patch.** Three parts: make the matcher precise, add a geographic fence, and
@@ -21477,7 +21477,7 @@ def enforce_geo_fence(config: Dict[str, Any]) -> None:
             raise HardeningError(
                 f"Refusing this run: {', '.join(hits)} is on the project's "
                 "forbidden list (G3). Mullaperiyar is the subject of active "
-                "inter-state litigation and JalRaksha does not publish an "
+                "inter-state litigation and FloodView does not publish an "
                 "inundation footprint for it; the listed DEM and hydrology "
                 "sources are excluded on licence grounds."
             )
@@ -21505,8 +21505,8 @@ def enforce_geo_fence(config: Dict[str, Any]) -> None:
 Wiring — one line, at the top of the function every entry point already calls:
 
 ```diff
---- a/jalraksha/hardening.py
-+++ b/jalraksha/hardening.py
+--- a/floodview/hardening.py
++++ b/floodview/hardening.py
 @@ def validate_dam_config(config: Dict[str, Any]) -> None:
      required_keys = ["name", "lat", "lon", "height_m", "storage_mm3"]
      for key in required_keys:
@@ -21526,10 +21526,10 @@ and the CLI, which currently accepts arbitrary `--lat/--lon` with no check at al
 (`cli.py:106-114` builds `dam_config` by hand and never validates it):
 
 ```diff
---- a/jalraksha/cli.py
-+++ b/jalraksha/cli.py
+--- a/floodview/cli.py
++++ b/floodview/cli.py
 @@
-+        from jalraksha.hardening import validate_dam_config
++        from floodview.hardening import validate_dam_config
 +
          dam_config = {
              "name": config.get("dam_name", "tehri"),
@@ -21557,8 +21557,8 @@ gets `None` and returns `[]` for any dam outside the Tehri bounding box, and
 Finally, the config typo:
 
 ```diff
---- a/jalraksha/config.py
-+++ b/jalraksha/config.py
+--- a/floodview/config.py
++++ b/floodview/config.py
 @@
 -    "cartoudem",
 +    "cartodem",
@@ -21569,7 +21569,7 @@ Finally, the config typo:
 ```
 python -m pytest tests/test_hardening.py -q
 python - <<'PY'
-from jalraksha.hardening import validate_dam_config, HardeningError, check_forbidden_sources
+from floodview.hardening import validate_dam_config, HardeningError, check_forbidden_sources
 base = dict(name="Test", lat=30.0, lon=78.0, height_m=100.0, storage_mm3=500.0)
 for cfg in (
     {**base, "name": "Mullaperiyar"},
@@ -21598,7 +21598,7 @@ actually a change and not just a rewrite.
 
 ##### P0-12 — Demo-day access control on the three dangerous routes (C-13, partial)
 
-**Location.** `services/api/jalraksha_service/main.py:114-936` (every route),
+**Location.** `services/api/floodview_service/main.py:114-936` (every route),
 `main.py:46-48` (wildcard CORS), `main.py:74-76` (unconditional
 `Access-Control-Allow-Origin: *` in the static middleware).
 
@@ -21634,7 +21634,7 @@ be tested the same afternoon.
 ```
 
 2. **A shared-secret guard on the mutating and expensive routes.** New file
-   `services/api/jalraksha_service/auth.py`:
+   `services/api/floodview_service/auth.py`:
 
 ```python
 """Minimal access control for the routes that cost money or spawn processes.
@@ -21646,7 +21646,7 @@ it. §6.5 of the remediation plan replaces it with a real scheme; this exists so
 that a public demonstration is not an open remote-execution surface in the
 meantime.
 
-When JALRAKSHA_API_TOKEN is unset the guard is INACTIVE and every guarded route
+When FLOODVIEW_API_TOKEN is unset the guard is INACTIVE and every guarded route
 logs a one-line warning on first use. That default keeps a local single-machine
 demo working with no configuration, and makes the unguarded state visible in the
 log rather than silent.
@@ -21664,18 +21664,18 @@ _WARNED = False
 
 
 def _expected() -> Optional[str]:
-    token = os.environ.get("JALRAKSHA_API_TOKEN", "").strip()
+    token = os.environ.get("FLOODVIEW_API_TOKEN", "").strip()
     return token or None
 
 
-async def require_token(x_jalraksha_token: str = Header(default="")) -> None:
+async def require_token(x_floodview_token: str = Header(default="")) -> None:
     """FastAPI dependency: reject a request without the shared secret."""
     global _WARNED
     expected = _expected()
     if expected is None:
         if not _WARNED:
             print(
-                "[api] WARNING: JALRAKSHA_API_TOKEN is not set, so /runs, "
+                "[api] WARNING: FLOODVIEW_API_TOKEN is not set, so /runs, "
                 "/validation?refresh and /open-paraview are UNAUTHENTICATED. "
                 "Set it before binding this API to anything but 127.0.0.1."
             )
@@ -21683,24 +21683,24 @@ async def require_token(x_jalraksha_token: str = Header(default="")) -> None:
         return
     # compare_digest, not ==, so the check does not leak the token's prefix
     # through timing.
-    if not hmac.compare_digest(x_jalraksha_token or "", expected):
+    if not hmac.compare_digest(x_floodview_token or "", expected):
         raise HTTPException(
             status_code=401,
-            detail="Missing or invalid X-Jalraksha-Token header.",
+            detail="Missing or invalid X-Floodview-Token header.",
         )
 ```
 
 Wired onto exactly three routes:
 
 ```diff
---- a/services/api/jalraksha_service/main.py
-+++ b/services/api/jalraksha_service/main.py
+--- a/services/api/floodview_service/main.py
++++ b/services/api/floodview_service/main.py
 @@
 -from fastapi import FastAPI, HTTPException
 +from fastapi import Depends, FastAPI, HTTPException
 @@
- from jalraksha_service.worker import celery_app
-+from jalraksha_service.auth import require_token
+ from floodview_service.worker import celery_app
++from floodview_service.auth import require_token
 @@
 -@app.post("/runs", response_model=RunStatus)
 +@app.post("/runs", response_model=RunStatus, dependencies=[Depends(require_token)])
@@ -21714,37 +21714,37 @@ Wired onto exactly three routes:
 -def validation(refresh: bool = False) -> ValidationResult:
 +@app.get("/validation", response_model=ValidationResult)
 +def validation(refresh: bool = False,
-+               x_jalraksha_token: str = Header(default="")) -> ValidationResult:
++               x_floodview_token: str = Header(default="")) -> ValidationResult:
 +    # Only the refresh path is expensive (a Delft3D kernel plus two 1000-step
 +    # solves); the cached read is free and stays open so the dashboard renders
 +    # the panel without a token.
 +    if refresh:
-+        await_token = require_token(x_jalraksha_token)  # raises on mismatch
++        await_token = require_token(x_floodview_token)  # raises on mismatch
 ```
 
 (`require_token` is `async`; in a sync route call the synchronous variant, or
 declare `validation` as `async def` and `await` it. The simplest correct form is
 to make `validation` `async def` — it already offloads its work to a thread — and
-`await require_token(x_jalraksha_token)`.)
+`await require_token(x_floodview_token)`.)
 
 3. **CORS from an allow-list, not a wildcard.** The static middleware's
    unconditional `Access-Control-Allow-Origin: *` must move to the same list, or
    it survives any tightening of the main policy — which §5.3.2 names explicitly.
 
 ```diff
---- a/services/api/jalraksha_service/main.py
-+++ b/services/api/jalraksha_service/main.py
+--- a/services/api/floodview_service/main.py
++++ b/services/api/floodview_service/main.py
 @@
 -app.add_middleware(
 -    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 -)
 +# Comma-separated origins, e.g.
-+#   JALRAKSHA_CORS_ORIGINS=http://localhost:3000,http://localhost:4173
++#   FLOODVIEW_CORS_ORIGINS=http://localhost:3000,http://localhost:4173
 +# Defaults to the Vite dev server and preview server only. "*" was
 +# unconditional in every deployment mode with no environment switch.
 +_CORS_ORIGINS = [
 +    o.strip() for o in os.environ.get(
-+        "JALRAKSHA_CORS_ORIGINS",
++        "FLOODVIEW_CORS_ORIGINS",
 +        "http://localhost:3000,http://127.0.0.1:3000,"
 +        "http://localhost:4173,http://127.0.0.1:4173",
 +    ).split(",") if o.strip()
@@ -21753,7 +21753,7 @@ to make `validation` `async def` — it already offloads its work to a thread �
 +    CORSMiddleware,
 +    allow_origins=_CORS_ORIGINS,
 +    allow_methods=["GET", "POST", "OPTIONS"],
-+    allow_headers=["Content-Type", "X-Jalraksha-Token"],
++    allow_headers=["Content-Type", "X-Floodview-Token"],
 +)
 @@
      response = await call_next(request)
@@ -21778,11 +21778,11 @@ irrelevant to it; Cesium's XHR does send `Origin` and now gets a matching echo.
 **Verification.**
 
 ```
-JALRAKSHA_API_TOKEN=demo-secret python scripts/run_api.py &
+FLOODVIEW_API_TOKEN=demo-secret python scripts/run_api.py &
 curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8000/runs \
   -H 'Content-Type: application/json' -d '{"dam_id":"tehri"}'          # 401
 curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8000/runs \
-  -H 'Content-Type: application/json' -H 'X-Jalraksha-Token: demo-secret' \
+  -H 'Content-Type: application/json' -H 'X-Floodview-Token: demo-secret' \
   -d '{"dam_id":"tehri"}'                                              # 200
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/health   # 200
 python -m pytest tests/test_api.py -q
@@ -21797,7 +21797,7 @@ in `api.js` from `import.meta.env.VITE_API_TOKEN`.
 
 ##### P0-13 — The service cannot reach its own database under compose (C-14)
 
-**Location.** `services/api/jalraksha_service/db.py:37` (`import psycopg`) versus
+**Location.** `services/api/floodview_service/db.py:37` (`import psycopg`) versus
 `services/api/requirements.txt:7` (`psycopg2-binary`).
 
 **Root cause.** `_connect()` takes the Postgres branch for any non-`sqlite`
@@ -21824,8 +21824,8 @@ in the same commit, or the container comes down on every start *after* the first
 on PostgreSQL's different wording:
 
 ```diff
---- a/services/api/jalraksha_service/db.py
-+++ b/services/api/jalraksha_service/db.py
+--- a/services/api/floodview_service/db.py
++++ b/services/api/floodview_service/db.py
 @@
      try:
          cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -21847,8 +21847,8 @@ independently. The minimal correct form is to give `_add_column` its own
 savepoint:
 
 ```diff
---- a/services/api/jalraksha_service/db.py
-+++ b/services/api/jalraksha_service/db.py
+--- a/services/api/floodview_service/db.py
++++ b/services/api/floodview_service/db.py
 @@ def _add_column(cur: Any, table: str, column: str, coltype: str) -> None:
 +    is_pg = settings.DATABASE_URL.startswith("postgres")
 +    if is_pg:
@@ -21892,7 +21892,7 @@ metadata generation), and `docker-compose.yml:40-42` has no
    postgres:
 @@
 +    healthcheck:
-+      test: ["CMD-SHELL", "pg_isready -U jalraksha"]
++      test: ["CMD-SHELL", "pg_isready -U floodview"]
 +      interval: 5s
 +      timeout: 3s
 +      retries: 20
@@ -21939,7 +21939,7 @@ at least eight defects are stacked. That 3 h is booked separately as P1-33.
 
 **Root cause.** With an explicit `[tool.setuptools] packages` list, setuptools
 ships exactly what is listed. Four subpackages with real `__init__.py` files —
-`jalraksha.delft3d`, `jalraksha.gee`, `jalraksha.impact`, `jalraksha.validation` —
+`floodview.delft3d`, `floodview.gee`, `floodview.impact`, `floodview.validation` —
 are absent. An editable install masks it because the source tree is on
 `sys.path`; a wheel silently omits the four directories. Every developer and CI
 path uses an editable install, so this would be observed for the first time by
@@ -21954,11 +21954,11 @@ subpackage is added — which is exactly how this defect arose.
 +++ b/pyproject.toml
 @@
 -[tool.setuptools]
--packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]
+-packages = ["floodview", "floodview.solver", "floodview.terrain", "floodview.export", "floodview.sph"]
 -package-dir = {"" = "."}
 +[tool.setuptools.packages.find]
 +where = ["."]
-+include = ["jalraksha*"]
++include = ["floodview*"]
 +exclude = ["tests*", "tools*", "scripts*", "paraview*", "frontend*", "services*"]
 ```
 
@@ -21966,9 +21966,9 @@ subpackage is added — which is exactly how this defect arose.
 
 ```
 python -m build
-python -m zipfile -l dist/*.whl | grep -E "jalraksha/(delft3d|gee|impact|validation)/__init__"
+python -m zipfile -l dist/*.whl | grep -E "floodview/(delft3d|gee|impact|validation)/__init__"
 pip install --force-reinstall dist/*.whl
-python -c "import jalraksha.impact, jalraksha.gee, jalraksha.validation, jalraksha.delft3d; print('ok')"
+python -c "import floodview.impact, floodview.gee, floodview.validation, floodview.delft3d; print('ok')"
 pip install -e .
 ```
 
@@ -21981,7 +21981,7 @@ The `grep` is the actual gate — four lines must come back — and the trailing
 
 ##### P0-15 — SPH particles are binned in the wrong coordinate frame (C-21)
 
-**Location.** `jalraksha/delft3d/comparison.py:72-73`
+**Location.** `floodview/delft3d/comparison.py:72-73`
 (`sph_particles_to_depth_grid`), consumed by `compute_comparison_metrics` at
 `:104-116` and rendered by `frontend/src/panels/ComparisonPanel.jsx:67-69`.
 
@@ -22003,8 +22003,8 @@ deserves identical treatment.
 **Patch.**
 
 ```diff
---- a/jalraksha/delft3d/comparison.py
-+++ b/jalraksha/delft3d/comparison.py
+--- a/floodview/delft3d/comparison.py
++++ b/floodview/delft3d/comparison.py
 @@ def sph_particles_to_depth_grid(
      sph_result: Dict,
      grid_nx: int = 100,
@@ -22053,7 +22053,7 @@ deserves identical treatment.
 +            "placed on a UTM grid without knowing where that frame's origin "
 +            "sits. Binning them anyway put every particle in the grid's corner "
 +            "and made every comparison metric a comparison of disjoint regions. "
-+            "jalraksha.sph.pysph_runner must report the window origin."
++            "floodview.sph.pysph_runner must report the window origin."
 +        )
 +    if grid_x0 is None or grid_y0 is None:
 +        raise ValueError(
@@ -22083,7 +22083,7 @@ deserves identical treatment.
 +    cell_j = fj[inside].astype(int)
 ```
 
-`run_near_field_sph` (`jalraksha/sph/pysph_runner.py`) must report the window
+`run_near_field_sph` (`floodview/sph/pysph_runner.py`) must report the window
 origin in UTM. It already knows the breach cell and the grid; the addition is
 mechanical — carry `origin_utm_x`/`origin_utm_y` into the returned dict alongside
 `particle_volume_m3` — and it is 20 minutes of work. Without it the comparison
@@ -22096,8 +22096,8 @@ it currently prints.
 establishes correspondence.
 
 ```diff
---- a/jalraksha/delft3d/comparison.py
-+++ b/jalraksha/delft3d/comparison.py
+--- a/floodview/delft3d/comparison.py
++++ b/floodview/delft3d/comparison.py
 @@
 -    a = np.asarray(depth_a, dtype=np.float32).ravel()
 -    b = np.asarray(depth_b, dtype=np.float32).ravel()
@@ -22145,8 +22145,8 @@ shape function **for both engines**; there is no discharge time series on either
 side. The minimum honest fix for the demo is to stop drawing it:
 
 ```diff
---- a/jalraksha/delft3d/comparison.py
-+++ b/jalraksha/delft3d/comparison.py
+--- a/floodview/delft3d/comparison.py
++++ b/floodview/delft3d/comparison.py
 @@
 -    # Synthetic hydrograph shape
 -    ...
@@ -22168,7 +22168,7 @@ hydrograph comparison is shown."
 python -m pytest tests/test_delft3d.py tests/test_sph.py -q
 python - <<'PY'
 import numpy as np, pytest
-from jalraksha.delft3d.comparison import sph_particles_to_depth_grid, compute_comparison_metrics
+from floodview.delft3d.comparison import sph_particles_to_depth_grid, compute_comparison_metrics
 res = {"x": np.array([10.0, 20.0]), "y": np.array([10.0, 20.0]),
        "particle_volume_m3": 1.0}
 with pytest.raises(ValueError, match="origin_utm"):
@@ -22285,7 +22285,7 @@ ParaView PNG may go into the deck.**
 
 ##### P0-17 — No production ensemble is reproducible (HIGH `run.py:647`)
 
-**Location.** `jalraksha/run.py:647` —
+**Location.** `floodview/run.py:647` —
 `synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)` with no
 `random_seed`, against a function whose signature is
 `synthesize_breach_ensemble(dam_config, num_samples=100, random_seed=None, regression_families=None)`
@@ -22303,8 +22303,8 @@ deterministic, and record it in the result so a published figure carries its own
 reproduction recipe.
 
 ```diff
---- a/jalraksha/run.py
-+++ b/jalraksha/run.py
+--- a/floodview/run.py
++++ b/floodview/run.py
 @@ def run_dam_break_ensemble(
      dam_config: Dict,
      dem_path: str,
@@ -22352,8 +22352,8 @@ The synthetic-settlement generator has the same defect at `population.py:202`
 `gee/population.py:309` seeds correctly). Fix it in the same commit:
 
 ```diff
---- a/jalraksha/impact/population.py
-+++ b/jalraksha/impact/population.py
+--- a/floodview/impact/population.py
++++ b/floodview/impact/population.py
 @@
      def _generate_synthetic_settlements(
 -        self, shape: Tuple[int, int]
@@ -22363,7 +22363,7 @@ The synthetic-settlement generator has the same defect at `population.py:202`
 +        """Generate a synthetic settlement distribution.
 +
 +        Seeded by default: the unseeded np.random.random() made the fabricated
-+        layout irreproducible, while jalraksha.gee.population's equivalent path
++        layout irreproducible, while floodview.gee.population's equivalent path
 +        seeds correctly, so the two disagreed on repeated runs.
 +        """
          ny, nx = shape
@@ -22379,7 +22379,7 @@ The synthetic-settlement generator has the same defect at `population.py:202`
 ```
 python - <<'PY'
 import numpy as np
-from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+from floodview.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
 cfg = dict(name="Tehri", lat=30.3789, lon=78.4789, height_m=260.0, storage_mm3=3540.0,
            dam_type="embankment", failure_mode="overtopping")
 a = ensemble_statistics(synthesize_breach_ensemble(cfg, 32, random_seed=20260101))
@@ -22398,8 +22398,8 @@ python -m pytest tests/test_breach.py -q
 
 ##### P0-18 — Unbounded numeric inputs: one typo OOM-kills the demo machine (HIGH `schemas.py:27`, MEDIUM `:21-26`, `:28-35`, `:12-13`, `main.py:408`)
 
-**Location.** `services/api/jalraksha_service/schemas.py:12-35`;
-`services/api/jalraksha_service/main.py:408`.
+**Location.** `services/api/floodview_service/schemas.py:12-35`;
+`services/api/floodview_service/main.py:408`.
 
 **Root cause.** Every numeric field that reaches compute is unbounded or bounded
 on one side only. `target_resolution: float = Field(200.0, gt=0)` accepts `0.5`,
@@ -22414,8 +22414,8 @@ about 460 GB per float64 field — and OOM-kills the worker or the host.
 **Patch.**
 
 ```diff
---- a/services/api/jalraksha_service/schemas.py
-+++ b/services/api/jalraksha_service/schemas.py
+--- a/services/api/floodview_service/schemas.py
++++ b/services/api/floodview_service/schemas.py
 @@
      dam_id: Optional[str] = Field(None, description="Preset dam id (tehri, bhakra, ...)")
 -    lat: Optional[float] = Field(None, description="Dam latitude (deg)")
@@ -22426,7 +22426,7 @@ about 460 GB per float64 field — and OOM-kills the worker or the host.
 +    lon: Optional[float] = Field(None, ge=-180.0, le=180.0, description="Dam longitude (deg)")
 +    height_m: Optional[float] = Field(
 +        None, ge=10.0, le=400.0,
-+        description="Dam height (m). Bounds match jalraksha.hardening's "
++        description="Dam height (m). Bounds match floodview.hardening's "
 +                    "DAM_HEIGHT_MIN_M/MAX_M so the API and the library agree.")
 +    storage_mm3: Optional[float] = Field(
 +        None, ge=0.1, le=100_000.0, description="Gross storage (MCM)")
@@ -22480,8 +22480,8 @@ A resolution floor alone is not sufficient, because the memory cost is
 and the list endpoint:
 
 ```diff
---- a/services/api/jalraksha_service/main.py
-+++ b/services/api/jalraksha_service/main.py
+--- a/services/api/floodview_service/main.py
++++ b/services/api/floodview_service/main.py
 @@
 -@app.get("/runs", response_model=List[RunListEntry])
 -def list_runs(limit: int = 50) -> List[Dict[str, Any]]:
@@ -22518,7 +22518,7 @@ for body in '{"dam_id":"tehri","target_resolution":0.5}' \
             '{"dam_id":"tehri","solver_duration_s":1e12}' \
             '{"lat":900,"lon":0,"height_m":50,"storage_mm3":100}' ; do
   curl -s -o /dev/null -w "%{http_code} $body\n" -X POST http://127.0.0.1:8000/runs \
-    -H 'Content-Type: application/json' -H "X-Jalraksha-Token: $JALRAKSHA_API_TOKEN" -d "$body"
+    -H 'Content-Type: application/json' -H "X-Floodview-Token: $FLOODVIEW_API_TOKEN" -d "$body"
 done
 curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:8000/runs?limit=-5'
 ```
@@ -22531,7 +22531,7 @@ All four must be 422.
 
 ##### P0-19 — `GET /validation` turns one gate failure into an unbounded compute amplifier (HIGH `main.py:487-490`)
 
-**Location.** `services/api/jalraksha_service/main.py:487-490`; the client poll
+**Location.** `services/api/floodview_service/main.py:487-490`; the client poll
 loop at `frontend/src/panels/ValidationPanel.jsx:43-49`.
 
 **Root cause.** The in-flight flag is cleared in `finally`, but the cache is
@@ -22546,8 +22546,8 @@ comparison currently *does* refuse to run, so the failure is not hypothetical.
 costs one run instead of one per tick.
 
 ```diff
---- a/services/api/jalraksha_service/main.py
-+++ b/services/api/jalraksha_service/main.py
+--- a/services/api/floodview_service/main.py
++++ b/services/api/floodview_service/main.py
 @@ def _run_validation_checks() -> None:
      try:
          result = _compute_validation()
@@ -22609,7 +22609,7 @@ for i in 1 2 3 4 5; do curl -s -o /dev/null http://127.0.0.1:8000/validation; do
 
 ##### P0-20 — A benchmark run that produced nothing scores a perfect result (MEDIUM `benchmarks.py:92`, and `test_validation.py:89-97` entrenches it)
 
-**Location.** `jalraksha/validation/benchmarks.py:89-95` (`evaluate_benchmark`).
+**Location.** `floodview/validation/benchmarks.py:89-95` (`evaluate_benchmark`).
 
 **Root cause.** `sim_t = simulated_gauges[i].get("arrival_time_s", obs_t)`
 substitutes the *observed* value whenever a simulated one is missing, and `obs_t`
@@ -22625,8 +22625,8 @@ number a presenter would put on a slide.
 **Patch.**
 
 ```diff
---- a/jalraksha/validation/benchmarks.py
-+++ b/jalraksha/validation/benchmarks.py
+--- a/floodview/validation/benchmarks.py
++++ b/floodview/validation/benchmarks.py
 @@
      obs_times = []
      sim_times = []
@@ -22678,7 +22678,7 @@ The entrenching test must be replaced, not deleted — see TEST-16 in §6.9.
 ```
 python - <<'PY'
 import pytest
-from jalraksha.validation.benchmarks import evaluate_benchmark, BenchmarkEvaluationError
+from floodview.validation.benchmarks import evaluate_benchmark, BenchmarkEvaluationError
 bench = {"gauges": [{"name": "A", "arrival_time_s": 600.0},
                     {"name": "B", "arrival_time_s": 1200.0}]}
 with pytest.raises(BenchmarkEvaluationError):
@@ -22798,8 +22798,8 @@ area, giving a 4× error on a 400 m grid; and `calculate_par` silently substitut
 package exists to prevent.
 
 ```diff
---- a/jalraksha/impact/damage.py
-+++ b/jalraksha/impact/damage.py
+--- a/floodview/impact/damage.py
++++ b/floodview/impact/damage.py
 @@ def calculate_par(
          self,
          depth_grid: np.ndarray,
@@ -22817,9 +22817,9 @@ package exists to prevent.
 +                "calculate_par requires a population density grid. It used to "
 +                "substitute a flat 450 persons/km2 for the whole catchment, "
 +                "which is a fabricated headcount presented as an estimate — the "
-+                "exact substitution jalraksha.gee.population exists to prevent. "
++                "exact substitution floodview.gee.population exists to prevent. "
 +                "Fetch GHSL onto the solver grid, or call "
-+                "jalraksha.impact.population.compute_par with census counts."
++                "floodview.impact.population.compute_par with census counts."
 +            )
 @@
 -        cell_area_km2 = 200.0 ** 2 / 1e6  # km² per cell
@@ -22990,7 +22990,7 @@ Only precision and recall are computed. The one-line addition is
 one definition:
 
 ```python
-from jalraksha.validation.metrics import compute_csi
+from floodview.validation.metrics import compute_csi
 ...
 metrics["csi_vs_jrc"] = compute_csi(jrc_mask, sar_mask, threshold=0.5)
 ```
@@ -23160,7 +23160,7 @@ The core path stamps arrival at `h > 0.05 m`; the ensemble path uses `h >= 0.1 m
 rasters are not comparable, and arrival time is the single most-quoted output of
 the whole system.
 
-Create `jalraksha/constants.py` (it does not exist and it is the right home for
+Create `floodview/constants.py` (it does not exist and it is the right home for
 this class of value), define `ARRIVAL_THRESHOLD_M = 0.1` there with the Spec §4.3
 citation, and import it in both places. **Effort:** 0.5 h; it is the first row of
 work package P2-WP3.
@@ -23175,8 +23175,8 @@ client can fetch a low-resolution view without downloading the file. And
 validator and the writer share the same misconception and agree with each other.
 
 ```diff
---- a/jalraksha/export/geotiff.py
-+++ b/jalraksha/export/geotiff.py
+--- a/floodview/export/geotiff.py
++++ b/floodview/export/geotiff.py
 @@
      with rasterio.open(output_path, "w", **profile) as dst:
          dst.write(to_north_up(raster_data).astype(np.float32), 1)
@@ -23271,7 +23271,7 @@ reviewer who overlays them in QGIS sees them disagree. Delete the local scheme a
 call `HazardClassifier`:
 
 ```python
-from jalraksha.impact.hazard import HazardClassifier, HazardLevel
+from floodview.impact.hazard import HazardClassifier, HazardLevel
 
 def _hazard_classes(depth, velocity):
     """Hazard classes from the single source of truth.
@@ -23316,7 +23316,7 @@ since a dam name containing `&` produces KML Google Earth refuses to open.
 ##### P1-22 — `service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters come from
 
 It covers `render_static.py`, `camera_presets.py` and `main.py`, and omits
-`jalraksha/presets.py` and `jalraksha_service/config.py` — which is where
+`floodview/presets.py` and `floodview_service/config.py` — which is where
 `--exaggeration` and `--depth-max` originate. Editing a preset therefore leaves
 every cached ParaView state stale-but-considered-fresh: precisely the class of bug
 the check was added to close.
@@ -23329,7 +23329,7 @@ the check was added to close.
 +        # The exaggeration and depth-max the .pvsm bakes in come from HERE, so
 +        # omitting them meant editing a preset left every cached state
 +        # considered fresh — the exact failure this check exists to prevent.
-+        REPO_ROOT / "jalraksha" / "presets.py",
++        REPO_ROOT / "floodview" / "presets.py",
 +        Path(__file__).with_name("config.py"),
      ]
 ```
@@ -23339,7 +23339,7 @@ the check was added to close.
 ##### P1-23 — `main.py:83` — the `/files` mount exposes the entire `DATA_DIR` tree
 
 Including the SQLite metadata store itself (`config.py:85` defaults `DATABASE_URL`
-*inside* `DATA_DIR`, so `/files/jalraksha.db` is downloadable),
+*inside* `DATA_DIR`, so `/files/floodview.db` is downloadable),
 `validation_cache.json`, the GEE caches, the Delft3D model directories, and the
 transient run payloads at `DATA_DIR/runs/<run_id>_*.json` — which are reachable
 until `run_worker.py:112` unlinks them and are never cleaned if the child never
@@ -23449,7 +23449,7 @@ On Linux and inside the project's own Docker image, discovery reduces to two
 it can never use the real Delft3D binary, which is the condition the entire naming
 rule keys on. Undocumented in the module. Add POSIX globs
 (`/opt/delft3d*/bin/dflowfm*`, `/usr/local/dimrset*/bin/*`,
-`$DIMRSET_ROOT/bin/*`), honour a `JALRAKSHA_DFLOWFM_EXE` environment override, and
+`$DIMRSET_ROOT/bin/*`), honour a `FLOODVIEW_DFLOWFM_EXE` environment override, and
 state the limitation in the module docstring. **Effort:** 1 h.
 
 ##### P1-29 — `dem.py:437-450` and `cache.py:41-116` + `dem.py:466` — synthetic terrain is generated on any fetch failure and then served as a cache hit
@@ -23487,8 +23487,8 @@ Three changes:
 ```
 
 ```diff
---- a/jalraksha/cache.py
-+++ b/jalraksha/cache.py
+--- a/floodview/cache.py
++++ b/floodview/cache.py
 @@ def check_cache(...):
 +    if entry.get("synthetic"):
 +        # The flag was written and never read, so a fabricated tile was served
@@ -23517,18 +23517,18 @@ this is the most likely single cause of a demo-day failure that is not a code
 defect — with C-09 as its downstream consequence (now closed by P0-08's refusal).
 
 ```diff
---- a/jalraksha/dem.py
-+++ b/jalraksha/dem.py
+--- a/floodview/dem.py
++++ b/floodview/dem.py
 @@
 -os.environ.pop("PROJ_LIB", None)
 -os.environ.pop("PROJ_DATA", None)
-+# Do NOT unset PROJ_LIB / PROJ_DATA here. jalraksha/__init__.py's
++# Do NOT unset PROJ_LIB / PROJ_DATA here. floodview/__init__.py's
 +# _repair_proj_data_path deliberately SETS them to repair a broken inherited
 +# PROJ database, and popping them at this module's scope made the outcome
-+# depend on import order: `import jalraksha` then `import jalraksha.dem` gave
-+# one behaviour, reaching jalraksha.dem first gave another. The repair is
++# depend on import order: `import floodview` then `import floodview.dem` gave
++# one behaviour, reaching floodview.dem first gave another. The repair is
 +# idempotent and safe to rely on.
-+from jalraksha import _repair_proj_data_path  # noqa: E402
++from floodview import _repair_proj_data_path  # noqa: E402
 +_repair_proj_data_path()
 ```
 
@@ -23581,7 +23581,7 @@ demo script that checks the exit code sees success on every failure.
 
 with `main()` doing `sys.exit(cmd_run(args))`. (`exit()` is the `site` builtin,
 not `sys.exit` — a LOW finding closed here too.) **Verification:**
-`jalraksha run --dam nonexistent ... ; echo $?` must be non-zero. **Effort:** 1 h.
+`floodview run --dam nonexistent ... ; echo $?` must be non-zero. **Effort:** 1 h.
 
 ##### P1-32 — `api.py:160-179` — `rapid_estimate` publishes fabricated impact numbers under the real ensemble's field names
 
@@ -23608,7 +23608,7 @@ legitimate:
         # q_peak * 0.0012 * 850 people and * 12.5 crore INR — three unsourced
         # constants producing a number with the shape of an estimate. Removed:
         # a population-at-risk figure comes from GHSL via
-        # jalraksha.impact.population.compute_par or it does not exist.
+        # floodview.impact.population.compute_par or it does not exist.
         "population_at_risk": None,
         "economic_damage_crore_inr": None,
         "impact_note": (
@@ -23665,7 +23665,7 @@ A **minimal defensible D1**, which is what the remaining time supports, is:
 1. **Landslide-dam geometry from a DEM difference.** Take a pre-event DEM and a
    post-event DEM (or a synthetic blockage inserted into a valley cross-section),
    difference them, and take the positive residual across the channel as the
-   blockage body. ~150 lines in a new `jalraksha/terrain/blockage.py`.
+   blockage body. ~150 lines in a new `floodview/terrain/blockage.py`.
 2. **Impoundment volume by level-pool fill.** Flood-fill upstream of the blockage
    crest to the crest elevation; the filled volume is the impoundment. This is a
    standard priority-flood and there is already a conditioning module to host it.
@@ -23758,7 +23758,7 @@ P0-18.
 The two that matter most:
 
 ```python
-# jalraksha/solver/core.py, in SWESolver.__init__
+# floodview/solver/core.py, in SWESolver.__init__
 if not (0.0 < cfl <= CFL_MAX):
     raise ValueError(
         f"cfl must be in (0, {CFL_MAX}]; got {cfl}. A non-positive value made "
@@ -23768,7 +23768,7 @@ if not (0.0 < cfl <= CFL_MAX):
 ```
 
 ```python
-# jalraksha/solver/types.py, in Grid.__post_init__
+# floodview/solver/types.py, in Grid.__post_init__
 if self.dx > 1.0 or self.dy > 1.0:
     pass  # metres, as expected
 elif self.crs and "4326" in str(self.crs):
@@ -23797,7 +23797,7 @@ def _is_real_number(x: Any) -> bool:
 ##### P2-WP3 — One definition per quantity (closes T-10: 12 duplicated-constant findings plus their drift consequences)
 
 **Findings closed:** the four dam registries (`presets.py:369`,
-`service/config.py::DEMO_DAMS`, `jalraksha/api.py:30`, plus the walkthrough's "6
+`service/config.py::DEMO_DAMS`, `floodview/api.py:30`, plus the walkthrough's "6
 dams"); the two Froehlich 1995 implementations (`terrain/breach.py` and
 `api.py:143`); the three FD2320 threshold tables (closed structurally by P0-05 and
 P1-20, plus `GaugesPanel.jsx:112-120`); the five wet/dry cutoffs an order of
@@ -23816,9 +23816,9 @@ fatality tables (`impact/fatality.py:59-79`, `ImpactPanel.jsx:103-108`); the
 (`terrain/breach.py` and `service/tasks.py:688`, the latter an inlined literal
 with no citation).
 
-**The package.** A new `jalraksha/constants.py` holding every cross-module
+**The package.** A new `floodview/constants.py` holding every cross-module
 physical and threshold constant with its citation, and a new
-`jalraksha/geo.py` holding `epsg_from_crs`, `utm_zone_for`, and `utm_epsg_for`
+`floodview/geo.py` holding `epsg_from_crs`, `utm_zone_for`, and `utm_epsg_for`
 as single implementations:
 
 ```python
@@ -23891,12 +23891,12 @@ def utm_epsg_for(lat_deg: float, lon_deg: float) -> int:
     return (32600 if lat_deg >= 0 else 32700) + zone
 ```
 
-The four dam registries collapse to one: `jalraksha/presets.py` is canonical and
+The four dam registries collapse to one: `floodview/presets.py` is canonical and
 `service/config.py::DEMO_DAMS` becomes a projection of it (which also closes the
 MEDIUM finding at `config.py:89-113`, where Tehri's hand-written entry omits
 `surface_area_km2` and therefore routes Tehri through `breach.py`'s cone-reservoir
 fallback while Khadakwasla gets a real storage curve — the same dam yielding
-different reservoirs depending on which registry a caller reads). `jalraksha/api.py:30`'s
+different reservoirs depending on which registry a caller reads). `floodview/api.py:30`'s
 third registry is deleted, as is its duplicate Froehlich at `:143`.
 
 **A CI guard makes the package stick** — see §6.8's duplicate-constant scanner.
@@ -24228,7 +24228,7 @@ ignored); `cli.py:121-122` (`solver_duration_s` and `target_resolution` hardcode
 with no flags, and `domain_radius_km` falling to 60.0, so a 30-minute simulation
 cannot reach Haridwar at 58.4 km and there is no way to ask for more);
 `scripts/run_api.py:53` (a personal GCP project id baked in via
-`os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")`, so any
+`os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")`, so any
 other user silently inherits a project they cannot access); `run.py:672,673,781`;
 `run.py:457-466` (`inject_breach_hydrograph` returns `q_current = 0` at `idx == 0`
 so no water is injected on the first step); `run.py:466-479`;
@@ -24396,7 +24396,7 @@ API keys stored hashed, scoped to a role, checked by a dependency. Not a user
 system — a key system, which is the right granularity for a service whose
 consumers are a dashboard and a small number of operators.
 
-`services/api/jalraksha_service/security.py`:
+`services/api/floodview_service/security.py`:
 
 ```python
 """API-key authentication and role scoping.
@@ -24406,7 +24406,7 @@ Keys live in the database, hashed. Two roles:
   operator — everything, including POST /runs, ?refresh=true and open-paraview
 
 There is deliberately no self-service registration. Keys are minted by
-`python -m jalraksha_service.mint_key --role operator --label "demo laptop"`.
+`python -m floodview_service.mint_key --role operator --label "demo laptop"`.
 """
 
 from __future__ import annotations
@@ -24420,7 +24420,7 @@ from typing import Optional, Set
 
 from fastapi import Depends, Header, HTTPException, status
 
-from jalraksha_service import db
+from floodview_service import db
 
 _ROLES = ("viewer", "operator")
 
@@ -24438,7 +24438,7 @@ def hash_key(raw: str) -> str:
     threat model. Plain SHA-256 would also be defensible; PBKDF2 costs
     microseconds and removes the argument.
     """
-    salt = os.environ.get("JALRAKSHA_KEY_SALT", "jalraksha-static-salt").encode()
+    salt = os.environ.get("FLOODVIEW_KEY_SALT", "floodview-static-salt").encode()
     return hashlib.pbkdf2_hmac("sha256", raw.encode(), salt, 100_000).hex()
 
 
@@ -24521,7 +24521,7 @@ MAX_BODY_BYTES = 256 * 1024
 async def _limit_body(request, call_next):
     """Reject an oversized body from the Content-Length header.
 
-    jalraksha/api.py:211-219 reads int(Content-Length) bytes with no cap, so a
+    floodview/api.py:211-219 reads int(Content-Length) bytes with no cap, so a
     declared multi-gigabyte body exhausts memory and a negative or non-numeric
     value raises ValueError out of the handler. FastAPI is better behaved but
     still buffers the body before validation.
@@ -24546,7 +24546,7 @@ async def _limit_body(request, call_next):
 
 Starlette's `StaticFiles` does normalise `..`, so the exposure here is over-broad
 mounting rather than classical traversal — the entire `DATA_DIR` tree is served,
-including the SQLite metadata store at `/files/jalraksha.db` (because
+including the SQLite metadata store at `/files/floodview.db` (because
 `config.py:85` defaults `DATABASE_URL` *inside* `DATA_DIR`), `validation_cache.json`,
 the GEE caches, the Delft3D model directories and the transient run payloads. The
 fix is a narrow allow-listed subtree plus a resolved-path check, and moving the
@@ -24554,8 +24554,8 @@ database out of the served tree.
 
 ```python
 # The database moves OUT of the served tree. Serving DATA_DIR meant
-# /files/jalraksha.db was a download.
-DB_DIR = Path(_env("JALRAKSHA_DB_DIR", "./var")).resolve()
+# /files/floodview.db was a download.
+DB_DIR = Path(_env("FLOODVIEW_DB_DIR", "./var")).resolve()
 EXPORTS_DIR = (DATA_DIR / "exports").resolve()
 TILES_DIR = (DATA_DIR / "tiles").resolve()
 ```
@@ -24599,7 +24599,7 @@ app.mount("/tiles", StaticFiles(directory=str(TILES_DIR)), name="tiles")
 Transient run payloads move to a directory that is never mounted:
 
 ```python
-scratch = Path(tempfile.gettempdir()) / "jalraksha-runs"
+scratch = Path(tempfile.gettempdir()) / "floodview-runs"
 ```
 
 ##### SEC-4 — CORS tightening
@@ -24609,7 +24609,7 @@ Closed by P0-12's allow-list, with one addition: an explicit deny when
 that turns a permissive policy into a session-hijack surface.
 
 ```python
-if "*" in _CORS_ORIGINS and os.environ.get("JALRAKSHA_CORS_CREDENTIALS") == "1":
+if "*" in _CORS_ORIGINS and os.environ.get("FLOODVIEW_CORS_CREDENTIALS") == "1":
     raise RuntimeError(
         "allow_origins=['*'] with allow_credentials=True lets any web page "
         "drive this API as the logged-in user. Set explicit origins."
@@ -24696,7 +24696,7 @@ from typing import Dict, Tuple
 
 from fastapi import Depends, HTTPException
 
-from jalraksha_service.security import Principal, current_principal
+from floodview_service.security import Principal, current_principal
 
 _BUCKETS: Dict[Tuple[str, str], Tuple[float, float]] = {}
 _LOCK = threading.Lock()
@@ -24743,7 +24743,7 @@ level.
 Two mechanisms. First, a hard concurrency cap on live runs:
 
 ```python
-MAX_CONCURRENT_RUNS = int(os.environ.get("JALRAKSHA_MAX_CONCURRENT_RUNS", "2"))
+MAX_CONCURRENT_RUNS = int(os.environ.get("FLOODVIEW_MAX_CONCURRENT_RUNS", "2"))
 
 def _admit_run() -> None:
     """Refuse a submission when the host is already saturated.
@@ -24775,8 +24775,8 @@ def _limit_child() -> None:
     likely to be the API or the browser as the worker.
     """
     import resource
-    max_bytes = int(os.environ.get("JALRAKSHA_WORKER_MAX_BYTES", str(8 * 1024**3)))
-    max_cpu_s = int(os.environ.get("JALRAKSHA_WORKER_MAX_CPU_S", str(4 * 3600)))
+    max_bytes = int(os.environ.get("FLOODVIEW_WORKER_MAX_BYTES", str(8 * 1024**3)))
+    max_cpu_s = int(os.environ.get("FLOODVIEW_WORKER_MAX_CPU_S", str(4 * 3600)))
     resource.setrlimit(resource.RLIMIT_AS, (max_bytes, max_bytes))
     resource.setrlimit(resource.RLIMIT_CPU, (max_cpu_s, max_cpu_s))
 ```
@@ -24815,14 +24815,14 @@ MEDIUM.
 -    ports:
 -      - "5432:5432"
 -    environment:
--      POSTGRES_USER: jalraksha
--      POSTGRES_PASSWORD: jalraksha
+-      POSTGRES_USER: floodview
+-      POSTGRES_PASSWORD: floodview
 +    expose:
 +      - "5432"
 +    environment:
 +      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
 +      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-       POSTGRES_DB: jalraksha
+       POSTGRES_DB: floodview
 ```
 
 with a `.env.example` (and `.env` git-ignored) documenting all three variables,
@@ -24964,7 +24964,7 @@ The grammar is deliberately comment-only: it adds no runtime cost, it survives
 result depends on, so the disclaimer is generated rather than hand-written:
 
 ```python
-"""jalraksha/provenance.py — machine-readable coefficient provenance."""
+"""floodview/provenance.py — machine-readable coefficient provenance."""
 
 from __future__ import annotations
 
@@ -25038,7 +25038,7 @@ Exit codes:
 
 Usage:
   python tools/check_citations.py                 # whole tree
-  python tools/check_citations.py --paths jalraksha/impact
+  python tools/check_citations.py --paths floodview/impact
   python tools/check_citations.py --max-unvetted 24   # ratchet
 """
 
@@ -25055,19 +25055,19 @@ from typing import Dict, List, NamedTuple, Optional
 # Presentation and plumbing modules are excluded deliberately: a scanner that
 # flags every number is a scanner nobody runs.
 SCANNED = (
-    "jalraksha/terrain/breach.py",
-    "jalraksha/terrain/roughness.py",
-    "jalraksha/impact/hazard.py",
-    "jalraksha/impact/fatality.py",
-    "jalraksha/impact/damage.py",
-    "jalraksha/impact/population.py",
-    "jalraksha/gee/sar.py",
-    "jalraksha/gee/population.py",
-    "jalraksha/sph/pysph_runner.py",
-    "jalraksha/validation/benchmarks.py",
-    "jalraksha/validation/sensitivity.py",
-    "jalraksha/presets.py",
-    "services/api/jalraksha_service/tasks.py",
+    "floodview/terrain/breach.py",
+    "floodview/terrain/roughness.py",
+    "floodview/impact/hazard.py",
+    "floodview/impact/fatality.py",
+    "floodview/impact/damage.py",
+    "floodview/impact/population.py",
+    "floodview/gee/sar.py",
+    "floodview/gee/population.py",
+    "floodview/sph/pysph_runner.py",
+    "floodview/validation/benchmarks.py",
+    "floodview/validation/sensitivity.py",
+    "floodview/presets.py",
+    "services/api/floodview_service/tasks.py",
 )
 
 # Values that are structural rather than empirical.
@@ -25323,12 +25323,12 @@ measurements with no environment override.
 # Docker image.
 _START_METHOD = multiprocessing.get_start_method(allow_none=True) or "spawn"
 WORKER_STARTUP_SECONDS = float(os.environ.get(
-    "JALRAKSHA_WORKER_STARTUP_S",
+    "FLOODVIEW_WORKER_STARTUP_S",
     {"fork": 1.5, "forkserver": 3.0, "spawn": 15.0}.get(_START_METHOD, 15.0),
 ))
 INTRA_MEMBER_THREAD_SPEEDUP = float(os.environ.get(
-    "JALRAKSHA_INTRA_MEMBER_SPEEDUP", "2.4"))
-WORKER_MEMORY_MB = float(os.environ.get("JALRAKSHA_WORKER_MEMORY_MB", "400"))
+    "FLOODVIEW_INTRA_MEMBER_SPEEDUP", "2.4"))
+WORKER_MEMORY_MB = float(os.environ.get("FLOODVIEW_WORKER_MEMORY_MB", "400"))
 ```
 
 **Expected gain.** On Linux, the pool is chosen for ensembles from roughly 4
@@ -25476,7 +25476,7 @@ week:
 ```toml
 [tool.mypy]
 python_version = "3.11"
-files = ["jalraksha", "services/api/jalraksha_service"]
+files = ["floodview", "services/api/floodview_service"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 # Start permissive globally, strict on the modules that produce numbers a human
@@ -25484,7 +25484,7 @@ warn_unused_ignores = true
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["jalraksha.impact.*", "jalraksha.validation.*", "jalraksha.solver.types"]
+module = ["floodview.impact.*", "floodview.validation.*", "floodview.solver.types"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 warn_return_any = true
@@ -25502,18 +25502,18 @@ the exception type and traceback entirely (`run.py:625-627`), and two of which a
 catches possible:
 
 ```python
-"""jalraksha/errors.py — one exception tree for the whole library."""
+"""floodview/errors.py — one exception tree for the whole library."""
 
-class JalRakshaError(Exception):
+class FloodViewError(Exception):
     """Base for everything this library raises deliberately."""
 
-class ConfigurationError(JalRakshaError):
+class ConfigurationError(FloodViewError):
     """A caller-supplied configuration is invalid or incomplete."""
 
-class DataUnavailableError(JalRakshaError):
+class DataUnavailableError(FloodViewError):
     """A required external input could not be obtained (DEM tile, GEE scene)."""
 
-class DegradedResultError(JalRakshaError):
+class DegradedResultError(FloodViewError):
     """A degraded result was requested but degradation was not permitted.
 
     This is the exception the no-silent-fallback rule raises. Catching it is a
@@ -25521,10 +25521,10 @@ class DegradedResultError(JalRakshaError):
     catches it is responsible for recording the substitution in the result.
     """
 
-class NumericalDivergenceError(JalRakshaError):
+class NumericalDivergenceError(FloodViewError):
     """The solution went non-finite. See solver/types.py's sanitize note."""
 
-class ExportError(JalRakshaError):
+class ExportError(FloodViewError):
     """A product could not be written correctly."""
 
 class GeoreferenceError(ExportError):
@@ -25541,7 +25541,7 @@ structure and no correlation ids, so a run's progress and a run's failure are
 indistinguishable lines in one stream.
 
 ```python
-"""jalraksha/logging_setup.py"""
+"""floodview/logging_setup.py"""
 
 import logging
 import os
@@ -25570,7 +25570,7 @@ def configure(level: str | None = None) -> None:
         "%(asctime)s %(levelname)-7s [%(run_id)s] %(name)s: %(message)s"))
     root = logging.getLogger()
     root.handlers[:] = [handler]
-    root.setLevel(os.environ.get("JALRAKSHA_LOG_LEVEL", level or "INFO").upper())
+    root.setLevel(os.environ.get("FLOODVIEW_LOG_LEVEL", level or "INFO").upper())
 ```
 
 with `run_id_var.set(run_id)` at the top of the task and the subprocess entry
@@ -25587,11 +25587,11 @@ exists in the tree.** Here is one, plus what each of the eight rules maps to:
 | 1 | Module Depth (high functionality, simple interface) | Advisory metric: public symbols per module reported, not gated — a threshold here produces gaming, not depth. |
 | 2 | Dependency Direction (no backwards imports) | **Gated** — layer ordering in the script below. |
 | 3 | Layer Isolation | **Gated** — same script; a layer may import only strictly lower layers. |
-| 4 | Test Co-Location (tests import modules directly, not through CLI) | **Gated** — no test may import `jalraksha.cli`. |
+| 4 | Test Co-Location (tests import modules directly, not through CLI) | **Gated** — no test may import `floodview.cli`. |
 | 5 | Configuration Isolation (unvetted coefficients flagged, not hardcoded) | **Gated** — `tools/check_citations.py` (§6.6.3). |
-| 6 | Reusability (SPH independent of SWE) | **Gated** — `jalraksha.sph` may not import `jalraksha.solver`. |
+| 6 | Reusability (SPH independent of SWE) | **Gated** — `floodview.sph` may not import `floodview.solver`. |
 | 7 | Documentation Locality | **Gated** — every module has a docstring. |
-| 8 | Separation of Concerns (presentation/solver/export separate) | **Gated** — `jalraksha.solver` may not import `jalraksha.export` or any service module. |
+| 8 | Separation of Concerns (presentation/solver/export separate) | **Gated** — `floodview.solver` may not import `floodview.export` or any service module. |
 
 `tools/check_architecture.py`:
 
@@ -25615,31 +25615,31 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
-PKG = "jalraksha"
+PKG = "floodview"
 
 # Rule 2/3: a module may import only from a STRICTLY LOWER layer, or its own.
 LAYERS: List[Tuple[int, Tuple[str, ...]]] = [
-    (0, ("jalraksha.errors", "jalraksha.constants", "jalraksha.geo",
-         "jalraksha.provenance", "jalraksha.config", "jalraksha.logging_setup")),
-    (1, ("jalraksha.solver",)),
-    (2, ("jalraksha.dem", "jalraksha.cache", "jalraksha.terrain")),
-    (3, ("jalraksha.sph",)),
-    (4, ("jalraksha.gee",)),
-    (5, ("jalraksha.impact", "jalraksha.validation", "jalraksha.delft3d")),
-    (6, ("jalraksha.export",)),
-    (7, ("jalraksha.presets", "jalraksha.hardening", "jalraksha.run",
-         "jalraksha.api", "jalraksha.cli")),
+    (0, ("floodview.errors", "floodview.constants", "floodview.geo",
+         "floodview.provenance", "floodview.config", "floodview.logging_setup")),
+    (1, ("floodview.solver",)),
+    (2, ("floodview.dem", "floodview.cache", "floodview.terrain")),
+    (3, ("floodview.sph",)),
+    (4, ("floodview.gee",)),
+    (5, ("floodview.impact", "floodview.validation", "floodview.delft3d")),
+    (6, ("floodview.export",)),
+    (7, ("floodview.presets", "floodview.hardening", "floodview.run",
+         "floodview.api", "floodview.cli")),
 ]
 
 # Rules 6 and 8: hard prohibitions independent of layer order.
 FORBIDDEN: List[Tuple[str, str, str]] = [
-    ("jalraksha.sph", "jalraksha.solver",
+    ("floodview.sph", "floodview.solver",
      "Rule 6: SPH (Phase 7) must be usable without the SWE solver."),
-    ("jalraksha.solver", "jalraksha.export",
+    ("floodview.solver", "floodview.export",
      "Rule 8: the solver must not know about presentation or export."),
-    ("jalraksha.solver", "jalraksha_service",
+    ("floodview.solver", "floodview_service",
      "Rule 8: the solver must not know about the service layer."),
-    ("jalraksha", "jalraksha_service",
+    ("floodview", "floodview_service",
      "Rule 8: the library must not import the service."),
 ]
 
@@ -25694,7 +25694,7 @@ def main() -> int:
             problems.append(f"{f.relative_to(ROOT)}: Rule 7 — no module docstring")
 
         for imp in _imports_of(f, mod):
-            if not imp.startswith((PKG, "jalraksha_service")):
+            if not imp.startswith((PKG, "floodview_service")):
                 continue
             graph[mod].add(imp)
 
@@ -25751,9 +25751,9 @@ def main() -> int:
 
     # Rule 4: tests import modules directly, not through the CLI.
     for t in sorted((ROOT / "tests").rglob("test_*.py")):
-        if "jalraksha.cli" in _imports_of(t, f"tests.{t.stem}"):
+        if "floodview.cli" in _imports_of(t, f"tests.{t.stem}"):
             problems.append(
-                f"{t.relative_to(ROOT)}: Rule 4 — imports jalraksha.cli; "
+                f"{t.relative_to(ROOT)}: Rule 4 — imports floodview.cli; "
                 "tests must import the module under test directly")
 
     # Rule 1: advisory only.
@@ -25791,7 +25791,7 @@ Wired as a required CI job alongside the citation scanner:
 - name: Coefficient citations
   run: python tools/check_citations.py --max-unvetted 38
 - name: Import smoke
-  run: python -c "import jalraksha, jalraksha.impact, jalraksha.gee, jalraksha.validation, jalraksha.delft3d, jalraksha.export, jalraksha.sph"
+  run: python -c "import floodview, floodview.impact, floodview.gee, floodview.validation, floodview.delft3d, floodview.export, floodview.sph"
 ```
 
 The third job is three seconds long and would have caught C-01, C-02 and C-16 the
@@ -25830,7 +25830,7 @@ while the exact `cesium` 1.144.0 and `resium` 1.25.0 pins are **load-bearing**
 `import yaml  # To be added to pyproject.toml` is an undeclared dependency at
 module scope (`config.py:31`); that `matplotlib` is imported unconditionally by
 `tasks.py` and is in neither the requirements file nor the core dependencies; and
-that `addopts` hardcodes `--cov=jalraksha`, so the suite cannot run without
+that `addopts` hardcodes `--cov=floodview`, so the suite cannot run without
 `pytest-cov`, which neither Dockerfile installs.
 
 Actions: commit `package-lock.json`; add a comment above the cesium/resium pins
@@ -25859,7 +25859,7 @@ select = ["E", "F", "W", "I", "B", "BLE", "C4", "UP", "RUF"]
 ignore = ["E501"]     # line length is handled by the formatter
 
 [tool.ruff.lint.isort]
-known-first-party = ["jalraksha", "jalraksha_service"]
+known-first-party = ["floodview", "floodview_service"]
 ```
 
 with the pin raised to `ruff>=0.6,<1.0`.

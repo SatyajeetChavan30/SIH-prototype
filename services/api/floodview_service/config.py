@@ -1,4 +1,4 @@
-"""Settings for the JalRaksha service (env-driven, with sane demo defaults)."""
+"""Settings for the FloodView service (env-driven, with sane demo defaults)."""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# The only module-level import from the `jalraksha` package anywhere under
+# The only module-level import from the `floodview` package anywhere under
 # services/api — every other cross-package import is deferred into a function
-# body, because modules like jalraksha.run and jalraksha.delft3d pull in heavy
+# body, because modules like floodview.run and floodview.delft3d pull in heavy
 # geospatial dependencies (rasterio, geopandas) that would slow API startup.
-# jalraksha.presets is exempt: it imports only dataclasses and typing, and
+# floodview.presets is exempt: it imports only dataclasses and typing, and
 # nothing from the rest of its own package, so importing it eagerly is free.
 #
 # Direction matters — service depends on library, never the reverse. That is
-# jalraksha/presets.py's own stated rule for this exact situation.
-from jalraksha.presets import KHADAKWASLA, MUTHA_TEMGHAR, RISHI_GANGA, get_gauges
+# floodview/presets.py's own stated rule for this exact situation.
+from floodview.presets import KHADAKWASLA, MUTHA_TEMGHAR, RISHI_GANGA, get_gauges
 
 
 def _env(key: str, default: str) -> str:
@@ -24,7 +24,7 @@ def _env(key: str, default: str) -> str:
 
 def _demo_dam_from_preset(preset: Any) -> Dict[str, Any]:
     """
-    Adapt a jalraksha.presets.DamPreset into this API's /dams wire shape.
+    Adapt a floodview.presets.DamPreset into this API's /dams wire shape.
 
     Deliberately a function here rather than a method on DamPreset: the wire
     shape belongs to the service, and pushing it into the library would invert
@@ -79,7 +79,7 @@ def _demo_dam_from_preset(preset: Any) -> Dict[str, Any]:
 
 def _demo_blockage_from_preset(preset: Any) -> Dict[str, Any]:
     """
-    Adapt a jalraksha.presets.BlockagePreset into the /dams wire shape.
+    Adapt a floodview.presets.BlockagePreset into the /dams wire shape.
 
     Publishes height_m, storage_mm3 and dam_type as None ON PURPOSE. A landslide
     deposit has no engineered height and no published gross storage; the crest
@@ -129,14 +129,14 @@ def _demo_blockage_from_preset(preset: Any) -> Dict[str, Any]:
 class Settings:
     # Where results / exports / keyframe manifests / terrain tiles live on disk.
     # In Docker this is the mounted ./data volume (see docker-compose §5.8).
-    DATA_DIR: Path = Path(_env("JALRAKSHA_DATA_DIR", "./data"))
+    DATA_DIR: Path = Path(_env("FLOODVIEW_DATA_DIR", "./data"))
 
     # Redis broker + result backend for Celery.
     REDIS_URL: str = _env("REDIS_URL", "redis://localhost:6379/0")
 
     # Postgres connection. Falls back to sqlite if not provided (local dev).
     DATABASE_URL: str = _env(
-        "DATABASE_URL", "sqlite:///./data/jalraksha.db"
+        "DATABASE_URL", "sqlite:///./data/floodview.db"
     )
 
     # Public demo dams for GET /dams; Tehri is canonical.
@@ -154,7 +154,7 @@ class Settings:
             "domain_radius_km": 60.0,
             # Tehri's entry is hand-written rather than built from its preset,
             # so these have to be repeated here. Kept in sync with
-            # jalraksha/presets.py::TEHRI, which test_presets.py pins.
+            # floodview/presets.py::TEHRI, which test_presets.py pins.
             "vertical_exaggeration": 1.2,
             "nominal_depth_m": 120.0,
             "gauges": [
@@ -216,7 +216,7 @@ class Settings:
             # gauge lists effectively did.
             "gauges": [],
         },
-        # Sourced from jalraksha/presets.py rather than retyped, so the preset
+        # Sourced from floodview/presets.py rather than retyped, so the preset
         # and the API cannot disagree about where this dam is.
         #
         # UPDATED 2026-08-28: height_m / storage_mm3 / dam_type are no longer
@@ -258,23 +258,23 @@ class Settings:
     # survive being written, copied into an env var, or pasted into a shell
     # without the backslash-escaping accidents that a literal "in" invites.
     PARAVIEW_EXE: str = _env(
-        "JALRAKSHA_PARAVIEW_EXE", "C:/Program Files/ParaView 6.2.0/bin/paraview.exe")
+        "FLOODVIEW_PARAVIEW_EXE", "C:/Program Files/ParaView 6.2.0/bin/paraview.exe")
     PVPYTHON_EXE: str = _env(
-        "JALRAKSHA_PVPYTHON_EXE", "C:/Program Files/ParaView 6.2.0/bin/pvpython.exe")
+        "FLOODVIEW_PVPYTHON_EXE", "C:/Program Files/ParaView 6.2.0/bin/pvpython.exe")
 
     # Delft3D FM. Empty means "look on PATH"; set this to the full path of the
     # dflowfm executable to use an install that is not on PATH.
     #
-    # When neither finds a binary, solver="both" runs JalRaksha's own 2D SWE
-    # solver instead and SAYS SO — jalraksha/delft3d/runner.py labels the result
-    # "JalRaksha built-in 2D SWE - Delft3D-class, NOT Delft3D FM" and the
+    # When neither finds a binary, solver="both" runs FloodView's own 2D SWE
+    # solver instead and SAYS SO — floodview/delft3d/runner.py labels the result
+    # "FloodView built-in 2D SWE - Delft3D-class, NOT Delft3D FM" and the
     # Comparison tab shows it as a banner. Per CLAUDE.md the built-in solver may
     # be described as Delft3D-CLASS (it solves the same depth-averaged 2D
     # Saint-Venant equations); it must never be presented as Delft3D itself.
     #
     # Forward slashes, as with PARAVIEW_EXE above: Windows accepts them and they
     # survive being pasted into an env var without backslash-escaping accidents.
-    DFLOWFM_EXE: str = _env("JALRAKSHA_DFLOWFM_EXE", "")
+    DFLOWFM_EXE: str = _env("FLOODVIEW_DFLOWFM_EXE", "")
 
     # Google Earth Engine. Empty means Earth Engine is simply unavailable, and
     # every consumer says so rather than substituting anything: GET /gee/latest
@@ -284,12 +284,12 @@ class Settings:
     # Needs all three of: `pip install earthengine-api`, `earthengine
     # authenticate`, and a Cloud project with the Earth Engine API enabled
     # (free for non-commercial use via https://code.earthengine.google.com/register).
-    # jalraksha.gee.auth reads this same variable directly — the library cannot
+    # floodview.gee.auth reads this same variable directly — the library cannot
     # import this module, since service depends on library and never the reverse.
-    GEE_PROJECT: str = _env("JALRAKSHA_GEE_PROJECT", "")
+    GEE_PROJECT: str = _env("FLOODVIEW_GEE_PROJECT", "")
 
     # (TEHRI_GAUGES was removed here: it was a fifth copy of the Tehri corridor
-    # with zero consumers. The corridors now live in jalraksha.presets.GAUGES,
+    # with zero consumers. The corridors now live in floodview.presets.GAUGES,
     # keyed by dam, and reach this module through _demo_dam_from_preset.)
 
     # Solver backends selectable from the control panel.

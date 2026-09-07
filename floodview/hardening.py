@@ -169,7 +169,7 @@ def validate_dem_path(dem_path: Optional[str]) -> None:
     if not os.path.exists(dem_path):
         raise HardeningError(
             f"DEM file not found: '{dem_path}'. "
-            "Run `jalraksha cache --list` to see cached files, "
+            "Run `floodview cache --list` to see cached files, "
             "or omit --dem-path to use synthetic terrain."
         )
 
@@ -205,7 +205,7 @@ def validate_output_dir(output_dir: str) -> str:
         ) from exc
 
     # Quick write-access test
-    test_file = os.path.join(output_dir, ".jalraksha_write_test")
+    test_file = os.path.join(output_dir, ".floodview_write_test")
     try:
         with open(test_file, "w") as fh:
             fh.write("ok")

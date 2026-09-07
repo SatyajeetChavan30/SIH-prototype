@@ -29,8 +29,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Tuple
 import warnings
 
-from jalraksha.export.georef import to_wgs84, wgs84_bounds
-from jalraksha.export.shapefile import wet_mask_polygons
+from floodview.export.georef import to_wgs84, wgs84_bounds
+from floodview.export.shapefile import wet_mask_polygons
 
 
 # KML template

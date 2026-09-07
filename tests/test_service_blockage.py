@@ -23,7 +23,7 @@ import pytest
 
 sys.path.insert(0, "services/api")
 
-from jalraksha_service.schemas import RunRequest  # noqa: E402
+from floodview_service.schemas import RunRequest  # noqa: E402
 
 
 def _blockage_request(**overrides):
@@ -145,7 +145,7 @@ class TestBlockageDamConfig:
         registry has its figures; the refusal it guards is the one that used to
         surface as an opaque HTTP 500 from float(None).
         """
-        from jalraksha_service.config import settings
+        from floodview_service.config import settings
 
         unvetted_dam = {
             "id": "unvetted_test_dam", "name": "Unvetted Dam",
@@ -204,7 +204,7 @@ class TestBlockageSolverGate:
         gate lives in main.py; asserted here as a contract so a future scenario
         addition does not quietly widen it.
         """
-        from jalraksha_service.config import settings
+        from floodview_service.config import settings
 
         assert set(settings.SOLVERS) == {"swe", "delft3d", "both", "sph"}
         # The gate's own condition, restated: a non-dam-break scenario is

@@ -22,8 +22,8 @@ import numpy as np
 import rasterio
 from scipy import ndimage
 
-from jalraksha.solver.types import Grid, create_state
-from jalraksha.terrain.conditioning import load_dem_as_grid
+from floodview.solver.types import Grid, create_state
+from floodview.terrain.conditioning import load_dem_as_grid
 
 
 def latlon_to_utm(

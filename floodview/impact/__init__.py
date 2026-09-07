@@ -10,12 +10,12 @@ Outputs:
 
 ``DepthDamageAnalyzer`` was exported here until its coefficients were found to
 be attributed to a study that exists in no bibliography in this project. It is
-deleted, not renamed; :func:`~jalraksha.impact.damage.estimate_sector_damage`
+deleted, not renamed; :func:`~floodview.impact.damage.estimate_sector_damage`
 replaces it and takes its exposure from the catchment rather than from three
 fixed constants. See ``damage.py``'s module docstring.
 """
 
-from jalraksha.impact.damage import (
+from floodview.impact.damage import (
     HUIZINGA_2017_VERIFIED,
     SECTORS,
     DepthDamageCurveUnverified,
@@ -24,8 +24,8 @@ from jalraksha.impact.damage import (
     compute_depth_damage,
     estimate_sector_damage,
 )
-from jalraksha.impact.hazard import HazardClassifier
-from jalraksha.impact.population import PopulationEstimator
+from floodview.impact.hazard import HazardClassifier
+from floodview.impact.population import PopulationEstimator
 
 __all__ = [
     "HazardClassifier",

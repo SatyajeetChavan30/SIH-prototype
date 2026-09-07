@@ -30,13 +30,13 @@ def resolve_dflowfm(custom_path: Optional[str] = None) -> Optional[str]:
     Returning the path rather than a bare bool is the point. The previous
     arrangement had `is_dflowfm_available(custom_path)` honour an explicit
     location while `_run_dflowfm_binary` went on to invoke the literal string
-    "dflowfm" — so an install pointed at by JALRAKSHA_DFLOWFM_EXE would be
+    "dflowfm" — so an install pointed at by FLOODVIEW_DFLOWFM_EXE would be
     detected as present and then launched as a bare PATH lookup that fails.
     Detection and execution now agree by construction, because they use the
     same value.
 
     Args:
-        custom_path: Explicit path to the executable (JALRAKSHA_DFLOWFM_EXE).
+        custom_path: Explicit path to the executable (FLOODVIEW_DFLOWFM_EXE).
             An empty string means "not configured" and falls through to PATH.
 
     Returns:
@@ -48,7 +48,7 @@ def resolve_dflowfm(custom_path: Optional[str] = None) -> Optional[str]:
         if os.path.isfile(custom_path):
             return os.path.abspath(custom_path)
         print(
-            f"[delft3d] JALRAKSHA_DFLOWFM_EXE points at {custom_path!r}, "
+            f"[delft3d] FLOODVIEW_DFLOWFM_EXE points at {custom_path!r}, "
             f"which is not a file. Not falling back to PATH — fix the setting "
             f"or unset it."
         )
@@ -68,7 +68,7 @@ def resolve_dflowfm(custom_path: Optional[str] = None) -> Optional[str]:
 #: Where the Deltares installers put the DIMR kernel set. The FM Suite nests it
 #: under the DeltaShell plugin rather than in a top-level bin, so PATH lookups
 #: never find it — every install needs either this search or an explicit
-#: JALRAKSHA_DFLOWFM_EXE.
+#: FLOODVIEW_DFLOWFM_EXE.
 #:
 #: Note that not every edition ships kernels at all: the "Open" editions
 #: (e.g. 2026.02 OpenHMWQ) install the DeltaShell framework WITHOUT
@@ -252,7 +252,7 @@ def _analytic_fallback(
     gauge_arrivals = _ritter_gauge_arrivals(gauge_locations, c_wave)
 
     return {
-        "engine": "JalRaksha_Ritter_Analytic",
+        "engine": "FloodView_Ritter_Analytic",
         "engine_label": "Ritter analytic estimate - NOT a solver run",
         "success": True,
         "max_depth": max_depth,
@@ -298,8 +298,8 @@ def _run_builtin_swe_fallback(
     Returns:
         Standardised result dict (same format as Delft3D binary output).
     """
-    from jalraksha.solver.types import Grid as SWEGrid, create_state
-    from jalraksha.solver.core import SWESolver
+    from floodview.solver.types import Grid as SWEGrid, create_state
+    from floodview.solver.core import SWESolver
 
     nx, ny = grid["nx"], grid["ny"]
     dx, dy = grid["dx"], grid["dy"]
@@ -383,8 +383,8 @@ def _run_builtin_swe_fallback(
     )
 
     return {
-        "engine": "JalRaksha_SWE_Delft3D_Equivalent",
-        "engine_label": "JalRaksha built-in 2D SWE - Delft3D-class, NOT Delft3D FM",
+        "engine": "FloodView_SWE_Delft3D_Equivalent",
+        "engine_label": "FloodView built-in 2D SWE - Delft3D-class, NOT Delft3D FM",
         "success": True,
         "max_depth": max_depth,
         "max_velocity": max_velocity,
@@ -422,7 +422,7 @@ def run_delft3d_simulation(
 
     Args:
         model_setup: Dict from setup_delft3d_model().
-        dam_config: JalRaksha dam configuration dict.
+        dam_config: FloodView dam configuration dict.
         gauge_locations: List of downstream gauge dicts.
         total_time_s: Total simulation time (s).
         manning_n: Manning's roughness coefficient.
@@ -451,10 +451,10 @@ def run_delft3d_simulation(
         executable = resolve_dflowfm(dflowfm_path)
         if executable is None:
             fallback_reason = (
-                f"JALRAKSHA_DFLOWFM_EXE is set to {dflowfm_path!r}, which is "
+                f"FLOODVIEW_DFLOWFM_EXE is set to {dflowfm_path!r}, which is "
                 f"not a file. Fix the setting or unset it to search PATH."
                 if dflowfm_path else
-                "The dflowfm binary is not on PATH and JALRAKSHA_DFLOWFM_EXE is "
+                "The dflowfm binary is not on PATH and FLOODVIEW_DFLOWFM_EXE is "
                 "not set. Delft3D FM is not installed on this machine."
             )
         else:
@@ -607,7 +607,7 @@ def _parse_his_gauge_arrivals(
     One subtlety, and the reason this is not a two-line function: the history
     file records water LEVEL and bed level, not depth. Depth is the difference,
     which also keeps dry stations at exactly zero rather than at a negative
-    level-minus-bed. `jalraksha/validation/delft3d_benchmark.py::_read_his_gauges`
+    level-minus-bed. `floodview/validation/delft3d_benchmark.py::_read_his_gauges`
     established that; this is the same computation applied to arrival times.
 
     Returns {} - never a fabricated arrival - when there is no history file, no
