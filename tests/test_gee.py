@@ -437,37 +437,40 @@ class TestBuiltUpProvenance:
 class TestPopulationAtRisk:
     """The impact figures the GHSL grid feeds."""
 
-    def test_estimator_refuses_to_invent_settlements(self):
-        from floodview.impact.population import PopulationEstimator
-
-        depth = np.zeros((20, 20))
-        depth[5:15, 5:15] = 2.0
-        with pytest.raises(ValueError, match="describes nobody"):
-            PopulationEstimator().estimate_population(depth)
-
-    def test_estimator_labels_an_explicitly_synthetic_layout(self):
-        from floodview.impact.population import PopulationEstimator
-
-        depth = np.zeros((20, 20))
-        depth[5:15, 5:15] = 2.0
-        result = PopulationEstimator().estimate_population(
-            depth, allow_synthetic_settlements=True, cell_size_m=400.0)
-        assert result["settlement_source"] == "SYNTHETIC_random_layout"
-        assert result["cell_size_m"] == 400.0
-
-    def test_zero_affected_population_is_not_an_error(self):
+    def test_the_settlement_type_estimator_is_gone(self):
         """
-        A flood over empty ground is a real outcome, not a crash.
+        PopulationEstimator was deleted, not repaired.
 
-        _calculate_vulnerability_index divided by the affected total unguarded
-        and raised ZeroDivisionError for exactly this case.
+        It returned zero population on every possible input: its lookup keys
+        were the strings "village"/"town"/"city" while the settlement grid it
+        documented (and the one its own synthesiser produced) held integers
+        0/1/2, so the membership test could never fire. It had no caller
+        outside these tests. compute_par below is the supported path.
         """
-        from floodview.impact.population import PopulationEstimator
+        import floodview.impact.population as population_module
 
-        result = PopulationEstimator().estimate_population(
-            np.zeros((20, 20)), allow_synthetic_settlements=True)
-        assert result["population_affected"] == 0
-        assert result["vulnerability_index"] == 0.0
+        assert not hasattr(population_module, "PopulationEstimator")
+
+    def test_a_cell_wet_at_t_zero_is_counted(self):
+        """
+        The breach cell has the LEAST warning of anyone in the domain.
+
+        compute_par gated on `arrival_time_grid > 0`, which dropped every cell
+        wet at exactly t = 0 from all three urgency buckets. isfinite() is what
+        rejects the inf-means-never-wet sentinel; the lower bound is >= 0.
+        """
+        from floodview.impact.population import compute_par
+
+        population = np.full((10, 10), 20.0)
+        arrival = np.full((10, 10), np.inf)
+        arrival[0, 0] = 0.0
+        depth = np.zeros((10, 10))
+        depth[0, 0] = 3.0
+
+        par = compute_par(population, arrival, warning_lead_time_s=0.0,
+                          h_max_grid=depth)
+        assert par["par_high_urgency_under_15min"] == pytest.approx(20.0)
+        assert par["total_par"] == pytest.approx(20.0)
 
     def test_par_counts_real_people_from_a_real_grid(self):
         from floodview.impact.population import compute_par

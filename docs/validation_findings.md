@@ -255,6 +255,18 @@ subsections record a plateau and three mechanism fixes that did not clear it; th
 last three record what actually did, and supersede the intermediate "not
 resolved" verdict.
 
+> **EVERY HAZARD CLASS COUNT BELOW PREDATES THE FD2320 UNIFICATION (§10) AND IS
+> NOT REPRODUCIBLE BY A NEW RUN.** They were produced by a discrete
+> depth-window/velocity-ceiling table that has since been replaced by the
+> published hazard rating `HR = d(|V| + 0.5) + DF`, and the `severe` class they
+> report no longer exists — FD2320 has four wet categories, not five. Nothing
+> about the hydraulics changed, so the volume balance, the arrival times, the
+> wet-cell counts, the recession SHAPE and every conclusion drawn from them
+> stand exactly as written. Do not compare a new run's per-class counts against
+> the tables in this section cell for cell; compare wet extent and
+> `exited_mcm`. These runs are not retroactively reclassified, following the
+> same precedent as the pre-fix population-at-risk figures.
+
 ```bash
 python -m pytest tests/test_terrain.py -q -k "fill_depressions or notch_breach"
 ```
@@ -779,3 +791,56 @@ Caveats on this measurement:
   either raises. Costa (1985) is the only active natural-dam regression, so a
   blockage ensemble has no inter-method spread and takes its range from a
   prediction band whose width is itself an unvetted placeholder (rows 19–22).
+
+
+---
+
+## 10. FD2320 hazard classification had five definitions, and two live ones disagreed
+
+Found by `/code-quality-deep-dive` on a clean tree; the solver core passed every
+item on that skill's checklist and none of this touched it.
+
+`floodview/impact/hazard.py` declares itself "the SINGLE source of truth for
+hazard classification". It was neither single nor self-consistent.
+
+| # | Location | Form | Live? |
+| :-- | :--- | :--- | :--- |
+| 1 | `hazard.py` module docstring | depth bands, Low ≤0.1 … Extreme >5.0 | doc only |
+| 2 | `hazard.py` `self.thresholds` | depth+velocity band table, Low 0.1–0.5 … Extreme ≥10.0 | **yes** — dashboard |
+| 3 | `hazard.py` `categorize_hazard_zones` | `HR = d(|V|+0.5)+0.5`, classed 0.75/1.25/2.5 | tests only |
+| 4 | `export/shapefile.py`, inline | 0.1/0.5/1.2/2.0 m against v of 1/2/4 m/s | **yes** — shapefiles |
+| 5 | `frontend/.../GaugesPanel.jsx` | depth only, 5 m / 10 m edges | **yes** — gauge badges |
+
+Table 2 is one full class COARSER than table 1, in the same file: a 3 m depth is
+"severe" by the docstring and "significant" by the code, and 0 < h < 0.1 m
+matched no band at all and reported DRY. Tables 2 and 4 disagreed with each
+other on live output — a cell 1.5 m deep was *moderate* on the dashboard and
+*high* in the exported shapefile, both labelled FD2320.
+
+**Velocity could only ever REDUCE hazard.** Table 2 tested
+`velocity <= max_velocity` as one term of an AND with the depth window, so a
+cell exceeding a band's velocity ceiling fell out of that band without being
+promoted into a higher one. Traced by hand and now pinned by a test: depth
+3.0 m at 8 m/s failed LOW (depth), MODERATE (depth), SIGNIFICANT (velocity),
+SEVERE (depth) and EXTREME (depth), and kept the DRY initialisation. That is a
+lethal flow reported as dry ground. `classify()` had no non-test caller, so it
+was latent — but it is the method the velocity-aware path would have used.
+
+**Resolution.** Table 3 — the published Defra form, already implemented and
+tested — is now the only definition. `HazardClassifier` computes it, tables 2
+and 4 are deleted, and table 5 mirrors the depth-only reduction of table 3
+(`HR = 0.5d + DF`, edges at 0.5 / 1.5 / 4.0 m) rather than inventing its own.
+Two consequences worth stating plainly:
+
+- **`severe` is gone.** FD2320 publishes four wet categories and no boundary
+  that would split extreme. Retiring the level was preferred to inventing a
+  threshold, which is what `natural_dam.py`'s own policy forbids elsewhere.
+- **The debris factor is a categorical input.** The trailing `+ 0.5` was a
+  hardcoded literal; DF is published as 0 / 0.5 / 1.0 by land use. It is now a
+  named parameter defaulting to 0.5 and echoed in every summary payload. This
+  module deliberately does not infer it from land cover — that mapping belongs
+  beside the WorldCover legend and does not exist yet.
+
+`hazard_weights`, which drives `weighted_hazard_index`, remains **UNVETTED**:
+FD2320 publishes classes, not a weighting between them, and no source has been
+identified for those numbers.

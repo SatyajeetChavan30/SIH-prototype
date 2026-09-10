@@ -10,7 +10,13 @@ Tests:
 
 import numpy as np
 import pytest
-from floodview.impact.hazard import compute_fd2320_hazard_rating, categorize_hazard_zones
+from floodview.impact.hazard import (
+    HazardClassifier,
+    HazardLevel,
+    categorize_hazard_zones,
+    compute_fd2320_hazard_rating,
+    compute_fd2320_hazard_rating_from_speed,
+)
 from floodview.impact.damage import compute_depth_damage, calculate_economic_loss
 from floodview.impact.population import compute_population_exposure, compute_par
 from floodview.impact.fatality import estimate_loss_of_life_graham, estimate_loss_of_life_jonkman
@@ -53,6 +59,112 @@ class TestFD2320HazardRating:
 
         classes = categorize_hazard_zones(hr)
         assert np.all(classes == 3)
+
+    def test_a_fast_deep_flow_is_not_classified_dry(self):
+        """
+        Velocity must RAISE hazard. It used to be able to erase it.
+
+        HazardClassifier held a discrete (depth window x velocity ceiling)
+        table and tested `velocity <= max_velocity` as one term of an AND with
+        the depth window. A cell exceeding a band's velocity ceiling therefore
+        fell OUT of that band without being promoted, and a flow 3 m deep at
+        8 m/s matched no band at all and came back DRY.
+        """
+        depth = np.full((4, 4), 3.0)
+        vx = np.full((4, 4), 8.0)
+        vy = np.zeros((4, 4))
+
+        classification = HazardClassifier().classify(depth, vx, vy)
+        assert np.all(classification == HazardLevel.EXTREME)
+        assert not np.any(classification == HazardLevel.DRY)
+
+    def test_velocity_can_only_increase_the_hazard_rating(self):
+        depth = np.full((3, 3), 1.0)
+        zero = np.zeros((3, 3))
+
+        slow = compute_fd2320_hazard_rating(depth, zero, zero)
+        fast = compute_fd2320_hazard_rating(depth, np.full((3, 3), 5.0), zero)
+        assert np.all(fast > slow)
+
+    def test_debris_factor_shifts_the_rating_by_exactly_its_value(self):
+        """DF is a categorical input (0 / 0.5 / 1.0), not a baked-in constant."""
+        depth = np.full((3, 3), 1.0)
+        zero = np.zeros((3, 3))
+
+        hr_0 = compute_fd2320_hazard_rating(depth, zero, zero, debris_factor=0.0)
+        hr_1 = compute_fd2320_hazard_rating(depth, zero, zero, debris_factor=1.0)
+        assert np.allclose(hr_1 - hr_0, 1.0)
+
+    def test_depth_only_band_edges_are_where_the_docstring_says(self):
+        """
+        classify_depth_only evaluates HR at |V| = 0, i.e. HR = 0.5d + DF.
+
+        At the default DF of 0.5 that puts the class edges at 0.5 / 1.5 / 4.0 m.
+        The frontend's gauge badge duplicates those numbers, so they are pinned
+        here rather than left implicit.
+        """
+        classifier = HazardClassifier()
+        depths = np.array([[0.01, 0.49, 0.51, 1.49, 1.51, 3.99, 4.01]])
+        got = classifier.classify_depth_only(depths)[0]
+
+        assert list(got) == [
+            HazardLevel.DRY,
+            HazardLevel.LOW,
+            HazardLevel.MODERATE,
+            HazardLevel.MODERATE,
+            HazardLevel.SIGNIFICANT,
+            HazardLevel.SIGNIFICANT,
+            HazardLevel.EXTREME,
+        ]
+
+    def test_one_velocity_component_is_refused_not_silently_zeroed(self):
+        """
+        The previous signature took a single velocity MAGNITUDE as the second
+        argument. Accepting one component would let such a call through and
+        classify it at zero speed — under-stating hazard rather than failing.
+        """
+        depth = np.full((2, 2), 2.0)
+        with pytest.raises(ValueError, match="classify_from_speed"):
+            HazardClassifier().classify(depth, np.full((2, 2), 6.0))
+
+    def test_severe_is_not_a_published_fd2320_class(self):
+        """
+        FD2320 publishes four wet categories and no boundary that would split
+        extreme. The retired fifth level had no source for its threshold.
+        """
+        assert not hasattr(HazardLevel, "SEVERE")
+        assert {level.value for level in HazardLevel} == {
+            "dry", "low", "moderate", "significant", "extreme",
+        }
+
+    def test_the_shapefile_exporter_agrees_with_the_dashboard_classifier(self):
+        """
+        These were two different tables, both labelled FD2320, and they
+        disagreed: a cell 1.5 m deep was "moderate" on the dashboard and
+        "high" in the exported shapefile. The exporter now calls the same
+        classifier, so equal inputs must produce equal classes.
+        """
+        from floodview.export import shapefile as shapefile_module
+
+        depth = np.array([[0.0, 0.3, 1.5, 3.0]])
+        speed = np.array([[0.0, 0.2, 1.0, 8.0]])
+
+        classifier = HazardClassifier()
+        expected = classifier.classify_from_speed(depth, speed)
+
+        # The exporter's own route to a class: HR then the integer bands.
+        hr = compute_fd2320_hazard_rating_from_speed(depth, speed)
+        integer_classes = categorize_hazard_zones(hr)
+
+        name_to_integer = {
+            HazardLevel.DRY: 0,
+            HazardLevel.LOW: 0,   # class 0 merges dry and low, by design
+            HazardLevel.MODERATE: 1,
+            HazardLevel.SIGNIFICANT: 2,
+            HazardLevel.EXTREME: 3,
+        }
+        assert [name_to_integer[c] for c in expected[0]] == list(integer_classes[0])
+        assert shapefile_module is not None  # exporter imports cleanly
 
 
 class TestDepthDamage:

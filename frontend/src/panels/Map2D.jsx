@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, ImageOverlay, CircleMarker, Tooltip } from "re
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { DAM, GAUGES } from "../data/entities.js";
 import { getSar, resolveApiUrl } from "../api.js";
+import { HAZARD_LEVELS, foldLegacyLevels } from "../hazard.js";
 
 /**
  * 2D panel — Leaflet map consuming the SAME inundation polygons / keyframe PNGs
@@ -111,9 +112,10 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
  * Colours are taken from the payload rather than hardcoded here, so the legend
  * cannot drift from the classifier that actually painted the pixels.
  */
-function HazardLegend({ hazard, grid }) {
-  if (!hazard) return null;
-  const levels = ["low", "moderate", "significant", "severe", "extreme"];
+function HazardLegend({ hazard: rawHazard, grid }) {
+  if (!rawHazard) return null;
+  const hazard = foldLegacyLevels(rawHazard);
+  const levels = HAZARD_LEVELS;
 
   // Share of the FLOODED area, not of the whole domain.
   //
@@ -124,7 +126,7 @@ function HazardLegend({ hazard, grid }) {
   // classes round away to nothing. The legend then reads as though the flood
   // is one uniform severity that stops dead at its edge, which is both wrong
   // and the opposite of what the data says — that flood has a full gradient
-  // from 10% low through 29% severe.
+  // across every class.
   //
   // Recomputed here from the per-level `count`, which every keyframe manifest
   // already stores. That deliberately avoids changing summarize()'s persisted

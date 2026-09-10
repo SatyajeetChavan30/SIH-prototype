@@ -28,6 +28,12 @@ import json
 import datetime
 import numpy as np
 
+# The one Phase 6 name this module needs at import time. HazardClassifier itself
+# is still imported inside export_keyframes(), where it is used; this is the
+# threshold the RGBA writer needs as a module constant, and importing it is the
+# only way the overlay and the legend cannot drift apart.
+from floodview.impact.hazard import WET_THRESHOLD_M
+
 
 # ── Result container ──────────────────────────────────────────────────────────
 
@@ -211,11 +217,15 @@ def _render_png(rgba: np.ndarray, path: Path) -> None:
     plt.imsave(path, rgba.astype(np.uint8))
 
 
-#: Depth below which a cell is drawn as nothing at all. Matches
-#: HazardClassifier's own LOW band minimum (hazard.py's thresholds table), so
-#: the transparent area is exactly the area the classifier calls DRY — the
-#: overlay can never disagree with the legend beside it.
-DRY_DEPTH_M = 0.1
+#: Depth below which a cell is drawn as nothing at all.
+#:
+#: Aliased from the classifier's own wet threshold (imported at the top of this
+#: module) rather than restated, so the transparent area is exactly the area the
+#: classifier calls DRY and the overlay can never disagree with the legend
+#: beside it. It was a literal 0.1 m matching the old band table's LOW minimum;
+#: the FD2320 rating uses a 0.05 m wet threshold, and a hardcoded copy would
+#: have left the 0.05-0.1 m ring classified LOW and drawn as nothing.
+DRY_DEPTH_M = WET_THRESHOLD_M
 
 
 def _to_rgba(rgb: np.ndarray, depth: np.ndarray) -> np.ndarray:

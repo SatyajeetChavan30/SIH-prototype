@@ -261,22 +261,30 @@ def export_hazard_classification_polygons(
     dam_name: str = "Dam",
 ) -> Optional[Dict[str, str]]:
     """
-    Export per-hazard-class polygons (low / medium / high / extreme).
+    Export per-hazard-class polygons (low / moderate / significant / extreme).
 
-    Hazard classes (FD2320 / DEFRA-style):
-      - Low:       0.1 <= h < 0.5  AND v < 1.0
-      - Medium:    0.5 <= h < 1.2  OR  (h >= 0.1 AND v >= 1.0 AND v < 2.0)
-      - High:      1.2 <= h < 2.0  OR  (h >= 0.5 AND v >= 2.0 AND v < 4.0)
-      - Extreme:   h >= 2.0        OR  v >= 4.0
+    Classification is delegated to floodview.impact.hazard, which is the single
+    source of truth for FD2320 in this codebase:
 
-    ⚠ Class thresholds are indicative (FD2320). Verify before operational use.
-    See Spec §11.1 and §17 item 9 (FD2320 debris factors + category thresholds).
+        HR = h * (|V| + 0.5) + DF,  classed at 0.75 / 1.25 / 2.5
+
+    This function used to carry its OWN inline threshold table (0.1 / 0.5 /
+    1.2 / 2.0 m against v of 1 / 2 / 4 m/s). It disagreed with the table the
+    dashboard used — a cell 1.5 m deep came out "moderate" in one and "high"
+    in the other, both labelled FD2320 — so it has been removed rather than
+    reconciled by hand.
+
+    ⚠ Class boundaries are the published FD2320 screening values; the debris
+    factor is a categorical input fixed here at its mid value. See
+    floodview.impact.hazard for both.
 
     Args:
         h_max: 2D array of maximum flood depth (m)
-        v_max: 2D array of maximum velocity magnitude (m/s)
+        v_max: 2D array of maximum velocity MAGNITUDE (m/s), i.e. the solver's
+            running max of hypot(u, v). A trailing-axis (u, v) pair is also
+            accepted and reduced to a magnitude.
         grid_dict: Grid definition
-        output_path: Output base path (will append _low/_medium/_high/_extreme)
+        output_path: Output base path (appends _low/_moderate/_significant/_extreme)
         crs_epsg: EPSG code
         dam_name: Dam name
 
@@ -290,6 +298,11 @@ def export_hazard_classification_polygons(
         warnings.warn("geopandas/shapely not installed; cannot write hazard polygons")
         return None
 
+    # Imported here, not at module scope, matching export/keyframes.py: the
+    # export layer keeps its module-level dependencies to Phase 5 and pulls the
+    # classifier in at the one call site that needs it.
+    from floodview.impact.hazard import HazardClassifier, HazardLevel
+
     # Compute velocity magnitude
     if v_max.ndim == 2:
         v_mag = v_max  # already magnitude
@@ -299,21 +312,14 @@ def export_hazard_classification_polygons(
     else:
         v_mag = np.zeros_like(h_max)
 
-    # Classify
-    h_low = h_max >= 0.1
-    h_med = h_max >= 0.5
-    h_high = h_max >= 1.2
-    h_ext = h_max >= 2.0
-
-    v1 = v_mag >= 1.0
-    v2 = v_mag >= 2.0
-    v4 = v_mag >= 4.0
+    # Classify through the single FD2320 source of truth.
+    classification = HazardClassifier().classify_from_speed(h_max, v_mag)
 
     classes = {
-        "low": h_low & ~h_med,
-        "medium": (h_med & ~h_high) | (h_low & v1 & ~v2),
-        "high": (h_high & ~h_ext) | (h_med & v2 & ~v4),
-        "extreme": h_ext | v4,
+        "low": classification == HazardLevel.LOW,
+        "moderate": classification == HazardLevel.MODERATE,
+        "significant": classification == HazardLevel.SIGNIFICANT,
+        "extreme": classification == HazardLevel.EXTREME,
     }
 
     ny = grid_dict["ny"]

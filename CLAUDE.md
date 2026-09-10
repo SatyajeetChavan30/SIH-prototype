@@ -590,6 +590,92 @@ independent defects were live in it at once, and each hid the other.
   WorldCover v200, CC BY 4.0 — approved) with the same three-states-no-fourth
   refusal contract as `sar.py`.
 
+## FD2320 had five definitions in this repo, and two live ones disagreed
+
+Full record: `docs/validation_findings.md` §10. `floodview/impact/hazard.py`
+declares itself "the SINGLE source of truth for hazard classification" and was
+neither single nor self-consistent — a depth-band table in the code one full
+class COARSER than the docstring above it, the published continuous rating in
+the same file reachable only from tests, a fourth table inlined in
+`export/shapefile.py`, and a fifth in the frontend's gauge badge.
+
+- **Velocity could only ever REDUCE hazard.** The band table tested
+  `velocity <= max_velocity` as one term of an AND with the depth window, so a
+  cell exceeding a band's ceiling fell OUT of that band without being promoted.
+  A flow **3 m deep at 8 m/s matched no band and was reported DRY.** Latent —
+  `classify()` had no non-test caller — but it was the velocity-aware path.
+- **Two live tables disagreed on real output.** A cell 1.5 m deep was *moderate*
+  on the dashboard and *high* in the exported shapefile, both labelled FD2320.
+- **One definition now, and it is the published one.**
+  `HR = depth * (|V| + 0.5) + DF`, classed at 0.75 / 1.25 / 2.5.
+  `HazardClassifier` computes it; `export_hazard_classification_polygons` calls
+  the same classifier instead of its own masks; the gauge badge mirrors the
+  depth-only reduction (`HR = 0.5d + DF`, edges at **0.5 / 1.5 / 4.0 m**).
+- **`severe` is retired.** FD2320 publishes FOUR wet categories and no boundary
+  that would split extreme. Inventing one is what `natural_dam.py`'s own policy
+  forbids. `hazard_summary`, the shapefile class names (`medium`/`high` →
+  `moderate`/`significant`) and the frontend level lists all follow.
+- **The debris factor is a categorical input, not a constant.** The trailing
+  `+ 0.5` was hardcoded; DF is published as 0 / 0.5 / 1.0 by land use. It is a
+  named parameter now, defaulting to 0.5 and echoed in every summary payload.
+  Land cover is deliberately NOT consulted to choose it — that mapping belongs
+  beside the WorldCover legend and does not exist.
+- **`hazard_weights` stays UNVETTED.** FD2320 publishes classes, not a weighting
+  between them, and `weighted_hazard_index` reaches the payload.
+- Every hazard class count written down before this change — the tables in the
+  drainage section above, `docs/validation_findings.md` §8, and
+  `hazard_series.json` for existing runs — is not reproducible and is **not
+  retroactively reclassified**, the same precedent as the 25× population
+  undercount. `run_khadakwasla_drainage_check.py` folds an old run's `severe`
+  count into `extreme` so a stored series still reads.
+
+## `PopulationEstimator` returned zero people, always
+
+`floodview/impact/population.py`'s settlement-type estimator was deleted rather
+than repaired. Its lookup keys were the strings `"village"`/`"town"`/`"city"`
+while the settlement grid it documented — and the one its own synthesiser
+produced — held integers 0/1/2, so the membership test could never fire and the
+density array stayed all zeros on every input it could be given. Two more
+defects sat in the same call: the PAR denominator re-hardcoded a 200 m cell,
+discarding the caller's resolution (the exact bug its own docstring claimed to
+have fixed), and the exposure loop summed four NESTED depth thresholds, counting
+a 2 m-deep cell four times. It had no caller outside its own tests, and
+`tasks.py` already uses `compute_par` / `compute_population_exposure`.
+
+Separately, `compute_par` gated on `arrival_time_grid > 0`, which silently
+dropped every cell wet at exactly t = 0 — the breach cell and its neighbours,
+i.e. the population with the LEAST warning of anyone in the domain. `isfinite()`
+is what rejects the never-wet `inf` sentinel; the bound is `>= 0`.
+
+## Three smaller defects closed in the same pass
+
+- **An all-nodata DEM produced a silently all-NaN bed.**
+  `conditioning.interpolate_dem_to_grid` took its fill value from `np.nanmean`,
+  which returns NaN over an all-NaN array (a warning, not an error). That NaN
+  became the interpolator's `fill_value` AND the replacement in the closing
+  `np.nan_to_num`, so the sanitiser replaced NaN with NaN. It now averages the
+  finite cells and RAISES when none are finite — the older fallback substituted
+  a literal 100.0 m flat bed, which runs to completion and produces a
+  plausible-looking wrong map. The bare `except Exception` around the
+  interpolator is gone with it, so a genuine interpolation failure surfaces
+  instead of becoming a flat bed.
+- **`sph/coupling.py` divided by an unguarded breach width.** `u = Q/(h·w)` had
+  a guard on `h` and `Q` and none on `w`, a plain default parameter — while the
+  identical relation in `pysph_runner.py` was guarded. Both factors are guarded
+  now, and `extract_sph_free_surface` validates `grid_res_m > 0` (a negative
+  value returned an empty (0,0) grid with no error).
+- **`XU_ZHANG_2009_VERIFIED` gated nothing.** The function never read the flag,
+  and `synthesize_breach_ensemble` took `regression_families` verbatim, so
+  `regression_families=["xu_zhang"]` produced a full ensemble from a model that
+  over-predicts Teton by 5.5× on its own back-check, indistinguishable from a
+  verified one. The function still RETURNS a value — a documented decision so
+  direct callers do not break — so the gate lives at the ensemble:
+  `REGRESSION_FAMILY_ALIASES` refuses an unknown name (the dispatch used to fall
+  through to Froehlich, so a typo silently changed the equation) and
+  `UnverifiedRegressionError` refuses a quarantined one without
+  `allow_unverified_regressions=True`. `ensemble_statistics` now carries
+  `unverified_regressions` up to the payload the way `dam_class_note` does.
+
 ## A fatality model was running under another author's name
 
 `impact/fatality.py::estimate_loss_of_life_jonkman` documented
@@ -662,7 +748,11 @@ Five confirmation runs later, the mechanism fixes of the previous section were
 necessary and not sufficient, and the reason was not the one being looked for.
 
 **Three runs on the wide domain all plateaued identically.** Read them from
-`data/keyframes/<run_id>/hazard_series.json`:
+`data/keyframes/<run_id>/hazard_series.json`. Every per-class count in this
+section PREDATES the FD2320 unification below and is not reproducible by a new
+run — the `sev` column names a class that no longer exists. The hydraulics are
+untouched, so wet extent, `exited_mcm`, `retained_fraction`, arrival times and
+the recession shape all stand; only the class labelling changed.
 
 | run | domain | Δx | duration | members | wall clock | final low/mod/sig/sev/ext | wet severity | `exited_mcm` |
 | :--- | :--- | ---: | ---: | ---: | ---: | :--- | ---: | ---: |
@@ -695,6 +785,8 @@ Run `e2e09ea3201d4d42b7a7dbcd5fac4b81` (`khadakwasla_drain_to_green`, 200 m,
 against a pre-fix baseline of ~42% retained and 46 cells stuck SEVERE. **The
 hazard reaches zero SEVERE and zero EXTREME at 9.44 h.** `fully_green_at_s` is
 still null: 154 low + 46 moderate + 1 significant cell remain wet at 30 h.
+(Those class names are the pre-unification ones; re-running this case today
+would report the same water under the four published FD2320 classes.)
 
 **Say what that run is, because it clips the study area on purpose.** It answers
 "when does the flood clear a 28 × 26 km area around Pune", NOT "the water ceased

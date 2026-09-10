@@ -261,6 +261,65 @@ class TestNaturalDamRegressions:
         with pytest.raises(NaturalDamRegressionUnverified, match="row 20"):
             peng_zhang_2012_peak_outflow(60.0, 400.0, 5.4e6, 7.2e7)
 
+    def test_an_unverified_regression_family_is_refused_by_the_ensemble(self):
+        """
+        XU_ZHANG_2009_VERIFIED was a label, not a gate.
+
+        xu_zhang_2009_peak_outflow never read the flag, and
+        synthesize_breach_ensemble took regression_families verbatim with no
+        membership check, so a caller could produce a full ensemble from a
+        model that over-predicts Teton by 5.5x and get output indistinguishable
+        from a verified one. The function itself still returns a value -- a
+        documented decision so direct callers do not break -- so the gate lives
+        at the ensemble instead.
+        """
+        from floodview.terrain.breach import (
+            XU_ZHANG_2009_VERIFIED,
+            UnverifiedRegressionError,
+            synthesize_breach_ensemble,
+        )
+
+        assert XU_ZHANG_2009_VERIFIED is False
+        config = {"height_m": 60.0, "storage_mm3": 100.0, "dam_type": "embankment"}
+
+        with pytest.raises(UnverifiedRegressionError, match="QUARANTINED"):
+            synthesize_breach_ensemble(
+                config, num_samples=2, regression_families=["xu_zhang"]
+            )
+
+    def test_an_unknown_regression_family_is_refused_not_silently_defaulted(self):
+        """
+        The dispatch ended in an `else` that quietly used Froehlich, so a typo
+        produced a complete ensemble computed from a different equation than
+        the one that was asked for.
+        """
+        from floodview.terrain.breach import synthesize_breach_ensemble
+
+        config = {"height_m": 60.0, "storage_mm3": 100.0, "dam_type": "embankment"}
+        with pytest.raises(ValueError, match="Unknown regression family"):
+            synthesize_breach_ensemble(
+                config, num_samples=2, regression_families=["froelich"]
+            )
+
+    def test_an_opted_in_unverified_run_is_labelled_at_ensemble_level(self):
+        from floodview.terrain.breach import (
+            ensemble_statistics,
+            synthesize_breach_ensemble,
+        )
+
+        config = {"height_m": 60.0, "storage_mm3": 100.0, "dam_type": "embankment"}
+        members = synthesize_breach_ensemble(
+            config,
+            num_samples=2,
+            random_seed=0,
+            regression_families=["xu_zhang"],
+            allow_unverified_regressions=True,
+        )
+        stats = ensemble_statistics(members)
+        assert stats["uses_unverified_regression"] is True
+        assert "xu_zhang_2009" in stats["unverified_regressions"]
+        assert "xu_zhang_2009" in stats["unverified_regression_note"]
+
     def test_costa_is_the_only_active_natural_dam_family(self):
         from floodview.terrain.natural_dam import NATURAL_DAM_REGRESSION_FAMILIES
 

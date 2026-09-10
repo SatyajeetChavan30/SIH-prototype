@@ -107,6 +107,7 @@ def synthesize_breach_ensemble(
     *,
     peak_log_cycles: Optional[float] = None,
     scenario_type: str = "dam_break",
+    allow_unverified_regressions: bool = False,
 ) -> List[Dict]:
     """
     Generate ensemble of breach hydrographs.
@@ -122,8 +123,10 @@ def synthesize_breach_ensemble(
         num_samples: Number of ensemble members
         random_seed: Optional seed for reproducible sampling
         regression_families: Optional list of regression families to sample from
-            (e.g. ["froehlich", "von_thun", "macdonald", "xu_zhang"]). If None,
-            the Wahl (2004) default is used for all members.
+            (e.g. ["froehlich", "von_thun", "macdonald", "costa"]). If None,
+            every verified family is drawn on. An unrecognised name, or a
+            QUARANTINED one, is refused rather than silently falling through to
+            the Froehlich default — see allow_unverified_regressions.
         peak_log_cycles: Keyword-only. Width, in log10 cycles, of the prediction
             band the per-member peak is sampled across. None keeps the historical
             15% lognormal jitter, which is right when several families are mixed
@@ -134,6 +137,14 @@ def synthesize_breach_ensemble(
             selects which fitted population the dam class is judged against:
             an embankment is in-population for a dam break and OUT of it for a
             landslide-dam outburst, and vice versa.
+        allow_unverified_regressions: Keyword-only. Permit a family whose
+            *_VERIFIED flag is False. Off by default. Xu & Zhang (2009) is the
+            only such family here; it over-predicts Teton by 5.5x on its own
+            back-check, and its coefficients have not been confirmed against
+            the primary source. Passing True marks every affected member
+            "unverified_regression": True, which ensemble_statistics then
+            carries up as "unverified_regressions" so the flag reaches the
+            payload instead of dying in per-member metadata.
 
     Returns:
         List of breach hydrograph dicts with:
@@ -158,7 +169,9 @@ def synthesize_breach_ensemble(
     manning_n_samples = np.clip(manning_n_samples, 0.01, 0.1)  # Reasonable bounds
 
     if regression_families:
-        families = list(regression_families)
+        families = _validate_regression_families(
+            regression_families, allow_unverified_regressions
+        )
     else:
         # Draw on every verified family rather than one. A single-family
         # ensemble only samples the Manning/peak noise, which understates the
@@ -776,6 +789,28 @@ def ensemble_statistics(hydrographs: List[Dict]) -> Dict:
     )
     stats["scenario_type"] = sorted(scenarios)[0] if len(scenarios) == 1 else "mixed"
 
+    # Unverified regressions travel up too. Each member already carried
+    # "unverified_regression", and nothing read it -- so an ensemble computed
+    # from a quarantined equation reached hazard_summary, the API payload and
+    # the dashboard indistinguishable from a verified one. A run that used one
+    # must say so wherever it says anything.
+    unverified = sorted(
+        {
+            hg["metadata"].get("regression")
+            for hg in hydrographs
+            if hg["metadata"].get("unverified_regression")
+        }
+        - {None}
+    )
+    stats["unverified_regressions"] = unverified
+    stats["uses_unverified_regression"] = bool(unverified)
+    stats["unverified_regression_note"] = (
+        "Peak outflow for at least one ensemble member came from "
+        + ", ".join(unverified)
+        + ", whose coefficients have not been confirmed against the primary "
+        "source. Do not quote the discharge without this caveat."
+    ) if unverified else None
+
     # Natural-dam scatter has to travel with the ensemble range, not sit in
     # per-member metadata nothing reads.
     stats["natural_dam_note"] = next(
@@ -1301,6 +1336,90 @@ DEFAULT_REGRESSION_FAMILIES = (
     "costa",
     "von_thun",
 )
+
+# Every regression family name the dispatch in _generate_single_hydrograph
+# accepts, mapped alias -> canonical name.
+#
+# This registry exists so an unrecognised family is REFUSED. Previously
+# synthesize_breach_ensemble took the caller's list verbatim and the dispatch
+# ended in an `else` that quietly used Froehlich, so a typo -- or a family that
+# does not exist -- produced a complete, ordinary-looking ensemble computed
+# from a different equation than the one that was asked for.
+REGRESSION_FAMILY_ALIASES = {
+    "froehlich": "froehlich_1995",
+    "froehlich_1995": "froehlich_1995",
+    "von_thun": "von_thun_gillette_1990",
+    "von_thun_gillette_1990": "von_thun_gillette_1990",
+    "macdonald": "macdonald_langridge_1984",
+    "macdonald_langridge_1984": "macdonald_langridge_1984",
+    "costa": "costa_1985",
+    "costa_1985": "costa_1985",
+    "scs": "scs_1981",
+    "scs_1981": "scs_1981",
+    "xu_zhang": "xu_zhang_2009",
+    "xu_zhang_2009": "xu_zhang_2009",
+}
+
+# Canonical family name -> the module flag that says whether its coefficients
+# have been confirmed against the primary source.
+REGRESSION_FAMILY_VERIFIED = {
+    "froehlich_1995": True,
+    "von_thun_gillette_1990": True,
+    "macdonald_langridge_1984": True,
+    "costa_1985": True,
+    "scs_1981": True,
+    "xu_zhang_2009": XU_ZHANG_2009_VERIFIED,
+}
+
+
+class UnverifiedRegressionError(ValueError):
+    """Raised when a quarantined regression family is requested without opt-in."""
+
+
+def _validate_regression_families(
+    families: List[str], allow_unverified: bool
+) -> List[str]:
+    """
+    Resolve caller-supplied family names, refusing unknown or quarantined ones.
+
+    xu_zhang_2009_peak_outflow itself still RETURNS a value when called
+    directly — that is a deliberate decision documented in its own docstring,
+    so a direct caller does not break. The gate belongs here instead, at the
+    one place a family name turns into ensemble members that look exactly like
+    any other ensemble members.
+
+    Args:
+        families: Family names or aliases from the caller.
+        allow_unverified: Permit families whose *_VERIFIED flag is False.
+
+    Returns:
+        The list of names, unchanged, once validated (the dispatch in
+        _generate_single_hydrograph accepts aliases and canonicalises them).
+
+    Raises:
+        ValueError: on an unrecognised family name.
+        UnverifiedRegressionError: on a quarantined family without opt-in.
+    """
+    resolved = []
+    for name in families:
+        key = str(name).strip().lower()
+        canonical = REGRESSION_FAMILY_ALIASES.get(key)
+        if canonical is None:
+            raise ValueError(
+                f"Unknown regression family {name!r}. Known families: "
+                + ", ".join(sorted(set(REGRESSION_FAMILY_ALIASES.values())))
+            )
+        if not REGRESSION_FAMILY_VERIFIED[canonical] and not allow_unverified:
+            raise UnverifiedRegressionError(
+                f"Regression family {canonical!r} is QUARANTINED: its "
+                "coefficients have not been confirmed against the primary "
+                "source, and it over-predicts Teton (1976) by 5.5x on this "
+                "module's own back-check. Pass "
+                "allow_unverified_regressions=True to run it anyway; every "
+                "member it produces will be marked unverified_regression."
+            )
+        resolved.append(key)
+    return resolved
 
 
 # ── Level-pool (modified Puls) reservoir routing ──────────────────────────────

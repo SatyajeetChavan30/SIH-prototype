@@ -102,6 +102,39 @@ class TestDEMProcessing:
         assert bed_elev.min() >= dem_original.min() - 1
         assert bed_elev.max() <= dem_original.max() + 1
 
+    def test_an_all_nodata_window_refuses_rather_than_inventing_a_bed(self):
+        """
+        A fully-nodata DEM used to produce a silently all-NaN bed.
+
+        The fill value came from np.nanmean, which returns NaN (with a warning,
+        not an error) over an all-NaN array. That NaN then became BOTH the
+        interpolator's fill_value and the replacement in the closing
+        np.nan_to_num, so the sanitiser replaced NaN with NaN. The older
+        fallback was worse still: a literal 100.0 m flat bed, which runs to
+        completion and produces a plausible-looking wrong inundation map.
+        """
+        grid = Grid(nx=10, ny=10, dx=90.0, dy=90.0)
+
+        class MockBounds:
+            left, bottom, right, top = 0, 0, 900, 900
+
+        all_nodata = np.full((30, 30), np.nan)
+        with pytest.raises(ValueError, match="no finite elevation"):
+            interpolate_dem_to_grid(all_nodata, grid, MockBounds())
+
+    def test_a_partly_nodata_window_uses_the_finite_mean(self):
+        """Partial voids are ordinary in Copernicus GLO-30 over water."""
+        grid = Grid(nx=10, ny=10, dx=90.0, dy=90.0)
+
+        class MockBounds:
+            left, bottom, right, top = 0, 0, 900, 900
+
+        dem = np.full((30, 30), 500.0)
+        dem[:10, :] = np.nan
+
+        bed_elev = interpolate_dem_to_grid(dem, grid, MockBounds())
+        assert np.all(np.isfinite(bed_elev))
+
 
 class TestManningAssignment:
     """

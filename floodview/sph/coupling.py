@@ -32,17 +32,33 @@ def handoff_swe_to_sph(
         q_breach_m3_s: Outflow discharge from SWE breach solver (m3/s)
         h_breach_m: Water depth at breach cell (m)
         near_field_domain: NearFieldDomain instance
-        breach_width_m: Width of breach opening (m)
+        breach_width_m: Width of breach opening (m). Must be positive: it is a
+            denominator below, and it is a plain default rather than something
+            the caller is forced to supply.
 
     Returns:
-        Updated NearFieldDomain instance
+        Updated NearFieldDomain instance, unchanged if there is nothing to inject.
+
+    Raises:
+        ValueError: if breach_width_m is not positive.
     """
     d = near_field_domain
+
+    # The width guard is a raise, not an early return, because a non-positive
+    # breach width is a caller bug rather than a quiescent state -- unlike a
+    # zero discharge or a dry breach cell, which are both ordinary.
+    if breach_width_m <= 0.0:
+        raise ValueError(
+            f"breach_width_m must be positive (got {breach_width_m}); it is the "
+            "denominator of u = Q/(h*w)."
+        )
 
     if h_breach_m <= 0.01 or q_breach_m3_s <= 0.0:
         return d
 
-    # Compute inflow velocity required to sustain discharge Q
+    # Compute inflow velocity required to sustain discharge Q. Both factors of
+    # the denominator are now guarded, matching sph.pysph_runner's own
+    # max(depth * width, 1.0) on the identical relation.
     u_inflow = float(q_breach_m3_s / (h_breach_m * breach_width_m))
 
     # Apply velocity update to near-field inflow particles near breach center
@@ -62,11 +78,19 @@ def extract_sph_free_surface(
 
     Args:
         domain: NearFieldDomain instance
-        grid_res_m: Resolution of output depth grid (m)
+        grid_res_m: Resolution of output depth grid (m). Must be positive --
+            zero makes np.arange below raise, and a negative value returns
+            empty axes and a (0, 0) depth grid with no error at all.
 
     Returns:
         Tuple of (x_grid, y_grid, depth_2d)
+
+    Raises:
+        ValueError: if grid_res_m is not positive.
     """
+    if grid_res_m <= 0.0:
+        raise ValueError(f"grid_res_m must be positive (got {grid_res_m})")
+
     fluid_mask = domain.pid == 0
     if not np.any(fluid_mask):
         dummy_grid = np.zeros((5, 5), dtype=np.float32)

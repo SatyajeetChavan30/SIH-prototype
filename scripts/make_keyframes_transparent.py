@@ -26,7 +26,6 @@ specific case because the FD2320 palette has no other grey:
     low          100,200,100
     moderate     255,200,0
     significant  255,100,0
-    severe       255,0,0
     extreme      150,0,150
 
 Exact-match only, no tolerance, so anti-aliased or blended pixels are left

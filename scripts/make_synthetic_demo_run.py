@@ -142,8 +142,8 @@ def paint_wave(corridor, distance_km, height_above_floor, frame_t, duration_s,
       shape     deeper in the valley bottom, shallower toward the corridor edge
 
     The recession is the point of the whole asset — every cell must reach zero,
-    so the hazard walks EXTREME -> SEVERE -> SIGNIFICANT -> MODERATE -> LOW ->
-    dry rather than plateauing the way the real runs do.
+    so the hazard walks EXTREME -> SIGNIFICANT -> MODERATE -> LOW -> dry
+    rather than plateauing the way the real runs do.
     """
     total_h = duration_s / 3600.0
     # The front clears the full reach in 60% of the run, leaving the remaining
@@ -346,7 +346,7 @@ def main() -> int:
 
         def counts(h):
             return {k: (h.get(k, {}) or {}).get("count", 0) for k in
-                    ("low", "moderate", "significant", "severe", "extreme")}
+                    ("low", "moderate", "significant", "extreme")}
 
         print(f"[synthetic] first frame: {counts(first)}")
         print(f"[synthetic] last  frame: {counts(last)}")

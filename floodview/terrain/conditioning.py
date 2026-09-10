@@ -591,6 +591,20 @@ def interpolate_dem_to_grid(
     """
     Interpolate DEM raster to uniform Cartesian grid.
 
+    The fill value for cells outside the DEM's own footprint is the mean of the
+    FINITE source cells. Two things about that are load-bearing:
+
+      - It is computed over finite cells explicitly, not with ``np.nanmean``
+        over the whole array. ``np.nanmean`` of an all-NaN array returns NaN
+        (with a RuntimeWarning, not an error), and that NaN then became the
+        interpolator's ``fill_value`` AND the replacement value in the
+        ``np.nan_to_num`` at the end -- so the sanitiser replaced NaN with NaN
+        and a fully-nodata window produced a silently all-NaN bed.
+      - If NO cell is finite there is no defensible fill value, so this raises.
+        The old code substituted a literal 100.0 m. A flat invented bed runs to
+        completion and produces a plausible-looking wrong inundation map, which
+        is worse than a stack trace.
+
     Args:
         dem_data: 2D DEM array (already resampled)
         grid: Target grid
@@ -598,6 +612,9 @@ def interpolate_dem_to_grid(
 
     Returns:
         Bed elevation at grid cell centres
+
+    Raises:
+        ValueError: if ``dem_data`` is empty or contains no finite value.
     """
     # Create coordinate arrays for DEM (pixel centres, strictly ascending)
     y_min, y_max = min(dem_bounds.bottom, dem_bounds.top), max(dem_bounds.bottom, dem_bounds.top)
@@ -608,22 +625,29 @@ def interpolate_dem_to_grid(
 
     # Grid cell centres
     grid_x, grid_y = grid.cell_centres_2d()
-    mean_val = float(np.nanmean(dem_data)) if dem_data.size > 0 else 100.0
 
-    try:
-        interpolator = RegularGridInterpolator(
-            (dem_y, dem_x),
-            np.flipud(dem_data) if dem_bounds.top > dem_bounds.bottom else dem_data,
-            method="linear",
-            bounds_error=False,
-            fill_value=mean_val,
+    finite = np.isfinite(dem_data)
+    if not finite.any():
+        raise ValueError(
+            "interpolate_dem_to_grid: the DEM window contains no finite "
+            f"elevation ({dem_data.size} cells, all nodata/NaN). Refusing to "
+            "substitute a flat invented bed — check the clip bounds and the "
+            "source raster's nodata value."
         )
+    mean_val = float(dem_data[finite].mean())
 
-        points = np.column_stack([grid_y.ravel(), grid_x.ravel()])
-        bed_elevation = interpolator(points).reshape(grid.ny, grid.nx)
-    except Exception:
-        bed_elevation = np.full((grid.ny, grid.nx), mean_val, dtype=np.float32)
+    interpolator = RegularGridInterpolator(
+        (dem_y, dem_x),
+        np.flipud(dem_data) if dem_bounds.top > dem_bounds.bottom else dem_data,
+        method="linear",
+        bounds_error=False,
+        fill_value=mean_val,
+    )
 
+    points = np.column_stack([grid_y.ravel(), grid_x.ravel()])
+    bed_elevation = interpolator(points).reshape(grid.ny, grid.nx)
+
+    # mean_val is finite by construction above, so this cannot reintroduce NaN.
     return np.nan_to_num(bed_elevation, nan=mean_val).astype(np.float32)
 
 

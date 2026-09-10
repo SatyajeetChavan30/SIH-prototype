@@ -2,6 +2,7 @@ import React from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { HAZARD_LEVELS, foldLegacyLevels } from "../hazard.js";
 
 /**
  * Impact assessment — population at risk, loss of life, hazard classes.
@@ -192,7 +193,8 @@ function FatalitySection({ par }) {
   );
 }
 
-function HazardSection({ hazard }) {
+function HazardSection({ hazard: rawHazard }) {
+  const hazard = foldLegacyLevels(rawHazard);
   if (!hazard) {
     return (
       <section style={S.section}>
@@ -202,7 +204,7 @@ function HazardSection({ hazard }) {
     );
   }
 
-  const levels = ["low", "moderate", "significant", "severe", "extreme"];
+  const levels = HAZARD_LEVELS;
 
   // Share of the FLOODED area, not the whole domain — the same correction the
   // map legend needed. hazard[l].percentage divides by every cell including

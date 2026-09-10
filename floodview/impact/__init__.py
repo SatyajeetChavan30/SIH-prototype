@@ -24,12 +24,14 @@ from floodview.impact.damage import (
     compute_depth_damage,
     estimate_sector_damage,
 )
-from floodview.impact.hazard import HazardClassifier
-from floodview.impact.population import PopulationEstimator
+from floodview.impact.hazard import HazardClassifier, HazardLevel
+from floodview.impact.population import compute_par, compute_population_exposure
 
 __all__ = [
     "HazardClassifier",
-    "PopulationEstimator",
+    "HazardLevel",
+    "compute_par",
+    "compute_population_exposure",
     "SECTORS",
     "compute_depth_damage",
     "calculate_economic_loss",
