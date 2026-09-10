@@ -1,8 +1,8 @@
-# JalRaksha platform — 5-service stack (integration brief §5.8).
+# FloodView platform — 5-service stack (integration brief §5.8).
 #
 # Brings up the full pipeline behind a browser UI:
 #   api     FastAPI REST surface (enqueue + status + results)
-#   worker  Celery worker running the existing jalraksha pipeline
+#   worker  Celery worker running the existing floodview pipeline
 #   redis   broker + result backend
 #   postgres thin run/job metadata + gauge time series (no PostGIS needed)
 #   tiles   nginx serving Cesium terrain tiles + keyframe PNGs
@@ -20,9 +20,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: jalraksha
-      POSTGRES_USER: jalraksha
-      POSTGRES_PASSWORD: jalraksha
+      POSTGRES_DB: floodview
+      POSTGRES_USER: floodview
+      POSTGRES_PASSWORD: floodview
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -32,11 +32,11 @@ services:
     build:
       context: .
       dockerfile: services/api/Dockerfile
-    command: uvicorn jalraksha_service.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn floodview_service.main:app --host 0.0.0.0 --port 8000
     environment:
       REDIS_URL: "redis://redis:6379/0"
-      DATABASE_URL: "postgresql://jalraksha:jalraksha@postgres:5432/jalraksha"
-      JALRAKSHA_DATA_DIR: "/data"
+      DATABASE_URL: "postgresql://floodview:floodview@postgres:5432/floodview"
+      FLOODVIEW_DATA_DIR: "/data"
     depends_on:
       - redis
       - postgres
@@ -49,11 +49,11 @@ services:
     build:
       context: .
       dockerfile: services/api/Dockerfile
-    command: celery -A jalraksha_service.worker worker -l info
+    command: celery -A floodview_service.worker worker -l info
     environment:
       REDIS_URL: "redis://redis:6379/0"
-      DATABASE_URL: "postgresql://jalraksha:jalraksha@postgres:5432/jalraksha"
-      JALRAKSHA_DATA_DIR: "/data"
+      DATABASE_URL: "postgresql://floodview:floodview@postgres:5432/floodview"
+      FLOODVIEW_DATA_DIR: "/data"
     depends_on:
       - redis
       - postgres

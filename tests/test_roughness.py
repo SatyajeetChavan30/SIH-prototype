@@ -17,9 +17,9 @@ rasterio = pytest.importorskip("rasterio")
 
 from rasterio.transform import from_origin
 
-from jalraksha.solver.types import Grid
-from jalraksha.terrain.conditioning import _finish_domain
-from jalraksha.terrain.roughness import (
+from floodview.solver.types import Grid
+from floodview.terrain.conditioning import _finish_domain
+from floodview.terrain.roughness import (
     DEFAULT_MANNING_N,
     MANNING_TABLE_ESA,
     LandCoverUnavailableError,

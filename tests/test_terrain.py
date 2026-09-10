@@ -8,13 +8,13 @@ import tempfile
 import rasterio
 from rasterio.transform import Affine
 
-from jalraksha.solver.types import Grid, create_state
-from jalraksha.terrain.conditioning import (
+from floodview.solver.types import Grid, create_state
+from floodview.terrain.conditioning import (
     preprocess_dem, interpolate_dem_to_grid, resample_dem, fill_depressions,
 )
-from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm
-from jalraksha.terrain.roughness import get_manning_value, MANNING_TABLE_ESA
-from jalraksha.run import _notch_breach_into_bed
+from floodview.terrain.domain import build_domain, compute_breach_location, latlon_to_utm
+from floodview.terrain.roughness import get_manning_value, MANNING_TABLE_ESA
+from floodview.run import _notch_breach_into_bed
 
 
 @pytest.fixture
@@ -101,6 +101,39 @@ class TestDEMProcessing:
         assert bed_elev.shape == (grid.ny, grid.nx)
         assert bed_elev.min() >= dem_original.min() - 1
         assert bed_elev.max() <= dem_original.max() + 1
+
+    def test_an_all_nodata_window_refuses_rather_than_inventing_a_bed(self):
+        """
+        A fully-nodata DEM used to produce a silently all-NaN bed.
+
+        The fill value came from np.nanmean, which returns NaN (with a warning,
+        not an error) over an all-NaN array. That NaN then became BOTH the
+        interpolator's fill_value and the replacement in the closing
+        np.nan_to_num, so the sanitiser replaced NaN with NaN. The older
+        fallback was worse still: a literal 100.0 m flat bed, which runs to
+        completion and produces a plausible-looking wrong inundation map.
+        """
+        grid = Grid(nx=10, ny=10, dx=90.0, dy=90.0)
+
+        class MockBounds:
+            left, bottom, right, top = 0, 0, 900, 900
+
+        all_nodata = np.full((30, 30), np.nan)
+        with pytest.raises(ValueError, match="no finite elevation"):
+            interpolate_dem_to_grid(all_nodata, grid, MockBounds())
+
+    def test_a_partly_nodata_window_uses_the_finite_mean(self):
+        """Partial voids are ordinary in Copernicus GLO-30 over water."""
+        grid = Grid(nx=10, ny=10, dx=90.0, dy=90.0)
+
+        class MockBounds:
+            left, bottom, right, top = 0, 0, 900, 900
+
+        dem = np.full((30, 30), 500.0)
+        dem[:10, :] = np.nan
+
+        bed_elev = interpolate_dem_to_grid(dem, grid, MockBounds())
+        assert np.all(np.isfinite(bed_elev))
 
 
 class TestManningAssignment:
@@ -369,7 +402,7 @@ class TestDrainageFix:
 
     def test_offset_rectangular_domain_bounds(self):
         """margins_km produces an nx != ny rectangle with the intended UTM extent."""
-        from jalraksha.terrain.conditioning import load_dem_as_grid
+        from floodview.terrain.conditioning import load_dem_as_grid
 
         # Reuse the fixture-free path: build a small synthetic geotiff inline
         # covering a wide enough area, then request an asymmetric extent from
@@ -411,7 +444,7 @@ def test_terrain_gate_lake_at_rest(mock_dem_geotiff):
     currents on complex topography. This is acceptable for Tier-1 screening
     where far-field averaging damps oscillations.
     """
-    from jalraksha.solver.core import SWESolver
+    from floodview.solver.core import SWESolver
 
     dem_path, _ = mock_dem_geotiff
 
@@ -465,7 +498,7 @@ class TestCorridorConditioning:
         return bed
 
     def test_corridor_pit_is_filled_and_upland_pit_is_not(self):
-        from jalraksha.terrain.conditioning import (
+        from floodview.terrain.conditioning import (
             fill_depressions, height_above_valley_floor,
         )
 
@@ -497,7 +530,7 @@ class TestCorridorConditioning:
         A conditioned bed that does not SAY it was conditioned is the failure
         mode. The stats are what a run summary quotes.
         """
-        from jalraksha.terrain.conditioning import (
+        from floodview.terrain.conditioning import (
             fill_depressions, height_above_valley_floor,
         )
 
@@ -518,7 +551,7 @@ class TestCorridorConditioning:
         The option defaults off, and off must change nothing. Every existing run
         and the dashboard demo depend on this.
         """
-        from jalraksha.terrain.conditioning import fill_depressions
+        from floodview.terrain.conditioning import fill_depressions
 
         bed = self._bed_with_two_pits()
         a, sa = fill_depressions(bed, 3.0)

@@ -7,10 +7,10 @@ do not have to be re-derived.
 
 | Stage | Tool | Status |
 |---|---|---|
-| DEM reprojection, clipping, NoData fill | `rasterio` via `jalraksha/terrain/conditioning.py` | working |
-| Hydrodynamics | `jalraksha/solver/` — HLLC + Audusse, well-balanced | working, 27 blocking gates pass |
+| DEM reprojection, clipping, NoData fill | `rasterio` via `floodview/terrain/conditioning.py` | working |
+| Hydrodynamics | `floodview/solver/` — HLLC + Audusse, well-balanced | working, 27 blocking gates pass |
 | Synthetic stand-in water | `tools/paraview/synthetic_flood.py` | working, labelled |
-| Time-series writer | `jalraksha/export/xdmf_export.py` (h5py + `xml.etree`) | working, 12 tests |
+| Time-series writer | `floodview/export/xdmf_export.py` (h5py + `xml.etree`) | working, 12 tests |
 | 3D visualization, filters, camera, timeline | **ParaView** | not installed yet |
 | Reproducible batch render | pvpython / pvbatch | deferred |
 | Video encode | FFmpeg | not installed yet |
@@ -71,7 +71,7 @@ vertical component would fabricate physics that was never solved.
 
 ```
 Copernicus GLO-30 GeoTIFF (EPSG:4326)
-  -> jalraksha/dem.py::fetch_dem()          windowed /vsicurl read, mosaic, clip
+  -> floodview/dem.py::fetch_dem()          windowed /vsicurl read, mosaic, clip
   -> conditioning.py::load_dem_as_grid()    reproject to auto-detected UTM,
                                             nearest-valid NoData fill
   -> Grid(nx, ny, dx, dy, x0, y0, crs)      metres throughout

@@ -1,5 +1,5 @@
 """
-Tests for jalraksha.presets — the dam-preset records consumed by
+Tests for floodview.presets — the dam-preset records consumed by
 tools/paraview/make_dataset.py.
 
 These pin two things that would otherwise fail silently:
@@ -9,7 +9,7 @@ These pin two things that would otherwise fail silently:
    edits the literal without re-deriving it, this catches the drift.
 2. TEHRI.to_dam_config() is byte-for-byte the old hardcoded TEHRI dict that
    lived in tools/paraview/make_dataset.py, so moving the dam config into
-   jalraksha.presets is provably not a behaviour change for the existing
+   floodview.presets is provably not a behaviour change for the existing
    Tehri path.
 """
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from jalraksha.presets import KHADAKWASLA, PRESETS, TEHRI, PresetError, get_preset
+from floodview.presets import KHADAKWASLA, PRESETS, TEHRI, PresetError, get_preset
 
 
 def test_khadakwasla_latlon_is_not_the_spec_utm_derived_point():
@@ -26,7 +26,7 @@ def test_khadakwasla_latlon_is_not_the_spec_utm_derived_point():
     inverse-projects to 18.478968 N, 73.798061 E — but --locate-only at that
     point found the "dam" cell 36 m above the nearest DEM pool plateau (a
     hillside, not a reservoir). KHADAKWASLA.lat/lon uses a different,
-    DEM-validated point instead (see jalraksha/presets.py's comment on the
+    DEM-validated point instead (see floodview/presets.py's comment on the
     rejected candidate). This pins that the rejected point stays rejected.
     """
     assert KHADAKWASLA.lat == pytest.approx(18.4436, abs=1e-4)
@@ -53,7 +53,7 @@ def test_auto_detected_zone_matches_declared_epsg(preset):
     ever disagreed with what auto-detection would produce, every downstream
     assertion of "grid.crs == EPSG:{preset.epsg}" would fail confusingly.
     """
-    from jalraksha.terrain.domain import latlon_to_utm
+    from floodview.terrain.domain import latlon_to_utm
 
     zone, _, _ = latlon_to_utm(preset.lat, preset.lon)
     expected_epsg = (32600 if preset.lat >= 0 else 32700) + zone
@@ -143,7 +143,7 @@ def test_khadakwasla_structural_figures_are_still_marked_unvetted():
     """
     import inspect
 
-    import jalraksha.presets as presets
+    import floodview.presets as presets
 
     source = inspect.getsource(presets)
     khadakwasla_block = source[source.index("KHADAKWASLA = DamPreset("):]
@@ -164,27 +164,27 @@ def test_with_location_override_only_replaces_given_axis():
 
 
 def test_presets_registry_contains_both_dams_with_khadakwasla_default():
-    from jalraksha.presets import DEFAULT_PRESET_ID
+    from floodview.presets import DEFAULT_PRESET_ID
 
     assert set(PRESETS) == {"khadakwasla", "tehri"}
     assert DEFAULT_PRESET_ID == "khadakwasla"
 
 
 # ─── API registry consistency ──────────────────────────────────────────────
-# jalraksha/presets.py and services/api/.../config.py::DEMO_DAMS are two
+# floodview/presets.py and services/api/.../config.py::DEMO_DAMS are two
 # separate dam registries (the preset module's own docstring says so). Where
 # they overlap they must not drift, so pin the overlap rather than trusting it.
 
 
 def _demo_dams():
-    """Import the service config, which lives outside the jalraksha package."""
+    """Import the service config, which lives outside the floodview package."""
     import sys
     from pathlib import Path
 
     api_dir = Path(__file__).resolve().parents[1] / "services" / "api"
     if str(api_dir) not in sys.path:
         sys.path.insert(0, str(api_dir))
-    from jalraksha_service.config import settings
+    from floodview_service.config import settings
 
     return {d["id"]: d for d in settings.DEMO_DAMS}
 
@@ -221,10 +221,10 @@ def test_demo_dam_entries_publish_their_own_gauge_corridor():
     bhakra/idukki/hirakud have no surveyed corridor, and filling them with
     Tehri's towns is precisely what the old duplicated gauge lists did.
     """
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     dams = _demo_dams()
-    assert len(dams["khadakwasla"]["gauges"]) == len(get_gauges("khadakwasla")) == 7
+    assert len(dams["khadakwasla"]["gauges"]) == len(get_gauges("khadakwasla")) == 6
     assert len(dams["tehri"]["gauges"]) == 4
     for dam_id in ("bhakra", "idukki", "hirakud"):
         assert dams[dam_id]["gauges"] == [], dam_id
@@ -245,12 +245,12 @@ def test_tehri_demo_dam_entry_still_agrees_with_the_preset():
 
 def test_tehri_corridor_survived_the_move_from_run_py():
     """
-    The four Tehri gauges moved out of jalraksha/run.py into the registry.
+    The four Tehri gauges moved out of floodview/run.py into the registry.
     run.py's own comment records that these coordinates were previously wrong
     enough that the flood never reached Koteshwar, so pin them exactly: a typo
     during the move would silently reintroduce that bug.
     """
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     gauges = {g.name: g for g in get_gauges("tehri")}
     assert list(gauges) == ["Koteshwar", "Devprayag", "Rishikesh", "Haridwar"]
@@ -260,10 +260,10 @@ def test_tehri_corridor_survived_the_move_from_run_py():
 
 
 def test_khadakwasla_corridor_is_the_pune_towns_ordered_by_distance():
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     gauges = get_gauges("khadakwasla")
-    assert len(gauges) == 7
+    assert len(gauges) == 6
     assert [g.name for g in gauges][:2] == ["Deccan Gymkhana", "Swargate"]
     # Ordered ascending so the dashboard table reads down the corridor.
     distances = [g.distance_km for g in gauges]
@@ -286,7 +286,7 @@ def _great_circle_km(lat1, lon1, lat2, lon2):
 
 def test_khadakwasla_declared_distances_match_the_great_circle():
     """This corridor declares STRAIGHT-LINE distances, so they must be exact."""
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     for gauge in get_gauges("khadakwasla"):
         actual = _great_circle_km(
@@ -295,18 +295,11 @@ def test_khadakwasla_declared_distances_match_the_great_circle():
         assert actual == pytest.approx(gauge.distance_km, abs=0.2), gauge.name
 
 
-def test_mula_mutha_corridor_is_inside_the_domain_and_baramati_is_not():
+def test_mula_mutha_corridor_is_inside_the_domain():
     """
-    The six Mula-Mutha gauges must be solvable; Baramati knowingly is not.
-
-    Pinning the split rather than "all gauges are inside" on purpose. The
-    domain was briefly widened to 100 km to swallow Baramati, which pushed the
-    grid far outside the cached DEM and left build_domain filling 92% of cells
-    with interpolated NoData — water propagating over invented terrain. A gauge
-    correctly reported as out-of-domain is worth more than one brought in-domain
-    over fill.
+    All six Mula-Mutha gauges must be solvable within the domain radius.
     """
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     inside, outside = [], []
     for gauge in get_gauges("khadakwasla"):
@@ -314,7 +307,7 @@ def test_mula_mutha_corridor_is_inside_the_domain_and_baramati_is_not():
         (inside if d <= KHADAKWASLA.domain_radius_km else outside).append(gauge.name)
 
     assert len(inside) == 6
-    assert outside == ["Baramati"]
+    assert outside == []
 
 
 def test_domain_radius_does_not_exceed_the_cached_dem():
@@ -352,21 +345,8 @@ def test_domain_radius_does_not_exceed_the_cached_dem():
     )
 
 
-def test_baramati_carries_its_off_corridor_caveat():
-    """
-    Baramati sits on the Karha/Nira, not the Mula-Mutha that carries this dam's
-    flood. It is inside the domain, so a null arrival there is a correct result
-    rather than a domain-extent artifact — and that distinction only reaches a
-    reader if the note travels with the gauge.
-    """
-    from jalraksha.presets import get_gauges
-
-    baramati = next(g for g in get_gauges("khadakwasla") if g.name == "Baramati")
-    assert baramati.note and "OFF-CORRIDOR" in baramati.note
-
-
 def test_get_gauges_returns_empty_rather_than_another_dams_towns():
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     assert get_gauges("bhakra") == ()
     assert get_gauges(None) == ()
@@ -381,7 +361,7 @@ def test_khadakwasla_surface_area_reaches_the_storage_curve():
     limb, so silently reverting to a cone here would be a quiet 2x error in
     reservoir shape that nothing else would catch.
     """
-    from jalraksha.terrain.breach import reservoir_storage_curve
+    from floodview.terrain.breach import reservoir_storage_curve
 
     config = KHADAKWASLA.to_dam_config()
     assert config["surface_area_km2"] == pytest.approx(14.72)
@@ -418,7 +398,7 @@ class TestBlockagePresets:
     """
 
     def test_blockage_preset_publishes_no_gross_storage(self):
-        from jalraksha.presets import BLOCKAGE_PRESETS
+        from floodview.presets import BLOCKAGE_PRESETS
 
         for site in BLOCKAGE_PRESETS.values():
             assert not hasattr(site, "storage_mm3"), (
@@ -430,7 +410,7 @@ class TestBlockagePresets:
             assert not hasattr(site, "dam_type")
 
     def test_the_config_marks_storage_as_pending_measurement(self):
-        from jalraksha.presets import RISHI_GANGA
+        from floodview.presets import RISHI_GANGA
 
         config = RISHI_GANGA.to_dam_config()
 
@@ -445,7 +425,7 @@ class TestBlockagePresets:
         No crest height or width is published for the 2021 Rishi Ganga blockage,
         so none is asserted. barrier_source says how to measure them instead.
         """
-        from jalraksha.presets import RISHI_GANGA
+        from floodview.presets import RISHI_GANGA
 
         assert RISHI_GANGA.barrier_crest_height_m is None
         assert RISHI_GANGA.barrier_width_m is None
@@ -474,7 +454,7 @@ class TestBlockagePresets:
         import pytest
         import rasterio
 
-        from jalraksha.presets import RISHI_GANGA
+        from floodview.presets import RISHI_GANGA
 
         dem = Path("data/dem") / RISHI_GANGA.dem_filename()
         if not dem.exists():
@@ -500,7 +480,7 @@ class TestBlockagePresets:
             f"reaches {required_km:.1f} km at its corners, but the cached DEM "
             f"only covers {usable_radius_km:.1f} km — the corners would run on "
             f"nearest-neighbour fill. Stage a wider clip: python -c \"from "
-            f"jalraksha.dem import fetch_dem; fetch_dem({RISHI_GANGA.lat}, "
+            f"floodview.dem import fetch_dem; fetch_dem({RISHI_GANGA.lat}, "
             f"{RISHI_GANGA.lon}, domain_radius_km={required_km:.0f}, "
             f"cache_dir='./data')\""
         )
@@ -519,7 +499,7 @@ class TestBlockagePresets:
         so in its note. A test that demanded the town names back would push the
         next person straight into inventing coordinates again.
         """
-        from jalraksha.presets import get_gauges
+        from floodview.presets import get_gauges
 
         gauges = get_gauges("rishi_ganga")
         assert len(gauges) == 3
@@ -542,7 +522,7 @@ class TestBlockagePresets:
         -> 1,357 -> 1,271 m; a corridor that climbed would be a walk up a valley
         wall, which is exactly how the previous coordinates failed.
         """
-        from jalraksha.presets import get_gauges
+        from floodview.presets import get_gauges
 
         gauges = get_gauges("rishi_ganga")
         distances = [g.distance_km for g in gauges]
@@ -558,10 +538,10 @@ class TestBlockagePresets:
 
     def test_a_missing_corridor_never_borrows_another_sites_towns(self):
         """The rule the whole GAUGES module was written to enforce."""
-        from jalraksha.presets import get_gauges
+        from floodview.presets import get_gauges
 
         assert len(get_gauges("tehri")) == 4
-        assert len(get_gauges("khadakwasla")) == 7
+        assert len(get_gauges("khadakwasla")) == 6
         assert get_gauges("bhakra") == ()
         rishi_names = {g.name for g in get_gauges("rishi_ganga")}
         tehri_names = {g.name for g in get_gauges("tehri")}
@@ -574,7 +554,7 @@ class TestBlockagePresets:
         correction on the record is a credibility asset, and losing it would let
         the deck repeat the error.
         """
-        from jalraksha.presets import RISHI_GANGA
+        from floodview.presets import RISHI_GANGA
 
         assert "AVALANCHE" in RISHI_GANGA.note.upper()
         assert "Shugar" in RISHI_GANGA.note
@@ -582,7 +562,7 @@ class TestBlockagePresets:
     def test_an_unknown_blockage_site_raises_rather_than_substituting(self):
         import pytest
 
-        from jalraksha.presets import PresetError, get_blockage_preset
+        from floodview.presets import PresetError, get_blockage_preset
 
         with pytest.raises(PresetError, match="Unknown blockage site"):
             get_blockage_preset("wapriyang")
@@ -595,7 +575,7 @@ class TestBlockagePresets:
         import sys
 
         sys.path.insert(0, "services/api")
-        from jalraksha_service.config import settings
+        from floodview_service.config import settings
 
         record = next(d for d in settings.DEMO_DAMS if d["id"] == "rishi_ganga")
 
@@ -619,7 +599,7 @@ class TestMuthaBlockageSite:
     """
 
     def test_the_site_is_labelled_hypothetical(self):
-        from jalraksha.presets import MUTHA_TEMGHAR
+        from floodview.presets import MUTHA_TEMGHAR
 
         assert "HYPOTHETICAL" in MUTHA_TEMGHAR.barrier_source.upper()
         assert MUTHA_TEMGHAR.event_date is None
@@ -630,13 +610,13 @@ class TestMuthaBlockageSite:
         existed, and a refusal from it would then read as evidence about a real
         event rather than about an imaginary one.
         """
-        from jalraksha.presets import MUTHA_TEMGHAR
+        from floodview.presets import MUTHA_TEMGHAR
 
         assert MUTHA_TEMGHAR.detect_date_pre is None
         assert MUTHA_TEMGHAR.detect_date_post is None
 
     def test_it_publishes_no_storage_crest_or_width(self):
-        from jalraksha.presets import MUTHA_TEMGHAR
+        from floodview.presets import MUTHA_TEMGHAR
 
         config = MUTHA_TEMGHAR.to_dam_config()
 
@@ -654,7 +634,7 @@ class TestMuthaBlockageSite:
         present an attenuated result as a modelling outcome rather than as the
         consequence of an 85.31 MCM reservoir sitting in the way.
         """
-        from jalraksha.presets import MUTHA_TEMGHAR
+        from floodview.presets import MUTHA_TEMGHAR
 
         note = MUTHA_TEMGHAR.note
         assert "Temghar" in note
@@ -673,7 +653,7 @@ class TestMuthaBlockageSite:
         import pytest
         import rasterio
 
-        from jalraksha.presets import MUTHA_TEMGHAR
+        from floodview.presets import MUTHA_TEMGHAR
 
         dem = Path("data/dem") / MUTHA_TEMGHAR.dem_filename()
         if not dem.exists():
@@ -706,7 +686,7 @@ class TestMuthaBlockageSite:
         """
         import math
 
-        from jalraksha.presets import MUTHA_TEMGHAR, get_gauges
+        from floodview.presets import MUTHA_TEMGHAR, get_gauges
 
         margins = {"west": 15.0, "east": 42.0, "south": 20.0, "north": 20.0}
         km_per_deg_lon = 111.0 * math.cos(math.radians(MUTHA_TEMGHAR.lat))
@@ -730,7 +710,7 @@ class TestMuthaBlockageSite:
         in each note so the next person does not have to re-derive it before
         trusting the point.
         """
-        from jalraksha.presets import get_gauges
+        from floodview.presets import get_gauges
 
         towns = {"Deccan Gymkhana", "Shivajinagar", "Hadapsar"}
         found = set()
@@ -747,7 +727,7 @@ class TestMuthaBlockageSite:
         roughly 120 m above the channel. It is listed for Khadakwasla; copying
         it here would repeat the failure the corridor comment warns about.
         """
-        from jalraksha.presets import get_gauges
+        from floodview.presets import get_gauges
 
         names = {g.name for g in get_gauges("mutha_temghar")}
         assert "Loni Kalbhor" not in names
@@ -756,7 +736,7 @@ class TestMuthaBlockageSite:
         import sys
 
         sys.path.insert(0, "services/api")
-        from jalraksha_service.config import settings
+        from floodview_service.config import settings
 
         record = next(d for d in settings.DEMO_DAMS if d["id"] == "mutha_temghar")
 

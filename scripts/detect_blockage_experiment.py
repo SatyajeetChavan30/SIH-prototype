@@ -3,7 +3,7 @@ Does the landslide-lake auto-detector work anywhere? — a measured answer.
 
 WHY THIS EXISTS
 
-`jalraksha/gee/blockage_detect.py` has never produced a detection. The only
+`floodview/gee/blockage_detect.py` has never produced a detection. The only
 reach it has been run against is the Rishi Ganga (Chamoli 2021), where it
 refuses at Gate 1: JRC Global Surface Water shows permanent water over 0.001% of
 the window, so the pre-event mask has nothing to be verified against. That
@@ -33,7 +33,7 @@ WHY IT WRITES TO ITS OWN CACHE ROOT
 `detect_new_water` writes `blockage_manifest.json` into whatever cache_dir it is
 handed, and `_read_cache` will later serve that file back as a genuine
 observation with source="cached". The API reads
-`data/gee/blockage/<reach>` (services/api/jalraksha_service/main.py). This
+`data/gee/blockage/<reach>` (services/api/floodview_service/main.py). This
 harness therefore writes only to `data/gee/blockage_experiment/`, so no
 experimental artefact can ever surface in the dashboard as a real detection.
 
@@ -63,10 +63,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Same pattern as scripts/run_api.py: setdefault, so a real environment
-# variable still wins. jalraksha.gee.auth reads JALRAKSHA_GEE_PROJECT and has
+# variable still wins. floodview.gee.auth reads FLOODVIEW_GEE_PROJECT and has
 # no default of its own.
-os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")
-os.environ.setdefault("JALRAKSHA_DATA_DIR", str(ROOT / "data"))
+os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")
+os.environ.setdefault("FLOODVIEW_DATA_DIR", str(ROOT / "data"))
 
 OUTPUT_ROOT = ROOT / "data" / "gee" / "blockage_experiment"
 
@@ -129,12 +129,12 @@ def _rishi_ganga_control() -> Event:
     """
     The control, built from the shipped preset rather than retyped.
 
-    Reading lat/lon and the detection dates out of jalraksha.presets.RISHI_GANGA
+    Reading lat/lon and the detection dates out of floodview.presets.RISHI_GANGA
     keeps the control identical to what the dashboard runs. A retyped copy would
     be free to drift, and then a changed verdict could be the coordinates rather
     than the detector.
     """
-    from jalraksha.presets import RISHI_GANGA
+    from floodview.presets import RISHI_GANGA
 
     post = _dt.date.fromisoformat(RISHI_GANGA.detect_date_post)
     return Event(
@@ -150,7 +150,7 @@ def _rishi_ganga_control() -> Event:
         lake_from=RISHI_GANGA.event_date,
         lake_until=None,
         provenance=(
-            "jalraksha.presets.RISHI_GANGA — the coordinates and detection "
+            "floodview.presets.RISHI_GANGA — the coordinates and detection "
             "dates the dashboard itself uses."
         ),
         expectation=(
@@ -254,7 +254,7 @@ def case_dir(event: Event, half_deg: float) -> Path:
 
 
 def require_gee() -> None:
-    from jalraksha.gee.auth import gee_project, gee_status
+    from floodview.gee.auth import gee_project, gee_status
 
     available, reason = gee_status()
     if not available:
@@ -275,7 +275,7 @@ def _list_s1_scenes(bbox, start: str, end: str) -> List[Dict]:
     """Every Sentinel-1 IW/VV acquisition over the box in a date range."""
     import ee
 
-    from jalraksha.gee.sar import S1_COLLECTION
+    from floodview.gee.sar import S1_COLLECTION
 
     region = ee.Geometry.BBox(*bbox)
     collection = (
@@ -307,7 +307,7 @@ def _list_s1_scenes(bbox, start: str, end: str) -> List[Dict]:
 
 def _save_thumbnail(image, region, destination: Path, vis: Dict) -> Optional[str]:
     """Download one Earth Engine thumbnail, returning None rather than raising."""
-    from jalraksha.gee.sar import _download
+    from floodview.gee.sar import _download
 
     try:
         params = {"region": region, "dimensions": THUMBNAIL_PIXELS, "format": "png"}
@@ -410,12 +410,12 @@ def preflight(event: Event, half_deg: float) -> Dict:
     """
     import ee
 
-    from jalraksha.gee.sar import (
+    from floodview.gee.sar import (
         JRC_GSW,
         JRC_PERMANENT_OCCURRENCE_PCT,
         MIN_JRC_PRECISION,
     )
-    from jalraksha.gee.blockage_detect import (
+    from floodview.gee.blockage_detect import (
         DEFAULT_SCALE_M,
         MIN_JRC_REFERENCE_FRACTION,
     )
@@ -458,7 +458,7 @@ def preflight(event: Event, half_deg: float) -> Dict:
 
     # 2. Sentinel-1 VV pre-median and post scene — exactly the two images the
     # detector differences.
-    from jalraksha.gee.sar import S1_COLLECTION
+    from floodview.gee.sar import S1_COLLECTION
 
     base = (
         ee.ImageCollection(S1_COLLECTION)
@@ -480,7 +480,7 @@ def preflight(event: Event, half_deg: float) -> Dict:
         print("    ! no Sentinel-1 scene in the pre-window")
 
     post_start = _dt.date.fromisoformat(event.date_post)
-    from jalraksha.gee.blockage_detect import MAX_POST_WINDOW_DAYS
+    from floodview.gee.blockage_detect import MAX_POST_WINDOW_DAYS
 
     post_collection = base.filterDate(
         post_start.isoformat(),
@@ -587,8 +587,8 @@ def measure_gate1(event: Event, bbox, scale_m: float) -> Dict:
     """
     import ee
 
-    from jalraksha.gee.blockage_detect import _scene_threshold
-    from jalraksha.gee.sar import MIN_JRC_PRECISION, S1_COLLECTION, _agreement_with_jrc
+    from floodview.gee.blockage_detect import _scene_threshold
+    from floodview.gee.sar import MIN_JRC_PRECISION, S1_COLLECTION, _agreement_with_jrc
 
     region = ee.Geometry.BBox(*bbox)
     pre_collection = (
@@ -642,7 +642,7 @@ def measure_dead_gates(mask_geotiff: Path, event: Event, half_deg: float) -> Dic
     import numpy as np
     import rasterio
 
-    from jalraksha.gee.blockage_detect import (
+    from floodview.gee.blockage_detect import (
         MAX_LAKE_ELEVATION_SPREAD_M,
         MAX_LAKE_MEAN_SLOPE_DEG,
         MIN_NEW_WATER_AREA_M2,
@@ -674,8 +674,8 @@ def measure_dead_gates(mask_geotiff: Path, event: Event, half_deg: float) -> Dic
     # Flatness needs the stale DEM. Best-effort: a failed DEM fetch must not
     # discard a detection that already succeeded.
     try:
-        from jalraksha.dem import fetch_dem
-        from jalraksha.terrain.conditioning import load_dem_as_grid
+        from floodview.dem import fetch_dem
+        from floodview.terrain.conditioning import load_dem_as_grid
 
         # Radius in km covering the window's half-width. 111 km per degree is
         # the same rounding fetch_dem itself uses.
@@ -727,14 +727,14 @@ def diagnostic_bypass_gate1(event: Event, half_deg: float) -> Dict:
     """
     import ee
 
-    from jalraksha.gee.blockage_detect import (
+    from floodview.gee.blockage_detect import (
         CHANGE_THRESHOLD_DB,
         DEFAULT_SCALE_M,
         DRAINAGE_PROXIMITY_M,
         MIN_FRACTION_NEAR_DRAINAGE,
         _scene_threshold,
     )
-    from jalraksha.gee.sar import (
+    from floodview.gee.sar import (
         JRC_GSW,
         JRC_PERMANENT_OCCURRENCE_PCT,
         MAX_PLAUSIBLE_WATER_FRACTION,
@@ -760,7 +760,7 @@ def diagnostic_bypass_gate1(event: Event, half_deg: float) -> Dict:
     pre = base.filterDate(event.date_pre_start, event.date_pre_end).median().select("VV").clip(region)
 
     post_start = _dt.date.fromisoformat(event.date_post)
-    from jalraksha.gee.blockage_detect import MAX_POST_WINDOW_DAYS
+    from floodview.gee.blockage_detect import MAX_POST_WINDOW_DAYS
 
     post_collection = base.filterDate(
         post_start.isoformat(),
@@ -895,12 +895,12 @@ def diagnostic_bypass_gate1(event: Event, half_deg: float) -> Dict:
 
 def detect(event: Event, half_deg: float) -> Dict:
     """Run the real detector, catching a refusal instead of dying on it."""
-    from jalraksha.gee.blockage_detect import (
+    from floodview.gee.blockage_detect import (
         DEFAULT_SCALE_M,
         detect_new_water,
         reset_refusals,
     )
-    from jalraksha.gee.sar import SarUnavailableError
+    from floodview.gee.sar import SarUnavailableError
 
     bbox = bbox_for(event, half_deg)
     out = case_dir(event, half_deg)

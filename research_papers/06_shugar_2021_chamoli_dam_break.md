@@ -15,14 +15,14 @@ This study presents high-resolution pre- and post-event satellite observations (
 
 ---
 
-## 🔑 Key Features & Role in JalRaksha
+## 🔑 Key Features & Role in FloodView
 
 1. **Only Indian Event with Pre- and Post-Event High-Res Open DEMs**:
    - The Chamoli 2021 event represents the premier Indian Himalayan flood benchmark event with open pre- and post-event topography.
    - Published travel times provide empirical travel velocity benchmarks ($<5\%$ error target) for Himalayan steep valley dam breaches.
 
 2. **Validation Benchmark**:
-   - Serves as the Phase 8 real-world Indian validation benchmark case for JalRaksha solver calibration in steep high-altitude river corridors.
+   - Serves as the Phase 8 real-world Indian validation benchmark case for FloodView solver calibration in steep high-altitude river corridors.
 
 ---
 

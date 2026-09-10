@@ -9,8 +9,8 @@ Tests:
 
 import numpy as np
 import pytest
-from jalraksha.validation.metrics import compute_csi, compute_f1_score, compute_rmse, compute_nse
-from jalraksha.validation.benchmarks import get_malpasset_benchmark, get_chamoli_benchmark, evaluate_benchmark
+from floodview.validation.metrics import compute_csi, compute_f1_score, compute_rmse, compute_nse
+from floodview.validation.benchmarks import get_malpasset_benchmark, get_chamoli_benchmark, evaluate_benchmark
 
 
 class TestSpatialMetrics:

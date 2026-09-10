@@ -19,15 +19,15 @@ import os
 import numpy as np
 import pytest
 
-from jalraksha.gee.auth import (
+from floodview.gee.auth import (
     GEE_PROJECT_ENV, gee_project, gee_status, init_gee, is_gee_available,
     reset_gee_status,
 )
-from jalraksha.gee.population import (
+from floodview.gee.population import (
     PopulationUnavailableError, fetch_ghsl_population_grid,
     fetch_population_on_grid,
 )
-from jalraksha.gee.sar import (
+from floodview.gee.sar import (
     MIN_TILE_SEPARABILITY, SarUnavailableError, derive_threshold_from_tiles,
     latest_observed_extent, otsu_separability, otsu_threshold,
     process_sentinel1_sar_flood,
@@ -250,7 +250,7 @@ class TestSARProvenance:
         """A fetched scene stays usable offline, labelled as cached."""
         latest_observed_extent("hirakud", LIVE_BBOX, tmp_path)
 
-        import jalraksha.gee.sar as sar_module
+        import floodview.gee.sar as sar_module
         monkeypatch.setattr(sar_module, "gee_status",
                             lambda: (False, "simulated outage"))
         cached = latest_observed_extent("hirakud", LIVE_BBOX, tmp_path)
@@ -317,7 +317,7 @@ class TestBuiltUpProvenance:
             "x0": 600000.0, "y0": 3350000.0}
 
     def test_refuses_without_gee_or_cache(self, no_gee, tmp_path):
-        from jalraksha.gee.built_up import (
+        from floodview.gee.built_up import (
             BuiltUpUnavailableError, fetch_built_up_on_grid,
         )
         with pytest.raises(BuiltUpUnavailableError) as excinfo:
@@ -326,7 +326,7 @@ class TestBuiltUpProvenance:
 
     def test_refusal_writes_no_file(self, no_gee, tmp_path):
         """A refusal must leave nothing behind that a later run could serve."""
-        from jalraksha.gee.built_up import (
+        from floodview.gee.built_up import (
             BuiltUpUnavailableError, fetch_built_up_on_grid,
         )
         with pytest.raises(BuiltUpUnavailableError):
@@ -340,7 +340,7 @@ class TestBuiltUpProvenance:
         fabricated exposure grid is a claim about how much is built where
         people live.
         """
-        import jalraksha.gee.built_up as module
+        import floodview.gee.built_up as module
 
         assert not any("synthetic" in name.lower() for name in dir(module))
         import inspect
@@ -352,7 +352,7 @@ class TestBuiltUpProvenance:
         The sector split comes from two published bands, not a chosen ratio,
         and the count of cells where they disagree travels with it.
         """
-        from jalraksha.gee.built_up import _split_sectors
+        from floodview.gee.built_up import _split_sectors
 
         total = np.array([[100.0, 50.0], [10.0, 0.0]])
         nres = np.array([[40.0, 50.0], [12.0, 0.0]])
@@ -367,7 +367,7 @@ class TestBuiltUpProvenance:
     @requires_live_gee
     @pytest.mark.slow
     def test_live_fetch_lands_on_the_grid_with_provenance(self, tmp_path):
-        from jalraksha.gee.built_up import fetch_built_up_on_grid
+        from floodview.gee.built_up import fetch_built_up_on_grid
 
         grid = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
                 "x0": 360000.0, "y0": 2040000.0}
@@ -389,7 +389,7 @@ class TestBuiltUpProvenance:
     @requires_live_gee
     @pytest.mark.slow
     def test_cache_serves_when_live_is_unavailable(self, tmp_path, monkeypatch):
-        from jalraksha.gee import built_up as module
+        from floodview.gee import built_up as module
 
         grid = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
                 "x0": 360000.0, "y0": 2040000.0}
@@ -414,7 +414,7 @@ class TestBuiltUpProvenance:
         is that the same domain fetched at two resolutions carries the same
         TOTAL: a scale-dependent total is the signature of the bug.
         """
-        from jalraksha.gee.built_up import fetch_built_up_on_grid
+        from floodview.gee.built_up import fetch_built_up_on_grid
 
         coarse = {"nx": 20, "ny": 16, "dx": 500.0, "dy": 500.0,
                   "x0": 360000.0, "y0": 2040000.0}
@@ -437,40 +437,43 @@ class TestBuiltUpProvenance:
 class TestPopulationAtRisk:
     """The impact figures the GHSL grid feeds."""
 
-    def test_estimator_refuses_to_invent_settlements(self):
-        from jalraksha.impact.population import PopulationEstimator
-
-        depth = np.zeros((20, 20))
-        depth[5:15, 5:15] = 2.0
-        with pytest.raises(ValueError, match="describes nobody"):
-            PopulationEstimator().estimate_population(depth)
-
-    def test_estimator_labels_an_explicitly_synthetic_layout(self):
-        from jalraksha.impact.population import PopulationEstimator
-
-        depth = np.zeros((20, 20))
-        depth[5:15, 5:15] = 2.0
-        result = PopulationEstimator().estimate_population(
-            depth, allow_synthetic_settlements=True, cell_size_m=400.0)
-        assert result["settlement_source"] == "SYNTHETIC_random_layout"
-        assert result["cell_size_m"] == 400.0
-
-    def test_zero_affected_population_is_not_an_error(self):
+    def test_the_settlement_type_estimator_is_gone(self):
         """
-        A flood over empty ground is a real outcome, not a crash.
+        PopulationEstimator was deleted, not repaired.
 
-        _calculate_vulnerability_index divided by the affected total unguarded
-        and raised ZeroDivisionError for exactly this case.
+        It returned zero population on every possible input: its lookup keys
+        were the strings "village"/"town"/"city" while the settlement grid it
+        documented (and the one its own synthesiser produced) held integers
+        0/1/2, so the membership test could never fire. It had no caller
+        outside these tests. compute_par below is the supported path.
         """
-        from jalraksha.impact.population import PopulationEstimator
+        import floodview.impact.population as population_module
 
-        result = PopulationEstimator().estimate_population(
-            np.zeros((20, 20)), allow_synthetic_settlements=True)
-        assert result["population_affected"] == 0
-        assert result["vulnerability_index"] == 0.0
+        assert not hasattr(population_module, "PopulationEstimator")
+
+    def test_a_cell_wet_at_t_zero_is_counted(self):
+        """
+        The breach cell has the LEAST warning of anyone in the domain.
+
+        compute_par gated on `arrival_time_grid > 0`, which dropped every cell
+        wet at exactly t = 0 from all three urgency buckets. isfinite() is what
+        rejects the inf-means-never-wet sentinel; the lower bound is >= 0.
+        """
+        from floodview.impact.population import compute_par
+
+        population = np.full((10, 10), 20.0)
+        arrival = np.full((10, 10), np.inf)
+        arrival[0, 0] = 0.0
+        depth = np.zeros((10, 10))
+        depth[0, 0] = 3.0
+
+        par = compute_par(population, arrival, warning_lead_time_s=0.0,
+                          h_max_grid=depth)
+        assert par["par_high_urgency_under_15min"] == pytest.approx(20.0)
+        assert par["total_par"] == pytest.approx(20.0)
 
     def test_par_counts_real_people_from_a_real_grid(self):
-        from jalraksha.impact.population import compute_par
+        from floodview.impact.population import compute_par
 
         population = np.full((20, 20), 50.0)
         arrival = np.full((20, 20), np.inf)
@@ -485,7 +488,7 @@ class TestPopulationAtRisk:
         assert par["par_high_urgency_under_15min"] == pytest.approx(5000.0)
 
     def test_dry_domain_puts_nobody_at_risk(self):
-        from jalraksha.impact.population import compute_par
+        from floodview.impact.population import compute_par
 
         par = compute_par(np.full((10, 10), 100.0),
                           np.full((10, 10), np.inf),
@@ -502,8 +505,8 @@ class TestBlockageDetectionProvenance:
     """
 
     def test_no_gee_and_no_cache_raises(self, no_gee, tmp_path):
-        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
-        from jalraksha.gee.sar import SarUnavailableError
+        from floodview.gee.blockage_detect import detect_new_water, reset_refusals
+        from floodview.gee.sar import SarUnavailableError
 
         reset_refusals()
         with pytest.raises(SarUnavailableError, match="No synthetic substitute"):
@@ -515,8 +518,8 @@ class TestBlockageDetectionProvenance:
 
     def test_refusal_writes_no_file(self, no_gee, tmp_path):
         """A refusal must leave nothing behind that a later run could serve."""
-        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
-        from jalraksha.gee.sar import SarUnavailableError
+        from floodview.gee.blockage_detect import detect_new_water, reset_refusals
+        from floodview.gee.sar import SarUnavailableError
 
         reset_refusals()
         with pytest.raises(SarUnavailableError):
@@ -533,7 +536,7 @@ class TestBlockageDetectionProvenance:
         only by tests. The detector has none: a fabricated landslide lake would
         be a claim about a real place with people living below it.
         """
-        import jalraksha.gee.blockage_detect as detector
+        import floodview.gee.blockage_detect as detector
 
         assert not any(name.startswith("_synthetic") for name in dir(detector))
         assert not any("synthetic" in name.lower() for name in dir(detector))
@@ -551,7 +554,7 @@ class TestBlockageDetectionProvenance:
         """
         import inspect
 
-        import jalraksha.gee.blockage_detect as detector
+        import floodview.gee.blockage_detect as detector
 
         source = inspect.getsource(detector._fetch_live)
         gate_lines = [
@@ -575,7 +578,7 @@ class TestBlockageDetectionProvenance:
         """
         import numpy as np
 
-        from jalraksha.gee.blockage_detect import score_candidate_flatness
+        from floodview.gee.blockage_detect import score_candidate_flatness
 
         candidate = np.zeros((60, 60), dtype=bool)
         candidate[20:35, 20:35] = True
@@ -595,7 +598,7 @@ class TestBlockageDetectionProvenance:
         """
         import numpy as np
 
-        from jalraksha.gee.blockage_detect import score_candidate_flatness
+        from floodview.gee.blockage_detect import score_candidate_flatness
 
         bed = np.full((60, 60), 1420.0)
         bed[25, 25] = 1600.0
@@ -607,7 +610,7 @@ class TestBlockageDetectionProvenance:
     def test_an_empty_candidate_never_passes(self):
         import numpy as np
 
-        from jalraksha.gee.blockage_detect import score_candidate_flatness
+        from floodview.gee.blockage_detect import score_candidate_flatness
 
         bed = np.full((10, 10), 1000.0)
         result = score_candidate_flatness(bed, np.zeros((10, 10), bool), 60.0)
@@ -618,7 +621,7 @@ class TestBlockageDetectionProvenance:
         A multi-scene post window would make "rebuilt from the 2021-02-08 scene"
         false. Sentinel-1's repeat cycle bounds it.
         """
-        from jalraksha.gee.blockage_detect import MAX_POST_WINDOW_DAYS
+        from floodview.gee.blockage_detect import MAX_POST_WINDOW_DAYS
 
         assert MAX_POST_WINDOW_DAYS <= 12
 
@@ -628,7 +631,7 @@ class TestBlockageDetectionProvenance:
         0.66 km2. The floor must not be anywhere near excluding that class of
         event, or it would be filtering out the thing it exists to find.
         """
-        from jalraksha.gee.blockage_detect import MIN_NEW_WATER_AREA_M2
+        from floodview.gee.blockage_detect import MIN_NEW_WATER_AREA_M2
 
         chamoli_extent_m2 = 0.66e6
         assert MIN_NEW_WATER_AREA_M2 < chamoli_extent_m2 / 10.0
@@ -639,7 +642,7 @@ class TestBlockageDetectionProvenance:
         """Offline-first: a previously fetched detection is a real observation."""
         import json
 
-        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
+        from floodview.gee.blockage_detect import detect_new_water, reset_refusals
 
         mask_tif = tmp_path / "new_water_mask.tif"
         mask_png = tmp_path / "new_water_mask.png"
@@ -673,8 +676,8 @@ class TestBlockageDetectionProvenance:
     ):
         import json
 
-        from jalraksha.gee.blockage_detect import detect_new_water, reset_refusals
-        from jalraksha.gee.sar import SarUnavailableError
+        from floodview.gee.blockage_detect import detect_new_water, reset_refusals
+        from floodview.gee.sar import SarUnavailableError
 
         (tmp_path / "blockage_manifest.json").write_text(
             json.dumps({

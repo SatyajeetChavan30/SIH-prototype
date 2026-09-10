@@ -87,7 +87,7 @@ This yields a working simulation with basic export — defensible for SIH judgin
 **Dependencies**: Ready to scaffold Phase 0 skeleton
 **Next steps**: Implement phase executors
 - Phase 0: CLI scaffolding, data cache initialization, DEM fetch setup
-- Phase 1: 2D SWE solver core (gated on `/verify-jalraksha analytical`)
+- Phase 1: 2D SWE solver core (gated on `/verify-floodview analytical`)
 - Phase 2–3: Terrain conditioning and breach regressions
 - Phase 4: End-to-end pipeline (core deliverable)
 - Phases 5+: Export, impact analysis, SPH, dashboard

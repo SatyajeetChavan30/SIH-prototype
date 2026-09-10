@@ -7,7 +7,7 @@ import { resolveApiUrl } from "../api.js";
  *
  * Everything here comes from GET /runs/{id}/result's `exports` array. The
  * worker only records a row once the file has been verified on disk
- * (jalraksha.run.write_export_products, then _existing_exports in tasks.py),
+ * (floodview.run.write_export_products, then _existing_exports in tasks.py),
  * so a link rendered here is backed by bytes. Nothing is invented client-side:
  * if a product is missing from the array it is missing from this list, which is
  * the honest reading — previously the exports table named four GeoTIFFs that
@@ -65,8 +65,13 @@ const LABELS = {
   shp_inundation_zip: "Inundation envelope",
   shp_arrival_contours_zip: "Arrival-time contours (isochrones)",
   shp_hazard_low_zip: "Hazard class — low",
-  shp_hazard_medium_zip: "Hazard class — medium",
-  shp_hazard_high_zip: "Hazard class — high",
+  shp_hazard_moderate_zip: "Hazard class — moderate",
+  shp_hazard_significant_zip: "Hazard class — significant",
+  // Runs exported before the FD2320 unification carry the old class names.
+  // They are still in the shipped database and the run picker loads them, so
+  // they keep a label rather than falling back to a de-underscored kind.
+  shp_hazard_medium_zip: "Hazard class — medium (pre-FD2320-unification run)",
+  shp_hazard_high_zip: "Hazard class — high (pre-FD2320-unification run)",
   shp_hazard_extreme_zip: "Hazard class — extreme",
   kml_inundation: "Inundation envelope",
   kml_animation: "Time-animated flood wave",

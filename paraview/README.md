@@ -20,7 +20,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for format/CRS decisions and
 
 ## Dam presets
 
-Both presets live in `jalraksha/presets.py`. Select with `--dam` on
+Both presets live in `floodview/presets.py`. Select with `--dam` on
 `make_dataset.py` (default `khadakwasla`).
 
 | | Khadakwasla (default) | Tehri |
@@ -34,7 +34,7 @@ Both presets live in `jalraksha/presets.py`. Select with `--dam` on
 
 Khadakwasla's `height_m`/`storage_mm3`/`dam_type` have no primary source yet;
 `--terrain-only` and `--reservoir` work regardless, but the full solver path
-raises a clear error until those are supplied — see `jalraksha/presets.py`.
+raises a clear error until those are supplied — see `floodview/presets.py`.
 
 ## Generate a dataset
 
@@ -68,8 +68,8 @@ If a dam's DEM is missing (`data/` is gitignored, so a fresh clone has none),
 fetch it once:
 
 ```bash
-python -c "from jalraksha.dem import fetch_dem; print(fetch_dem(18.4436, 73.7686, domain_radius_km=30.0, cache_dir='./data'))"   # Khadakwasla, ~13 MB
-python -c "from jalraksha.dem import fetch_dem; print(fetch_dem(30.3789, 78.4789, domain_radius_km=60.0, cache_dir='./data'))"   # Tehri, ~170 MB
+python -c "from floodview.dem import fetch_dem; print(fetch_dem(18.4436, 73.7686, domain_radius_km=30.0, cache_dir='./data'))"   # Khadakwasla, ~13 MB
+python -c "from floodview.dem import fetch_dem; print(fetch_dem(30.3789, 78.4789, domain_radius_km=60.0, cache_dir='./data'))"   # Tehri, ~170 MB
 ```
 
 `make_dataset.py` prints the exact `fetch_dem` command (with the right
@@ -78,7 +78,7 @@ lat/lon) if the DEM it expects isn't cached.
 ### Checking a dam location before trusting it
 
 A dam's lat/lon is easy to get wrong by several kilometres even when it
-"looks right" on paper — see the note in `jalraksha/presets.py` on the two
+"looks right" on paper — see the note in `floodview/presets.py` on the two
 UTM coordinates this project's original spec supplied, both of which
 resolved to a hillside, not a reservoir. Before generating a dataset for a
 new or corrected location, run:
@@ -149,8 +149,8 @@ npm run dev --prefix frontend      # http://localhost:3000
 ```
 
 `scripts/run_api.py` sets `CELERY_EAGER=1` (tasks run in-process, no Redis
-needed) and `JALRAKSHA_DATA_DIR`, and pins the working directory to the repo
-root — the export paths in `data/jalraksha.db` are relative and are resolved
+needed) and `FLOODVIEW_DATA_DIR`, and pins the working directory to the repo
+root — the export paths in `data/floodview.db` are relative and are resolved
 against the process CWD, so starting the API elsewhere silently breaks every
 `/files/...` URL.
 
@@ -167,7 +167,7 @@ water surface, glyphs and overlays already built — not a bare reader.
 This only works when the API runs on the **same machine as the browser**: it
 opens a desktop window on the API's host. Under `docker-compose` the api
 container is headless Linux with no ParaView, and the endpoint says so rather
-than hanging. Override the executable with `JALRAKSHA_PARAVIEW_EXE`.
+than hanging. Override the executable with `FLOODVIEW_PARAVIEW_EXE`.
 
 Only `solver="swe"` runs get a dataset — `delft3d`/`both` produce an analytic
 estimate with no depth series. Runs created before this feature existed cannot
@@ -184,7 +184,7 @@ To see a flood without waiting for a solve, paste a pre-baked run id into
 **Load run id…**. Ids with keyframes:
 
 ```bash
-python -c "import sqlite3;c=sqlite3.connect('data/jalraksha.db');print([r[0] for r in c.execute(\"select run_id from exports where kind='keyframe_manifest'\")])"
+python -c "import sqlite3;c=sqlite3.connect('data/floodview.db');print([r[0] for r in c.execute(\"select run_id from exports where kind='keyframe_manifest'\")])"
 ```
 
 ## Open it in ParaView (GUI)
@@ -220,7 +220,7 @@ result.
 A `--reservoir` dataset is likewise **not a hydrodynamic result** — see its
 `provenance/solver` field and the printed `[reservoir] FRL source:` line for
 whether the fill level came from a preset literal (itself UNVETTED for both
-dams — see `jalraksha/presets.py`) or was derived from the DEM's own pool
+dams — see `floodview/presets.py`) or was derived from the DEM's own pool
 surface.
 
 ```bash
@@ -230,8 +230,8 @@ python -c "import h5py; f=h5py.File('data/simulation/tehri_synthetic.h5'); print
 ## Layout
 
 ```
-jalraksha/presets.py               dam presets (Khadakwasla, Tehri)
-jalraksha/export/xdmf_export.py    the Section 6 contract (writer)
+floodview/presets.py               dam presets (Khadakwasla, Tehri)
+floodview/export/xdmf_export.py    the Section 6 contract (writer)
 tools/paraview/make_dataset.py     CLI: --dam | --terrain-only | --reservoir | --synthetic | real
 tools/paraview/reservoir.py        static reservoir fill + DEM-derived FRL estimate
 tools/paraview/synthetic_flood.py  labelled synthetic generator

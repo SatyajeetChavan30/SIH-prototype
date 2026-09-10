@@ -18,7 +18,7 @@ dependency, not a runtime one.
 import numpy as np
 import pytest
 
-from jalraksha.export.xdmf_export import (
+from floodview.export.xdmf_export import (
     XdmfExportError,
     frames_from_result,
     write_xdmf_series,

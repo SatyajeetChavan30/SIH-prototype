@@ -9,7 +9,7 @@ dimrset build 2025-10-20, `dflowfm-cli.exe` 1.2.184.
 
 ---
 
-## 1. JalRaksha vs Delft3D FM vs Ritter — the validation case
+## 1. FloodView vs Delft3D FM vs Ritter — the validation case
 
 ```bash
 python scripts/validate_against_delft3d.py --case ritter
@@ -22,7 +22,7 @@ other.
 
 | | RMSE vs exact | max abs error | depth at dam |
 | :--- | ---: | ---: | ---: |
-| JalRaksha 2D SWE | **0.0317 m** | 0.2644 m | 4.532 m |
+| FloodView 2D SWE | **0.0317 m** | 0.2644 m | 4.532 m |
 | Delft3D FM | **0.0349 m** | 0.2265 m | 4.515 m |
 | exact (4h₀/9) | — | — | **4.444 m** |
 
@@ -33,7 +33,7 @@ Figure: `data/validation/ritter_validation.png`.
 
 ### The boundary artifact, and why the first numbers were wrong
 
-The first run scored JalRaksha at 0.0445 m and Delft3D at 0.0897 m — Delft3D
+The first run scored FloodView at 0.0445 m and Delft3D at 0.0897 m — Delft3D
 apparently twice as bad. It was an artifact. The **outermost cell** of the
 closed D-Flow FM domain accumulates water: 1.06 m on a 2000 m domain, still
 0.41 m at 4000 m, while its immediate neighbours sat at 0.001–0.03 m. A genuine
@@ -52,7 +52,7 @@ domain edge.
 ## 2. Sentinel-1 SAR water extent — works on plains, not in gorges
 
 ```bash
-python -m pytest tests/test_gee.py -q     # with JALRAKSHA_GEE_PROJECT set
+python -m pytest tests/test_gee.py -q     # with FLOODVIEW_GEE_PROJECT set
 ```
 
 Water mask from VV backscatter, thresholded per scene by a split-based Otsu
@@ -243,7 +243,7 @@ valley-floor error.
 
 Also asserted at the **file** level, because a correct dict inside a process
 nobody is running is not a label: every written GeoTIFF carries
-`JALRAKSHA_NOT_A_SURVEY`, and an operator-placed barrier never carries a
+`FLOODVIEW_NOT_A_SURVEY`, and an operator-placed barrier never carries a
 satellite scene id.
 
 ---
@@ -254,6 +254,18 @@ satellite scene id.
 subsections record a plateau and three mechanism fixes that did not clear it; the
 last three record what actually did, and supersede the intermediate "not
 resolved" verdict.
+
+> **EVERY HAZARD CLASS COUNT BELOW PREDATES THE FD2320 UNIFICATION (§10) AND IS
+> NOT REPRODUCIBLE BY A NEW RUN.** They were produced by a discrete
+> depth-window/velocity-ceiling table that has since been replaced by the
+> published hazard rating `HR = d(|V| + 0.5) + DF`, and the `severe` class they
+> report no longer exists — FD2320 has four wet categories, not five. Nothing
+> about the hydraulics changed, so the volume balance, the arrival times, the
+> wet-cell counts, the recession SHAPE and every conclusion drawn from them
+> stand exactly as written. Do not compare a new run's per-class counts against
+> the tables in this section cell for cell; compare wet extent and
+> `exited_mcm`. These runs are not retroactively reclassified, following the
+> same precedent as the pre-fix population-at-risk figures.
 
 ```bash
 python -m pytest tests/test_terrain.py -q -k "fill_depressions or notch_breach"
@@ -629,7 +641,7 @@ stands. The refusal is not an artefact of how much river the box caught.
 
 ### The remedy was built, and it does not work — measured 2026-09-04
 
-`jalraksha/gee/terrain_correction.py` now implements the local-incidence-angle
+`floodview/gee/terrain_correction.py` now implements the local-incidence-angle
 masking this section named as the fix: shadow and layover classified from the
 signed range-plane slope against Copernicus GLO-30 and the scene's own geometry,
 excluded before any histogram is derived. It is applied in both
@@ -779,3 +791,56 @@ Caveats on this measurement:
   either raises. Costa (1985) is the only active natural-dam regression, so a
   blockage ensemble has no inter-method spread and takes its range from a
   prediction band whose width is itself an unvetted placeholder (rows 19–22).
+
+
+---
+
+## 10. FD2320 hazard classification had five definitions, and two live ones disagreed
+
+Found by `/code-quality-deep-dive` on a clean tree; the solver core passed every
+item on that skill's checklist and none of this touched it.
+
+`floodview/impact/hazard.py` declares itself "the SINGLE source of truth for
+hazard classification". It was neither single nor self-consistent.
+
+| # | Location | Form | Live? |
+| :-- | :--- | :--- | :--- |
+| 1 | `hazard.py` module docstring | depth bands, Low ≤0.1 … Extreme >5.0 | doc only |
+| 2 | `hazard.py` `self.thresholds` | depth+velocity band table, Low 0.1–0.5 … Extreme ≥10.0 | **yes** — dashboard |
+| 3 | `hazard.py` `categorize_hazard_zones` | `HR = d(|V|+0.5)+0.5`, classed 0.75/1.25/2.5 | tests only |
+| 4 | `export/shapefile.py`, inline | 0.1/0.5/1.2/2.0 m against v of 1/2/4 m/s | **yes** — shapefiles |
+| 5 | `frontend/.../GaugesPanel.jsx` | depth only, 5 m / 10 m edges | **yes** — gauge badges |
+
+Table 2 is one full class COARSER than table 1, in the same file: a 3 m depth is
+"severe" by the docstring and "significant" by the code, and 0 < h < 0.1 m
+matched no band at all and reported DRY. Tables 2 and 4 disagreed with each
+other on live output — a cell 1.5 m deep was *moderate* on the dashboard and
+*high* in the exported shapefile, both labelled FD2320.
+
+**Velocity could only ever REDUCE hazard.** Table 2 tested
+`velocity <= max_velocity` as one term of an AND with the depth window, so a
+cell exceeding a band's velocity ceiling fell out of that band without being
+promoted into a higher one. Traced by hand and now pinned by a test: depth
+3.0 m at 8 m/s failed LOW (depth), MODERATE (depth), SIGNIFICANT (velocity),
+SEVERE (depth) and EXTREME (depth), and kept the DRY initialisation. That is a
+lethal flow reported as dry ground. `classify()` had no non-test caller, so it
+was latent — but it is the method the velocity-aware path would have used.
+
+**Resolution.** Table 3 — the published Defra form, already implemented and
+tested — is now the only definition. `HazardClassifier` computes it, tables 2
+and 4 are deleted, and table 5 mirrors the depth-only reduction of table 3
+(`HR = 0.5d + DF`, edges at 0.5 / 1.5 / 4.0 m) rather than inventing its own.
+Two consequences worth stating plainly:
+
+- **`severe` is gone.** FD2320 publishes four wet categories and no boundary
+  that would split extreme. Retiring the level was preferred to inventing a
+  threshold, which is what `natural_dam.py`'s own policy forbids elsewhere.
+- **The debris factor is a categorical input.** The trailing `+ 0.5` was a
+  hardcoded literal; DF is published as 0 / 0.5 / 1.0 by land use. It is now a
+  named parameter defaulting to 0.5 and echoed in every summary payload. This
+  module deliberately does not infer it from land cover — that mapping belongs
+  beside the WorldCover legend and does not exist yet.
+
+`hazard_weights`, which drives `weighted_hazard_index`, remains **UNVETTED**:
+FD2320 publishes classes, not a weighting between them, and no source has been
+identified for those numbers.

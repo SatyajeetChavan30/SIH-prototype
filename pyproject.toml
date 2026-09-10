@@ -3,14 +3,14 @@ requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jalraksha"
+name = "floodview"
 version = "0.0.1-alpha"
 description = "Dam-break inundation modelling system combining 2D SWE solver with 3D SPH near-field dynamics"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "JalRaksha Team", email = "jalraksha@sih2026.local"}
+    {name = "FloodView Team", email = "floodview@sih2026.local"}
 ]
 keywords = ["dam-break", "flood", "inundation", "shallow-water", "SPH", "HADR"]
 classifiers = [
@@ -77,27 +77,27 @@ viz = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sih2026/jalraksha"
-Documentation = "https://github.com/sih2026/jalraksha/wiki"
-Repository = "https://github.com/sih2026/jalraksha.git"
-"Bug Tracker" = "https://github.com/sih2026/jalraksha/issues"
+Homepage = "https://github.com/sih2026/floodview"
+Documentation = "https://github.com/sih2026/floodview/wiki"
+Repository = "https://github.com/sih2026/floodview.git"
+"Bug Tracker" = "https://github.com/sih2026/floodview/issues"
 
 [project.scripts]
-jalraksha = "jalraksha.cli:main"
+floodview = "floodview.cli:main"
 
 [tool.setuptools]
-packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]
+packages = ["floodview", "floodview.solver", "floodview.terrain", "floodview.export", "floodview.sph"]
 package-dir = {"" = "."}
 
 [tool.setuptools.package-data]
-jalraksha = ["*.yaml", "*.yml"]
+floodview = ["*.yaml", "*.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --tb=short --cov=jalraksha --cov-report=term-missing"
+addopts = "-v --tb=short --cov=floodview --cov-report=term-missing"
 markers = [
     "analytical: analytical exact-solution tests (Ritter, Stoker, Thacker)",
     "blocking: blocking correctness gates (lake-at-rest, mass-conservation, dry-bed)",
@@ -131,7 +131,7 @@ exclude = [
 ]
 
 [tool.ruff.isort]
-known-first-party = ["jalraksha"]
+known-first-party = ["floodview"]
 
 [tool.black]
 line-length = 100

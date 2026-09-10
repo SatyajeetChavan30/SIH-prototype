@@ -2,7 +2,7 @@
 Phase 7 SPH near-field test suite.
 
 WHAT CHANGED AND WHY. This file used to test `SPHNearFieldSolver` from
-jalraksha/sph/core.py — a class that was not SPH. It had no kernel, no
+floodview/sph/core.py — a class that was not SPH. It had no kernel, no
 neighbour search and no density evolution; `step()` applied the same
 acceleration to every particle and discarded the Tait pressure it computed. Its
 tests passed because they asserted only that particles moved, which ballistic
@@ -13,7 +13,7 @@ motion satisfies. The class is gone and those tests with it:
                                           gates below, which a ballistic
                                           integrator could not pass
 
-The near-field solver is now jalraksha.sph.pysph_runner, wrapping PySPH's
+The near-field solver is now floodview.sph.pysph_runner, wrapping PySPH's
 WCSPHScheme. The gates here check properties a correct SPH scheme must have and
 a fake cannot fake: an energy bound derived from the available head, hydrostatic
 equilibrium in still water, determinism, and responsiveness to terrain and dam
@@ -28,9 +28,9 @@ References:
 import numpy as np
 import pytest
 
-from jalraksha.sph.domain import NearFieldDomain, generate_near_field_particles
-from jalraksha.sph.coupling import handoff_swe_to_sph, extract_sph_free_surface
-from jalraksha.sph.pysph_runner import (
+from floodview.sph.domain import NearFieldDomain, generate_near_field_particles
+from floodview.sph.coupling import handoff_swe_to_sph, extract_sph_free_surface
+from floodview.sph.pysph_runner import (
     SPHUnavailableError,
     hydrostatic_density,
     is_pysph_available,
@@ -75,7 +75,7 @@ def baseline_run():
 # ─── TestNearFieldDomain ──────────────────────────────────────────────────────
 
 class TestNearFieldDomain:
-    """Particle seeding (jalraksha/sph/domain.py) — unchanged by the PySPH work."""
+    """Particle seeding (floodview/sph/domain.py) — unchanged by the PySPH work."""
 
     def test_domain_particle_generation(self):
         domain = NearFieldDomain(
@@ -263,7 +263,7 @@ class TestSPHUnavailable:
     """With no PySPH there must be no result — not a substitute for one."""
 
     def test_raises_rather_than_fabricating(self, monkeypatch):
-        import jalraksha.sph.pysph_runner as runner
+        import floodview.sph.pysph_runner as runner
 
         monkeypatch.setattr(runner, "is_pysph_available",
                             lambda: (False, "ImportError: no module named pysph"))

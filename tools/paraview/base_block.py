@@ -7,7 +7,7 @@ has no sides: viewed obliquely it is a bent sheet hanging in space.
 
 Why a separate file rather than extra geometry in the XDMF:
 
-  * `jalraksha/export/xdmf_export.py` has a contract pinned by 12 passing tests
+  * `floodview/export/xdmf_export.py` has a contract pinned by 12 passing tests
     and consumed by the solver path. The base block is a *rendering* concern —
     baking it into the simulation dataset makes every consumer pay for geometry
     only the renderer wants.
@@ -202,7 +202,7 @@ def main() -> None:
     with h5py.File(h5_path, "r") as handle:
         if "terrain_elevation" not in handle:
             raise SystemExit(
-                f"{h5_path} has no /terrain_elevation — not a JalRaksha XDMF dataset.")
+                f"{h5_path} has no /terrain_elevation — not a FloodView XDMF dataset.")
         terrain = np.asarray(handle["terrain_elevation"][...], dtype=np.float64)
         # The dataset is a 3D slab of thickness 1 (xdmf_export declares a
         # singleton Z so the reader keeps easting/northing on X/Y), so the

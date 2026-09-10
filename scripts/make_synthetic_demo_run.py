@@ -142,8 +142,8 @@ def paint_wave(corridor, distance_km, height_above_floor, frame_t, duration_s,
       shape     deeper in the valley bottom, shallower toward the corridor edge
 
     The recession is the point of the whole asset — every cell must reach zero,
-    so the hazard walks EXTREME -> SEVERE -> SIGNIFICANT -> MODERATE -> LOW ->
-    dry rather than plateauing the way the real runs do.
+    so the hazard walks EXTREME -> SIGNIFICANT -> MODERATE -> LOW -> dry
+    rather than plateauing the way the real runs do.
     """
     total_h = duration_s / 3600.0
     # The front clears the full reach in 60% of the run, leaving the remaining
@@ -226,14 +226,14 @@ def main() -> int:
     parser.add_argument("--resolution", type=float, default=RESOLUTION_M)
     args = parser.parse_args()
 
-    from jalraksha_service.script_runs import bootstrap_repo_root, registered_run
+    from floodview_service.script_runs import bootstrap_repo_root, registered_run
 
     bootstrap_repo_root(ROOT)
 
-    from jalraksha.export.keyframes import export_keyframes
-    from jalraksha.impact.hazard import HazardClassifier
-    from jalraksha.presets import get_gauges
-    from jalraksha.terrain.conditioning import load_dem_as_grid
+    from floodview.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
+    from floodview.presets import get_gauges
+    from floodview.terrain.conditioning import load_dem_as_grid
 
     duration_s = args.duration_h * 3600.0
     dem = str(ROOT / "data" / "dem" / "dem_18.44_73.77_clipped.tif")
@@ -346,7 +346,7 @@ def main() -> int:
 
         def counts(h):
             return {k: (h.get(k, {}) or {}).get("count", 0) for k in
-                    ("low", "moderate", "significant", "severe", "extreme")}
+                    ("low", "moderate", "significant", "extreme")}
 
         print(f"[synthetic] first frame: {counts(first)}")
         print(f"[synthetic] last  frame: {counts(last)}")

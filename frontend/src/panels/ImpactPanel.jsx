@@ -2,6 +2,7 @@ import React from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { HAZARD_LEVELS, foldLegacyLevels } from "../hazard.js";
 
 /**
  * Impact assessment — population at risk, loss of life, hazard classes.
@@ -27,6 +28,12 @@ import {
  * this project to invent, which is why the empty states here are deliberate
  * and prominent rather than hidden.
  */
+// Run-specific display override: for the Khadakwasla drain-to-green run,
+// the Impact tab shows ONLY the 15-60 min population-at-risk figure, per
+// explicit request — not a general panel change, so it is gated on run_id
+// rather than applied to every run.
+const MEDIUM_URGENCY_ONLY_RUN_ID = "e2e09ea3201d4d42b7a7dbcd5fac4b81";
+
 export default function ImpactPanel({ result }) {
   const par = result?.population_at_risk;
   const hazard = result?.hazard_summary;
@@ -34,6 +41,26 @@ export default function ImpactPanel({ result }) {
 
   if (!result) {
     return <Empty>Run or load a simulation to see its impact assessment.</Empty>;
+  }
+
+  if (result.run_id === MEDIUM_URGENCY_ONLY_RUN_ID) {
+    return (
+      <div style={S.page}>
+        <h3 style={S.h3}>Impact assessment</h3>
+        <section style={S.section}>
+          <h4 style={S.h4}>Population at risk — 15–60 min warning</h4>
+          {par?.available ? (
+            <Tile
+              label="15–60 min"
+              value={num(par.par?.par_medium_urgency_15_60min)}
+              emphasis
+            />
+          ) : (
+            <Empty>No population-at-risk figure for this run.</Empty>
+          )}
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -90,6 +117,7 @@ function PopulationSection({ par }) {
             {Math.round((par.warning_lead_time_s || 0) / 60)} min warning lead time
             {" "}(UNVETTED — shifts people between buckets, not the total)
           </div>
+          <BackfillNote at={par.backfilled_at} replacesEarlier />
         </>
       )}
     </section>
@@ -165,7 +193,8 @@ function FatalitySection({ par }) {
   );
 }
 
-function HazardSection({ hazard }) {
+function HazardSection({ hazard: rawHazard }) {
+  const hazard = foldLegacyLevels(rawHazard);
   if (!hazard) {
     return (
       <section style={S.section}>
@@ -175,7 +204,7 @@ function HazardSection({ hazard }) {
     );
   }
 
-  const levels = ["low", "moderate", "significant", "severe", "extreme"];
+  const levels = HAZARD_LEVELS;
 
   // Share of the FLOODED area, not the whole domain — the same correction the
   // map legend needed. hazard[l].percentage divides by every cell including
@@ -378,7 +407,31 @@ function DamageSection({ impact }) {
         contribute nothing, matching the depth used for the population count
         above. See docs/VERIFICATION_LOG.md rows 10, 35 and 36.
       </div>
+      <BackfillNote at={impact.backfilled_at} />
     </section>
+  );
+}
+
+/**
+ * A figure recomputed after its run finished says so.
+ *
+ * Backfilled population figures REPLACE a wrong number — every headcount
+ * written before 2026-09-06 was low by (grid / 100 m)^2, because
+ * `reduceResolution(sum)` is area-weighted and returns a mean. Silently
+ * swapping the value would leave no way to tell a corrected figure from an
+ * original one on a run whose other artifacts still date from the solve.
+ */
+function BackfillNote({ at, replacesEarlier }) {
+  if (!at) return null;
+  return (
+    <div style={S.provenance}>
+      Computed after the run finished ({String(at).slice(0, 10)}) from its own
+      stored depth raster — nothing was re-solved.
+      {replacesEarlier
+        ? " This REPLACES an earlier headcount that was low by (grid ÷ 100 m)²;" +
+          " see docs/VERIFICATION_LOG.md row 37."
+        : " No damage figure existed for this run before."}
+    </div>
   );
 }
 

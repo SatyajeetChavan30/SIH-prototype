@@ -12,7 +12,7 @@ import { getValidation } from "../api.js";
  * Three independent kinds of evidence, all run against the live solver rather
  * than read from a file:
  *
- *   Ritter          the exact analytical dam-break solution, with JalRaksha and
+ *   Ritter          the exact analytical dam-break solution, with FloodView and
  *                   the real Delft3D FM kernel both scored against the same
  *                   curve on a shared axis.
  *   Lake at rest    still water over irregular bathymetry must stay still — the
@@ -271,7 +271,7 @@ function RitterChart({ series }) {
   const rows = (series.x_m || []).map((x, i) => ({
     x,
     analytical: series.analytical_m?.[i],
-    jalraksha: series.jalraksha_m?.[i],
+    floodview: series.floodview_m?.[i],
     delft3d: series.delft3d_m?.[i],
   }));
   const hasDelft3d = Array.isArray(series.delft3d_m);
@@ -298,7 +298,7 @@ function RitterChart({ series }) {
           {/* Analytical drawn thickest and first so the engines overlay it. */}
           <Line type="monotone" dataKey="analytical" name="Exact (Ritter)"
                 stroke="#111" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="jalraksha" name="JalRaksha 2D SWE"
+          <Line type="monotone" dataKey="floodview" name="FloodView 2D SWE"
                 stroke="#1565C0" strokeWidth={1.6} dot={false} isAnimationActive={false} />
           {hasDelft3d && (
             <Line type="monotone" dataKey="delft3d" name="Delft3D FM"

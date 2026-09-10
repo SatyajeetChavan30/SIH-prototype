@@ -17,21 +17,21 @@ import os
 import numpy as np
 import pytest
 
-from jalraksha.delft3d.dfm_model import (
+from floodview.delft3d.dfm_model import (
     BEDLEVTYPE_NODES, build_dfm_model, dam_break_fields,
 )
-from jalraksha.delft3d.runner import kernel_environment, resolve_dflowfm
-from jalraksha.delft3d.ugrid import (
+from floodview.delft3d.runner import kernel_environment, resolve_dflowfm
+from floodview.delft3d.ugrid import (
     UgridError, quad_mesh_topology, write_ugrid_net,
 )
-from jalraksha.validation.delft3d_benchmark import ritter_exact
+from floodview.validation.delft3d_benchmark import ritter_exact
 
 # Honour the same setting the application does, so a machine with Delft3D can
 # still exercise the no-kernel path by pointing this at nothing.
-KERNEL = resolve_dflowfm(os.environ.get("JALRAKSHA_DFLOWFM_EXE") or None)
+KERNEL = resolve_dflowfm(os.environ.get("FLOODVIEW_DFLOWFM_EXE") or None)
 requires_kernel = pytest.mark.skipif(
     KERNEL is None,
-    reason="No Delft3D FM kernel installed (set JALRAKSHA_DFLOWFM_EXE)")
+    reason="No Delft3D FM kernel installed (set FLOODVIEW_DFLOWFM_EXE)")
 
 GRID = {"nx": 6, "ny": 4, "dx": 100.0, "dy": 100.0, "x0": 600000.0, "y0": 3350000.0}
 
@@ -266,7 +266,7 @@ class TestKernelDiscovery:
 
     def test_bad_explicit_path_does_not_fall_back_to_path(self):
         """
-        A wrong JALRAKSHA_DFLOWFM_EXE is a configuration error, not a licence
+        A wrong FLOODVIEW_DFLOWFM_EXE is a configuration error, not a licence
         to silently run some other binary.
         """
         assert resolve_dflowfm(r"C:\definitely\not\here\dflowfm-cli.exe") is None
@@ -295,7 +295,7 @@ class TestAgainstRealKernel:
     def test_kernel_runs_a_generated_model_and_writes_netcdf(self, tmp_path):
         import netCDF4 as nc
 
-        from jalraksha.delft3d.runner import _run_dflowfm_binary
+        from floodview.delft3d.runner import _run_dflowfm_binary
 
         nx, ny = 40, 3
         grid = {"nx": nx, "ny": ny, "dx": 25.0, "dy": 25.0, "x0": 0.0, "y0": 0.0}

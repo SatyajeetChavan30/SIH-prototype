@@ -12,8 +12,8 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from jalraksha.impact.hazard import HazardClassifier
-from jalraksha.export.keyframes import export_keyframes, KeyframeManifest, Keyframe
+from floodview.impact.hazard import HazardClassifier
+from floodview.export.keyframes import export_keyframes, KeyframeManifest, Keyframe
 
 
 def _make_result(nx=40, ny=32, n_times=12, crs=32644):

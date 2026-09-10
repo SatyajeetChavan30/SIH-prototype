@@ -7,7 +7,7 @@ import { getComparison, resolveApiUrl } from "../api.js";
  * dashboard. No new analysis logic:
  * metrics, the gauge arrival table, and the two comparison images all come
  * from GET /runs/{run_id}/comparison, which the worker populates only for
- * solver="both" runs (services/api/jalraksha_service/tasks.py::_run_comparison).
+ * solver="both" runs (services/api/floodview_service/tasks.py::_run_comparison).
  */
 export default function ComparisonPanel({ runId }) {
   const [data, setData] = useState(null);
@@ -237,14 +237,14 @@ export function EngineBanner({ binaryUsed, label, reason }) {
       <div style={{ fontWeight: 700, fontSize: 14 }}>
         {ok
           ? "✅ Engine: Delft3D FM (official dflowfm binary)"
-          : "⚠️ Delft3D FM was NOT used — these numbers come from JalRaksha's own solver"}
+          : "⚠️ Delft3D FM was NOT used — these numbers come from FloodView's own solver"}
       </div>
       <div style={{ fontSize: 12, marginTop: 6 }}>
         {ok ? (
           <>The official Deltares D-Flow FM engine produced the depth field below.</>
         ) : (
           <>
-            Computed by the <strong>JalRaksha built-in 2D SWE solver</strong>, which
+            Computed by the <strong>FloodView built-in 2D SWE solver</strong>, which
             solves the same depth-averaged Saint-Venant equations as Delft3D FM and
             is therefore <em>Delft3D-class</em> — but it is <strong>not Delft3D</strong>{" "}
             and must not be reported as such.

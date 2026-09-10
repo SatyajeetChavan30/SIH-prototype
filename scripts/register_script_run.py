@@ -59,7 +59,7 @@ KIND_BY_SUFFIX = {
 
 def _bootstrap():
     sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
-    from jalraksha_service.script_runs import bootstrap_repo_root
+    from floodview_service.script_runs import bootstrap_repo_root
 
     bootstrap_repo_root(REPO_ROOT)
 
@@ -156,7 +156,7 @@ def _gauge_rows(series: dict, dam_id: str):
     ValidationError and 500s, and the drainage summary records arrival times by
     gauge NAME only — the distances live in the preset.
     """
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     # get_gauges returns GaugePoint DATACLASSES, not dicts — attribute access,
     # not subscripting.
@@ -184,8 +184,8 @@ def _gauge_rows(series: dict, dam_id: str):
 
 
 def register(tag: str, dam_id: str, name: str, solver: str = "swe") -> int:
-    from jalraksha_service import db
-    from jalraksha_service.config import settings
+    from floodview_service import db
+    from floodview_service.config import settings
 
     kf_src = REPO_ROOT / "data" / "keyframes" / tag
     ex_src = REPO_ROOT / "data" / "exports" / tag
@@ -263,7 +263,7 @@ def register(tag: str, dam_id: str, name: str, solver: str = "swe") -> int:
         if f.is_file() and f.suffix.lower() not in (".shp", ".dbf", ".shx", ".prj", ".cpg"):
             exports.append({"kind": _export_kind(f), "path_or_url": str(f)})
 
-    from jalraksha_service.tasks import _existing_exports
+    from floodview_service.tasks import _existing_exports
 
     exports = _existing_exports(run_id, exports)
     db.insert_exports(run_id, exports)
@@ -288,9 +288,9 @@ def complete(run_id: str, dam_id: str) -> int:
     of database writes, so this is the repair path rather than a reason to
     pretend it is.
     """
-    from jalraksha_service import db
-    from jalraksha_service.config import settings
-    from jalraksha_service.tasks import _existing_exports
+    from floodview_service import db
+    from floodview_service.config import settings
+    from floodview_service.tasks import _existing_exports
 
     run = db.get_run(run_id)
     if run is None:

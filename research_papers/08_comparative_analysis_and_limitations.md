@@ -1,12 +1,12 @@
-# Comparative Analysis: Limitations of Existing Projects & How JalRaksha Improves Upon Them
+# Comparative Analysis: Limitations of Existing Projects & How FloodView Improves Upon Them
 
-**Author**: JalRaksha Team  
+**Author**: FloodView Team  
 **Date**: August 24, 2026  
-**Scope**: Technical comparison of existing dam-break & hydrodynamic modeling software vs. JalRaksha architecture.
+**Scope**: Technical comparison of existing dam-break & hydrodynamic modeling software vs. FloodView architecture.
 
 ---
 
-## 🎯 The Main Problem JalRaksha Solves
+## 🎯 The Main Problem FloodView Solves
 
 **Existing dam-break tools forced disaster managers into a false choice between computational impossibility and physics oversimplification:**
 
@@ -15,16 +15,16 @@
 3. **Single Deterministic Inputs**: Most software relies on a single guessed hydrograph. If that single breach scenario prediction is off by 30 minutes, emergency evacuation warnings fail.
 4. **Desktop GUI & Geo-Fenced Data Dependencies**: Tools like HEC-RAS require manual Windows desktop GUI steps, while regional models depend on geo-fenced portals (India-WRIS, Bhuvan) that break or require logins during crisis situations.
 
-### How JalRaksha Solves This:
+### How FloodView Solves This:
 * **Domain Decomposition**: 3D SPH (near-field breach) $\rightarrow$ 2D Finite-Volume SWE (far-field 60+ km). Achieves **3D breach physics near the dam** and **high-speed routing down the valley**.
 * **100-Member Monte Carlo Risk Bands**: Automated ensemble running 4 breach regression models with Wahl (2004) uncertainty bounds, providing **best-case, median, and worst-case arrival times** (5th–95th percentiles) for downstream towns.
-* **100% Offline-First Open Data Engine**: Automated fetch of Copernicus GLO-30 DEMs cached locally, running from a headless Python CLI (`jalraksha run`) without requiring internet access during live disaster events.
+* **100% Offline-First Open Data Engine**: Automated fetch of Copernicus GLO-30 DEMs cached locally, running from a headless Python CLI (`floodview run`) without requiring internet access during live disaster events.
 
 ---
 
 ## 📊 Summary Comparison Matrix
 
-| Feature / Capability | Delft3D-FLOW | HEC-RAS 2D | Full 3D SPH (DualSPHysics) | ANUGA / GeoClaw | **JalRaksha (This Project)** |
+| Feature / Capability | Delft3D-FLOW | HEC-RAS 2D | Full 3D SPH (DualSPHysics) | ANUGA / GeoClaw | **FloodView (This Project)** |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Physics Model** | 2D/3D Hydrostatic (SWE) | 2D Shallow Water | 3D Navier-Stokes (Lagrangian) | 2D Shallow Water | **Domain Decomposition (3D SPH + 2D SWE)** |
 | **Near-Field Breach Mechanics** | Depth-averaged approximation | Simplified weir equation | Full 3D violent free-surface | Depth-averaged approximation | **3D SPH near-field wave & plunging resolution** |
@@ -32,7 +32,7 @@
 | **Uncertainty Quantification** | Manual scenario setup | Single hydrograph input | N/A (Too slow for ensembles) | Manual scenario setup | **Automated 100-member Monte Carlo (Wahl bands)** |
 | **Data Dependencies** | Manual grid/bathymetry | Manual GIS setup | Manual CAD/mesh input | Manual DEM preparation | **Automated Copernicus GLO-30 DEM fetch & cache** |
 | **Offline Resilience** | Varies | Desktop local | Desktop local | Varies | **Strictly Offline-First local caching** |
-| **Automation & CLI** | GUI / Complex script | Windows GUI / RAS-Mapper | Script / GPU execution | Python API | **Headless Python CLI (`jalraksha run`)** |
+| **Automation & CLI** | GUI / Complex script | Windows GUI / RAS-Mapper | Script / GPU execution | Python API | **Headless Python CLI (`floodview run`)** |
 | **Software License** | AGPL-3.0 / Mixed | Public Domain (Windows GUI) | LGPL-3.0 (Copyleft) | GPL-3.0 | **MIT / BSD (Permissive Open Source)** |
 
 ---
@@ -59,7 +59,7 @@
 
 ---
 
-## 🚀 How JalRaksha Does It Better
+## 🚀 How FloodView Does It Better
 
 ### 1. Domain Decomposition (3D SPH $\rightarrow$ 2D Finite-Volume SWE)
 * **Best of Both Worlds**: Uses 3D SPH (via IIT Bombay's BSD-licensed PySPH) to capture violent near-field breach mechanics at the dam site (first few hundred meters), then passes boundary conditions to a 2D Finite-Volume Shallow Water solver for far-field propagation across 60+ km.

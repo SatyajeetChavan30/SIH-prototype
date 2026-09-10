@@ -1,6 +1,6 @@
-# 🌊 JalRaksha: Dam-Break Inundation Modelling System
+# 🌊 FloodView: Dam-Break Inundation Modelling System
 
-JalRaksha is a high-performance Python package for dam-break inundation modelling, simulation, hazard mapping, and impact assessment. Developed specifically for the **Smart India Hackathon 2026 (Problem Statement 26161, sponsored by NTRO)**, JalRaksha utilizes a unique dual-engine numerical scheme (2D Shallow Water Equations for far-field propagation coupled with 3D Smoothed Particle Hydrodynamics for violent near-field breach dynamics) to deliver rapid Tier-1 screening forecasts.
+FloodView is a high-performance Python package for dam-break inundation modelling, simulation, hazard mapping, and impact assessment. Developed specifically for the **Smart India Hackathon 2026 (Problem Statement 26161, sponsored by NTRO)**, FloodView utilizes a unique dual-engine numerical scheme (2D Shallow Water Equations for far-field propagation coupled with 3D Smoothed Particle Hydrodynamics for violent near-field breach dynamics) to deliver rapid Tier-1 screening forecasts.
 
 ---
 
@@ -66,7 +66,7 @@ gross storage. So the storage is *measured*:
    terrain, which also yields a real elevation–area–capacity curve. Scored
    against the closed-form capacity of a sloping V-valley, this is accurate to
    **0.127% at 30 m cells** and converges at second order.
-3. `jalraksha.terrain.breach` **refuses** a blockage run whose `storage_source`
+3. `floodview.terrain.breach` **refuses** a blockage run whose `storage_source`
    is anything but that fill. Without the refusal a dashboard slider silently
    drives the outburst volume the first time somebody refactors, and the output
    still reads as a modelled result.
@@ -90,7 +90,7 @@ GLO-30 with the landslide barrier burned in, written as a new GeoTIFF whose own
 metadata carries
 
 ```
-JALRAKSHA_NOT_A_SURVEY = "NOT photogrammetry, NOT InSAR, NOT an elevation
+FLOODVIEW_NOT_A_SURVEY = "NOT photogrammetry, NOT InSAR, NOT an elevation
 surface derived from imagery. This is Copernicus GLO-30 with a landslide
 barrier and, where an observation was available, an observed lake extent
 burned into it."
@@ -130,16 +130,16 @@ floor.**
 ```bash
 sudo apt-get update
 sudo apt-get install -y gdal-bin libgdal-dev
-git clone https://github.com/sih2026/jalraksha.git
-cd jalraksha
+git clone https://github.com/sih2026/floodview.git
+cd floodview
 pip install -e .[dev,viz]
 ```
 
 ### Windows Installation
 1.  Download and install OSGeo4W or run Python within a Conda/mamba environment to resolve GDAL dependencies:
     ```bash
-    conda create -n jalraksha python=3.11 conda-forge::gdal conda-forge::libgdal -y
-    conda activate jalraksha
+    conda create -n floodview python=3.11 conda-forge::gdal conda-forge::libgdal -y
+    conda activate floodview
     pip install -e .[dev,viz]
     ```
 
@@ -218,13 +218,13 @@ curl -X POST http://localhost:8000/runs -H "Content-Type: application/json" -d '
 ### 2. Run the CLI Simulation (Tehri Dam Demo)
 Execute a 3-member ensemble run for Tehri Dam:
 ```bash
-python -m jalraksha.cli run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540 --ensemble-size 3
+python -m floodview.cli run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540 --ensemble-size 3
 ```
 
 ### 3. Start the REST API Service
 Launch the background HTTP API service on port `8502`:
 ```bash
-python -m jalraksha.api
+python -m floodview.api
 ```
 Example simulation query using `curl`:
 ```bash
@@ -235,19 +235,19 @@ curl -X POST http://127.0.0.1:8502/api/v1/simulate \
 
 ### 4. Optional external engines (environment variables)
 
-JalRaksha runs fully without any of these. Each one is *attempted* when
+FloodView runs fully without any of these. Each one is *attempted* when
 configured and *reported as absent* when not — nothing is silently substituted.
 
 | Variable | Purpose | When unset |
 | :--- | :--- | :--- |
-| `JALRAKSHA_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** kernel (`dflowfm-cli.exe`), for `solver="both"` runs and for validation. | `dflowfm-cli` then `dflowfm` are looked up on `PATH`, then the usual Deltares install locations are searched automatically. If nothing is found, the comparison runs JalRaksha's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
-| `JALRAKSHA_PARAVIEW_EXE` | Full path to `paraview.exe` (the GUI) for the "View in ParaView (3D)" button. | Defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`; the endpoint answers `paraview_not_found` if it is not there. |
-| `JALRAKSHA_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
-| `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent, the GHSL population-at-risk figure, and new-water detection for river blockages. | `GET /gee/latest` and `GET /gee/blockage` answer `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. The **manual** blockage path is unaffected and needs no Earth Engine at all. |
-| `JALRAKSHA_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
+| `FLOODVIEW_DFLOWFM_EXE` | Full path to the Deltares **D-Flow FM** kernel (`dflowfm-cli.exe`), for `solver="both"` runs and for validation. | `dflowfm-cli` then `dflowfm` are looked up on `PATH`, then the usual Deltares install locations are searched automatically. If nothing is found, the comparison runs FloodView's own 2D SWE solver and the Comparison tab shows an orange banner saying Delft3D FM was not used. |
+| `FLOODVIEW_PARAVIEW_EXE` | Full path to `paraview.exe` (the GUI) for the "View in ParaView (3D)" button. | Defaults to `C:/Program Files/ParaView 6.2.0/bin/paraview.exe`; the endpoint answers `paraview_not_found` if it is not there. |
+| `FLOODVIEW_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
+| `FLOODVIEW_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent, the GHSL population-at-risk figure, and new-water detection for river blockages. | `GET /gee/latest` and `GET /gee/blockage` answer `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. The **manual** blockage path is unaffected and needs no Earth Engine at all. |
+| `FLOODVIEW_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
 
 ```bash
-export JALRAKSHA_DFLOWFM_EXE="C:/Program Files/Deltares/Delft3D FM Suite 2026.01 HM/plugins/DeltaShell.Dimr/kernels/x64/bin/dflowfm-cli.exe"
+export FLOODVIEW_DFLOWFM_EXE="C:/Program Files/Deltares/Delft3D FM Suite 2026.01 HM/plugins/DeltaShell.Dimr/kernels/x64/bin/dflowfm-cli.exe"
 ```
 
 #### Enabling Earth Engine
@@ -265,10 +265,10 @@ earthengine authenticate
 Then create or pick a Google Cloud project, **enable the Earth Engine API on
 it** (`console.cloud.google.com` → APIs & Services → enable "Google Earth
 Engine API"; free for non-commercial use via
-<https://code.earthengine.google.com/register>), and point JalRaksha at it:
+<https://code.earthengine.google.com/register>), and point FloodView at it:
 
 ```bash
-export JALRAKSHA_GEE_PROJECT=your-project-id
+export FLOODVIEW_GEE_PROJECT=your-project-id
 ```
 
 Every fetched scene is cached under `data/gee/`, so once a reach has been
@@ -277,7 +277,7 @@ scene, with its real acquisition date.
 
 #### Validating against Delft3D FM
 
-With a Delft3D FM Suite installed, JalRaksha can be scored against the real
+With a Delft3D FM Suite installed, FloodView can be scored against the real
 Deltares kernel and against analytical theory in one command:
 
 ```bash
@@ -290,7 +290,7 @@ This writes `data/validation/ritter_validation.png` and
 
 | | RMSE vs exact | depth at dam |
 | :--- | ---: | ---: |
-| JalRaksha 2D SWE | 0.0317 m | 4.532 m |
+| FloodView 2D SWE | 0.0317 m | 4.532 m |
 | Delft3D FM | 0.0349 m | 4.515 m |
 | Ritter (1892) exact | — | 4.444 m |
 
@@ -308,7 +308,7 @@ scripting host, not a solver. Editions that do ship kernels put them at:
 <install>\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe
 ```
 
-That path is searched automatically, so `JALRAKSHA_DFLOWFM_EXE` is only needed
+That path is searched automatically, so `FLOODVIEW_DFLOWFM_EXE` is only needed
 for installs in unusual locations.
 
 **On naming.** When `dflowfm` is unavailable, the built-in solver takes over. It
@@ -321,7 +321,7 @@ the numbers, in a banner, before showing any of them.
 
 ## 🔬 Testing & Verification
 
-JalRaksha features a multi-tier testing framework. Execute the test suite using `pytest`:
+FloodView features a multi-tier testing framework. Execute the test suite using `pytest`:
 
 ```bash
 # Run the entire test suite
@@ -338,11 +338,11 @@ python -m pytest tests/test_validation.py -v --tb=short
 
 ## ⚠️ Important Guidelines & Constraints
 
-1.  **Approved Open Data Sources Only**: Under NTRO directives, geofenced, broken, or login-gated services (such as India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM) are **strictly forbidden**. JalRaksha uses Copernicus GLO-30 DEM and GHSL Global Human Settlement layers via public AWS storage.
+1.  **Approved Open Data Sources Only**: Under NTRO directives, geofenced, broken, or login-gated services (such as India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM) are **strictly forbidden**. FloodView uses Copernicus GLO-30 DEM and GHSL Global Human Settlement layers via public AWS storage.
 2.  **Mullaperiyar Dam**: Explicitly forbidden from simulation due to active litigation. All demonstrations must utilize **Tehri Dam** as the reference benchmark case.
-3.  **Tier-1 Scope**: JalRaksha is built as a rapid screening instrument. Flood forecasts represent indicative envelopes and arrival times rather than absolute point depths. Always consult CWC Tier-2/3 detailed studies for emergency planning.
+3.  **Tier-1 Scope**: FloodView is built as a rapid screening instrument. Flood forecasts represent indicative envelopes and arrival times rather than absolute point depths. Always consult CWC Tier-2/3 detailed studies for emergency planning.
 
 ---
 
 ## 📄 License
-JalRaksha is licensed under the MIT License.
+FloodView is licensed under the MIT License.

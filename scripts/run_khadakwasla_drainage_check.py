@@ -4,7 +4,7 @@ Standalone Khadakwasla drainage-fix verification run.
 WHY THIS EXISTS, rather than POST /runs:
 
 A run submitted through the API executes in a subprocess spawned by the API
-server (services/api/jalraksha_service/main.py::_spawn_run_subprocess). That
+server (services/api/floodview_service/main.py::_spawn_run_subprocess). That
 subprocess is a CHILD of the server, so when the server process is reaped --
 which happened three times in one session, each time silently orphaning the
 run and discarding hours of compute with nothing persisted, because
@@ -155,10 +155,10 @@ def main(argv=None) -> int:
     solver = str(args.solver)
     n_workers = args.n_workers
 
-    from jalraksha.presets import get_preset
-    from jalraksha.run import run_dam_break_ensemble
-    from jalraksha.export.keyframes import export_keyframes
-    from jalraksha.impact.hazard import HazardClassifier
+    from floodview.presets import get_preset
+    from floodview.run import run_dam_break_ensemble
+    from floodview.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
 
     preset = get_preset("khadakwasla")
     dam_config = preset.to_dam_config() if hasattr(preset, "to_dam_config") else dict(preset)
@@ -190,7 +190,7 @@ def main(argv=None) -> int:
     # solves — not just a directory on disk that nothing can load. The script
     # still owns its own process, so it keeps the durability that is the whole
     # reason long runs live here rather than behind POST /runs.
-    from jalraksha_service.script_runs import bootstrap_repo_root, registered_run
+    from floodview_service.script_runs import bootstrap_repo_root, registered_run
 
     bootstrap_repo_root(ROOT)
 
@@ -272,7 +272,7 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
 
     This is what ``solver="both"`` means in the API (tasks.py's dispatch), and
     it is reused rather than reimplemented: ``_run_comparison`` reads this dam's
-    own gauges from ``jalraksha.presets.GAUGES`` and records the real kernel's
+    own gauges from ``floodview.presets.GAUGES`` and records the real kernel's
     verdict, including the case where the binary could not run. A second copy
     here would eventually disagree with the API about whether a given run used
     the Deltares kernel — which is exactly the claim CLAUDE.md makes
@@ -283,7 +283,7 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
     """
     progress(88.0, "Running Delft3D FM and near-field SPH")
     try:
-        from jalraksha_service.tasks import _run_comparison
+        from floodview_service.tasks import _run_comparison
 
         comp_export = _run_comparison(run.run_id, dict(dam_config), with_sph=True)
         if comp_export:
@@ -320,7 +320,7 @@ def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION
     """
     import math
 
-    from jalraksha.presets import get_gauges
+    from floodview.presets import get_gauges
 
     dam_lat = float(dam_config["lat"])
     dam_lon = float(dam_config["lon"])
@@ -381,8 +381,8 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     """
     import time as _time
 
-    from jalraksha.impact.hazard import HazardClassifier
-    from jalraksha.export.keyframes import export_keyframes
+    from floodview.impact.hazard import HazardClassifier
+    from floodview.export.keyframes import export_keyframes
 
     (resolution_m, duration_s, members, n_snapshots, run_tag, t0,
      margins, condition_corridor_m) = series_args
@@ -421,14 +421,22 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     # diluted quantity, and is part of why the plateau was hard to characterise.
     # Both dashboard panels already recompute a wet-cells-only severity; this
     # mirrors them so the script and the UI agree.
-    WEIGHTS = {"low": 0.1, "moderate": 0.3, "significant": 0.5,
-               "severe": 0.8, "extreme": 1.0}
+    # Weights mirror HazardClassifier.hazard_weights, which no longer carries a
+    # SEVERE level: FD2320 publishes four wet categories and no boundary that
+    # would split extreme, so the fifth level was retired rather than given an
+    # invented threshold. Counts from runs finished before that change still
+    # carry a "severe" key; it is read below and folded into EXTREME so an old
+    # run's series stays comparable instead of silently losing cells.
+    WEIGHTS = {"low": 0.1, "moderate": 0.3, "significant": 0.5, "extreme": 1.0}
+    LEGACY_MERGED_INTO_EXTREME = ("severe",)
 
     series = []
     for kf in manifest.keyframes:
         h = kf.hazard_summary or {}
         counts = {k: (h.get(k, {}).get("count") or 0) for k in
-                  ("dry", "low", "moderate", "significant", "severe", "extreme")}
+                  ("dry", "low", "moderate", "significant", "extreme")}
+        for legacy in LEGACY_MERGED_INTO_EXTREME:
+            counts["extreme"] += (h.get(legacy, {}) or {}).get("count") or 0
         wet = sum(counts[k] for k in WEIGHTS)
         wet_severity = (
             sum(WEIGHTS[k] * counts[k] for k in WEIGHTS) / wet if wet else 0.0
@@ -443,7 +451,7 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
 
     # Verdict, computed rather than eyeballed. Green is literal: LOW renders
     # light green [100,200,100] in HazardClassifier.color_map; MODERATE is
-    # yellow, SIGNIFICANT orange, SEVERE red, EXTREME purple.
+    # yellow, SIGNIFICANT orange, EXTREME purple.
     def _first_time_zero(*levels: str):
         """Earliest frame time at which every named level is 0, and stays 0."""
         for i, row in enumerate(series):
@@ -455,11 +463,13 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
 
     last = series[-1] if series else {}
     verdict = {
-        # Nothing red or purple: the direct answer to the 46 stuck SEVERE cells.
-        "safe_at_s": _first_time_zero("severe", "extreme"),
-        # Only LOW and DRY remain -- no cell anywhere at or above 0.5 m.
+        # Nothing orange or purple: the direct answer to the stuck high-hazard
+        # cells of the pre-fix baseline (recorded there under the old SEVERE
+        # level, which is folded into EXTREME above).
+        "safe_at_s": _first_time_zero("significant", "extreme"),
+        # Only LOW and DRY remain.
         "fully_green_at_s": _first_time_zero(
-            "moderate", "significant", "severe", "extreme"),
+            "moderate", "significant", "extreme"),
         # READ THESE TWO FIRST. The transmissive boundary is the only exit this
         # model has, so if exited_mcm is ~0 no water left and the two times
         # above describe a pond that simply has nowhere to go -- the run did
@@ -469,12 +479,16 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
         "exited_mcm": balance.get("exited_mcm"),
         "retained_fraction": balance.get("retained_fraction"),
         "final_counts": {k: last.get(k) for k in
-                         ("low", "moderate", "significant", "severe", "extreme")},
+                         ("low", "moderate", "significant", "extreme")},
         "final_wet_severity": last.get("wet_severity"),
         "baseline_for_comparison": {
             "severe": 46, "significant": 139, "moderate": 75,
             "note": "27 km dam-centred domain, 24 h, plateaued from t~17,876 s "
-                    "(docs/validation_findings.md section 8)",
+                    "(docs/validation_findings.md section 8). NOT COMPARABLE "
+                    "cell-for-cell with a new run: these counts came from the "
+                    "old depth/velocity band table, which the FD2320 hazard "
+                    "rating replaced. Compare the SHAPE of the recession and "
+                    "the volume balance, not the individual class counts.",
         },
     }
     print(f"[drainage-check] VERDICT: safe_at={verdict['safe_at_s']} s, "

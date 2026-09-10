@@ -104,18 +104,26 @@ export default function GaugesPanel({ result, dam }) {
 }
 
 /**
- * FD2320 depth bands, matching jalraksha.impact.hazard.HazardClassifier's
- * CODED thresholds (0.1 / 0.5 / 2.0 / 5.0 / 10.0 m). Note that module's
- * docstring lists different numbers from its own implementation; the code is
- * what runs, so the code is what is mirrored here.
+ * FD2320 depth-only bands, mirroring
+ * floodview.impact.hazard.HazardClassifier.classify_depth_only.
+ *
+ * That method evaluates HR = depth * (|V| + 0.5) + DF at |V| = 0, which with
+ * the default debris factor of 0.5 reduces to HR = 0.5*depth + 0.5. Against
+ * the published class boundaries of 0.75 / 1.25 / 2.5 that puts the depth
+ * edges at 0.5 / 1.5 / 4.0 m. A gauge reports a depth and no velocity, so the
+ * depth-only form is the correct one here — but it UNDER-states hazard
+ * wherever the flow is fast.
+ *
+ * These numbers are duplicated from Python only because the badge renders
+ * before any classified raster is available. If they are edited, edit
+ * hazard.py first: it is the source of truth, and this file mirrors it.
  */
 function hazardClass(depth) {
   if (depth == null) return null;
-  if (depth < 0.1) return { label: "dry", bg: "#eee", fg: "#555" };
+  if (depth < 0.05) return { label: "dry", bg: "#eee", fg: "#555" };
   if (depth < 0.5) return { label: "low", bg: "#e6f4e6", fg: "#1b5e20" };
-  if (depth < 2.0) return { label: "moderate", bg: "#fff8e1", fg: "#7a5b00" };
-  if (depth < 5.0) return { label: "significant", bg: "#ffe9d6", fg: "#7a3e00" };
-  if (depth < 10.0) return { label: "severe", bg: "#fdecea", fg: "#7f1d1d" };
+  if (depth < 1.5) return { label: "moderate", bg: "#fff8e1", fg: "#7a5b00" };
+  if (depth < 4.0) return { label: "significant", bg: "#ffe9d6", fg: "#7a3e00" };
   return { label: "extreme", bg: "#f3e5f5", fg: "#4a148c" };
 }
 

@@ -4,12 +4,12 @@ Tests for Phase 4: End-to-end dam-break pipeline.
 
 import pytest
 import numpy as np
-from jalraksha.run import (
+from floodview.run import (
     run_dam_break_ensemble,
     define_downstream_gauges,
     compute_arrival_times_at_gauges,
 )
-from jalraksha.solver.types import Grid, create_state
+from floodview.solver.types import Grid, create_state
 
 
 class TestDownstreamGauges:
@@ -281,7 +281,7 @@ class TestMinorityArrival:
         import sys
 
         sys.path.insert(0, "services/api")
-        from jalraksha_service.tasks import _minority_arrival_note
+        from floodview_service.tasks import _minority_arrival_note
 
         minority = _minority_arrival_note({"num_samples": 1, "num_members": 4})
         assert minority is not None
@@ -302,7 +302,7 @@ class TestMinorityArrival:
         import sys
 
         sys.path.insert(0, "services/api")
-        from jalraksha_service.tasks import _gauge_max_depths
+        from floodview_service.tasks import _gauge_max_depths
 
         result = {
             "grid": {"nx": 10, "ny": 10, "dx": 100.0, "dy": 100.0,
@@ -336,7 +336,7 @@ class TestGaugeCorridorNeverBorrowed:
     HIMALAYAN_LAT, HIMALAYAN_LON = 30.50, 79.63  # inside the Tehri box
 
     def test_a_named_site_without_a_corridor_gets_no_gauges(self):
-        from jalraksha.run import define_downstream_gauges
+        from floodview.run import define_downstream_gauges
 
         with pytest.warns(UserWarning, match="No downstream gauge corridor"):
             gauges = define_downstream_gauges(
@@ -349,7 +349,7 @@ class TestGaugeCorridorNeverBorrowed:
         The fallback exists for calls that predate dam_id. Removing it entirely
         would break them, so it is narrowed rather than deleted.
         """
-        from jalraksha.run import define_downstream_gauges
+        from floodview.run import define_downstream_gauges
 
         gauges = define_downstream_gauges(30.3789, 78.4789, dam_id=None)
         assert [g["name"] for g in gauges] == [
@@ -357,7 +357,7 @@ class TestGaugeCorridorNeverBorrowed:
         ]
 
     def test_a_named_site_with_its_own_corridor_is_unaffected(self):
-        from jalraksha.run import define_downstream_gauges
+        from floodview.run import define_downstream_gauges
 
         names = [
             g["name"]
@@ -367,8 +367,8 @@ class TestGaugeCorridorNeverBorrowed:
         assert "Koteshwar" not in names
 
     def test_the_legacy_http_resolver_holds_the_same_line(self):
-        """jalraksha/api.py mirrors the fallback and carried the same defect."""
-        from jalraksha.api import get_downstream_gauges
+        """floodview/api.py mirrors the fallback and carried the same defect."""
+        from floodview.api import get_downstream_gauges
 
         borrowed = get_downstream_gauges(
             self.HIMALAYAN_LAT, self.HIMALAYAN_LON, dam_id="bhakra"
@@ -413,7 +413,7 @@ class TestNoArrivalReasonOnSteepRivers:
         return grid, bed.astype(float)
 
     def test_a_point_on_a_steep_channel_is_not_called_a_hillside_town(self):
-        from jalraksha.run import _no_arrival_reason
+        from floodview.run import _no_arrival_reason
 
         # 60 m/km: the Alaknanda's order of magnitude here.
         grid, bed = self._steep_channel(0.060)
@@ -430,7 +430,7 @@ class TestNoArrivalReasonOnSteepRivers:
 
     def test_a_genuinely_elevated_point_is_still_flagged(self):
         """The Pune finding this function exists for must survive the fix."""
-        from jalraksha.run import _no_arrival_reason
+        from floodview.run import _no_arrival_reason
 
         grid, bed = self._steep_channel(0.0)  # flat reach, so only height counts
         bed[30, 45] = bed[30, 30] + 60.0      # a hillside cell beside the channel
@@ -447,7 +447,7 @@ class TestNoArrivalReasonOnSteepRivers:
         coordinate read off the DEM. Naming the wrong cause sends the reader to
         fix the wrong thing.
         """
-        from jalraksha.run import _no_arrival_reason
+        from floodview.run import _no_arrival_reason
 
         grid, bed = self._steep_channel(0.0)
         bed[30, 45] = bed[30, 30] + 60.0

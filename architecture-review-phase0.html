@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JalRaksha Phase 0 Architecture Exploration</title>
+    <title>FloodView Phase 0 Architecture Exploration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <style>
@@ -20,7 +20,7 @@
     <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="mb-12">
-            <h1 class="text-4xl font-bold text-gray-900 mb-2">JalRaksha Phase 0 Architecture Exploration</h1>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">FloodView Phase 0 Architecture Exploration</h1>
             <p class="text-lg text-gray-600">Structural audit & deepening opportunities</p>
             <p class="text-sm text-gray-500 mt-4">📅 Generated: Aug 23, 2026 | 🔍 Scope: Phase 0 Skeleton Only</p>
         </div>
@@ -65,14 +65,14 @@
             <div class="space-y-4">
                 <div class="border-l-4 border-red-500 pl-4 py-2">
                     <h3 class="font-bold text-gray-900">1. Presentation Logic Dominates Root</h3>
-                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> <code>build_ppt.py</code> and <code>check_ppt.py</code> occupy the root alongside where Phase 0 skeleton should go. No <code>jalraksha/</code> package exists yet.</p>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> <code>build_ppt.py</code> and <code>check_ppt.py</code> occupy the root alongside where Phase 0 skeleton should go. No <code>floodview/</code> package exists yet.</p>
                     <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> A developer cloning the repo sees presentation scripts first, not the solver. The interface (what's visible at root) is as complex as the implementation (only 2 files, but they're 750 and 177 lines of dense PowerPoint logic).</p>
                     <p class="text-gray-700 text-sm mt-2"><strong>Deletion test:</strong> If you deleted <code>build_ppt.py</code>, the core system would still work. It's not a load-bearing module.</p>
                 </div>
 
                 <div class="border-l-4 border-red-500 pl-4 py-2">
                     <h3 class="font-bold text-gray-900">2. No Package Structure Yet</h3>
-                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> There's no <code>jalraksha/</code> package directory, no <code>jalraksha/cli/</code>, no <code>jalraksha/solver/</code>. The prototype specs and literature are loose .md files in root.</p>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> There's no <code>floodview/</code> package directory, no <code>floodview/cli/</code>, no <code>floodview/solver/</code>. The prototype specs and literature are loose .md files in root.</p>
                     <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> Nowhere to put Phase 0 code (CLI, cache, DEM fetch). New developers won't know where to start implementing.</p>
                 </div>
 
@@ -90,7 +90,7 @@
 
                 <div class="border-l-4 border-red-500 pl-4 py-2">
                     <h3 class="font-bold text-gray-900">5. No Test Co-Location</h3>
-                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> No <code>tests/</code> directory. The `/verify-jalraksha` skill exists but has nowhere to live in the codebase.</p>
+                    <p class="text-gray-700 text-sm mt-1"><strong>Problem:</strong> No <code>tests/</code> directory. The `/verify-floodview` skill exists but has nowhere to live in the codebase.</p>
                     <p class="text-gray-700 text-sm mt-2"><strong>Why it matters:</strong> Analytical tests (Ritter, Stoker, Thacker) need to be importable by Phase 1 solver. Right now they have no home.</p>
                 </div>
             </div>
@@ -99,7 +99,7 @@
         <!-- Top Recommendation -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 p-6 mb-8 rounded-lg">
             <h2 class="text-2xl font-bold text-blue-900 mb-4">🎯 Top Recommendation: STRONG</h2>
-            <p class="text-blue-900 font-semibold mb-3">Deepen Phase 0 by extracting presentation concerns into a separate <code>tools/sih-presentation/</code> module and scaffolding the core <code>jalraksha/</code> package.</p>
+            <p class="text-blue-900 font-semibold mb-3">Deepen Phase 0 by extracting presentation concerns into a separate <code>tools/sih-presentation/</code> module and scaffolding the core <code>floodview/</code> package.</p>
             <p class="text-blue-800 text-sm">This makes Phase 0 itself deep: a single entry point to a well-organized data pipeline, with presentation tooling clearly separated.</p>
         </div>
 
@@ -129,7 +129,7 @@
                 <div class="benefit-box">
                     <strong>Benefits:</strong>
                     <ul class="list-disc list-inside text-sm mt-2 space-y-1">
-                        <li><strong>Locality:</strong> Presentation logic is isolated; root now shows <code>jalraksha/</code> package first</li>
+                        <li><strong>Locality:</strong> Presentation logic is isolated; root now shows <code>floodview/</code> package first</li>
                         <li><strong>Leverage:</strong> Frees root for Phase 0 scaffolding without path confusion</li>
                         <li><strong>Clarity:</strong> New contributor immediately sees the solver package, not the submission tool</li>
                         <li><strong>Testability:</strong> Presentation can be tested independently; solver code untangled from it</li>
@@ -148,13 +148,13 @@
 ├── CLAUDE.md
 ├── literature.md
 └── prototype specs.md
-<span style="color: red;">❌ No jalraksha/ yet</span></pre>
+<span style="color: red;">❌ No floodview/ yet</span></pre>
                         </div>
                         <div>
                             <p class="font-semibold text-gray-900 mb-2">After (Deep):</p>
                             <pre class="bg-gray-100 p-2 text-xs overflow-x-auto rounded">
 .
-├── jalraksha/
+├── floodview/
 │   ├── __init__.py
 │   ├── cli.py       (Phase 0)
 │   ├── cache.py     (Phase 0)
@@ -175,18 +175,18 @@
             <!-- Candidate 2 -->
             <div class="bg-white border card-border p-6 rounded-lg">
                 <div class="flex items-start justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-900">Candidate 2: Create <code>jalraksha/</code> Package & Config Module</h3>
+                    <h3 class="text-xl font-bold text-gray-900">Candidate 2: Create <code>floodview/</code> Package & Config Module</h3>
                     <span class="strength-strong">Strong</span>
                 </div>
 
                 <div class="problem-box">
-                    <strong>Problem:</strong> No <code>jalraksha/</code> package exists. Phase 0 will add CLI, cache, and DEM fetch, but there's nowhere to put them yet. Each phase will have to re-invent where to store its logic.
+                    <strong>Problem:</strong> No <code>floodview/</code> package exists. Phase 0 will add CLI, cache, and DEM fetch, but there's nowhere to put them yet. Each phase will have to re-invent where to store its logic.
                 </div>
 
                 <div class="solution-box">
                     <strong>Solution:</strong> Scaffold the package structure before Phase 0 code:
                     <pre class="bg-gray-100 p-3 text-xs overflow-x-auto rounded mt-2">
-jalraksha/
+floodview/
 ├── __init__.py
 ├── config.py          (Phase 0) — loads config, validates CRS, dam location
 ├── cli.py             (Phase 0) — CLI entry point
@@ -225,7 +225,7 @@ tests/
                         <li><strong>Locality:</strong> Each phase knows exactly where its code lives</li>
                         <li><strong>Leverage:</strong> Phases 1–4 can depend on Phase 0's cache and config without path searching</li>
                         <li><strong>Testability:</strong> Tests live next to modules; importing is clean</li>
-                        <li><strong>Independence:</strong> SPH (Phase 7) can import <code>jalraksha.solver</code> without depending on export logic</li>
+                        <li><strong>Independence:</strong> SPH (Phase 7) can import <code>floodview.solver</code> without depending on export logic</li>
                     </ul>
                 </div>
 
@@ -248,7 +248,7 @@ tests/
                 <div class="solution-box">
                     <strong>Solution:</strong> Create <code>CONTEXT.md</code> as a living glossary:
                     <pre class="bg-gray-100 p-3 text-xs overflow-x-auto rounded mt-2">
-# JalRaksha Domain Glossary
+# FloodView Domain Glossary
 
 ## Hydrodynamics
 - **Lake-at-rest:** Zero-velocity condition over arbitrary bathymetry; test of hydrostatic balance
@@ -344,10 +344,10 @@ docs/
 
             <ol class="space-y-4 list-decimal list-inside text-gray-700">
                 <li>
-                    <strong>Candidate 2 (jalraksha/ package):</strong> Create the package structure and Phase 0 entry points (cli.py, cache.py, dem.py, config.py). This unblocks all other phases.
+                    <strong>Candidate 2 (floodview/ package):</strong> Create the package structure and Phase 0 entry points (cli.py, cache.py, dem.py, config.py). This unblocks all other phases.
                 </li>
                 <li>
-                    <strong>Candidate 1 (move presentation):</strong> After jalraksha/ exists, move tools to tools/sih-presentation/. This frees root and makes Phase 0 visible.
+                    <strong>Candidate 1 (move presentation):</strong> After floodview/ exists, move tools to tools/sih-presentation/. This frees root and makes Phase 0 visible.
                 </li>
                 <li>
                     <strong>Candidate 3 (CONTEXT.md):</strong> Start the glossary as code is written. Lazy-update it during Phase 1 grilling when terminology solidifies.
@@ -363,9 +363,9 @@ docs/
             <h2 class="text-2xl font-bold text-indigo-900 mb-4">🤔 Why This Architecture?</h2>
             <p class="text-indigo-900 mb-3">These deepenings follow the <strong>deep modules</strong> principle:</p>
             <ul class="space-y-2 text-indigo-800">
-                <li><strong>High functionality, simple interface:</strong> Phase 0 will have ~500 lines of CLI + cache + DEM logic, but from the user's perspective it's one command: <code>jalraksha run --dam tehri</code></li>
+                <li><strong>High functionality, simple interface:</strong> Phase 0 will have ~500 lines of CLI + cache + DEM logic, but from the user's perspective it's one command: <code>floodview run --dam tehri</code></li>
                 <li><strong>One responsible module per concern:</strong> Presentation is separated from solver. Solver is separated from export. SPH is separated from SWE.</li>
-                <li><strong>Testable in isolation:</strong> Tests can import <code>jalraksha.solver</code> without loading the React dashboard (Phase 10).</li>
+                <li><strong>Testable in isolation:</strong> Tests can import <code>floodview.solver</code> without loading the React dashboard (Phase 10).</li>
                 <li><strong>Supports the 18-phase plan:</strong> Each phase can build on earlier ones without circular dependencies.</li>
             </ul>
         </div>
@@ -376,14 +376,14 @@ docs/
             <ol class="space-y-2 text-green-900 list-decimal list-inside">
                 <li>Review these candidates. Do any resonate with your team's vision?</li>
                 <li>Pick the top 1–2 candidates for grilling (recommend Candidate 2 first).</li>
-                <li>Call `/improve-architecture grill jalraksha-package` to deep-dive on the chosen refactoring.</li>
+                <li>Call `/improve-architecture grill floodview-package` to deep-dive on the chosen refactoring.</li>
                 <li>Once deepenings are approved, Phase 0 code can be scaffolded into the new package structure.</li>
             </ol>
         </div>
 
         <!-- Footer -->
         <div class="text-center text-gray-500 text-sm mt-12 pt-8 border-t border-gray-200">
-            <p>Architecture exploration for JalRaksha Phase 0 | Generated with `/improve-architecture explore phase 0`</p>
+            <p>Architecture exploration for FloodView Phase 0 | Generated with `/improve-architecture explore phase 0`</p>
             <p class="mt-2">To deepen a candidate, use: <code class="bg-gray-100 px-2 py-1 rounded">/improve-architecture grill &lt;candidate-name&gt;</code></p>
         </div>
     </div>

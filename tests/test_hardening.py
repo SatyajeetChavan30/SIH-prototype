@@ -14,7 +14,7 @@ import os
 import pytest
 import tempfile
 
-from jalraksha.hardening import (
+from floodview.hardening import (
     HardeningError,
     validate_dam_config,
     validate_ensemble_params,
