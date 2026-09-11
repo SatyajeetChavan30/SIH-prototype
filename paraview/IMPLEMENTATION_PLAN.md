@@ -3,7 +3,7 @@
 Phases from spec Section 17. A phase is done when its artifact exists and has been
 looked at — not when the code is elegant (Section 0).
 
-**Two dam presets** (`floodview/presets.py`): **Khadakwasla** (Mutha River Basin,
+**Two dam presets** (`jalraksha/presets.py`): **Khadakwasla** (Mutha River Basin,
 Pune; default) and **Tehri** (Bhagirathi Basin, Uttarakhand). Everything below
 that used to say "Tehri" implicitly now works for either via `--dam`; artifact
 filenames below are dam-specific where both have been rendered.
@@ -244,7 +244,7 @@ artifacts are recorded at times where there is something to see.
 
 ## Khadakwasla preset (added, Phase 3 sign-off)
 
-- [x] `floodview/presets.py` — `DamPreset` dataclass, `KHADAKWASLA` and `TEHRI`
+- [x] `jalraksha/presets.py` — `DamPreset` dataclass, `KHADAKWASLA` and `TEHRI`
       records, `get_preset()`/`to_dam_config()`. Replaces the module-level
       `TEHRI` dict that used to live in `tools/paraview/make_dataset.py`.
 - [x] `--dam {khadakwasla,tehri}` on `make_dataset.py` (default `khadakwasla`),

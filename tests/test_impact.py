@@ -10,16 +10,16 @@ Tests:
 
 import numpy as np
 import pytest
-from floodview.impact.hazard import (
+from jalraksha.impact.hazard import (
     HazardClassifier,
     HazardLevel,
     categorize_hazard_zones,
     compute_fd2320_hazard_rating,
     compute_fd2320_hazard_rating_from_speed,
 )
-from floodview.impact.damage import compute_depth_damage, calculate_economic_loss
-from floodview.impact.population import compute_population_exposure, compute_par
-from floodview.impact.fatality import estimate_loss_of_life_graham, estimate_loss_of_life_jonkman
+from jalraksha.impact.damage import compute_depth_damage, calculate_economic_loss
+from jalraksha.impact.population import compute_population_exposure, compute_par
+from jalraksha.impact.fatality import estimate_loss_of_life_graham, estimate_loss_of_life_jonkman
 
 
 class TestFD2320HazardRating:
@@ -144,7 +144,7 @@ class TestFD2320HazardRating:
         "high" in the exported shapefile. The exporter now calls the same
         classifier, so equal inputs must produce equal classes.
         """
-        from floodview.export import shapefile as shapefile_module
+        from jalraksha.export import shapefile as shapefile_module
 
         depth = np.array([[0.0, 0.3, 1.5, 3.0]])
         speed = np.array([[0.0, 0.2, 1.0, 8.0]])

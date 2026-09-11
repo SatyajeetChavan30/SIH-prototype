@@ -1,5 +1,5 @@
 """
-Capture screenshots of the live FloodView dashboard for the SIH idea deck.
+Capture screenshots of the live JalRaksha dashboard for the SIH idea deck.
 
     python tools/sih-presentation/capture_dashboard.py
 

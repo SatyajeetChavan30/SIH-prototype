@@ -16,14 +16,14 @@ $$u = 0, \quad v = 0, \quad h + z = \text{constant}$$
 
 ---
 
-## 🔑 Key Features & Role in FloodView
+## 🔑 Key Features & Role in JalRaksha
 
 1. **Lake-At-Rest Hydrostatic Balance**:
    - Ensures that stationary water over complex mountain terrain (e.g. Tehri reservoir bathymetry) does not generate unphysical fluid motion or artificial velocities.
    - Prevents numerical instabilities at wet-dry fronts along reservoir shorelines.
 
 2. **Implementation in Solver**:
-   - Implemented in `floodview/solver/core.py` and `floodview/solver/flux.py`.
+   - Implemented in `jalraksha/solver/core.py` and `jalraksha/solver/flux.py`.
    - Directly tested by `tests/test_solver.py::TestLakeAtRest`.
 
 ---

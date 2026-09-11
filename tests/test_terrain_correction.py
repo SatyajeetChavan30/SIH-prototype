@@ -15,7 +15,7 @@ constants and its verdict, so what is asserted here is what runs live.
 import numpy as np
 import pytest
 
-from floodview.gee.terrain_correction import (
+from jalraksha.gee.terrain_correction import (
     GEOMETRY_MARGIN_DEG,
     MIN_VALID_GEOMETRY_FRACTION,
     NOMINAL_HEADING_DEG,
@@ -312,7 +312,7 @@ def test_the_dem_projection_is_declared_before_terrain_is_taken():
     """
     import inspect
 
-    from floodview.gee import blockage_detect, terrain_correction
+    from jalraksha.gee import blockage_detect, terrain_correction
 
     for module, function in (
         (terrain_correction, "earth_engine_validity_mask"),
@@ -343,7 +343,7 @@ def test_glo30_deprecation_is_a_deliberate_choice():
     shadow from a different DEM epoch would make the two halves disagree about
     which pixels are usable — the exact drift the shared constants prevent.
     """
-    from floodview.gee import terrain_correction
+    from jalraksha.gee import terrain_correction
 
     assert terrain_correction.GLO30_COLLECTION == "COPERNICUS/DEM/GLO30"
     assert "deprecat" in terrain_correction.__doc__.lower() or True

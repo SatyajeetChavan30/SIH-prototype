@@ -10,7 +10,7 @@
 #>
 
 param(
-    [string]$Deck = "FloodView_SIH2026_Idea.pptx"
+    [string]$Deck = "JalRaksha_SIH2026_Idea.pptx"
 )
 
 $ErrorActionPreference = "Stop"

@@ -1,5 +1,5 @@
-@startuml FloodView_Technology_Comparison
-title Existing Flood Modeling Tools vs. FloodView — UML Class Comparison
+@startuml JalRaksha_Technology_Comparison
+title Existing Flood Modeling Tools vs. JalRaksha — UML Class Comparison
 
 skinparam class {
     BackgroundColor<<Existing>> #F5F5F5
@@ -98,8 +98,8 @@ class ANUGA <<Existing>> {
     + runSimulation() : "Python API"
 }
 
-' ===================== FLOODVIEW (OURS) =====================
-class FloodView <<Ours>> {
+' ===================== JALRAKSHA (OURS) =====================
+class JalRaksha <<Ours>> {
     + physicsModel = "3D SPH (near) + 2D SWE (far)"
     + spatialDimension = "Hybrid: 3D near dam, 2D downstream"
     + runtime60km = "10-60 minutes"
@@ -116,7 +116,7 @@ class FloodView <<Ours>> {
     + fetchSatelliteOverlay() : "GEE Sentinel-1 SAR"
 }
 
-' ===================== SUPPORTING COMPONENTS (FloodView only) =====================
+' ===================== SUPPORTING COMPONENTS (JalRaksha only) =====================
 class BreachRegressionEngine <<Ours>> {
     + method = "Wahl 2004"
     + samplingMethod = "Monte Carlo"
@@ -150,14 +150,14 @@ FloodModelingTool <|-- HEC_RAS_2D
 FloodModelingTool <|-- DualSPHysics
 FloodModelingTool <|-- GeoClaw
 FloodModelingTool <|-- ANUGA
-FloodModelingTool <|-- FloodView
+FloodModelingTool <|-- JalRaksha
 
-FloodView *-- BreachRegressionEngine : uses
-FloodView *-- EnsembleEngine : uses
-FloodView *-- ValidationSuite : uses
-FloodView *-- ExportEngine : uses
+JalRaksha *-- BreachRegressionEngine : uses
+JalRaksha *-- EnsembleEngine : uses
+JalRaksha *-- ValidationSuite : uses
+JalRaksha *-- ExportEngine : uses
 
-note right of FloodView
+note right of JalRaksha
   **Key Differentiators**
   - Only tool with automated
     100-member uncertainty ensemble

@@ -273,7 +273,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
 
   return (
     <div style={{ padding: 12, width: 280, overflowY: "auto", borderRight: "1px solid #ddd" }}>
-      <h3>FloodView</h3>
+      <h3>JalRaksha</h3>
       <label>Site</label>
       <select value={effectiveDamId || ""}
               onChange={(e) => selectDam(e.target.value)}>

@@ -3,7 +3,7 @@ Overflow and bounds check for a generated deck.
 
     python tools/sih-presentation/check_deck.py [deck.pptx]
 
-Defaults to FloodView_SIH2026_Idea.pptx.
+Defaults to JalRaksha_SIH2026_Idea.pptx.
 
 This is check_ppt.py's measurement engine pointed at an arbitrary file: it
 measures every text frame with the real Windows font metrics via PIL, re-does
@@ -27,7 +27,7 @@ import check_ppt  # noqa: E402  (needs the sys.path line above)
 
 
 def main() -> None:
-    deck = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "FloodView_SIH2026_Idea.pptx"
+    deck = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "JalRaksha_SIH2026_Idea.pptx"
     if not deck.is_absolute():
         deck = (Path.cwd() / deck).resolve()
     if not deck.exists():

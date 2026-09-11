@@ -8,7 +8,7 @@ server, so it dies when the server is reaped -- three runs were lost that way
 in one session, because run_ensemble returns every member at once and writes
 nothing per-member. This script calls the same pipeline directly, so it is
 nobody's child, and it registers itself through
-``floodview_service.script_runs`` so the run is ALSO listed and playable in the
+``jalraksha_service.script_runs`` so the run is ALSO listed and playable in the
 dashboard while it solves. Durable and visible used to be mutually exclusive.
 
     python scripts/run_blockage.py --site rishi_ganga --crest 110 --duration-h 4
@@ -94,7 +94,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         description="Run a river-blockage (landslide dam) simulation.")
     parser.add_argument("--site", default="rishi_ganga",
                         choices=sorted(SITE_DEFAULTS),
-                        help="Blockage site from floodview.presets.")
+                        help="Blockage site from jalraksha.presets.")
     parser.add_argument("--crest", type=float, default=None,
                         help="Barrier crest height above the valley floor (m). "
                              "OPERATOR-SUPPLIED at every site. Default is the "
@@ -190,8 +190,8 @@ def main(argv=None) -> int:
     notch = not args.no_notch
     margins = _resolve_margins(args, defaults)
 
-    from floodview.presets import get_blockage_preset
-    from floodview.run import run_dam_break_ensemble
+    from jalraksha.presets import get_blockage_preset
+    from jalraksha.run import run_dam_break_ensemble
 
     preset = get_blockage_preset(site)
     dam_config = preset.to_dam_config()
@@ -254,7 +254,7 @@ def main(argv=None) -> int:
 
     t0 = time.time()
 
-    from floodview_service.script_runs import bootstrap_repo_root, registered_run
+    from jalraksha_service.script_runs import bootstrap_repo_root, registered_run
 
     # DATABASE_URL and DATA_DIR are both relative to the process CWD; without
     # this a script started elsewhere silently creates a second, empty database.
@@ -287,7 +287,7 @@ def main(argv=None) -> int:
         # The barrier burn and the measured-storage handoff. Imported from
         # tasks.py rather than reimplemented: a local copy is how the
         # slider-sets-the-physics failure would return by another door.
-        from floodview_service.tasks import (
+        from jalraksha_service.tasks import (
             _apply_blockage_provenance,
             _resolve_dem_for_run,
         )
@@ -378,7 +378,7 @@ def _report_gauges(result) -> None:
     A minority arrival is labelled as one by the shared gauge mapping; echoing
     the note here keeps the console from reading as a confident median.
     """
-    from floodview_service.script_runs import gauge_rows_from_result
+    from jalraksha_service.script_runs import gauge_rows_from_result
 
     print("[blockage] GAUGES")
     for row in gauge_rows_from_result(result):

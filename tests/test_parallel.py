@@ -13,8 +13,8 @@ Tests:
 import numpy as np
 import pytest
 
-from floodview.solver.parallel import run_ensemble, run_ensemble_member
-from floodview.solver.types import Grid, create_state
+from jalraksha.solver.parallel import run_ensemble, run_ensemble_member
+from jalraksha.solver.types import Grid, create_state
 
 
 def _domain(n=12, dx=100.0):
@@ -121,7 +121,7 @@ class TestParallelExecution:
         """
         One solver step can span several requested snapshot times. It must then
         record ONE frame, not one per time crossed — the latter stamps every
-        frame with the same t_sim, and floodview.export.xdmf_export rejects a
+        frame with the same t_sim, and jalraksha.export.xdmf_export rejects a
         series whose times are not strictly increasing.
 
         Requesting many closely-spaced snapshots over a short run forces the

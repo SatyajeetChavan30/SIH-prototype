@@ -1,10 +1,10 @@
-# FloodView Architecture Decisions
+# JalRaksha Architecture Decisions
 
 **Document version:** 1.0  
 **Date:** 2026-08-24  
 **Phase:** 0 (Skeleton)
 
-This document records key architectural decisions for FloodView, with rationale. It serves as continuity across sessions and guards against regressions into earlier rejected approaches.
+This document records key architectural decisions for JalRaksha, with rationale. It serves as continuity across sessions and guards against regressions into earlier rejected approaches.
 
 ---
 
@@ -54,7 +54,7 @@ This document records key architectural decisions for FloodView, with rationale.
 **Decision:**
 
 ```
-floodview/
+jalraksha/
 ├── __init__.py                    # Package API, version
 ├── cli.py                         # CLI entry point (phase 0)
 ├── config.py                      # Config load/validate (phase 0)
@@ -96,7 +96,7 @@ docs/                              # (as originally planned — SPEC.md, SOLVER.
 ├── SPEC.md                        # Prototype specification (source of truth)
 ├── DECISIONS.md                   # This file
 ├── VERIFICATION_LOG.md            # Coefficient verification tracker
-├── SOLVER.md                      # (links to floodview/solver/SOLVER.md)
+├── SOLVER.md                      # (links to jalraksha/solver/SOLVER.md)
 └── README.md                      # User guide
 
 tools/
@@ -108,7 +108,7 @@ tools/
 .claude/
 ├── settings.json                  # Hooks (ruff format, forbidden-source warnings)
 ├── skills/
-│   ├── verify-floodview/SKILL.md
+│   ├── verify-jalraksha/SKILL.md
 │   ├── build-phase/SKILL.md
 │   ├── improve-architecture/SKILL.md
 │   └── code-quality-deep-dive/SKILL.md
@@ -120,9 +120,9 @@ README.md                          # Project overview
 ```
 
 **Rationale:**
-- **Phases as modules:** Each phase is a package (`floodview.solver`, `.terrain`, `.export`, `.sph`). Enables independent testing and parallel development.
+- **Phases as modules:** Each phase is a package (`jalraksha.solver`, `.terrain`, `.export`, `.sph`). Enables independent testing and parallel development.
 - **Flat solver/terrain/export layout:** Easier to navigate than deeply nested. Phase N imports Phases 0 to N−1 only (no cycles).
-- **tests/ co-location:** Tests live next to modules (`test_solver.py` imports `floodview.solver.core` directly, not through CLI).
+- **tests/ co-location:** Tests live next to modules (`test_solver.py` imports `jalraksha.solver.core` directly, not through CLI).
 - **docs/ isolation:** Specifications and decisions separate from code. SPEC.md is immutable (source of truth); DECISIONS.md is mutable (records architectural choices).
 - **tools/ separation:** Presentation/deck build is independent of solver tests. Can fail without breaking CI.
 
@@ -134,7 +134,7 @@ README.md                          # Project overview
 
 **Rationale:**
 - **Demo-day network:** SIH venues are unreliable. One network failure mid-run breaks the demo.
-- **Offline mode:** After Phase 0 caches data, entire Phase 1–4 runs offline. Test: `floodview prefetch --scenario tehri && unplug network && floodview run --scenario tehri --offline`.
+- **Offline mode:** After Phase 0 caches data, entire Phase 1–4 runs offline. Test: `jalraksha prefetch --scenario tehri && unplug network && jalraksha run --scenario tehri --offline`.
 - **Versioning:** URL + timestamp + hash guards against silent DEM updates (e.g., Copernicus re-releases a tile). If any differ, re-fetch.
 - **JSON metadata:** Human-readable, debuggable. `cat data/dem/CACHE_METADATA.json` shows what's cached.
 
@@ -212,10 +212,10 @@ README.md                          # Project overview
 
 ## 8. Tier-1 Screening Tool Positioning (Not Replacement for HEC-RAS/D-Flow FM)
 
-**Decision:** FloodView is a rapid-assessment tool for CWC dam-break prioritization, not a detailed-design tool.
+**Decision:** JalRaksha is a rapid-assessment tool for CWC dam-break prioritization, not a detailed-design tool.
 
 **Rationale:**
-- **CWC mandate:** Tier-1 screening of 450+ major dams against NWP/seismic failure. HEC-RAS is too slow (requires manual terrain survey, 1–2 weeks per dam). FloodView: 30 min per dam (open data, automated).
+- **CWC mandate:** Tier-1 screening of 450+ major dams against NWP/seismic failure. HEC-RAS is too slow (requires manual terrain survey, 1–2 weeks per dam). JalRaksha: 30 min per dam (open data, automated).
 - **Outputs:** Arrival times + inundation envelopes (± 50% uncertainty). Not metre-accurate depths.
 - **Validation:** Malpasset (1959) + Chamoli (2021) benchmarks. Matched to <5% error in travel time.
 - **Scope:** Engineered dam-break only (not natural blockage, not seismic liquefaction dynamics).
@@ -254,10 +254,10 @@ if not config.allow_unvetted:
 
 ## 10. No Overclaiming vs. Real Solvers
 
-**Decision:** Always qualify FloodView as "Delft3D-class" (similar approach, not identical), not "Delft3D".
+**Decision:** Always qualify JalRaksha as "Delft3D-class" (similar approach, not identical), not "Delft3D".
 
 **Rationale:**
-- Delft3D is a proprietary commercial software by Deltares. FloodView is open-source academic research.
+- Delft3D is a proprietary commercial software by Deltares. JalRaksha is open-source academic research.
 - We use similar numerics (HLLC, well-balanced) but not the Deltares kernel.
 - Overclaiming destroys credibility with water engineers (who know the difference).
 

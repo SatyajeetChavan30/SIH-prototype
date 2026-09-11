@@ -105,7 +105,7 @@ export default function GaugesPanel({ result, dam }) {
 
 /**
  * FD2320 depth-only bands, mirroring
- * floodview.impact.hazard.HazardClassifier.classify_depth_only.
+ * jalraksha.impact.hazard.HazardClassifier.classify_depth_only.
  *
  * That method evaluates HR = depth * (|V| + 0.5) + DF at |V| = 0, which with
  * the default debris factor of 0.5 reduces to HR = 0.5*depth + 0.5. Against

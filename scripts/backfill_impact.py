@@ -50,15 +50,15 @@ sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
 
 # Earth Engine needs the project id, and .claude/launch.json has no env field —
 # scripts/run_api.py sets it the same way for the same reason.
-os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")
+os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")
 
 import numpy as np  # noqa: E402
 import rasterio  # noqa: E402
 
-from floodview.export.georef import to_north_up  # noqa: E402
-from floodview_service import db  # noqa: E402
-from floodview_service.config import settings  # noqa: E402
-from floodview_service.tasks import impact_exports  # noqa: E402
+from jalraksha.export.georef import to_north_up  # noqa: E402
+from jalraksha_service import db  # noqa: E402
+from jalraksha_service.config import settings  # noqa: E402
+from jalraksha_service.tasks import impact_exports  # noqa: E402
 
 BACKFILL_NOTE = (
     "Backfilled after the run completed. The flood field is the run's own "

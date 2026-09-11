@@ -59,7 +59,7 @@ def upload_terrain_asset(dem_path: Path, name: str, token: str, description: str
         headers=headers,
         json={
             "name": name,
-            "description": description or f"FloodView conditioned DEM: {dem_path.name}",
+            "description": description or f"JalRaksha conditioned DEM: {dem_path.name}",
             "type": "TERRAIN",
             "options": {"sourceType": "RASTER_TERRAIN"},
         },
@@ -109,7 +109,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dem", type=Path, default=Path("data/dem/mosaic_30.38_78.48.tif"),
                          help="Conditioned/raw DEM GeoTIFF to upload (default: pre-staged Tehri mosaic)")
-    parser.add_argument("--name", default="FloodView terrain")
+    parser.add_argument("--name", default="JalRaksha terrain")
     args = parser.parse_args()
 
     token = os.environ.get("CESIUM_ION_TOKEN")

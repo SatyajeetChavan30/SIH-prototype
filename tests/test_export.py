@@ -12,18 +12,18 @@ import pytest
 from pathlib import Path
 
 # Import export functions
-from floodview.export.geotiff import (
+from jalraksha.export.geotiff import (
     export_raster_to_cog,
     export_ensemble_to_cogs,
     validate_cog,
 )
-from floodview.export.shapefile import (
+from jalraksha.export.shapefile import (
     raster_to_inundation_polygon,
     export_inundation_polygon,
     export_hazard_classification_polygons,
     export_arrival_time_contours,
 )
-from floodview.export.kml import (
+from jalraksha.export.kml import (
     export_inundation_kml,
     export_time_animated_kml,
     export_depth_ground_overlay,

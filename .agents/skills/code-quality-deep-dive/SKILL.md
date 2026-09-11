@@ -1,6 +1,6 @@
 ---
 name: code-quality-deep-dive
-description: Comprehensive code quality review of FloodView solver code. Checks correctness (numerical stability, flux schemes, boundary conditions), performance (Numba JIT efficiency, memory access patterns), safety (division by zero, NaN propagation, dry-bed handling), and compliance (unvetted coefficients, metric CRS, licensing).
+description: Comprehensive code quality review of JalRaksha solver code. Checks correctness (numerical stability, flux schemes, boundary conditions), performance (Numba JIT efficiency, memory access patterns), safety (division by zero, NaN propagation, dry-bed handling), and compliance (unvetted coefficients, metric CRS, licensing).
 disable-model-invocation: true
 ---
 
@@ -115,7 +115,7 @@ Recommendation: Fix division guard and flag Manning source before merge.
 
 - This is a **blocking review** for Phase 1–4 changes (solver core, end-to-end)
 - Optional but encouraged for Phases 5+ (export, GEE, dashboard)
-- Reuses verification tests from `/verify-floodview`
+- Reuses verification tests from `/verify-jalraksha`
 - Focuses on numerical rigor — style/formatting are handled by ruff hook
 
 ## Design Philosophy & Patterns
@@ -125,7 +125,7 @@ Based on cursor/plugins "Thermos" approach:
 - **Parallel subagents** for independent module analysis
 - **Thermos orchestration** to coordinate findings and report
 
-Applied to FloodView:
+Applied to JalRaksha:
 - Solver correctness (flux schemes, boundary conditions, time integration)
 - Performance profiling (Numba JIT efficiency, memory patterns)
 - Safety gates (NaN propagation, division by zero, dry-bed robustness)
@@ -142,4 +142,4 @@ Applied to FloodView:
 - Generate structured review report (markdown + JSON)
 
 **Integration**: Blocks Phase 1–4 PRs; optional for Phases 5+
-**Related**: Works with `/verify-floodview` (uses test results) and `/improve-architecture` (structural health)
+**Related**: Works with `/verify-jalraksha` (uses test results) and `/improve-architecture` (structural health)

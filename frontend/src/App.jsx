@@ -45,7 +45,7 @@ function Workspace() {
     setResult(runResult);
     // The keyframe manifest is the single artifact both views consume (§5.3).
     // Its own URL is API-relative ("/files/..."); png_url inside each keyframe
-    // is a bare filename (floodview/export/keyframes.py) resolved against the
+    // is a bare filename (jalraksha/export/keyframes.py) resolved against the
     // manifest's own URL so it stays web-server-agnostic.
     if (runResult.keyframe_manifest_url) {
       const manifestUrl = resolveApiUrl(runResult.keyframe_manifest_url);

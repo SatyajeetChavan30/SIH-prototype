@@ -4,7 +4,7 @@
 // presets all read these constants, so every panel showed the Tehri corridor no
 // matter which dam was selected. The dam and its downstream gauges now come
 // from the API (GET /dams publishes a `gauges` array per dam, sourced from
-// floodview.presets.GAUGES), and these constants exist only so the first paint
+// jalraksha.presets.GAUGES), and these constants exist only so the first paint
 // has something real to draw instead of flashing empty.
 //
 // Keep them consistent with the tehri preset. Do NOT add new dams here.

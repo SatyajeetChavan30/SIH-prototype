@@ -1,7 +1,7 @@
 """
 Phase 17: Final Integration Tests.
 
-End-to-end system tests that verify the full FloodView stack works together:
+End-to-end system tests that verify the full JalRaksha stack works together:
   1. CLI entry point → config validation → breach ensemble → arrival times
   2. Hardening guards → API endpoint → rapid estimate → gauge list
   3. Validation metrics → sensitivity analysis → benchmark comparison
@@ -22,41 +22,41 @@ import numpy as np
 # ─── TestFullPackageImports ───────────────────────────────────────────────────
 
 class TestFullPackageImports:
-    """Verify every floodview module is importable without errors."""
+    """Verify every jalraksha module is importable without errors."""
 
     MODULES = [
-        "floodview",
-        "floodview.config",
-        "floodview.cli",
-        "floodview.cache",
-        "floodview.dem",
-        "floodview.hardening",
-        "floodview.api",
-        "floodview.run",
-        "floodview.solver.types",
-        "floodview.solver.flux",
-        "floodview.solver.core",
-        "floodview.solver.parallel",
-        "floodview.terrain.conditioning",
-        "floodview.terrain.breach",
-        "floodview.terrain.domain",
-        "floodview.terrain.roughness",
-        "floodview.export.geotiff",
-        "floodview.export.shapefile",
-        "floodview.export.kml",
-        "floodview.impact.hazard",
-        "floodview.impact.damage",
-        "floodview.impact.population",
-        "floodview.impact.fatality",
-        "floodview.sph.domain",
-        "floodview.sph.core",
-        "floodview.sph.coupling",
-        "floodview.validation.metrics",
-        "floodview.validation.benchmarks",
-        "floodview.validation.sensitivity",
-        "floodview.gee.auth",
-        "floodview.gee.sar",
-        "floodview.gee.population",
+        "jalraksha",
+        "jalraksha.config",
+        "jalraksha.cli",
+        "jalraksha.cache",
+        "jalraksha.dem",
+        "jalraksha.hardening",
+        "jalraksha.api",
+        "jalraksha.run",
+        "jalraksha.solver.types",
+        "jalraksha.solver.flux",
+        "jalraksha.solver.core",
+        "jalraksha.solver.parallel",
+        "jalraksha.terrain.conditioning",
+        "jalraksha.terrain.breach",
+        "jalraksha.terrain.domain",
+        "jalraksha.terrain.roughness",
+        "jalraksha.export.geotiff",
+        "jalraksha.export.shapefile",
+        "jalraksha.export.kml",
+        "jalraksha.impact.hazard",
+        "jalraksha.impact.damage",
+        "jalraksha.impact.population",
+        "jalraksha.impact.fatality",
+        "jalraksha.sph.domain",
+        "jalraksha.sph.core",
+        "jalraksha.sph.coupling",
+        "jalraksha.validation.metrics",
+        "jalraksha.validation.benchmarks",
+        "jalraksha.validation.sensitivity",
+        "jalraksha.gee.auth",
+        "jalraksha.gee.sar",
+        "jalraksha.gee.population",
     ]
 
     @pytest.mark.parametrize("module_name", MODULES)
@@ -70,12 +70,12 @@ class TestFullPackageImports:
 
 class TestCLIIntegration:
     def test_cli_module_importable(self):
-        from floodview.cli import main
+        from jalraksha.cli import main
         assert callable(main)
 
     def test_cli_has_run_command(self):
         """CLI must expose a 'run' subcommand via click."""
-        from floodview.cli import main
+        from jalraksha.cli import main
         assert hasattr(main, "commands") or callable(main)
 
 
@@ -83,7 +83,7 @@ class TestCLIIntegration:
 
 class TestHardeningIntegration:
     def test_valid_tehri_config_passes_all_checks(self):
-        from floodview.hardening import validate_dam_config, validate_ensemble_params, HardeningError
+        from jalraksha.hardening import validate_dam_config, validate_ensemble_params, HardeningError
         config = {
             "name": "Tehri",
             "lat": 30.3789, "lon": 78.4789,
@@ -94,7 +94,7 @@ class TestHardeningIntegration:
         validate_ensemble_params(100, 10800.0, 200.0)  # Should not raise
 
     def test_forbidden_sources_not_in_tehri_config(self):
-        from floodview.hardening import check_forbidden_sources
+        from jalraksha.hardening import check_forbidden_sources
         config_str = "Tehri Dam Bhagirathi Uttarakhand Copernicus DEM AWS"
         assert check_forbidden_sources(config_str) == []
 
@@ -103,7 +103,7 @@ class TestHardeningIntegration:
 
 class TestAPIIntegration:
     def test_rapid_estimate_tehri(self):
-        from floodview.api import rapid_estimate
+        from jalraksha.api import rapid_estimate
         config = {
             "name": "Tehri",
             "lat": 30.3789, "lon": 78.4789,
@@ -116,7 +116,7 @@ class TestAPIIntegration:
         assert len(result["arrival_times"]) == 4  # 4 gauges
 
     def test_api_demo_dams_list(self):
-        from floodview.api import DEMO_DAMS
+        from jalraksha.api import DEMO_DAMS
         assert len(DEMO_DAMS) >= 1
         assert any(d["id"] == "tehri" for d in DEMO_DAMS)
 
@@ -125,7 +125,7 @@ class TestAPIIntegration:
 
 class TestBreachEnsembleIntegration:
     def test_breach_ensemble_produces_positive_outflow(self):
-        from floodview.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
+        from jalraksha.terrain.breach import synthesize_breach_ensemble, ensemble_statistics
         config = {
             "name": "Tehri", "lat": 30.38, "lon": 78.48,
             "height_m": 260.0, "storage_mm3": 3540.0,
@@ -141,7 +141,7 @@ class TestBreachEnsembleIntegration:
 
 class TestValidationIntegration:
     def test_csi_and_f1_on_synthetic_data(self):
-        from floodview.validation.metrics import compute_csi, compute_f1_score
+        from jalraksha.validation.metrics import compute_csi, compute_f1_score
         predicted = np.array([[1, 1, 0], [0, 1, 1], [0, 0, 1]])
         observed  = np.array([[1, 0, 0], [1, 1, 1], [0, 0, 1]])
         csi = compute_csi(predicted, observed, threshold=0.5)
@@ -150,8 +150,8 @@ class TestValidationIntegration:
         assert 0.0 <= f1  <= 1.0
 
     def test_sensitivity_oat_runs_end_to_end(self):
-        from floodview.validation.sensitivity import oat_sensitivity
-        from floodview.api import rapid_estimate
+        from jalraksha.validation.sensitivity import oat_sensitivity
+        from jalraksha.api import rapid_estimate
         base_config = {
             "name": "Tehri", "lat": 30.38, "lon": 78.48,
             "height_m": 260.0, "storage_mm3": 3540.0,
@@ -173,7 +173,7 @@ class TestValidationIntegration:
 
 class TestImpactIntegration:
     def test_hazard_rating_on_typical_values(self):
-        from floodview.impact.hazard import compute_fd2320_hazard_rating
+        from jalraksha.impact.hazard import compute_fd2320_hazard_rating
         rating = compute_fd2320_hazard_rating(
             depth=np.array([[2.5]]),
             velocity_x=np.array([[1.5]]),
@@ -183,6 +183,6 @@ class TestImpactIntegration:
         assert rating.shape == (1, 1)
 
     def test_fatality_rate_bounded(self):
-        from floodview.impact.fatality import estimate_loss_of_life_graham
+        from jalraksha.impact.fatality import estimate_loss_of_life_graham
         res = estimate_loss_of_life_graham(par=100.0, warning_time_min=30.0, flood_severity="high")
         assert 0.0 <= res["fatality_rate"] <= 1.0

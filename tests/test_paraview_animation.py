@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ANIMATION_SCRIPT = REPO_ROOT / "paraview" / "render_animation.py"
 
 PVPYTHON = Path(os.environ.get(
-    "FLOODVIEW_PVPYTHON_EXE", r"C:/Program Files/ParaView 6.2.0/bin/pvpython.exe"))
+    "JALRAKSHA_PVPYTHON_EXE", r"C:/Program Files/ParaView 6.2.0/bin/pvpython.exe"))
 
 # 30 timesteps, and small. The point is temporal behaviour, not fidelity.
 DATASET = REPO_ROOT / "data" / "simulation" / "synthetic.xdmf"

@@ -1,10 +1,10 @@
 """
-FloodView Architecture Diagrams -- SIH 2026
+JalRaksha Architecture Diagrams -- SIH 2026
 =============================================
 Dense, presentation-quality diagrams written for NON-TECHNICAL judges.
 Every technical term is paired with a plain-English explanation.
 
-Output: FloodView_Architecture_Diagrams.pdf
+Output: JalRaksha_Architecture_Diagrams.pdf
 """
 
 import matplotlib
@@ -48,7 +48,7 @@ MGRAY     = "#9CA3AF"
 DGRAY     = "#6B7280"
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT  = ROOT / "FloodView_Architecture_Diagrams.pdf"
+OUT  = ROOT / "JalRaksha_Architecture_Diagrams.pdf"
 _pages: list[BytesIO] = []
 
 
@@ -104,7 +104,7 @@ def _header(ax, title, subtitle=""):
     ax.text(0.98, 0.975, "SMART INDIA\nHACKATHON 2026", transform=ax.transAxes,
             fontsize=6, color=MGRAY, ha="right", va="top", fontfamily="sans-serif",
             fontweight="bold", linespacing=1.1)
-    ax.text(0.02, 0.975, "FloodView", transform=ax.transAxes,
+    ax.text(0.02, 0.975, "JalRaksha", transform=ax.transAxes,
             fontsize=10, fontweight="bold", color=YELLOW, ha="left", va="top")
     ax.text(0.02, 0.945, "PS-26161 (NTRO)", transform=ax.transAxes,
             fontsize=6, color=MGRAY, ha="left", va="top")
@@ -132,7 +132,7 @@ def page_system_architecture():
     fig.set_facecolor(BG); ax.set_facecolor(BG)
     ax.set_xlim(0, 18); ax.set_ylim(0, 11); ax.axis("off")
     _header(ax, "HOW THE SYSTEM IS BUILT",
-            "FloodView is a layered system -- each layer does one job and passes results to the next")
+            "JalRaksha is a layered system -- each layer does one job and passes results to the next")
 
     # --- Layer 1: What Users See ---
     _zone(ax, 0.3, 9.0, 8.0, 1.3, "LAYER 1 : What Users See", CYAN)
@@ -269,7 +269,7 @@ def page_how_it_works():
 
     # Time comparison
     _box(ax, 12.3, 9.0, 5.3, 1.2,
-         "Speed Comparison: Why This Matters\n----------------------------------------------\n  CURRENT APPROACH: Weeks of specialist setup,\n    expensive commercial software, field survey.\n  FLOODVIEW: Minutes. 4 inputs. Free data.\n    No specialist needed. Works offline.\n    Any CWC officer can run it.",
+         "Speed Comparison: Why This Matters\n----------------------------------------------\n  CURRENT APPROACH: Weeks of specialist setup,\n    expensive commercial software, field survey.\n  JALRAKSHA: Minutes. 4 inputs. Free data.\n    No specialist needed. Works offline.\n    Any CWC officer can run it.",
          YELLOW, BG, fs=7, r=0.02)
 
     _save(fig)
@@ -368,7 +368,7 @@ def page_tech_stack():
     fig.set_facecolor(BG); ax.set_facecolor(BG)
     ax.set_xlim(0, 18); ax.set_ylim(0, 11); ax.axis("off")
     _header(ax, "TECHNOLOGY STACK",
-            "The tools and libraries powering FloodView -- all open-source, all free")
+            "The tools and libraries powering JalRaksha -- all open-source, all free")
 
     categories = [
         ("FLOOD\nSIMULATION", "The maths engine\nthat models water\nflow and dam breaks", [
@@ -446,7 +446,7 @@ def page_use_case():
 
     # System boundary
     _box(ax, 3.5, 0.3, 10.5, 9.5, "", DBLUE, a=0.08, ec=CYAN, lw=2.5, r=0.04)
-    ax.text(8.75, 9.6, "FloodView System", ha="center", fontsize=14,
+    ax.text(8.75, 9.6, "JalRaksha System", ha="center", fontsize=14,
             fontweight="bold", color=CYAN, fontfamily="sans-serif")
 
     # Actors
@@ -521,7 +521,7 @@ def page_component_map():
             "Every box is a module in the codebase. Arrows show the flow of data.")
 
     # Root
-    _box(ax, 7.0, 9.5, 4.0, 0.8, "FloodView Core System", CYAN, BG, fs=12, r=0.02)
+    _box(ax, 7.0, 9.5, 4.0, 0.8, "JalRaksha Core System", CYAN, BG, fs=12, r=0.02)
 
     # Level 1 components
     comps = [
@@ -672,12 +672,12 @@ def page_impact_benefits():
     fig.set_facecolor(BG); ax.set_facecolor(BG)
     ax.set_xlim(0, 18); ax.set_ylim(0, 11); ax.axis("off")
     _header(ax, "IMPACT, BENEFITS & COMPARISON",
-            "Why FloodView matters -- and how it compares to current practice")
+            "Why JalRaksha matters -- and how it compares to current practice")
 
     # Big impact statement
     _box(ax, 0.3, 8.5, 17.3, 1.0,
          "India has 5,000+ large dams, many ageing. Current dam-break studies take WEEKS and require expensive "
-         "commercial software.\nFloodView does it in MINUTES using free satellite data -- so every dam can be "
+         "commercial software.\nJalRaksha does it in MINUTES using free satellite data -- so every dam can be "
          "screened, not just the ones that can afford a specialist study.",
          DBLUE, LCYAN, fs=9, r=0.02)
 
@@ -732,10 +732,10 @@ def page_impact_benefits():
             ax.text(x + 0.25, 7.0 - j*0.42, item, fontsize=7, color=LGRAY, fontfamily="sans-serif")
 
     # Comparison table
-    ax.text(0.3, 3.1, "Head-to-Head: FloodView vs Current Practice", fontsize=13, fontweight="bold",
+    ax.text(0.3, 3.1, "Head-to-Head: JalRaksha vs Current Practice", fontsize=13, fontweight="bold",
             color=LCYAN, fontfamily="sans-serif")
 
-    headers = ["What You Need", "Current Approach", "FloodView"]
+    headers = ["What You Need", "Current Approach", "JalRaksha"]
     rows = [
         ["Time to set up", "Weeks of work by specialists", "Minutes -- just pick a dam"],
         ["Data required", "Licensed DEM + field survey (Rs. lakhs)", "Free satellite data (Rs. 0)"],
@@ -774,7 +774,7 @@ def page_validation():
 
     # Big message
     _box(ax, 0.3, 9.0, 17.3, 0.8,
-         "FloodView NEVER shows results without passing all 4 quality checks. "
+         "JalRaksha NEVER shows results without passing all 4 quality checks. "
          "If any test fails, results are BLOCKED -- not hidden, not warned, BLOCKED.",
          RED, WHITE, fs=10, r=0.02)
 
@@ -783,7 +783,7 @@ def page_validation():
     ax.text(2.3, 8.35, "TEST 1: Still-Water Test", ha="center", fontsize=11,
             fontweight="bold", color=LGREEN)
     ax.text(2.3, 7.9, "If you put water in a bowl with\nno flow, it should stay perfectly still.\n\n"
-            "FloodView result: water moves at\n0.00000000000006 m/s (essentially zero).\n\n"
+            "JalRaksha result: water moves at\n0.00000000000006 m/s (essentially zero).\n\n"
             "STATUS: PASS (13x better than required)",
             ha="center", va="top", fontsize=7, color=LGRAY, linespacing=1.3)
 
@@ -792,7 +792,7 @@ def page_validation():
     ax.text(6.7, 8.35, "TEST 2: No Water Lost", ha="center", fontsize=11,
             fontweight="bold", color=LGREEN)
     ax.text(6.7, 7.9, "In the simulation, total water volume\nmust stay constant -- no water\nappearing or disappearing.\n\n"
-            "FloodView result: 0.000000% loss\nover 1000 timesteps.\n\n"
+            "JalRaksha result: 0.000000% loss\nover 1000 timesteps.\n\n"
             "STATUS: PASS (machine-perfect)",
             ha="center", va="top", fontsize=7, color=LGRAY, linespacing=1.3)
 
@@ -801,7 +801,7 @@ def page_validation():
     ax.text(11.1, 8.35, "TEST 3: No Impossible Values", ha="center", fontsize=11,
             fontweight="bold", color=LGREEN)
     ax.text(11.1, 7.9, "Water depth can never be negative.\nThe simulation must never produce\n'impossible' numbers (NaN, infinity).\n\n"
-            "FloodView result: zero impossible\nvalues across all test cases.\n\n"
+            "JalRaksha result: zero impossible\nvalues across all test cases.\n\n"
             "STATUS: PASS (all cells stable)",
             ha="center", va="top", fontsize=7, color=LGRAY, linespacing=1.3)
 
@@ -811,7 +811,7 @@ def page_validation():
             fontweight="bold", color=LGREEN)
     ax.text(15.5, 7.9, "A textbook dam-break with a\nknown exact answer (Ritter, 1892).\n\n"
             "Exact answer: 4.444m depth\n"
-            "FloodView:     4.532m depth\n"
+            "JalRaksha:     4.532m depth\n"
             "Error:          0.032m (3cm)\n\n"
             "STATUS: PASS (within 2%)",
             ha="center", va="top", fontsize=7, color=LGRAY, linespacing=1.3)
@@ -823,7 +823,7 @@ def page_validation():
     _box(ax, 0.3, 2.5, 8.5, 3.2, "", "#7C3AED", a=0.12, ec="#7C3AED", lw=2, r=0.02)
     ax.text(4.55, 5.4, "What We Did", ha="center", fontsize=12, fontweight="bold", color="#B794F4")
     ax.text(4.55, 5.0,
-            "We ran the SAME test case through both FloodView\n"
+            "We ran the SAME test case through both JalRaksha\n"
             "and Delft3D FM -- the tool used by governments in\n"
             "the Netherlands, USA, and worldwide for real flood studies.\n\n"
             "Delft3D is NOT our tool. It's made by Deltares\n"
@@ -836,7 +836,7 @@ def page_validation():
 
     headers = ["Tool", "Accuracy\n(RMSE)", "Depth at\nDam", "Status"]
     data = [
-        ["FloodView (ours)", "0.032 m\n(~3 cm error)", "4.532 m", "PASS"],
+        ["JalRaksha (ours)", "0.032 m\n(~3 cm error)", "4.532 m", "PASS"],
         ["Delft3D FM\n(industry standard)", "0.035 m\n(~3.5 cm error)", "4.515 m", "PASS"],
         ["Exact Answer\n(textbook, Ritter 1892)", "-- (reference)", "4.444 m", "Reference"],
     ]
@@ -861,7 +861,7 @@ def page_validation():
     _box(ax, 0.3, 0.3, 17.3, 1.5, "", YELLOW, a=0.1, ec=YELLOW, lw=2, r=0.02)
     ax.text(9.0, 1.5, "IN PLAIN ENGLISH:", ha="center", fontsize=14, fontweight="bold", color=YELLOW)
     ax.text(9.0, 1.0,
-            "FloodView's flood predictions are independently verified to be as accurate as the world's leading "
+            "JalRaksha's flood predictions are independently verified to be as accurate as the world's leading "
             "flood modelling software.\nAll 4 quality tests pass. Results are only shown when accuracy is proven. "
             "This is engineering rigour, not marketing.",
             ha="center", va="top", fontsize=8.5, color=LGRAY, linespacing=1.4)
@@ -877,7 +877,7 @@ def page_deployment():
     fig.set_facecolor(BG); ax.set_facecolor(BG)
     ax.set_xlim(0, 18); ax.set_ylim(0, 11); ax.axis("off")
     _header(ax, "DEPLOYMENT, INNOVATION & FUTURE ROADMAP",
-            "How the system runs + what makes FloodView unique + where we're going")
+            "How the system runs + what makes JalRaksha unique + where we're going")
 
     # LEFT: How it runs
     ax.text(0.3, 8.8, "How It Runs (Deployment)", fontsize=14, fontweight="bold",
@@ -902,7 +902,7 @@ def page_deployment():
         _arr(ax, (2.3, y_top), (2.3, y_bot + 1.2), MGRAY, 1)
 
     # MIDDLE: What makes it unique
-    ax.text(5.0, 8.8, "What Makes FloodView Unique", fontsize=14, fontweight="bold",
+    ax.text(5.0, 8.8, "What Makes JalRaksha Unique", fontsize=14, fontweight="bold",
             color=LCYAN, fontfamily="sans-serif")
 
     innovations = [

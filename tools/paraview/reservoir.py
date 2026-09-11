@@ -38,7 +38,7 @@ import numpy as np
 
 # NOTE: Tehri's FRL/crest constants (previously TEHRI_FRL_M / TEHRI_CREST_M
 # module constants here, 830.0 / 839.5 m, UNVETTED) now live on
-# floodview.presets.TEHRI, alongside the same dam's other configuration. See
+# jalraksha.presets.TEHRI, alongside the same dam's other configuration. See
 # that module for the citation TODO. A second dam (Khadakwasla) has no
 # published FRL at all, which is why frl_m/crest_m below are required
 # arguments rather than defaulting to one specific dam's water level —
@@ -113,7 +113,7 @@ def build_reservoir(
     frl_m and crest_m are required, not defaulted to one dam's water level:
     a generic reservoir builder silently defaulting to (say) Tehri's 830 m
     would fill any OTHER dam's pool to the wrong level with no error. Callers
-    resolve these per-dam — see floodview.presets and, for a dam with no
+    resolve these per-dam — see jalraksha.presets and, for a dam with no
     published FRL, estimate_pool_surface_m() below.
 
     Args:

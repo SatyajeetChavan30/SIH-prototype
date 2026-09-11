@@ -1,7 +1,7 @@
-# Technology Comparison: Existing Solutions vs FloodView
+# Technology Comparison: Existing Solutions vs JalRaksha
 
 **Date:** 2026-08-30  
-**Project:** FloodView — Dam-Break Flood Screening System  
+**Project:** JalRaksha — Dam-Break Flood Screening System  
 **Purpose:** Smart India Hackathon 2026, PS 26161 (NTRO)
 
 ---
@@ -14,7 +14,7 @@
 4. Data Pipeline Comparison
 5. Deployment & Accessibility Comparison
 6. Licensing & Cost Comparison
-7. What Makes FloodView Different (Summary)
+7. What Makes JalRaksha Different (Summary)
 
 ---
 
@@ -22,9 +22,9 @@
 
 ### Primary Dam-Break Modeling Tools
 
-| Capability / Feature | **Delft3D FM** | **HEC-RAS 2D** | **DualSPHysics** | **GeoClaw** | **ANUGA** | **FloodView** |
+| Capability / Feature | **Delft3D FM** | **HEC-RAS 2D** | **DualSPHysics** | **GeoClaw** | **ANUGA** | **JalRaksha** |
 |:---|:---|:---|:---|:---|:---|:---|
-| **Developer** | Deltares (NL) | USACE (USA) | University of Manchester (UK) | University of Washington (USA) | ANU (Australia) | FloodView Team (India) |
+| **Developer** | Deltares (NL) | USACE (USA) | University of Manchester (UK) | University of Washington (USA) | ANU (Australia) | JalRaksha Team (India) |
 | **Physics Model** | 2D/3D Hydrostatic SWE | 2D Shallow Water | 3D Navier-Stokes (Lagrangian SPH) | 2D Shallow Water | 2D Shallow Water | **3D SPH (near-field) + 2D SWE (far-field)** |
 | **Spatial Dimension** | 2D or 3D (depth-averaged) | 2D only | Full 3D | 2D only | 2D only | **Hybrid: 3D near dam, 2D downstream** |
 | **Near-Field Breach** | Depth-averaged approx. | Simplified weir eq. | Full 3D violent free-surface | Depth-averaged approx. | Depth-averaged approx. | **3D SPH wave & plunging resolution** |
@@ -48,7 +48,7 @@
 
 ### 2.1 Physics & Modeling Approach
 
-| Aspect | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Aspect | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **Governing Equations** | Saint-Venant (SWE) | Saint-Vokes (SWE) | Navier-Stokes (Lagrangian) | Saint-Venant + SPH |
 | **Breach Representation** | Empirical params | Simplified weir | Full 3D particle resolution | 3D SPH near-field + empirical far-field |
@@ -59,7 +59,7 @@
 
 ### 2.2 Computational Performance
 
-| Metric | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Metric | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **60 km Domain Runtime** | 2-6 hours | 30-120 minutes | Days-weeks | 10-60 minutes |
 | **GPU Acceleration** | No | No | Yes (CUDA) | No (CPU-optimized) |
@@ -69,7 +69,7 @@
 
 ### 2.3 Data Requirements
 
-| Data Type | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Data Type | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **DEM Source** | Manual import | Manual import | Manual import | **Automated Copernicus GLO-30** |
 | **Bathymetry** | Required | Required | Required | Derived from DEM |
@@ -80,7 +80,7 @@
 
 ### 2.4 Output & Visualization
 
-| Output Type | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Output Type | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **2D Flood Map** | Yes | Yes | Yes (via conversion) | **Yes (Leaflet)** |
 | **3D Visualization** | Limited | No | Yes (ParaView) | **Yes (Cesium globe)** |
@@ -97,7 +97,7 @@
 
 ### 3.1 Shallow Water Equation Solvers
 
-| Numerical Feature | Delft3D | HEC-RAS 2D | GeoClaw | FloodView |
+| Numerical Feature | Delft3D | HEC-RAS 2D | GeoClaw | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **Flux Scheme** | Delft3D scheme | Upwave | F-wave | **HLLC** |
 | **Well-Balancing** | Yes | Yes | Yes | **Audusse hydrostatic reconstruction** |
@@ -108,7 +108,7 @@
 
 ### 3.2 SPH (Particle) Methods
 
-| Feature | DualSPHysics | GPUSPH | PySPH (FloodView) |
+| Feature | DualSPHysics | GPUSPH | PySPH (JalRaksha) |
 |:---|:---|:---|:---|
 | **Kernel** | Wendland | Wendland/Cubic spline | **Wendland** |
 | **Density Filtering** | Yes | Yes | **Yes** |
@@ -119,7 +119,7 @@
 
 ### 3.3 Uncertainty Quantification
 
-| Method | Delft3D | HEC-RAS 2D | FloodView |
+| Method | Delft3D | HEC-RAS 2D | JalRaksha |
 |:---|:---|:---|:---|
 | **Ensemble Approach** | Manual | Manual | **Automated Monte Carlo** |
 | **Breach Regressions** | 1 (user picks) | 1 (user picks) | **4 by default (Froehlich, MacDonald, Costa, Von Thun); Xu-Zhang implemented but quarantined** |
@@ -133,7 +133,7 @@
 
 ### 4.1 DEM Acquisition
 
-| Aspect | Traditional Tools | FloodView |
+| Aspect | Traditional Tools | JalRaksha |
 |:---|:---|:---|
 | **Source** | Manual download | **Automated Copernicus GLO-30 (AWS S3)** |
 | **Resolution** | 10-90 m (varies) | **30 m (consistent)** |
@@ -146,7 +146,7 @@
 
 ### 4.2 Input Parameter Sources
 
-| Parameter | Traditional Tools | FloodView |
+| Parameter | Traditional Tools | JalRaksha |
 |:---|:---|:---|
 | **Dam Location** | User types lat/lon | **Preset or lat/lon** |
 | **Dam Height** | User researches | **Preset (vetted sources)** |
@@ -157,7 +157,7 @@
 
 ### 4.3 Output Product Comparison
 
-| Product | Delft3D | HEC-RAS 2D | FloodView |
+| Product | Delft3D | HEC-RAS 2D | JalRaksha |
 |:---|:---|:---|:---|
 | **Depth Raster** | NetCDF | HDF5 | **GeoTIFF (COG)** |
 | **Velocity Raster** | NetCDF | HDF5 | **GeoTIFF (COG)** |
@@ -174,7 +174,7 @@
 
 ### 5.1 Installation & Setup
 
-| Aspect | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Aspect | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **OS Support** | Windows, Linux | Windows only | Windows, Linux | **Windows, Linux** |
 | **Installer** | MSI / manual | MSI | ZIP archive | **pip install** |
@@ -185,18 +185,18 @@
 
 ### 5.2 User Interface
 
-| Interface | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Interface | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **Desktop GUI** | Yes (DeltaShell) | Yes (RAS Mapper) | Limited | No |
 | **Web Dashboard** | No | No | No | **Yes (React)** |
-| **CLI** | Limited | No | Script | **Full (floodview run)** |
+| **CLI** | Limited | No | Script | **Full (jalraksha run)** |
 | **REST API** | No | No | No | **Yes (FastAPI)** |
 | **Background Jobs** | No | No | No | **Yes (Celery)** |
 | **Mobile Friendly** | No | No | No | **Yes (responsive)** |
 
 ### 5.3 Offline & Field Use
 
-| Capability | Traditional Tools | FloodView |
+| Capability | Traditional Tools | JalRaksha |
 |:---|:---|:---|
 | **Internet Required** | No (but data fetch needs it) | **No (fully offline after first fetch)** |
 | **Data Caching** | Manual | **Automatic** |
@@ -217,11 +217,11 @@
 | **DualSPHysics** | LGPL-3.0 | Yes (copyleft) | Yes (must share) | Yes (must share) |
 | **GeoClaw** | GPL-3.0 | Yes (copyleft) | Yes (must share) | Yes (must share) |
 | **ANUGA** | GPL-3.0 | Yes (copyleft) | Yes (must share) | Yes (must share) |
-| **FloodView** | **MIT / BSD** | **Yes (permissive)** | **Yes (no share)** | **Yes (no share)** |
+| **JalRaksha** | **MIT / BSD** | **Yes (permissive)** | **Yes (no share)** | **Yes (no share)** |
 
 ### 6.2 Cost Breakdown
 
-| Cost Component | Delft3D | HEC-RAS 2D | DualSPHysics | FloodView |
+| Cost Component | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **Software License** | Free | Free | Free | **Free** |
 | **Data (DEM)** | Free (manual) | Free (manual) | Free (manual) | **Free (automated)** |
@@ -231,7 +231,7 @@
 
 ---
 
-## 7. What Makes FloodView Different (Summary)
+## 7. What Makes JalRaksha Different (Summary)
 
 ### 7.1 Key Differentiators
 
@@ -248,16 +248,16 @@
 | 9 | **Headless CLI + REST API** | Automatable, containerizable, cloud-ready |
 | 10 | **Standard GIS Exports** | Direct .shp, .kml, .tiff — no conversion needed |
 
-### 7.2 Problems FloodView Solves (That Others Don't)
+### 7.2 Problems JalRaksha Solves (That Others Don't)
 
-| Problem | How Others Fail | How FloodView Solves |
+| Problem | How Others Fail | How JalRaksha Solves |
 |:---|:---|:---|
 | **Breach uncertainty** | Single hydrograph guess | 100-member Monte Carlo with Wahl bands |
 | **3D breach + 60 km range** | Choose one or the other | Domain decomposition (SPH → SWE) |
 | **Offline disaster response** | Need internet for data | Cached DEM, pre-baked runs |
 | **Stakeholder communication** | Desktop GUI only | Web dashboard with 2D+3D |
 | **Indian-specific needs** | Generic global tools | Indian dam presets, open Indian data |
-| **Rapid deployment** | Hours of setup | Minutes with `floodview run` |
+| **Rapid deployment** | Hours of setup | Minutes with `jalraksha run` |
 | **Impact estimation** | Depth only | Population, damage, fatalities |
 
 ### 7.3 When to Use Which Tool
@@ -268,18 +268,18 @@
 | **US regulatory compliance** | HEC-RAS 2D | USACE standard |
 | **Research on breach physics** | DualSPHysics | Full 3D resolution |
 | **Mountain flood routing** | GeoClaw | Well-balanced for steep terrain |
-| **Rapid emergency screening** | **FloodView** | Fast, automated, offline |
-| **Evacuation planning** | **FloodView** | Arrival times with uncertainty |
-| **Stakeholder presentation** | **FloodView** | Web dashboard, 3D globe |
-| **Indian dam assessment** | **FloodView** | Presets, open data, offline |
+| **Rapid emergency screening** | **JalRaksha** | Fast, automated, offline |
+| **Evacuation planning** | **JalRaksha** | Arrival times with uncertainty |
+| **Stakeholder presentation** | **JalRaksha** | Web dashboard, 3D globe |
+| **Indian dam assessment** | **JalRaksha** | Presets, open data, offline |
 
 ---
 
 ## 8. Technology Stack Comparison
 
-### 8.1 FloodView Stack vs Traditional Tools
+### 8.1 JalRaksha Stack vs Traditional Tools
 
-| Layer | Traditional Tools | FloodView |
+| Layer | Traditional Tools | JalRaksha |
 |:---|:---|:---|
 | **Language** | Fortran, C++, C | **Python** |
 | **Numerics** | Compiled libraries | **NumPy, SciPy, Numba** |
@@ -291,7 +291,7 @@
 | **Deployment** | Manual install | **Docker Compose** |
 | **Testing** | Limited | **pytest (comprehensive)** |
 
-### 8.2 FloodView Dependencies
+### 8.2 JalRaksha Dependencies
 
 | Package | Purpose | License |
 |:---|:---|:---|
@@ -314,7 +314,7 @@
 
 ## 9. Conclusion
 
-FloodView is not a replacement for Delft3D or HEC-RAS — it is a **Tier-1 screening tool** designed for rapid emergency response. It trades the detailed engineering accuracy of Delft3D for:
+JalRaksha is not a replacement for Delft3D or HEC-RAS — it is a **Tier-1 screening tool** designed for rapid emergency response. It trades the detailed engineering accuracy of Delft3D for:
 
 1. **Speed** (minutes vs hours)
 2. **Automation** (no manual mesh generation)
@@ -323,9 +323,9 @@ FloodView is not a replacement for Delft3D or HEC-RAS — it is a **Tier-1 scree
 5. **Offline resilience** (cached data, pre-baked runs)
 6. **Indian-specific presets** (Tehri, Khadakwasla)
 
-For detailed engineering studies, use Delft3D. For rapid emergency screening, use FloodView.
+For detailed engineering studies, use Delft3D. For rapid emergency screening, use JalRaksha.
 
 ---
 
 *Document generated: 2026-08-30*  
-*Project: FloodView — Smart India Hackathon 2026*
+*Project: JalRaksha — Smart India Hackathon 2026*

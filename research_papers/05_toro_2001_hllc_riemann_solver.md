@@ -15,15 +15,15 @@ It presents the formulation of the **HLLC (Harten-Lax-van Leer-Contact) Riemann 
 
 ---
 
-## 🔑 Key Equations & Role in FloodView
+## 🔑 Key Equations & Role in JalRaksha
 
 1. **HLLC Numerical Flux Formulation**:
    - Computes inter-cell numerical fluxes $\mathbf{F}_{i+1/2}$ using estimated wave speeds $S_L, S^*, S_R$:
    $$\mathbf{F}^{\text{HLLC}} = \begin{cases} \mathbf{F}_L & \text{if } S_L \ge 0 \\ \mathbf{F}_{*L} & \text{if } S_L \le 0 \le S^* \\ \mathbf{F}_{*R} & \text{if } S^* \le 0 \le S_R \\ \mathbf{F}_R & \text{if } S_R \le 0 \end{cases}$$
    - Includes transverse velocity update in the intermediate state $\mathbf{F}_{*L}, \mathbf{F}_{*R}$.
 
-2. **Role in FloodView**:
-   - Implemented in `floodview/solver/flux.py` with Numba JIT acceleration (`@njit`).
+2. **Role in JalRaksha**:
+   - Implemented in `jalraksha/solver/flux.py` with Numba JIT acceleration (`@njit`).
    - Validated against 1D Ritter dry-bed and 1D Stoker wet-bed dam-break analytical solutions.
 
 ---

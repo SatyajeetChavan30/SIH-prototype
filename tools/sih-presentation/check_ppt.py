@@ -25,7 +25,7 @@ from pptx.util import Emu
 # HERE-relative).
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-DECK = ROOT / "FloodView_SIH2026_PS26161.pptx"
+DECK = ROOT / "JalRaksha_SIH2026_PS26161.pptx"
 
 FONT_DIR = Path("C:/Windows/Fonts")
 FILES = {

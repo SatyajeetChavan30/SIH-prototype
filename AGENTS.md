@@ -17,7 +17,7 @@ rest of CLAUDE.md: an earlier full copy drifted out of date within two weeks.
   Cell-centred finite volume on uniform Cartesian grids.
 - **Delft3D naming follows the evidence.** Say "Delft3D FM (dflowfm-cli,
   dimrset 2026.01)" only when `delft3d_binary_used` is True; otherwise
-  "FloodView built-in 2D SWE — Delft3D-class, NOT Delft3D FM", plus the reason
+  "JalRaksha built-in 2D SWE — Delft3D-class, NOT Delft3D FM", plus the reason
   it fell back.
 - **SPH ↔ SWE coupling is one-way** (SWE → SPH handoff). Never claim two-way.
 - **Every coefficient needs a primary-literature citation**, or a

@@ -33,7 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 RENDER_SCRIPT = REPO_ROOT / "paraview" / "render_static.py"
 
 PVPYTHON = Path(os.environ.get(
-    "FLOODVIEW_PVPYTHON_EXE", r"C:/Program Files/ParaView 6.2.0/bin/pvpython.exe"))
+    "JALRAKSHA_PVPYTHON_EXE", r"C:/Program Files/ParaView 6.2.0/bin/pvpython.exe"))
 
 # The smallest dataset in the repo (~93 KB) — this test is about path handling,
 # not rendering fidelity, so there is no reason to pay for a large one.

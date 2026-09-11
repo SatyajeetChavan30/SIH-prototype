@@ -16,7 +16,7 @@ import urllib.request
 import urllib.error
 import pytest
 
-from floodview.api import (
+from jalraksha.api import (
     start_api_server,
     stop_api_server,
     get_downstream_gauges,
@@ -52,7 +52,7 @@ def _warm_numba_kernels() -> None:
     measure the endpoint rather than the JIT.
     """
     try:
-        from floodview.terrain.breach import synthesize_breach_ensemble
+        from jalraksha.terrain.breach import synthesize_breach_ensemble
 
         synthesize_breach_ensemble(
             {"name": "warmup", "height_m": 100.0, "storage_mm3": 1000.0},
@@ -98,7 +98,7 @@ class TestHealthEndpoint:
 
     def test_health_contains_service_name(self, api_server):
         data = get_json(f"{BASE}/health")
-        assert "FloodView" in data["service"]
+        assert "JalRaksha" in data["service"]
 
 
 # ─── TestDamsEndpoint ─────────────────────────────────────────────────────────

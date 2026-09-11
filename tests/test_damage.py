@@ -1,8 +1,8 @@
 """
 Depth-damage and economic loss (Phase 6).
 
-These tests are OFFLINE by construction: `floodview.impact` must not import
-`floodview.gee`, so nothing here needs Earth Engine, a network, or a
+These tests are OFFLINE by construction: `jalraksha.impact` must not import
+`jalraksha.gee`, so nothing here needs Earth Engine, a network, or a
 monkeypatched client. The exposure arrays are supplied directly, which is the
 same seam `tasks.py` uses in production.
 
@@ -18,8 +18,8 @@ import json
 import numpy as np
 import pytest
 
-from floodview.impact import damage as dmg
-from floodview.impact.damage import (
+from jalraksha.impact import damage as dmg
+from jalraksha.impact.damage import (
     HUIZINGA_2017_VERIFIED,
     SECTORS,
     DepthDamageCurveUnverified,

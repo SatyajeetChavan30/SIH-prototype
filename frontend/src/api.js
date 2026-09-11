@@ -1,8 +1,8 @@
-// Thin fetch wrapper around the FloodView FastAPI service (brief §5.1).
+// Thin fetch wrapper around the JalRaksha FastAPI service (brief §5.1).
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Endpoints return export/keyframe/comparison-image paths as "/files/..."
-// (served by the API's static mount, services/api/floodview_service/main.py)
+// (served by the API's static mount, services/api/jalraksha_service/main.py)
 // rather than full URLs — resolve them against the API origin here.
 export function resolveApiUrl(pathOrUrl) {
   if (!pathOrUrl) return pathOrUrl;

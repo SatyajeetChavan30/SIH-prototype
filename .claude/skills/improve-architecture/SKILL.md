@@ -1,6 +1,6 @@
 ---
 name: improve-architecture
-description: Surface deepening opportunities in FloodView codebase. Identifies shallow modules, tight coupling, and testability friction. Presents candidates as an HTML report, then grills through selected refactoring with domain model updates and ADR generation.
+description: Surface deepening opportunities in JalRaksha codebase. Identifies shallow modules, tight coupling, and testability friction. Presents candidates as an HTML report, then grills through selected refactoring with domain model updates and ADR generation.
 disable-model-invocation: true
 ---
 
@@ -98,7 +98,7 @@ Based on John Ousterhout's *A Philosophy of Software Design* (deep modules princ
 # Full codebase scan with candidates across all phases
 ```
 
-## Checks for FloodView
+## Checks for JalRaksha
 
 **Module Structure:**
 - Solver core isolated from I/O and CLI logic
@@ -133,7 +133,7 @@ Based on John Ousterhout's *A Philosophy of Software Design* (deep modules princ
 <div class="candidate">
   <h3>Deepen solver.flux_kernel (HLLC scheme)</h3>
   <p class="problem">Flux computation scattered across 3 files; tests import internals</p>
-  <p class="solution">Move to floodview.solver.flux with public interface (state, fluxes)</p>
+  <p class="solution">Move to jalraksha.solver.flux with public interface (state, fluxes)</p>
   <p class="benefits">Locality ↑, testability ↑, SPH coupling ↓ coupling</p>
   <div class="before-after"><!-- Mermaid diagram --></div>
   <span class="strength">Strong</span>

@@ -1,6 +1,6 @@
 > **Historical snapshot (2026-08-25) — not the current state.** Archived on 2026-09-11. See `CLAUDE.md` and `docs/validation_findings.md` for the current system.
 
-# FloodView Integration — Status
+# JalRaksha Integration — Status
 
 > **Read this first.** Until this pass, the solver had never run on real terrain,
 > and its terrain was wired in backwards: `terrain/domain.py` assigned the
@@ -12,7 +12,7 @@
 
 
 Status of the integration brief's M1–M8 milestones (wrapping the existing
-`floodview/` simulation engine in a browser-based 2D/3D dashboard).
+`jalraksha/` simulation engine in a browser-based 2D/3D dashboard).
 
 **Read this before trusting any milestone as "done".** Each claim below says how
 it was verified. Anything not verified in a running system is marked as such.
@@ -20,7 +20,7 @@ it was verified. Anything not verified in a running system is marked as such.
 ## Verified working (exercised end-to-end)
 
 ### M1 — Service layer (FastAPI + Celery/Redis)
-`services/api/floodview_service/` wraps the existing pipeline. `POST /runs` →
+`services/api/jalraksha_service/` wraps the existing pipeline. `POST /runs` →
 `GET /runs/{id}` → `GET /runs/{id}/result` was driven end-to-end against a real
 Tehri run; exports, gauge results, and a real keyframe manifest come back.
 
@@ -35,11 +35,11 @@ Tehri run; exports, gauge results, and a real keyframe manifest come back.
   Docker Compose does not set this, so the real broker path is untouched.
 
 ```bash
-CELERY_EAGER=1 FLOODVIEW_DATA_DIR=./data python -m uvicorn floodview_service.main:app --app-dir services/api --port 8000
+CELERY_EAGER=1 JALRAKSHA_DATA_DIR=./data python -m uvicorn jalraksha_service.main:app --app-dir services/api --port 8000
 ```
 
 ### M2 — Keyframe export (§5.3)
-`floodview/export/keyframes.py` produces the manifest + PNG stack that drives
+`jalraksha/export/keyframes.py` produces the manifest + PNG stack that drives
 both the 2D slider and the 3D overlay. **This was previously dead code**: the
 pipeline never recorded a depth time series, so export silently never fired.
 Now fixed:
@@ -88,8 +88,8 @@ render. Handles the no-comparison-data case (`solver="swe"` runs) gracefully.
 
 Note: the SPH side of this comparison is synthesized (particle positions from
 `np.random`, arrivals from a wave-celerity approximation). This is a
-pre-existing limitation of `floodview/delft3d/comparison.py`, reached via
-`services/api/floodview_service/tasks.py::_run_comparison` — not introduced by
+pre-existing limitation of `jalraksha/delft3d/comparison.py`, reached via
+`services/api/jalraksha_service/tasks.py::_run_comparison` — not introduced by
 the frontend, and not a real PySPH run.
 
 ### Real terrain end to end ✅ (this pass)
@@ -136,7 +136,7 @@ Also fixed: every gauge was projected into *its own* UTM zone rather than the
 domain's (Rishikesh is zone 43, the domain is 44), and the per-member step cap
 was sized from the dry-bed timestep, truncating runs after a handful of real steps.
 
-**Environment.** `floodview/__init__.py` now repairs a broken inherited
+**Environment.** `jalraksha/__init__.py` now repairs a broken inherited
 `PROJ_LIB`. This machine has PostgreSQL/PostGIS exporting one whose database
 layout predates what rasterio's PROJ expects, which made every CRS lookup fail.
 
@@ -163,7 +163,7 @@ for anyone who prefers Cesium ion.
 ## Not done — needs tools unavailable in the build environment
 
 ### M6 — Live GEE SAR
-`floodview/gee/{auth,population,sar}.py` still return mock data. No Earth Engine
+`jalraksha/gee/{auth,population,sar}.py` still return mock data. No Earth Engine
 credentials available. `GET /gee/latest` returns the stub gracefully.
 
 ### M7 — Docker/Compose
@@ -265,7 +265,7 @@ Real bugs found and fixed in existing code along the way:
 ## Running the demo locally
 
 ```bash
-CELERY_EAGER=1 FLOODVIEW_DATA_DIR=./data python -m uvicorn floodview_service.main:app --app-dir services/api --port 8000
+CELERY_EAGER=1 JALRAKSHA_DATA_DIR=./data python -m uvicorn jalraksha_service.main:app --app-dir services/api --port 8000
 ```
 
 ```bash

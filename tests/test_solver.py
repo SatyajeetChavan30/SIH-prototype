@@ -4,7 +4,7 @@ Analytical tests and blocking correctness gates for the Phase 1 2D SWE solver.
 Blocking gates (must pass before any PR merge, per CLAUDE.md):
   1. Lake-at-rest — |V| < 1e-8 m/s and |d(eta)| < 1e-6 m over arbitrary
      bathymetry. Passes by construction via the Audusse C-property proof in
-     floodview.solver.flux, not by tolerance relaxation.
+     jalraksha.solver.flux, not by tolerance relaxation.
   2. Mass conservation — < 0.1% volume change over 1000 steps behind walls.
   3. Dry-bed robustness — no NaN, no negative depth, no division blow-up.
 
@@ -25,10 +25,10 @@ References:
 import numpy as np
 import pytest
 
-from floodview.solver.core import SWESolver
-from floodview.solver.types import Grid, create_state
+from jalraksha.solver.core import SWESolver
+from jalraksha.solver.types import Grid, create_state
 
-# Gravitational acceleration (m/s^2), matching floodview.solver.flux.G.
+# Gravitational acceleration (m/s^2), matching jalraksha.solver.flux.G.
 G = 9.81
 
 
