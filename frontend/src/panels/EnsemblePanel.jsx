@@ -129,6 +129,15 @@ export default function EnsemblePanel({ result }) {
             <strong>{ensemble.regressions_used.join(", ")}</strong>
           </span>
         )}
+        {/* Which hardware ran the members. Taken from the members themselves,
+            so a GPU run that fell back to the CPU says CPU, and the reason is
+            one hover away. Absent for runs that predate the GPU backend. */}
+        {result?.solver_backend?.solver_backend_label && (
+          <span title={result.solver_backend.solver_backend_reason || ""}>
+            {" · "}Computed on:{" "}
+            <strong>{result.solver_backend.solver_backend_label}</strong>
+          </span>
+        )}
       </div>
       <p style={S.note}>
         The four published regressions disagree with each other by a factor of

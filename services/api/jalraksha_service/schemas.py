@@ -463,6 +463,11 @@ class RunResult(BaseModel):
     sph: Optional[Dict[str, Any]] = None
     rapid_estimate: Optional[Dict[str, Any]] = None
     solver: Optional[str] = None
+    # Which hardware produced the ensemble: solver_backend ("cuda" or "cpu"),
+    # solver_backend_label, solver_backend_reason, solver_device. Taken from
+    # the members themselves, so a GPU run that fell back to the CPU reports
+    # the CPU. None for runs written before the GPU backend existed.
+    solver_backend: Optional[Dict[str, Any]] = None
     status: Optional[str] = None
     # Why a run failed. Previously the reason existed only in the Celery task's
     # return value, which nothing reads, so a failed run was a dead end in the UI.

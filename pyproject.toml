@@ -76,6 +76,15 @@ viz = [
     "cartopy>=0.21.0",
 ]
 
+# GPU backend (optional; the CPU numba path needs none of this).
+# numba-cuda[cu12] ships NVVM/NVRTC as pip wheels, so no CUDA toolkit install
+# is needed, only an NVIDIA driver. pyopencl runs PySPH's OpenCL backend on the
+# driver's own OpenCL runtime. See jalraksha/solver/backend.py.
+gpu = [
+    "numba-cuda[cu12]>=0.30",
+    "pyopencl>=2026.1",
+]
+
 [project.urls]
 Homepage = "https://github.com/sih2026/jalraksha"
 Documentation = "https://github.com/sih2026/jalraksha/wiki"

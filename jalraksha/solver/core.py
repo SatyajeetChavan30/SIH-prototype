@@ -53,6 +53,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
+from .backend import resolve_backend
 from .flux import (
     G,
     H_DRY_DEFAULT,
@@ -96,6 +97,86 @@ CFL_MAX = 0.30
 # taking one enormous step that then wets a cell far outside the CFL cone.
 DT_MAX_DEFAULT = 30.0
 
+# Depth above which Result.update stamps first arrival (m). Mirrored by the
+# CUDA run loop, which keeps the running maxima on the device.
+RESULT_WET_THRESHOLD = 0.05
+
+
+def fill_ghost_ring(
+    h: np.ndarray,
+    u: np.ndarray,
+    v: np.ndarray,
+    b: np.ndarray,
+    nx: int,
+    ny: int,
+    reflect_x: bool,
+    reflect_y: bool,
+) -> None:
+    """
+    Populate the two-cell ghost ring of padded arrays, in place.
+
+    transmissive: zero-gradient (copy the edge cell outward). Water leaves
+        the domain and does not return. Correct for a routing reach; note
+        it means volume is NOT conserved once the front exits.
+    reflective: mirror h and b, negate the normal velocity. Gives
+        identically zero mass flux through the wall, which is what makes
+        the mass-conservation gate exact rather than approximate.
+
+    A one-cell-thick direction is always mirrored (the caller passes
+    reflect=True for it) so that v (or u) stays exactly zero and a nominally
+    1D run cannot leak sideways.
+
+    Shared by the CPU solver and by the CUDA engine, which uses it to build
+    the bed's ghost ring once on the host.
+    """
+    lo, hi_x, hi_y = PAD, PAD + nx, PAD + ny
+
+    # ---- x boundaries (left and right columns) ----
+    for offset in range(PAD):
+        ghost_left = lo - 1 - offset
+        ghost_right = hi_x + offset
+        if reflect_x:
+            src_left = min(lo + offset, hi_x - 1)
+            src_right = max(hi_x - 1 - offset, lo)
+            sign = -1.0
+        else:
+            src_left = lo
+            src_right = hi_x - 1
+            sign = 1.0
+
+        h[:, ghost_left] = h[:, src_left]
+        b[:, ghost_left] = b[:, src_left]
+        u[:, ghost_left] = sign * u[:, src_left]
+        v[:, ghost_left] = v[:, src_left]
+
+        h[:, ghost_right] = h[:, src_right]
+        b[:, ghost_right] = b[:, src_right]
+        u[:, ghost_right] = sign * u[:, src_right]
+        v[:, ghost_right] = v[:, src_right]
+
+    # ---- y boundaries (bottom and top rows) ----
+    for offset in range(PAD):
+        ghost_bot = lo - 1 - offset
+        ghost_top = hi_y + offset
+        if reflect_y:
+            src_bot = min(lo + offset, hi_y - 1)
+            src_top = max(hi_y - 1 - offset, lo)
+            sign = -1.0
+        else:
+            src_bot = lo
+            src_top = hi_y - 1
+            sign = 1.0
+
+        h[ghost_bot, :] = h[src_bot, :]
+        b[ghost_bot, :] = b[src_bot, :]
+        v[ghost_bot, :] = sign * v[src_bot, :]
+        u[ghost_bot, :] = u[src_bot, :]
+
+        h[ghost_top, :] = h[src_top, :]
+        b[ghost_top, :] = b[src_top, :]
+        v[ghost_top, :] = sign * v[src_top, :]
+        u[ghost_top, :] = u[src_top, :]
+
 
 class SWESolver:
     """
@@ -119,6 +200,7 @@ class SWESolver:
         dt_max: float = DT_MAX_DEFAULT,
         h_dry: float = H_DRY_DEFAULT,
         velocity_max: float = VELOCITY_MAX_DEFAULT,
+        backend: Optional[str] = "auto",
     ):
         """
         Initialise the solver.
@@ -143,9 +225,14 @@ class SWESolver:
                 observed peaks at Malpasset (1959, ~30 m/s) and Chamoli
                 (2021, ~25 m/s), so it clips only numerical outliers.
                 Activations are counted and reported by describe().
+            backend: "auto", "cpu" or "cuda" (see jalraksha.solver.backend).
+                "auto" honours JALRAKSHA_SOLVER_BACKEND, then uses the GPU if
+                a float64 CUDA kernel can run, else the CPU. Both run the same
+                float64 physics; describe() records which one actually ran.
 
         Raises:
             ValueError: on an unknown boundary type or a bad manning_n shape.
+            BackendUnavailableError: if backend="cuda" and CUDA cannot run.
         """
         if boundary not in ("transmissive", "reflective", "wall"):
             raise ValueError(
@@ -177,6 +264,13 @@ class SWESolver:
         self.active_y = self.ny > 1
 
         self.manning_field = self._build_manning_field(manning_n)
+
+        # Which hardware runs the step. The CUDA engine is built lazily, on the
+        # first step, because it needs the bed and the State carries the bed.
+        self.backend_choice = resolve_backend(backend)
+        self.backend = self.backend_choice.name
+        self._engine = None
+        self._engine_bed = None
 
         # Padded work arrays, allocated once and reused every stage.
         padded_shape = (self.ny + 2 * PAD, self.nx + 2 * PAD)
@@ -281,70 +375,17 @@ class SWESolver:
     # ------------------------------------------------------------------
 
     def _fill_ghosts(self) -> None:
-        """
-        Populate the ghost ring of the padded work arrays.
-
-        transmissive: zero-gradient (copy the edge cell outward). Water leaves
-            the domain and does not return. Correct for a routing reach; note
-            it means volume is NOT conserved once the front exits.
-        reflective: mirror h and b, negate the normal velocity. Gives
-            identically zero mass flux through the wall, which is what makes
-            the mass-conservation gate exact rather than approximate.
-
-        A one-cell-thick direction is always mirrored so that v (or u) stays
-        exactly zero and a nominally 1D run cannot leak sideways.
-        """
-        h, u, v, b = self._h_pad, self._u_pad, self._v_pad, self._b_pad
-        lo, hi_x, hi_y = PAD, PAD + self.nx, PAD + self.ny
-
-        reflect_x = self.boundary == "reflective" or not self.active_x
-        reflect_y = self.boundary == "reflective" or not self.active_y
-
-        # ---- x boundaries (left and right columns) ----
-        for offset in range(PAD):
-            ghost_left = lo - 1 - offset
-            ghost_right = hi_x + offset
-            if reflect_x:
-                src_left = min(lo + offset, hi_x - 1)
-                src_right = max(hi_x - 1 - offset, lo)
-                sign = -1.0
-            else:
-                src_left = lo
-                src_right = hi_x - 1
-                sign = 1.0
-
-            h[:, ghost_left] = h[:, src_left]
-            b[:, ghost_left] = b[:, src_left]
-            u[:, ghost_left] = sign * u[:, src_left]
-            v[:, ghost_left] = v[:, src_left]
-
-            h[:, ghost_right] = h[:, src_right]
-            b[:, ghost_right] = b[:, src_right]
-            u[:, ghost_right] = sign * u[:, src_right]
-            v[:, ghost_right] = v[:, src_right]
-
-        # ---- y boundaries (bottom and top rows) ----
-        for offset in range(PAD):
-            ghost_bot = lo - 1 - offset
-            ghost_top = hi_y + offset
-            if reflect_y:
-                src_bot = min(lo + offset, hi_y - 1)
-                src_top = max(hi_y - 1 - offset, lo)
-                sign = -1.0
-            else:
-                src_bot = lo
-                src_top = hi_y - 1
-                sign = 1.0
-
-            h[ghost_bot, :] = h[src_bot, :]
-            b[ghost_bot, :] = b[src_bot, :]
-            v[ghost_bot, :] = sign * v[src_bot, :]
-            u[ghost_bot, :] = u[src_bot, :]
-
-            h[ghost_top, :] = h[src_top, :]
-            b[ghost_top, :] = b[src_top, :]
-            v[ghost_top, :] = sign * v[src_top, :]
-            u[ghost_top, :] = u[src_top, :]
+        """Populate the ghost ring of the padded work arrays (see fill_ghost_ring)."""
+        fill_ghost_ring(
+            self._h_pad,
+            self._u_pad,
+            self._v_pad,
+            self._b_pad,
+            self.nx,
+            self.ny,
+            reflect_x=self.boundary == "reflective" or not self.active_x,
+            reflect_y=self.boundary == "reflective" or not self.active_y,
+        )
 
     # ------------------------------------------------------------------
     # Spatial operator
@@ -448,6 +489,9 @@ class SWESolver:
         Returns:
             New State at t + dt.
         """
+        if self.backend == "cuda":
+            return self._advance_cuda(state, dt)
+
         bed = state.b
         h_old = state.h
         hu_old = state.h * state.u
@@ -545,6 +589,9 @@ class SWESolver:
             RuntimeError: if the solution goes non-finite, or max_steps is hit
                 before t_end.
         """
+        if self.backend == "cuda":
+            return self._run_cuda(state, t_end, snapshot_interval, on_snapshot, max_steps, verbose)
+
         state = state.copy()
         result = create_result(self.grid, state)
         result.update(state)
@@ -604,6 +651,162 @@ class SWESolver:
         return result
 
     # ------------------------------------------------------------------
+    # CUDA backend
+    # ------------------------------------------------------------------
+
+    def _cuda_engine(self, bed: np.ndarray):
+        """The single-member device engine, built on first use, re-bedded if the bed changes."""
+        if self._engine is None:
+            from .engine_cuda import CudaSWEEngine
+
+            self._engine = CudaSWEEngine(
+                self.grid,
+                bed,
+                self.manning_field,
+                n_members=1,
+                boundary=self.boundary,
+                use_muscl=self.use_muscl,
+                h_dry=self.h_dry,
+                velocity_max=self.velocity_max,
+                cfl=self.cfl,
+                dt_max=self.dt_max,
+            )
+            self._engine_bed = bed.copy()
+        elif not np.array_equal(bed, self._engine_bed):
+            self._engine.set_bed(bed)
+            self._engine_bed = bed.copy()
+        return self._engine
+
+    def _advance_cuda(self, state: State, dt: float) -> State:
+        """
+        _advance on the GPU, one step at a time: upload, step, download.
+
+        Slow by design, since every call crosses the bus, but it is what lets
+        step()-driven callers (the blocking gate tests among them) run
+        unchanged on the GPU. run() keeps the state on the device instead.
+        The volume bookkeeping is done on the host with the same NumPy sums
+        as the CPU path.
+        """
+        engine = self._cuda_engine(state.b)
+        engine.set_member_state(0, state.h, state.u, state.v)
+        engine.set_dt(dt)
+        engine.advance(engine.dt)
+        h_new, u_new, v_new = engine.member_state(0)
+
+        self.n_velocity_capped += engine.take_capped()
+        cell_area = self.dx * self.dy
+        self.volume_exited_m3 += float(state.h.sum() - h_new.sum()) * cell_area
+        self.n_steps += 1
+        self.dt_last = dt
+        return State(h=h_new, u=u_new, v=v_new, b=state.b, t=state.t + dt)
+
+    def _run_cuda(
+        self,
+        state: State,
+        t_end: float,
+        snapshot_interval: Optional[float],
+        on_snapshot: Optional[Callable[[State], None]],
+        max_steps: int,
+        verbose: bool,
+    ) -> Result:
+        """
+        run() with the state resident on the GPU.
+
+        Mirrors run() step for step. The only per-step traffic is the CFL
+        timestep coming back to the host, because the host clips it to t_end
+        and to the next snapshot. The running maxima stay on the device.
+        A non-finite solution is detected one step late (on the next timestep
+        read) and reported with the time of the step that produced it.
+        """
+        state = state.copy()
+        result = create_result(self.grid, state)
+        result.update(state)
+
+        cell_area = self.grid.area
+        volume_initial = state.volume * cell_area
+        next_snapshot = state.t + snapshot_interval if snapshot_interval else np.inf
+
+        if on_snapshot is not None and snapshot_interval is not None:
+            on_snapshot(state.copy())
+
+        engine = self._cuda_engine(state.b)
+        engine.set_member_state(0, state.h, state.u, state.v)
+        engine.load_run_maxima(result)
+        bed = state.b
+
+        def download(time_s: float) -> State:
+            h, u, v = engine.member_state(0)
+            return State(h=h, u=u, v=v, b=bed, t=time_s)
+
+        def fail_if_nonfinite(time_s: float, step: int, dt_used: float) -> None:
+            if engine.run_went_nonfinite():
+                depth = engine.member_state(0)[0]
+                raise RuntimeError(
+                    f"Solution went non-finite at t={time_s:.3f}s (step {step}). "
+                    f"dt={dt_used:.3e}s, max depth={np.nanmax(depth):.3f}m."
+                )
+
+        t_now = state.t
+        steps = 0
+        dt = 0.0
+        while t_now < t_end - 1e-12:
+            if steps >= max_steps:
+                raise RuntimeError(
+                    f"max_steps={max_steps} reached at t={t_now:.2f}s of {t_end:.2f}s. "
+                    "The timestep has probably collapsed — check for a spurious "
+                    "thin-film velocity or a DEM spike."
+                )
+
+            engine.compute_dt(engine.dt)
+            dt_cfl = float(engine.dt.copy_to_host()[0])
+            if steps:
+                fail_if_nonfinite(t_now, steps, dt)
+
+            dt = min(dt_cfl, t_end - t_now)
+            if next_snapshot - t_now > 1e-12:
+                dt = min(dt, next_snapshot - t_now)
+            if dt <= 0.0:
+                break
+
+            engine.set_dt(dt)
+            engine.advance_with_outflow(engine.dt)
+            t_now += dt
+            steps += 1
+            engine.update_run_maxima(t_now, RESULT_WET_THRESHOLD)
+
+            if t_now >= next_snapshot - 1e-9:
+                if on_snapshot is not None:
+                    fail_if_nonfinite(t_now, steps, dt)
+                    on_snapshot(download(t_now))
+                next_snapshot += snapshot_interval
+
+            if verbose and steps % 200 == 0:
+                current = download(t_now)
+                print(
+                    f"  t={t_now:8.1f}s  dt={dt:7.4f}s  "
+                    f"h_max={current.h.max():6.2f}m  |V|_max={current.speed.max():5.2f}m/s"
+                )
+
+        if steps:
+            fail_if_nonfinite(t_now, steps, dt)
+        state = download(t_now)
+        engine.read_run_maxima(result)
+        result.t = t_now
+
+        self.n_steps += steps
+        self.dt_last = dt
+        self.n_velocity_capped += engine.take_capped()
+        self.volume_exited_m3 += engine.take_exited()
+
+        volume_final = state.volume * cell_area
+        if volume_initial > 0.0:
+            result.mass_error = abs(volume_final - volume_initial) / volume_initial
+        result.n_steps = steps
+        result.state = state
+        result.t = state.t
+        return result
+
+    # ------------------------------------------------------------------
     # Introspection
     # ------------------------------------------------------------------
 
@@ -616,6 +819,7 @@ class SWESolver:
             "friction": "Manning, point-implicit",
             "wet_dry": f"Liang & Marche, h_dry={self.h_dry:g} m",
             "precision": "float64",
+            **self.backend_choice.as_dict(),
             "velocity_max": self.velocity_max,
             "velocity_cap_activations": self.n_velocity_capped,
             "cfl": self.cfl,

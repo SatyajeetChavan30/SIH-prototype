@@ -127,7 +127,8 @@ jalraksha/                 core library
 ├── presets.py             dam and blockage-site presets
 ├── run.py                 end-to-end dam-break / blockage pipeline (Phase 4)
 ├── hardening.py           input validation and error types
-├── solver/                2D SWE: types, flux (HLLC + Audusse), core, parallel ensemble
+├── solver/                2D SWE: types, flux (HLLC + Audusse), core, parallel ensemble,
+│                          backend (cpu | cuda), flux_cuda / engine_cuda / ensemble_cuda
 ├── terrain/               conditioning, domain, breach regressions, natural_dam,
 │                          blockage (barrier burn), dem_update, roughness
 ├── export/                geotiff (COG), shapefile, kml, keyframes, xdmf_export,
@@ -962,6 +963,77 @@ no longer collides on 8000.
 panel as a row of blanks. `x0`/`y0` stay **null rather than guessed** — the UTM
 origin was never recorded, and a wrong one georeferences every downloaded raster
 incorrectly, which is worse than an absent one.
+
+## GPU backend — float64 CUDA on the RTX 4050, CPU kept as the reference
+
+Full record: `docs/validation_findings.md` §11 and `docs/DECISIONS.md` §14. The
+old "a float64 GPU port would be slower" line in `parallel.py` and PERF-6 was an
+estimate, and measurement replaced it.
+
+- **One switch.** `SWESolver` and `run_ensemble` take `backend="auto" | "cuda" |
+  "cpu"`, and `JALRAKSHA_SOLVER_BACKEND` overrides `auto`. `auto` uses the GPU
+  when a float64 CUDA kernel compiles and runs (probed once per process),
+  otherwise the CPU, and records why. An explicit `cuda` request that cannot
+  run RAISES. It never quietly runs on the CPU, because every timing and every
+  provenance label would then be false.
+- **Measured: 11–20× faster**, float64 on both, with identical step counts.
+  One member at 376 × 480 went from 72.4 s to 5.74 s (12.6×), one member at
+  600 × 600 from 136.4 s to 6.72 s (20.3×), and a 30-member ensemble from
+  455.6 s on the CPU process pool to 39.7 s (11.5×). The speed-up grows with
+  grid size, because 376 × 480 does not fill the GPU.
+- **Install:** `pip install -e ".[gpu]"`, which is numba-cuda[cu12] plus pyopencl.
+  numba-cuda ships NVVM and NVRTC as pip wheels, so only the NVIDIA driver is
+  needed, not the CUDA toolkit. That missing NVVM was the whole reason CUDA
+  "did not work" here before. Kernels use `cache=True`, so editing
+  `flux_cuda.py` or `ensemble_cuda.py` costs a few seconds of recompilation on
+  the next run.
+- **Single physics source.** The `_impl` functions in `solver/flux.py`
+  (minmod, Audusse, HLLC, friction, the per-cell CFL term) are compiled twice,
+  with `njit` and with `cuda.jit(device=True)`. Edit an `_impl` function and
+  both backends follow. Four pieces are MIRRORED rather than shared (MUSCL edge
+  extrapolation, tendency assembly, the RK stages, Kurganov–Petrova recovery),
+  and `tests/test_solver_cuda.py` pins them against the CPU.
+- **Not bit-identical, and that is expected.** NVVM contracts `a*b + c` into an
+  FMA and numba-cuda has no switch to stop it. Backends differ at about 1e-15.
+  Never write `array_equal` between backends, and never "fix" the difference
+  with fastmath: `flux.py` explains why fastmath breaks the C-property.
+- **The GPU passes the gates on its own.** `tests/test_solver.py` runs every
+  test on both backends through an autouse fixture. GPU `step()` uploads and
+  downloads every call, so those tests are slower on the GPU (Thacker: 17.7 s
+  against 3.1 s). `run()` and the ensemble keep state on the device.
+- **Provenance travels with every result.** Each member dict carries
+  `solver_backend`, `solver_backend_label`, `solver_backend_reason` and
+  `solver_device`. These flow to run.py's `solver_backend`, `run_summary.json`,
+  `RunResult.solver_backend`, the Ensemble tab's "Computed on" line, and the
+  Validation tab's metrics.
+- **The batched ensemble is a SECOND implementation of the member loop**
+  (`ensemble_cuda.py`: per-member dt and t_sim, an `active` mask, snapshots
+  captured on the device). `tests/test_parallel.py::TestGpuEnsemble` binds it
+  to `run_ensemble_member`. Change one without the other and that test fails,
+  which is its purpose.
+- **One timestep per member step** (fixed 2026-09-12).
+  `inject_with_one_timestep` on the CPU and `choose_injection_step` on the GPU
+  shrink the pre-injection CFL dt until the step is CFL-valid after the
+  injection, to within `INJECTION_CFL_RTOL` = 1e-6. The injection, the step
+  and the clock then all use that dt. The
+  old three-dt loop ran the clock 1.8–2.6% ahead of the physics on a dry
+  synthetic valley. It changed nothing measurable on Khadakwasla, where the
+  shrink fires once in about 75,000 steps. `TestMemberTimestep` pins
+  clock = physics time and CFL validity.
+- **One member-loop quirk is still carried on purpose:** the member solver uses
+  the MEAN Manning's n, not the field. Fix it on both backends together.
+- **CPU pool workers are pinned to `backend="cpu"`**, because 16 worker
+  processes each opening a CUDA context on a 6 GB card would fail. Ensemble
+  chunks are sized to 60% of FREE VRAM (`ensemble_cuda.VRAM_FRACTION`); a
+  member at 376 × 480 takes about 35 MB. A second concurrent run that runs out
+  of memory falls back to the CPU and says so.
+- **Near-field SPH stays on the CPU on Python 3.14.** PySPH's OpenCL path is
+  wired in (`--opencl --use-double`, with `PYOPENCL_CTX` set to the NVIDIA
+  platform because the AMD gfx1103 iGPU is also an OpenCL platform). But
+  compyle 0.9.1, which generates PySPH's GPU kernels, uses `ast.Str`, which
+  Python 3.14 removed. `resolve_sph_backend` detects that from compyle's
+  source, and `JALRAKSHA_SPH_BACKEND=auto|opencl|cpu` controls the choice.
+  Whether a newer compyle or Python 3.13 would run it is UNTESTED.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

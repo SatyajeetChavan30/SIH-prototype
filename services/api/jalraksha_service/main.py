@@ -424,6 +424,7 @@ def run_result(run_id: str) -> RunResult:
         impact=impact,
         sph=sph,
         solver=run.get("solver"),
+        solver_backend=summary.get("solver_backend"),
         status=run.get("status"),
         error=run.get("error"),
         comparison_url=comparison_url,
@@ -697,7 +698,9 @@ def _check_lake_at_rest() -> ValidationCheck:
                      "max_surface_error_m": eta_error,
                      "threshold_velocity_m_s": 1e-8,
                      "threshold_surface_m": 1e-6,
-                     "steps": 1000},
+                     "steps": 1000,
+                     # The gate ran on the same backend real runs use.
+                     "solver_backend": solver.backend_choice.label},
         )
     except Exception as exc:
         return ValidationCheck(name="Lake at rest",
@@ -752,7 +755,8 @@ def _check_mass_conservation() -> ValidationCheck:
                      "volume_final_m3": float(volume_final),
                      "drift_pct": drift * 100.0,
                      "threshold_pct": 0.1,
-                     "steps": 1000},
+                     "steps": 1000,
+                     "solver_backend": solver.backend_choice.label},
         )
     except Exception as exc:
         return ValidationCheck(name="Mass conservation",
@@ -772,10 +776,14 @@ def _check_ritter() -> ValidationCheck:
     try:
         import tempfile
 
+        from jalraksha.solver.backend import resolve_backend
         from jalraksha.validation.delft3d_benchmark import compare_ritter
 
         with tempfile.TemporaryDirectory(prefix="jalraksha_ritter_") as tmp:
             result = compare_ritter(tmp)
+        # compare_ritter builds its SWESolver with the default backend="auto";
+        # the probe is cached per process, so this is the backend it ran on.
+        backend_label = resolve_backend().label
 
         # "floodview_*" keys: benchmark results cached before the 2026-09-11 rename.
         jr = (result.get("jalraksha_vs_analytical")
@@ -810,6 +818,7 @@ def _check_ritter() -> ValidationCheck:
                 "engine_agreement_rmse_m": (result.get("engine_agreement") or {}).get("rmse_m"),
                 "delft3d_executable": result.get("delft3d_executable"),
                 "threshold_rmse_m": 0.10,
+                "solver_backend": backend_label,
             },
             series=series,
         )

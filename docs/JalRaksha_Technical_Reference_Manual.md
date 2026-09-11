@@ -19390,10 +19390,12 @@ machine produces not an error but a flood drawn in the North Sea.**
   module docstring's "runs from a bare NumPy install (offline-first constraint)".
   A machine without numba cannot generate a breach hydrograph, despite the module
   claiming it can.
-- **CUDA is non-functional on the build machine**: the driver is present but
-  `nvvm.dll` is not, so there is no CUDA toolkit. `numba.cuda` will not compile.
-  The GPU port was correctly evaluated and declined for independent reasons
-  (§6.7), but the absence means even an experiment cannot be run here.
+- **CUDA works on the build machine as of 2026-09-12.** The driver was always
+  present; what was missing was NVVM (`nvvm.dll`). `pip install "numba-cuda[cu12]"`
+  ships NVVM and NVRTC as `nvidia-*` wheels (CUDA 12.9), so no toolkit install
+  is needed. The float64 GPU backend (`jalraksha/solver/backend.py`) is now the
+  default wherever a float64 CUDA kernel can run. PERF-6 records the measurement
+  that replaced the old "a GPU port would be slower" estimate.
 
 ##### 5.8.5 Missing optional executables
 
@@ -25489,10 +25491,21 @@ value against the serial version on a case where the cap actually fires — whic
 §5.9.3 records as one of the eight untested solver behaviours, so the test must be
 written first.
 
-##### PERF-6 — The GPU port stays declined, and here is the standing reason
+##### PERF-6 — The GPU port was built, measured, and is 12.6× faster (2026-09-12)
 
-**Rank: not scheduled.** The project's own evaluation is correct and should be
-recorded as a decision rather than revisited casually:
+**Status: done.** The float64 CUDA backend exists (`jalraksha/solver/backend.py`,
+`flux_cuda.py`, `engine_cuda.py`, `ensemble_cuda.py`; `DECISIONS.md` §14). It
+followed the sequence set out below, minus step (1): precision was never
+relaxed, so there was nothing to quantify in float32. The measurement, all in
+float64 (`validation_findings.md` §11): one member at 376 × 480 took 72.4 s on
+the CPU and 5.74 s on the GPU (12.6×), one member at 600 × 600 took 136.4 s and
+6.72 s (20.3×), and a 30-member ensemble took 455.6 s on the CPU process pool
+and 39.7 s on the GPU (11.5×). Every blocking gate passes on the GPU
+at the unchanged thresholds. The estimate below was wrong because it compared
+peak FLOP rates, while the CPU kernels run far below the CPU's peak.
+
+What follows is the original assessment, kept as the record of why the port
+had been declined:
 
 - The hot loop is `@njit(parallel=True)` scalar kernels on **float64**, which
   `solver/types.py` documents as "not negotiable" because the lake-at-rest gate

@@ -66,6 +66,8 @@ References:
   - Chow, V.T. (1959). Open-Channel Hydraulics. (Manning's n)
 """
 
+import math
+
 import numpy as np
 from numba import njit, prange
 
@@ -123,9 +125,21 @@ PHI_MIN = 0.25
 # Guard for divisions that are structurally non-zero but can underflow.
 EPS = 1.0e-14
 
+# Bed elevation passed for a neighbour that does not exist (domain edge) to the
+# per-cell CFL estimate. -inf can never be the largest upward bed step, so the
+# edge cell sees exactly the neighbours it has.
+NO_NEIGHBOUR = -math.inf
 
-@njit(inline="always", cache=True)
-def minmod(a: float, b: float) -> float:
+# SINGLE SOURCE OF PHYSICS
+# ------------------------
+# The scalar bodies below that end in `_impl` are plain Python on purpose.
+# Each is compiled twice: with njit here for the CPU kernels, and with
+# cuda.jit(device=True) in flux_cuda.py for the GPU backend. Two hand-written
+# copies of HLLC would drift, and this repo has already paid for that pattern
+# more than once. Edit the `_impl` function and both backends follow.
+
+
+def _minmod_impl(a: float, b: float) -> float:
     """
     Minmod slope limiter.
 
@@ -142,15 +156,17 @@ def minmod(a: float, b: float) -> float:
     return b
 
 
-@njit(inline="always", cache=True)
-def hllc(
+minmod = njit(inline="always", cache=True)(_minmod_impl)
+
+
+def _hllc_impl(
     h_left: float,
     vn_left: float,
     vt_left: float,
     h_right: float,
     vn_right: float,
     vt_right: float,
-    h_dry: float = H_DRY_DEFAULT,
+    h_dry: float,
 ):
     """
     HLLC flux for the shallow-water equations across one interface.
@@ -172,8 +188,8 @@ def hllc(
     if h_left <= h_dry and h_right <= h_dry:
         return 0.0, 0.0, 0.0
 
-    celerity_left = np.sqrt(G * h_left) if h_left > 0.0 else 0.0
-    celerity_right = np.sqrt(G * h_right) if h_right > 0.0 else 0.0
+    celerity_left = math.sqrt(G * h_left) if h_left > 0.0 else 0.0
+    celerity_right = math.sqrt(G * h_right) if h_right > 0.0 else 0.0
 
     # --- Wave speed estimates -------------------------------------------
     if h_left <= h_dry:
@@ -193,7 +209,7 @@ def hllc(
             celerity_star = 0.0
         h_star = celerity_star * celerity_star / G
         vn_star = 0.5 * (vn_left + vn_right) + celerity_left - celerity_right
-        celerity_h_star = np.sqrt(G * h_star)
+        celerity_h_star = math.sqrt(G * h_star)
 
         speed_left = min(vn_left - celerity_left, vn_star - celerity_h_star)
         speed_right = max(vn_right + celerity_right, vn_star + celerity_h_star)
@@ -243,8 +259,16 @@ def hllc(
     return flux_mass, flux_norm, flux_mass * vt_upwind
 
 
+_hllc_cpu = njit(inline="always", cache=True)(_hllc_impl)
+
+
 @njit(inline="always", cache=True)
-def _audusse_face(
+def hllc(h_left, vn_left, vt_left, h_right, vn_right, vt_right, h_dry=H_DRY_DEFAULT):
+    """HLLC flux across one interface. See _hllc_impl for the scheme."""
+    return _hllc_cpu(h_left, vn_left, vt_left, h_right, vn_right, vt_right, h_dry)
+
+
+def _audusse_face_impl(
     eta_left: float,
     h_left: float,
     eta_right: float,
@@ -286,6 +310,9 @@ def _audusse_face(
     corr_right = h_right * h_right - h_star_right * h_star_right
 
     return h_star_left, h_star_right, corr_left, corr_right
+
+
+_audusse_face = njit(inline="always", cache=True)(_audusse_face_impl)
 
 
 @njit(parallel=True, cache=True)
@@ -483,6 +510,39 @@ def tendencies_y(
             d_hu[j, col] -= (flux_xmom[j + 1] - flux_xmom[j]) * inv_dy
 
 
+def _friction_cell_impl(depth, velocity_x, velocity_y, n_local, dt, h_dry, velocity_max):
+    """
+    Manning friction and the velocity cap for ONE cell: the body of
+    apply_friction, shared with the CUDA backend. See apply_friction for the
+    physics.
+
+    Returns:
+        (velocity_x, velocity_y, capped), where capped is 1 if the cap fired.
+    """
+    if depth <= h_dry:
+        return 0.0, 0.0, 0
+
+    speed = math.sqrt(velocity_x * velocity_x + velocity_y * velocity_y)
+    if speed < EPS:
+        return velocity_x, velocity_y, 0
+
+    if n_local > 0.0:
+        drag = G * n_local * n_local * speed / (depth ** (4.0 / 3.0))
+        factor = 1.0 / (1.0 + drag * dt)
+        velocity_x *= factor
+        velocity_y *= factor
+        speed *= factor
+
+    if velocity_max > 0.0 and speed > velocity_max:
+        scale = velocity_max / speed
+        return velocity_x * scale, velocity_y * scale, 1
+
+    return velocity_x, velocity_y, 0
+
+
+_friction_cell = njit(inline="always", cache=True)(_friction_cell_impl)
+
+
 @njit(cache=True)
 def apply_friction(
     h: np.ndarray,
@@ -526,31 +586,68 @@ def apply_friction(
     n_capped = 0
     for j in range(n_rows):
         for i in range(n_cols):
-            depth = h[j, i]
-            if depth <= h_dry:
-                u[j, i] = 0.0
-                v[j, i] = 0.0
-                continue
-
-            speed = np.sqrt(u[j, i] * u[j, i] + v[j, i] * v[j, i])
-            if speed < EPS:
-                continue
-
-            n_local = manning_n[j, i]
-            if n_local > 0.0:
-                drag = G * n_local * n_local * speed / (depth ** (4.0 / 3.0))
-                factor = 1.0 / (1.0 + drag * dt)
-                u[j, i] *= factor
-                v[j, i] *= factor
-                speed *= factor
-
-            if velocity_max > 0.0 and speed > velocity_max:
-                scale = velocity_max / speed
-                u[j, i] *= scale
-                v[j, i] *= scale
-                n_capped += 1
+            new_u, new_v, capped = _friction_cell(
+                h[j, i], u[j, i], v[j, i], manning_n[j, i], dt, h_dry, velocity_max
+            )
+            u[j, i] = new_u
+            v[j, i] = new_v
+            n_capped += capped
 
     return n_capped
+
+
+def _inverse_dt_cell_impl(
+    depth,
+    velocity_x,
+    velocity_y,
+    bed,
+    bed_x_minus,
+    bed_x_plus,
+    bed_y_minus,
+    bed_y_plus,
+    dx,
+    dy,
+    active_x,
+    active_y,
+):
+    """
+    Summed inverse timescale of ONE wet cell: the body of
+    max_wave_speed_inverse_dt, shared with the CUDA backend. See that function
+    for the derivation of the bed-step term. A neighbour beyond the domain edge
+    is passed as NO_NEIGHBOUR.
+    """
+    celerity = math.sqrt(G * depth)
+    total = 0.0
+    if active_x:
+        # Deepest Audusse cut to an x-neighbour: the largest upward
+        # bed step, clipped at the depth (past that the face is dry).
+        rise = 0.0
+        if bed_x_minus - bed > rise:
+            rise = bed_x_minus - bed
+        if bed_x_plus - bed > rise:
+            rise = bed_x_plus - bed
+        if rise > depth:
+            rise = depth
+        wet_fraction = (depth - rise) / depth
+        if wet_fraction < PHI_MIN:
+            wet_fraction = PHI_MIN
+        total += (abs(velocity_x) + celerity / wet_fraction) / dx
+    if active_y:
+        rise = 0.0
+        if bed_y_minus - bed > rise:
+            rise = bed_y_minus - bed
+        if bed_y_plus - bed > rise:
+            rise = bed_y_plus - bed
+        if rise > depth:
+            rise = depth
+        wet_fraction = (depth - rise) / depth
+        if wet_fraction < PHI_MIN:
+            wet_fraction = PHI_MIN
+        total += (abs(velocity_y) + celerity / wet_fraction) / dy
+    return total
+
+
+_inverse_dt_cell = njit(inline="always", cache=True)(_inverse_dt_cell_impl)
 
 
 @njit(cache=True)
@@ -628,35 +725,20 @@ def max_wave_speed_inverse_dt(
             depth = h[j, i]
             if depth <= h_dry:
                 continue
-            celerity = np.sqrt(G * depth)
-            bed = b[j, i]
-            total = 0.0
-            if active_x:
-                # Deepest Audusse cut to an x-neighbour: the largest upward
-                # bed step, clipped at the depth (past that the face is dry).
-                rise = 0.0
-                if i > 0 and b[j, i - 1] - bed > rise:
-                    rise = b[j, i - 1] - bed
-                if i < n_cols - 1 and b[j, i + 1] - bed > rise:
-                    rise = b[j, i + 1] - bed
-                if rise > depth:
-                    rise = depth
-                wet_fraction = (depth - rise) / depth
-                if wet_fraction < PHI_MIN:
-                    wet_fraction = PHI_MIN
-                total += (abs(u[j, i]) + celerity / wet_fraction) / dx
-            if active_y:
-                rise = 0.0
-                if j > 0 and b[j - 1, i] - bed > rise:
-                    rise = b[j - 1, i] - bed
-                if j < n_rows - 1 and b[j + 1, i] - bed > rise:
-                    rise = b[j + 1, i] - bed
-                if rise > depth:
-                    rise = depth
-                wet_fraction = (depth - rise) / depth
-                if wet_fraction < PHI_MIN:
-                    wet_fraction = PHI_MIN
-                total += (abs(v[j, i]) + celerity / wet_fraction) / dy
+            total = _inverse_dt_cell(
+                depth,
+                u[j, i],
+                v[j, i],
+                b[j, i],
+                b[j, i - 1] if i > 0 else NO_NEIGHBOUR,
+                b[j, i + 1] if i < n_cols - 1 else NO_NEIGHBOUR,
+                b[j - 1, i] if j > 0 else NO_NEIGHBOUR,
+                b[j + 1, i] if j < n_rows - 1 else NO_NEIGHBOUR,
+                dx,
+                dy,
+                active_x,
+                active_y,
+            )
             if total > worst:
                 worst = total
     return worst

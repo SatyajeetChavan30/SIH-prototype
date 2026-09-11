@@ -62,8 +62,8 @@
 | Metric | Delft3D | HEC-RAS 2D | DualSPHysics | JalRaksha |
 |:---|:---|:---|:---|:---|
 | **60 km Domain Runtime** | 2-6 hours | 30-120 minutes | Days-weeks | 10-60 minutes |
-| **GPU Acceleration** | No | No | Yes (CUDA) | No (CPU-optimized) |
-| **Parallelization** | MPI (limited) | Limited | GPU threading | Multi-core CPU (multiprocessing) |
+| **GPU Acceleration** | No | No | Yes (CUDA) | Yes (CUDA, float64, same physics source as the CPU path; CPU fallback) |
+| **Parallelization** | MPI (limited) | Limited | GPU threading | Batched ensemble on the GPU, or multi-core CPU (multiprocessing) |
 | **Memory Footprint** | Medium | Low | Very High (billions of particles) | Medium (1000x1000 grid) |
 | **Ensemble Capability** | Manual | Manual | Impractical | Automated (100 members) |
 
@@ -114,7 +114,7 @@
 | **Density Filtering** | Yes | Yes | **Yes** |
 | **Viscosity** | Artificial/δ-SPH | Artificial | **Artificial** |
 | **Boundary Condition** | Dynamic/dummy particles | Dynamic | **One-way coupled to 2D** |
-| **GPU Support** | CUDA | CUDA | **No (CPU only)** |
+| **GPU Support** | CUDA | CUDA | **CPU in practice.** PySPH's OpenCL backend is wired in, but on Python 3.14 compyle 0.9.1 cannot generate its kernels (it uses `ast.Str`), so SPH falls back to the CPU and says so |
 | **Parallelization** | GPU + MPI | GPU | **Multi-core CPU** |
 
 ### 3.3 Uncertainty Quantification

@@ -646,6 +646,35 @@ def _notch_breach_into_bed(
     )
 
 
+def hydrograph_discharge(
+    t_s: float, dt_s: float, q_t_array: np.ndarray, t_array: np.ndarray
+) -> float:
+    """
+    Breach discharge (m³/s) at time t_s, by linear interpolation of the hydrograph.
+
+    Zero before the first sample (including at exactly t_array[0]) and after the
+    last. dt_s matters only when the discharge series is longer than the time
+    series, where it extends the final interval.
+
+    The single definition of "what the breach releases at t". The injector below
+    uses it, the tests use it to check the released volume, and
+    solver/ensemble_cuda.py mirrors it on the GPU.
+    """
+    idx = np.searchsorted(t_array, t_s)
+    if idx >= len(q_t_array) or idx == 0:
+        return 0
+    # Linear interpolation
+    t_prev = t_array[idx - 1]
+    t_next = t_array[idx] if idx < len(t_array) else t_prev + dt_s
+    q_prev = q_t_array[idx - 1]
+    q_next = q_t_array[idx] if idx < len(q_t_array) else q_prev
+
+    if t_next > t_prev:
+        alpha = (t_s - t_prev) / (t_next - t_prev)
+        return (1 - alpha) * q_prev + alpha * q_next
+    return q_prev
+
+
 def inject_breach_hydrograph(
     state: "State",
     grid: Grid,
@@ -670,24 +699,7 @@ def inject_breach_hydrograph(
 
     Modifies state.u, state.v, state.h at breach cell to enforce discharge.
     """
-    # Find current discharge from hydrograph
-    # Interpolate linearly if t_s falls between two time steps
-    idx = np.searchsorted(t_array, t_s)
-    if idx >= len(q_t_array) or idx == 0:
-        q_current = 0
-    else:
-        # Linear interpolation
-        t_prev = t_array[idx - 1]
-        t_next = t_array[idx] if idx < len(t_array) else t_prev + dt_s
-        q_prev = q_t_array[idx - 1]
-        q_next = q_t_array[idx] if idx < len(q_t_array) else q_prev
-
-        if t_next > t_prev:
-            alpha = (t_s - t_prev) / (t_next - t_prev)
-            q_current = (1 - alpha) * q_prev + alpha * q_next
-        else:
-            q_current = q_prev
-
+    q_current = hydrograph_discharge(t_s, dt_s, q_t_array, t_array)
     if q_current <= 0:
         return  # No injection
 
@@ -1026,6 +1038,23 @@ def run_dam_break_ensemble(
 
     print(f"\n  Completed: {len(results_ensemble)}/{ensemble_size} members")
 
+    # Which hardware produced the members, and why (solver/backend.py). Every
+    # member carries it, a GPU run that fell back to the CPU included, so the
+    # run reports the backend its members actually used rather than the one
+    # that was asked for.
+    solver_backend = next(
+        (
+            {key: member.get(key) for key in (
+                "solver_backend", "solver_backend_label",
+                "solver_backend_reason", "solver_device",
+            )}
+            for member in member_results if member.get("solver_backend")
+        ),
+        None,
+    )
+    if solver_backend:
+        print(f"  Solver backend: {solver_backend['solver_backend_label']}")
+
     if len(results_ensemble) == 0:
         return {"error": "No ensemble members completed successfully"}
 
@@ -1119,6 +1148,7 @@ def run_dam_break_ensemble(
         "volume_balance": _summarize_volume_balance(volume_balance_members),
         "num_completed": len(results_ensemble),
         "num_ensemble": ensemble_size,
+        "solver_backend": solver_backend,
         "gauges": gauges,
         "grid": {
             "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,

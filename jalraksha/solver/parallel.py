@@ -6,15 +6,25 @@ hydrograph and integrates the same initial state. That makes the ensemble, not
 the solver kernel, the cheap axis of parallelism.
 
 Design rule: `run_ensemble_member()` is the SINGLE definition of what running one
-member means. Both the sequential and the process-pool paths call it, so results
-cannot diverge between them. An earlier version of this module reimplemented the
-time-stepping loop with its own simplified breach injection, which meant parallel
-runs silently produced different physics from sequential ones.
+member means on the CPU. Both the sequential and the process-pool paths call it,
+so results cannot diverge between them. An earlier version of this module
+reimplemented the time-stepping loop with its own simplified breach injection,
+which meant parallel runs silently produced different physics from sequential
+ones.
 
-Why not GPU: the flux kernels are numba scalar loops on float64 (mandated by
-solver/types.py for the lake-at-rest gate), and consumer GPUs run float64 at
-1/64 of float32 — a float64 CUDA port would likely be slower than these CPU
-kernels. See solver/flux.py:48 on why fastmath is also off the table.
+GPU backend. `run_ensemble(backend="auto")` runs the members on the GPU when CUDA
+is available (solver/ensemble_cuda.py): all members at once, each with its own
+timestep, in float64, compiled from the same physics source as the CPU kernels.
+That is necessarily a second implementation of the member loop. It is therefore
+bound to this one by tests/test_parallel.py::TestGpuEnsemble, which runs both on
+the same inputs and compares them. If the GPU path cannot start, run_ensemble
+falls back to the CPU with a warning and records why in every member's
+`solver_backend_reason`.
+
+This docstring used to say a float64 CUDA port "would likely be slower" than
+these kernels, because consumer GPUs run float64 at 1/64 of float32. That was an
+estimate and was never measured. The measurement is in
+docs/validation_findings.md (GPU backend section).
 
 References:
   Spec §12: Parallelization & Performance Optimization
@@ -51,6 +61,111 @@ WORKER_STARTUP_SECONDS = 15.0
 # axes compete for the same cores, so workers are pinned to one thread each
 # (see _init_worker) and the parallelism is spent across members instead.
 INTRA_MEMBER_THREAD_SPEEDUP = 2.4
+
+# Courant number every ensemble member runs at, on either backend. It sits inside
+# SWESolver's CFL_MAX, so the step cap below reflects the timestep actually taken.
+# The previous cfl=0.9 was silently clamped, which made the cap ~3x off.
+MEMBER_CFL = 0.3
+
+# Smallest timestep the per-member step cap allows for (s).
+MEMBER_DT_FLOOR_S = 1e-3
+
+
+def member_step_cap(solver_duration_s: float, dt_floor_s: float = MEMBER_DT_FLOOR_S) -> int:
+    """
+    Safety cap on steps per member, shared by the CPU and GPU member loops.
+
+    It exists to stop a collapsed timestep from hanging a run, and it must not
+    silently truncate a healthy one. Sizing it from the initial timestep (as
+    this once did) is badly wrong: the domain starts dry, so the first CFL
+    timestep is the maximum allowed, and once the flood arrives dt collapses by
+    orders of magnitude. The old cap cut runs off after a handful of real steps.
+    Deriving it from a floor on dt gives a bound the physics cannot
+    legitimately exceed.
+    """
+    max_steps = int(solver_duration_s / max(dt_floor_s, 1e-6)) + 1
+    return min(max_steps, 5_000_000)
+
+
+# Trial injections allowed when shrinking a step so it stays CFL-valid after
+# the breach injection (see inject_with_one_timestep). This is a guard against a
+# pathological case spinning, not a tuning knob: a step that uses them all is
+# counted in `injection_step_overruns`, never hidden.
+MAX_INJECTION_PASSES = 8
+
+# Relative slack on "this step is CFL-valid after the injection". Where adding
+# water makes the breach cell's CFL limit RISE (the wet-fraction term, see
+# inject_with_one_timestep), shrinking dt to the post-injection limit converges
+# on that limit geometrically from above and never quite passes below it.
+# Measured on the harshest valley case (20,000 m3/s, no breach notch), 4 steps
+# in 2,745 used all MAX_INJECTION_PASSES and still ended within 5e-7 of the
+# limit. One part in a million is a Courant number of 0.3000003 against the
+# 0.3 ceiling, and the positivity proof holds to 0.5.
+INJECTION_CFL_RTOL = 1e-6
+
+
+def inject_with_one_timestep(
+    solver: Any,
+    state: Any,
+    grid: Any,
+    i_breach: int,
+    j_breach: int,
+    t_s: float,
+    dt_pre_injection: float,
+    q_t_array: np.ndarray,
+    t_array: np.ndarray,
+):
+    """
+    Inject one step's breach outflow, and return the ONE timestep that the
+    injection, the solver step and the member clock must all use.
+
+    The discharge enters as depth, Q(t) * dt / cell_area, so how much water goes
+    in depends on dt. But the step must be CFL-valid for the state it integrates,
+    which is the state AFTER the injection, and extra depth at the breach cell
+    raises its wave speed. So:
+
+        dt = CFL limit of the pre-injection state
+        repeat: inject Q(t) * dt
+                if dt <= CFL limit of the post-injection state
+                      (to one part in a million, INJECTION_CFL_RTOL): done
+                else: dt = that limit, and re-inject
+
+    Re-injecting less water normally leaves the post-injection limit above the
+    new dt at once. That is not guaranteed: the Audusse wet-fraction term makes a
+    thin film over a bed step faster than a deeper one (see
+    flux.max_wave_speed_inverse_dt), so the loop re-checks instead of assuming.
+    dt only shrinks, and with no injection at all the pre-injection limit holds,
+    so the loop converges.
+
+    This replaced three different timesteps per iteration: inject with the
+    pre-injection dt, step with the post-injection dt, advance the clock by the
+    pre-injection dt. Measured, that made the member clock run up to 2.6% ahead
+    of the integrated physics and over-injected by up to 1.2%
+    (docs/validation_findings.md §11). The GPU ensemble mirrors this exactly
+    (ensemble_cuda.choose_injection_step).
+
+    Returns:
+        (dt, passes, overran): the timestep; the number of trial injections
+        (1 means no shrink was needed); and True only if MAX_INJECTION_PASSES
+        ran out while dt was still above the post-injection limit.
+    """
+    from jalraksha.run import inject_breach_hydrograph
+
+    saved_depth = state.h[j_breach, i_breach]
+    dt = dt_pre_injection
+    passes = 0
+    while True:
+        passes += 1
+        state.h[j_breach, i_breach] = saved_depth
+        inject_breach_hydrograph(state, grid, i_breach, j_breach, t_s, dt, q_t_array, t_array)
+        if state.h[j_breach, i_breach] == saved_depth:
+            return dt, passes, False  # nothing injected: the state and its limit are unchanged
+        dt_post_injection = solver.compute_cfl_timestep(state)
+        if dt <= dt_post_injection * (1.0 + INJECTION_CFL_RTOL):
+            return dt, passes, False
+        if passes >= MAX_INJECTION_PASSES:
+            return dt, passes, True
+        dt = dt_post_injection
 
 
 def _snapshot(state: Any, time_s: float) -> Dict[str, Any]:
@@ -105,21 +220,22 @@ def run_ensemble_member(
     # Imported here rather than at module scope so process-pool workers pick them
     # up on their own side of the fork/spawn boundary.
     from jalraksha.solver.core import SWESolver
-    from jalraksha.run import inject_breach_hydrograph
 
     try:
         t_hydro = hydrograph["t_array"]
         q_hydro = hydrograph["Q_t"]
         metadata = hydrograph["metadata"]
 
-        # cfl is clamped to SWESolver's own CFL_MAX; pass a value inside that
-        # bound so max_steps below reflects the timestep actually taken. The
-        # previous cfl=0.9 was silently clamped, making the estimate ~3x off.
-        solver = SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)
+        # backend="cpu" always: this IS the CPU path. The GPU runs members
+        # through ensemble_cuda instead, and a pool worker must never try CUDA.
+        solver = SWESolver(
+            grid, manning_n=float(np.mean(manning_field)), cfl=MEMBER_CFL, backend="cpu"
+        )
 
         state = state_init.copy()
         t_sim = 0.0
-        dt_adaptive = solver.compute_cfl_timestep(state)
+        # CFL limit of the state as it stands, BEFORE this step's injection.
+        dt_pre_injection = solver.compute_cfl_timestep(state)
 
         t_arrival = np.full((grid.ny, grid.nx), np.inf, dtype=np.float64)
         h_max = np.zeros((grid.ny, grid.nx), dtype=np.float64)
@@ -132,14 +248,9 @@ def run_ensemble_member(
         v_max = np.zeros((grid.ny, grid.nx), dtype=np.float64)
 
         step_count = 0
-        # Safety cap only — it must not silently truncate the run. Sizing it from
-        # the initial timestep (as this once did) is badly wrong: the domain
-        # starts dry, so the first CFL timestep is the maximum allowed, and once
-        # the flood arrives dt collapses by orders of magnitude. The old cap cut
-        # runs off after a handful of real steps. Deriving it from dt_min gives a
-        # bound the physics cannot legitimately exceed.
-        max_steps = int(solver_duration_s / max(getattr(solver, "dt_min", 1e-3), 1e-6)) + 1
-        max_steps = min(max_steps, 5_000_000)
+        max_steps = member_step_cap(
+            solver_duration_s, getattr(solver, "dt_min", MEMBER_DT_FLOOR_S)
+        )
 
         depth_series: List[Dict[str, Any]] = []
         next_snapshot_idx = 0
@@ -153,19 +264,27 @@ def run_ensemble_member(
         # for "where did the water go" is what really entered the domain.
         cell_area_m2 = float(grid.dx) * float(grid.dy)
         volume_released_m3 = 0.0
+        # Steps whose timestep had to shrink to stay CFL-valid after the
+        # injection, and steps that ran out of passes doing so (expected: none).
+        injection_step_retries = 0
+        injection_step_overruns = 0
 
         while t_sim < solver_duration_s and step_count < max_steps:
             h_before_inject = float(state.h.sum())
-            inject_breach_hydrograph(
-                state, grid, i_breach, j_breach, t_sim, dt_adaptive, q_hydro, t_hydro
+            dt, passes, overran = inject_with_one_timestep(
+                solver, state, grid, i_breach, j_breach, t_sim, dt_pre_injection,
+                q_hydro, t_hydro,
             )
+            injection_step_retries += int(passes > 1)
+            injection_step_overruns += int(overran)
             volume_released_m3 += (
                 float(state.h.sum()) - h_before_inject
             ) * cell_area_m2
 
-            state = solver.step(state)
-            t_sim += dt_adaptive
-            dt_adaptive = solver.compute_cfl_timestep(state)
+            # ONE timestep: the injection above, this step, and the clock.
+            state = solver.step(state, dt=dt)
+            t_sim += dt
+            dt_pre_injection = solver.compute_cfl_timestep(state)
 
             newly_wet = (state.h >= ARRIVAL_THRESHOLD_M) & (t_arrival == np.inf)
             t_arrival[newly_wet] = t_sim
@@ -221,6 +340,11 @@ def run_ensemble_member(
             "metadata": metadata,
             "depth_series": depth_series,
             "n_steps": step_count,
+            # The member clock at the end. It IS the integrated physics time
+            # (state.t), because every step advances both by the same dt.
+            "t_end_s": t_sim,
+            "injection_step_retries": injection_step_retries,
+            "injection_step_overruns": injection_step_overruns,
             # Volume balance: released should equal exited + retained to within
             # the scheme's own conservation error. A large retained fraction is
             # the drainage plateau of docs/validation_findings.md section 8,
@@ -300,9 +424,103 @@ def run_ensemble(
     snapshot_times: Optional[Sequence[float]] = None,
     n_workers: Optional[int] = None,
     progress_cb: Optional[Callable[[int, int], None]] = None,
+    backend: Optional[str] = "auto",
 ) -> List[Dict[str, Any]]:
     """
-    Run every ensemble member, in-process or across a process pool.
+    Run every ensemble member on the GPU or the CPU.
+
+    Args:
+        backend: "auto" uses the GPU when a float64 CUDA kernel can run and the
+            CPU otherwise, honouring JALRAKSHA_SOLVER_BACKEND. "cuda" uses the
+            GPU or raises. "cpu" uses the CPU path below.
+        n_workers: CPU path only (see _run_ensemble_cpu).
+
+    Every returned member dict carries solver_backend, solver_backend_label and
+    solver_backend_reason, so no result loses track of the hardware that
+    produced it. That includes a GPU run that failed and fell back to the CPU.
+    If that fallback happens mid-run, progress restarts from zero on the CPU.
+
+    Returns:
+        Member result dicts ordered by sample_id, successes and failures alike.
+    """
+    from .backend import BackendChoice, resolve_backend
+
+    choice = resolve_backend(backend)
+    if choice.name == "cuda":
+        total = len(hydrographs)
+        done = 0
+
+        def _member_done() -> None:
+            nonlocal done
+            done += 1
+            if progress_cb is not None:
+                try:
+                    progress_cb(done, total)
+                except Exception:  # pragma: no cover - telemetry only
+                    pass
+
+        try:
+            from .ensemble_cuda import run_ensemble_gpu
+
+            results = run_ensemble_gpu(
+                hydrographs,
+                grid,
+                state_init,
+                manning_field,
+                i_breach,
+                j_breach,
+                solver_duration_s,
+                snapshot_sample_id=snapshot_sample_id,
+                snapshot_times=snapshot_times,
+                on_member_done=_member_done,
+            )
+            return _stamp_backend(results, choice)
+        except Exception as e:
+            if choice.requested == "cuda":
+                raise
+            reason = f"GPU ensemble failed ({type(e).__name__}: {e}); ran on CPU instead"
+            warnings.warn(reason, stacklevel=2)
+            choice = BackendChoice("cpu", choice.requested, reason)
+
+    results = _run_ensemble_cpu(
+        hydrographs,
+        grid,
+        state_init,
+        manning_field,
+        i_breach,
+        j_breach,
+        solver_duration_s,
+        snapshot_sample_id=snapshot_sample_id,
+        snapshot_times=snapshot_times,
+        n_workers=n_workers,
+        progress_cb=progress_cb,
+    )
+    return _stamp_backend(results, choice)
+
+
+def _stamp_backend(results: List[Dict[str, Any]], choice: Any) -> List[Dict[str, Any]]:
+    """Record on every member which backend produced it, and why."""
+    provenance = choice.as_dict()
+    for result in results:
+        result.update(provenance)
+    return results
+
+
+def _run_ensemble_cpu(
+    hydrographs: List[Dict[str, Any]],
+    grid: Any,
+    state_init: Any,
+    manning_field: np.ndarray,
+    i_breach: int,
+    j_breach: int,
+    solver_duration_s: float,
+    snapshot_sample_id: Optional[int] = None,
+    snapshot_times: Optional[Sequence[float]] = None,
+    n_workers: Optional[int] = None,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Run every ensemble member on the CPU, in-process or across a process pool.
 
     On Windows, callers running this from a script MUST guard their entry point::
 

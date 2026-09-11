@@ -25,11 +25,30 @@ References:
 import numpy as np
 import pytest
 
+from jalraksha.solver.backend import ENV_VAR, cuda_probe
 from jalraksha.solver.core import SWESolver
 from jalraksha.solver.types import Grid, create_state
 
 # Gravitational acceleration (m/s^2), matching jalraksha.solver.flux.G.
 G = 9.81
+
+
+@pytest.fixture(autouse=True, params=["cpu", "cuda"])
+def solver_backend(request, monkeypatch):
+    """
+    Run every test in this module on both backends.
+
+    The blocking gates are properties of the physics, so the GPU must pass them
+    on its own at the same thresholds, not merely agree with the CPU. Every
+    SWESolver here is built with backend="auto", which reads this variable.
+    The cuda half is skipped, with the probe's reason, where CUDA cannot run.
+    """
+    if request.param == "cuda":
+        available, detail, _ = cuda_probe()
+        if not available:
+            pytest.skip(f"CUDA backend unavailable: {detail}")
+    monkeypatch.setenv(ENV_VAR, request.param)
+    return request.param
 
 
 # ======================================================================
