@@ -1,8 +1,8 @@
 import numpy as np
-from floodview.terrain.domain import (
+from jalraksha.terrain.domain import (
     build_domain, compute_breach_location, compute_utm_zone,
 )
-from floodview.solver.core import SWESolver
+from jalraksha.solver.core import SWESolver
 
 cfg = {
     "name": "Tehri", "lat": 30.3789, "lon": 78.4789, "height_m": 260.0,

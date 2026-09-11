@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-09-11T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="Flood Simulation Pipeline" id="pipeline1">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Center label -->
+        <mxCell id="center" value="JalRaksha&#10;Simulation Pipeline" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;fontSize=16;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="370" y="370" width="160" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- Node 0: User Input -->
+        <mxCell id="n0" value="User Input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="360" y="80" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n0d" value="User provides breach parameters via dashboard" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="360" y="118" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 1: API Validation -->
+        <mxCell id="n1" value="API Validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="566" y="155" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n1d" value="API validates and preprocesses inputs" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="566" y="193" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 2: Breach Analysis -->
+        <mxCell id="n2" value="Breach Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B9E0A5;strokeColor=#57902A;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="675" y="345" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n2d" value="Breach parameters are generated using Monte Carlo" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="675" y="383" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 3: Parallel Solvers -->
+        <mxCell id="n3" value="Parallel Solvers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="637" y="560" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n3d" value="3D SPH and 2D SWE solvers run in parallel" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="637" y="598" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 4: Ensemble Simulation -->
+        <mxCell id="n4" value="Ensemble Simulation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="469" y="701" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n4d" value="Uncertainty is propagated through ensemble runs" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="469" y="739" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 5: Validation Suite -->
+        <mxCell id="n5" value="Validation Suite" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="251" y="701" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n5d" value="Results are checked for quality and accuracy" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="251" y="739" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 6: Export Engine -->
+        <mxCell id="n6" value="Export Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FADCEB;strokeColor=#D6398C;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="83" y="560" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n6d" value="Outputs are formatted into various formats" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="83" y="598" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 7: Visualization -->
+        <mxCell id="n7" value="Visualization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6D0F5;strokeColor=#9673A6;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="345" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n7d" value="Results are displayed on the dashboard" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="45" y="383" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Node 8: Data Storage -->
+        <mxCell id="n8" value="Data Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D9D2E9;strokeColor=#6B5B95;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="154" y="155" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n8d" value="Results are cached and stored internally" style="text;html=1;whiteSpace=wrap;fontSize=11;fontColor=#333333;align=center;" vertex="1" parent="1">
+          <mxGeometry x="154" y="193" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Edges: circular flow -->
+        <mxCell id="e01" style="edgeStyle=none;rounded=0;html=1;strokeColor=#6C8EBF;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n0" target="n1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=none;rounded=0;html=1;strokeColor=#82B366;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n1" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" style="edgeStyle=none;rounded=0;html=1;strokeColor=#57902A;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n2" target="n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e34" style="edgeStyle=none;rounded=0;html=1;strokeColor=#D6B656;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e45" style="edgeStyle=none;rounded=0;html=1;strokeColor=#D79B00;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n4" target="n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e56" style="edgeStyle=none;rounded=0;html=1;strokeColor=#B85450;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n5" target="n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e67" style="edgeStyle=none;rounded=0;html=1;strokeColor=#D6398C;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n6" target="n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e78" style="edgeStyle=none;rounded=0;html=1;strokeColor=#9673A6;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n7" target="n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e80" style="edgeStyle=none;rounded=0;html=1;strokeColor=#6B5B95;strokeWidth=2;endArrow=block;endFill=1;curved=0;" edge="1" parent="1" source="n8" target="n0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

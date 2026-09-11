@@ -27,13 +27,13 @@ _SERVICE_ROOT = str(
 if _SERVICE_ROOT not in sys.path:
     sys.path.insert(0, _SERVICE_ROOT)
 
-from floodview_service import db  # noqa: E402
+from jalraksha_service import db  # noqa: E402
 
 
 @pytest.fixture
 def isolated_db(tmp_path, monkeypatch):
     """Point the service at a throwaway SQLite file."""
-    from floodview_service import config
+    from jalraksha_service import config
 
     monkeypatch.setattr(config.settings, "DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
     monkeypatch.setattr(config.settings, "DATA_DIR", tmp_path)

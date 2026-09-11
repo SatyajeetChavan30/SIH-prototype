@@ -54,7 +54,7 @@ def _load_dam_config(run_id: str) -> dict:
     layer adds to the same JSON blob; they are stripped so what is handed back
     is the dam config as the solver saw it and nothing else.
     """
-    from floodview_service import db
+    from jalraksha_service import db
 
     row = db.get_run(run_id)
     if row is None:
@@ -77,7 +77,7 @@ def _load_dam_config(run_id: str) -> dict:
 
 
 def rerun(run_id: str) -> int:
-    from floodview_service.tasks import _run_comparison
+    from jalraksha_service.tasks import _run_comparison
 
     config = _load_dam_config(run_id)
     print(f"\n=== {run_id[:12]}  {config.get('name', '?')} "
@@ -113,7 +113,7 @@ def main() -> int:
 
     run_ids = list(args.run_ids)
     if args.all_both:
-        from floodview_service import db
+        from jalraksha_service import db
 
         run_ids += [r["run_id"] for r in db.list_runs()
                     if r.get("solver") == "both" and r.get("status") == "done"

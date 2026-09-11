@@ -1,9 +1,9 @@
 """
-FloodView architecture diagrams -- draw.io edition, SIH 2026 PS 26161 (NTRO).
+JalRaksha architecture diagrams -- draw.io edition, SIH 2026 PS 26161 (NTRO).
 
     python tools/build_architecture_drawio.py
 
-Writes FloodView_Architecture_Diagrams.drawio at the repository root: the same
+Writes JalRaksha_Architecture_Diagrams.drawio at the repository root: the same
 ten slides as tools/build_architecture_deck.py (the PowerPoint version), each
 as its own editable page in one draw.io file. Open it at app.diagrams.net or
 in the draw.io desktop app / VS Code extension.
@@ -36,7 +36,7 @@ def _xmlsafe_html(val: str) -> str:
     return val
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "FloodView_Architecture_Diagrams.drawio"
+OUTPUT = ROOT / "JalRaksha_Architecture_Diagrams.drawio"
 
 SC = 100  # px per inch -- matches the 13.333in x 7.5in pptx canvas at 1333x750px
 
@@ -233,7 +233,7 @@ class Page:
     def frame(self, prs_title, prs_subtitle, prs_footer, number):
         """Slide chrome: wordmark, title, SIH tag, footer bar -- matches new_slide() in the pptx script."""
         self.rect(0, 0, int(13.333 * SC), int(7.5 * SC), "", fill=WHITE, stroke=WHITE, rounded=False)
-        self.rect(22, 14, 130, 34, html_lines("FloodView"), fill=NAVY, stroke=NAVY, font=WHITE, fs=11, rounded=True, arc=40)
+        self.rect(22, 14, 130, 34, html_lines("JalRaksha"), fill=NAVY, stroke=NAVY, font=WHITE, fs=11, rounded=True, arc=40)
         self.textbox(22, 50, 160, 20, "PS 26161 · NTRO", size=6.2, color=MUTED)
         self.textbox(170, 8, 955, 44, prs_title, size=20, color=INK, bold=True, align="left")
         self.textbox(170, 50, 955, 22, prs_subtitle, size=8.2, color=MUTED, italic=True)
@@ -269,7 +269,7 @@ def IN(v: float) -> float:
 def slide_architecture() -> Page:
     s = Page("1. System Architecture")
     s.frame("HOW THE SYSTEM IS BUILT",
-            "FloodView is a layered system -- each layer does one job and hands its result to the next",
+            "JalRaksha is a layered system -- each layer does one job and hands its result to the next",
             "Anyone can run it from a browser. Everything underneath is free, open and cached for offline use.", 1)
 
     s.zone(IN(0.22), IN(0.98), IN(5.55), IN(1.12), "LAYER 1 · WHAT USERS SEE", TEAL)
@@ -350,7 +350,7 @@ def slide_how_it_works() -> Page:
     s.panel(IN(9.00), IN(0.94), IN(4.11), IN(1.44), "Why the speed matters", [
         "Today: weeks of specialist setup and licensed software",
         "Today: field survey costs before a single map exists",
-        "FloodView: four inputs, free data, a full run in 47 seconds",
+        "JalRaksha: four inputs, free data, a full run in 47 seconds",
         "Any trained officer can run it -- and it runs offline",
     ], AMBER)
 
@@ -558,7 +558,7 @@ def slide_use_case() -> Page:
         s.actor(IN(cx), IN(y), name, role)
 
     s.rect(IN(2.32), IN(1.02), IN(7.74), IN(5.92), "", fill=tint(SKY, 0.975), stroke=SKY, rounded=True, arc=3)
-    s.rect(IN(4.42), IN(0.90), IN(3.54), IN(0.30), "EVERYTHING INSIDE THIS BOX IS FLOODVIEW", fill=SKY, stroke=SKY,
+    s.rect(IN(4.42), IN(0.90), IN(3.54), IN(0.30), "EVERYTHING INSIDE THIS BOX IS JALRAKSHA", fill=SKY, stroke=SKY,
            font=WHITE, fs=7.4, rounded=True, arc=30)
 
     left = [
@@ -615,7 +615,7 @@ def slide_component_map() -> Page:
             "Six working parts and three supporting ones. Arrows show which way information travels.",
             "Each part depends only on the parts to its left, so any one of them can be replaced on its own.", 6)
 
-    s.rect(IN(5.02), IN(0.96), IN(3.30), IN(0.52), "FLOODVIEW · THE WHOLE SYSTEM", fill=SKY, stroke=SKY, font=WHITE, fs=10, rounded=True, arc=20)
+    s.rect(IN(5.02), IN(0.96), IN(3.30), IN(0.52), "JALRAKSHA · THE WHOLE SYSTEM", fill=SKY, stroke=SKY, font=WHITE, fs=10, rounded=True, arc=20)
 
     parts = [
         (0.22, 2.06, "Flood Simulation Engine", BLUE,
@@ -757,7 +757,7 @@ def slide_impact() -> Page:
     s.rect(IN(0.22), IN(0.96), IN(12.89), IN(0.62),
            "A conventional dam-break study takes <b>weeks</b> of specialist time and licensed software, so it is only "
            "commissioned for the dams somebody has already worried about.<br>"
-           "FloodView completes the same screening in <b>minutes</b>, from free satellite data -- which changes who "
+           "JalRaksha completes the same screening in <b>minutes</b>, from free satellite data -- which changes who "
            "gets screened, not just how fast.",
            fill=tint(BLUE, 0.90), stroke=BLUE, font=INK, fs=9, align="left", valign="middle", rounded=True, arc=5)
 
@@ -793,7 +793,7 @@ def slide_impact() -> Page:
     s.textbox(IN(0.22), IN(3.62), IN(6.00), IN(0.26), "How that compares with current practice", size=10, color=INK, bold=True)
     s.table(
         IN(0.22), IN(3.96), [IN(2.82), IN(4.66), IN(5.35)], IN(0.34),
-        ["What you need", "How it is done today", "How FloodView does it"],
+        ["What you need", "How it is done today", "How JalRaksha does it"],
         [
             ["Time to a first answer", "Weeks of specialist setup", "Minutes -- pick a dam and press run"],
             ["Data you must buy", "Licensed elevation data plus a field survey", "None. Free satellite data, cached locally"],
@@ -880,7 +880,7 @@ def slide_validation() -> Page:
         IN(5.06), IN(3.78), [IN(2.75), IN(1.85), IN(1.55), IN(1.78)], IN(0.36),
         ["Engine", "Error against the exact answer", "Depth at the wall", "Verdict"],
         [
-            ["FloodView", "0.0317 m", "4.532 m", "passes"],
+            ["JalRaksha", "0.0317 m", "4.532 m", "passes"],
             ["Delft3D FM (Deltares)", "0.0349 m", "4.515 m", "passes"],
             ["The exact answer (1892)", "reference", "4.444 m", "reference"],
         ],
@@ -967,7 +967,7 @@ def slide_roadmap() -> Page:
         s.rect(IN(9.64), IN(y - 0.11), IN(0.80), IN(0.24), esc(label), fill=accent, stroke=accent, font=WHITE, fs=7.6, rounded=True, arc=30)
 
     s.note(IN(4.06), IN(5.76), IN(5.20), IN(1.22),
-           "The framing matters as much as the software. FloodView is a first-pass screening instrument: it tells a "
+           "The framing matters as much as the software. JalRaksha is a first-pass screening instrument: it tells a "
            "state which of its dams deserve a full surveyed study, and in what order. It does not replace that study, "
            "and the reports say so on their own face rather than in a footnote.", align="left")
     s.note(IN(0.22), IN(6.32), IN(3.60), IN(0.66),
@@ -991,7 +991,7 @@ def main() -> None:
     diagrams = "\n".join(p.xml(f"page{i}") for i, p in enumerate(pages, start=1))
     doc = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        f'<mxfile host="app.diagrams.net" agent="FloodView build_architecture_drawio.py" version="24.0.0">\n'
+        f'<mxfile host="app.diagrams.net" agent="JalRaksha build_architecture_drawio.py" version="24.0.0">\n'
         f"{diagrams}\n"
         f"</mxfile>\n"
     )

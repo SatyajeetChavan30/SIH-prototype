@@ -16,15 +16,15 @@ This comprehensive review evaluates existing 3D numerical methods—including Eu
 
 ---
 
-## 🔑 Key Findings & Relevance to FloodView
+## 🔑 Key Findings & Relevance to JalRaksha
 
 1. **Computational Feasibility & Domain Decomposition**:
    - Running full 3D simulations (VOF or SPH) across entire river basins (tens of kilometers) remains computationally prohibitive for practical risk mapping and emergency response.
    - **Recommended Architecture**: Domain decomposition. Use a 3D numerical model (e.g., 3D SPH) to capture violent, non-hydrostatic near-field dynamics at the breach zone (hundreds of meters), and hand off boundary conditions to a depth-averaged 2D Shallow Water solver for far-field propagation over long downstream distances.
 
-2. **Role in FloodView**:
-   - Serves as the primary theoretical justification for FloodView's architecture: **PySPH (3D near-field)** $\rightarrow$ **2D Finite-Volume SWE (far-field)**.
-   - Proves to reviewers/evaluators that FloodView's domain decomposition is not a shortcut, but the state-of-the-art recommendation of hydrodynamic literature.
+2. **Role in JalRaksha**:
+   - Serves as the primary theoretical justification for JalRaksha's architecture: **PySPH (3D near-field)** $\rightarrow$ **2D Finite-Volume SWE (far-field)**.
+   - Proves to reviewers/evaluators that JalRaksha's domain decomposition is not a shortcut, but the state-of-the-art recommendation of hydrodynamic literature.
 
 ---
 

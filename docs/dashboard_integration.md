@@ -15,7 +15,7 @@ the way. Most of this work was plumbing, plus three genuine bugs.
 
 Selecting **Khadakwasla + Delft3D** produced a gauge table reading
 `Gauge_10km`, `Gauge_25km`, `Gauge_50km`, `Gauge_100km`. Those are
-`floodview/api.py`'s generic placeholders.
+`jalraksha/api.py`'s generic placeholders.
 
 `tasks.py` built a stripped five-key config (`name`, `lat`, `lon`, `height_m`,
 `storage_mm3`) which dropped `dam_id`. `get_downstream_gauges(lat, lon, None)`
@@ -34,11 +34,11 @@ exports, no map and no keyframes. It now runs the real kernel.
 
 Two independent causes, both silent:
 
-- `floodview/delft3d/setup.py` writes a `[Grid] GridType=rectangular` INI as the
+- `jalraksha/delft3d/setup.py` writes a `[Grid] GridType=rectangular` INI as the
   `NetFile`. D-Flow FM cannot read that — it wants a UGRID netCDF mesh — so the
   kernel failed at mesh load **every time** and the run quietly became the
   built-in solver wearing a Delft3D label. Now uses
-  `floodview/delft3d/dfm_model.py::build_dfm_model`, the UGRID writer already
+  `jalraksha/delft3d/dfm_model.py::build_dfm_model`, the UGRID writer already
   covered by `tests/test_delft3d_model.py`.
 - `_parse_delft3d_output` read only `*_map.nc`, so `gauge_arrivals` was `{}` on
   success. A *successful* Delft3D run reported no arrivals while the fallback
@@ -110,9 +110,9 @@ gate can never disagree:
 | :--- | :--- |
 | Lake at rest | PASS — 5.98e-14 m/s spurious velocity over random bathymetry, 1000 steps |
 | Mass conservation | PASS — 0.000000% volume drift, 1000 steps |
-| Ritter dam-break | PASS — FloodView RMSE **0.0317 m**, Delft3D FM **0.0349 m** vs the exact solution |
+| Ritter dam-break | PASS — JalRaksha RMSE **0.0317 m**, Delft3D FM **0.0349 m** vs the exact solution |
 
-The Ritter chart overlays three curves on a shared axis: exact, FloodView, and
+The Ritter chart overlays three curves on a shared axis: exact, JalRaksha, and
 the real Deltares kernel. They lie on top of each other — that is the result.
 
 ### Impact tab
@@ -149,7 +149,7 @@ Now live. `earthengine authenticate` had already been run; the only thing
 missing was the project id.
 
 ```
-FLOODVIEW_GEE_PROJECT=sih-prototype-506812
+JALRAKSHA_GEE_PROJECT=sih-prototype-506812
 ```
 
 Set in `scripts/run_api.py` (via `setdefault`, so a real environment variable
@@ -190,7 +190,7 @@ offline, in a project whose premise is offline-first.
 `solver="both"` and `solver="delft3d"` now run the real Deltares kernel and
 return genuine gauge arrivals. Measured on Khadakwasla:
 
-| Gauge | Delft3D FM | FloodView SWE |
+| Gauge | Delft3D FM | JalRaksha SWE |
 | :--- | ---: | ---: |
 | Deccan Gymkhana (10.5 km) | 66.0 min, 8.32 m | 109 min |
 | Shivajinagar (12.1 km) | 78.0 min, 5.44 m | — |
@@ -266,7 +266,7 @@ whose Numba kernels take ~22 s to compile on first use and ~0.5 s after, against
 a 5 s client timeout. Warming the kernels in the fixture removed the compile
 from the timed request and fixed three of the four failures.
 
-The remaining one was the actual defect. `floodview/api.py::start_api_server`
+The remaining one was the actual defect. `jalraksha/api.py::start_api_server`
 used `HTTPServer`, which handles requests **strictly one at a time** on a single
 `serve_forever` thread, so any slow handler blocks everything queued behind it.
 Under machine load that queueing intermittently exceeded the timeout. Switched
@@ -299,7 +299,7 @@ CPU-bound throughout and holds the GIL — the flux kernels are `@njit` *without
 `nogil=True`, and the delft3d path is pure Python plus PySPH plus matplotlib.
 `GET /validation` returned nothing after 120 s.
 
-Runs now execute in a subprocess (`floodview_service/run_worker.py`), which has
+Runs now execute in a subprocess (`jalraksha_service/run_worker.py`), which has
 its own interpreter and its own GIL. Measured while a run was actively solving:
 
 ```
@@ -390,7 +390,7 @@ the whole argument for doing it.
 | Load precomputed | instant, no compute |
 | 2D map + scrub | 9 tiles, overlay changes with the clock, FD2320 legend |
 | 3D terrain | textured, four gauge entities labelled with distances |
-| Gauges | Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, *severe* |
+| Gauges | Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, *severe* (recorded before the FD2320 unification; the badge now reads *extreme*) |
 | Ensemble | dam-class caveat surfaced for the gravity dam |
 | Validation | 3 PASS / 0 FAIL, three-curve Ritter chart |
 | Impact | 322 PAR of 295,025, GHSL, Graham range |
@@ -624,7 +624,8 @@ them, each labelled `TERRAIN-DERIVED`.
   `run_khadakwasla_drainage_check.py` register themselves, so they are durable
   *and* listed in the picker while they solve.
 - **The demo run to load is `e2e09ea3`** (Khadakwasla, exit domain, 200 m, 30 h):
-  it is the only run whose hazard reaches zero SEVERE and zero EXTREME cells.
+  it is the only run whose hazard reaches zero SEVERE and zero EXTREME cells
+  (class names as recorded before the FD2320 unification retired SEVERE).
   When showing it, say that its domain is deliberately clipped to 28 × 26 km so
   the flood can cross a boundary — 96.4% of the volume left the box and is
   downstream, unmodelled — and that Hadapsar and Magarpatta City sit 3.0 km from

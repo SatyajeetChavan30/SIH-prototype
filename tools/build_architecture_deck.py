@@ -1,9 +1,9 @@
 """
-FloodView architecture deck -- SIH 2026, PS 26161 (NTRO).
+JalRaksha architecture deck -- SIH 2026, PS 26161 (NTRO).
 
     python tools/build_architecture_deck.py
 
-Writes FloodView_Architecture_Deck.pptx at the repository root: ten dense
+Writes JalRaksha_Architecture_Deck.pptx at the repository root: ten dense
 architecture diagrams drawn as native, editable PowerPoint shapes.
 
 Two rules govern everything below, and both come from how the deck is read
@@ -40,7 +40,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "FloodView_Architecture_Deck.pptx"
+OUTPUT = ROOT / "JalRaksha_Architecture_Deck.pptx"
 
 SLIDE_W = 13.333
 SLIDE_H = 7.5
@@ -388,7 +388,7 @@ def new_slide(prs, title, subtitle, footer, number):
 
     # Wordmark, top-left, in a pill -- the reference decks all carry a team mark.
     pill = box(slide, 0.22, 0.14, 1.30, 0.34, fill=NAVY, adj=0.40, pad=0.04)
-    put(pill.text_frame, T("FloodView", size=11.0, color=WHITE, bold=True, font=HEAD))
+    put(pill.text_frame, T("JalRaksha", size=11.0, color=WHITE, bold=True, font=HEAD))
     sub = textbox(slide, 0.22, 0.50, 1.60, 0.20)
     put(sub.text_frame, T("PS 26161 · NTRO", size=6.2, color=MUTED, align=PP_ALIGN.LEFT))
 
@@ -525,7 +525,7 @@ def slide_how_it_works(prs):
     panel(s, 9.00, 0.94, 4.11, 1.44, "Why the speed matters", [
         "Today: weeks of specialist setup and licensed software",
         "Today: field survey costs before a single map exists",
-        "FloodView: four inputs, free data, a full run in 47 seconds",
+        "JalRaksha: four inputs, free data, a full run in 47 seconds",
         "Any trained officer can run it — and it runs offline",
     ], AMBER, tsize=8.4, lsize=6.3)
 
@@ -783,7 +783,7 @@ def slide_use_case(prs):
     # System boundary -- deliberately not centred on the slide.
     box(s, 2.32, 1.02, 7.74, 5.92, fill=tint(SKY, 0.975), line=SKY, lw=1.6, adj=0.03)
     bt = box(s, 4.42, 0.90, 3.54, 0.30, fill=SKY, adj=0.26, pad=0.06)
-    put(bt.text_frame, T("EVERYTHING INSIDE THIS BOX IS FLOODVIEW", size=7.4, color=WHITE, bold=True))
+    put(bt.text_frame, T("EVERYTHING INSIDE THIS BOX IS JALRAKSHA", size=7.4, color=WHITE, bold=True))
 
     # Widths follow how much each capability has to say, so the two columns
     # never stack into a machine-stamped grid.
@@ -852,7 +852,7 @@ def slide_component_map(prs):
     )
 
     hub = box(s, 5.02, 0.96, 3.30, 0.52, fill=SKY, adj=0.20)
-    put(hub.text_frame, T("FLOODVIEW · THE WHOLE SYSTEM", size=10.0, color=WHITE, bold=True))
+    put(hub.text_frame, T("JALRAKSHA · THE WHOLE SYSTEM", size=10.0, color=WHITE, bold=True))
 
     parts = [
         (0.22, 2.06, "Flood Simulation Engine", BLUE,
@@ -1038,7 +1038,7 @@ def slide_impact(prs):
         lead.text_frame,
         T("A conventional dam-break study takes **weeks** of specialist time and licensed software, so it is only "
           "commissioned for the dams somebody has already worried about.", size=9.0, color=INK, space=0.6, spacing=0.94),
-        T("FloodView completes the same screening in **minutes**, from free satellite data — which changes who "
+        T("JalRaksha completes the same screening in **minutes**, from free satellite data — which changes who "
           "gets screened, not just how fast.", size=9.0, color=INK, spacing=0.94),
     )
 
@@ -1076,7 +1076,7 @@ def slide_impact(prs):
 
     table(
         s, 0.22, 3.96, [2.82, 4.66, 5.35], 0.34,
-        ["What you need", "How it is done today", "How FloodView does it"],
+        ["What you need", "How it is done today", "How JalRaksha does it"],
         [
             ["Time to a first answer", "Weeks of specialist setup", "Minutes — pick a dam and press run"],
             ["Data you must buy", "Licensed elevation data plus a field survey", "None. Free satellite data, cached locally"],
@@ -1171,7 +1171,7 @@ def slide_validation(prs):
         s, 5.06, 3.78, [2.75, 1.85, 1.55, 1.78], 0.36,
         ["Engine", "Error against\nthe exact answer", "Depth at\nthe wall", "Verdict"],
         [
-            ["FloodView", "0.0317 m", "4.532 m", "passes"],
+            ["JalRaksha", "0.0317 m", "4.532 m", "passes"],
             ["Delft3D FM (Deltares)", "0.0349 m", "4.515 m", "passes"],
             ["The exact answer (1892)", "reference", "4.444 m", "reference"],
         ],
@@ -1292,7 +1292,7 @@ def slide_roadmap(prs):
         )
 
     note(s, 4.06, 5.76, 5.20, 1.22,
-         "The framing matters as much as the software. FloodView is a first-pass screening instrument: it tells a "
+         "The framing matters as much as the software. JalRaksha is a first-pass screening instrument: it tells a "
          "state which of its dams deserve a full surveyed study, and in what order. It does not replace that study, "
          "and the reports say so on their own face rather than in a footnote.",
          accent=AMBER, size=6.8, align=PP_ALIGN.LEFT, tilt=-0.3)

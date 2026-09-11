@@ -1,7 +1,7 @@
 /**
  * FD2320 hazard classes, as the dashboard sees them.
  *
- * The authority is floodview/impact/hazard.py — HR = depth * (|V| + 0.5) + DF,
+ * The authority is jalraksha/impact/hazard.py — HR = depth * (|V| + 0.5) + DF,
  * classed at 0.75 / 1.25 / 2.5. This file exists only so the panels that read a
  * stored `hazard_summary` agree with each other; it must never grow a threshold
  * of its own. Colours come from the payload, not from here.

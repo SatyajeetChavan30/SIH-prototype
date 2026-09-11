@@ -1,11 +1,11 @@
 """
-Build the SIH 2026 idea-submission deck for PS 26161 (FloodView) on top of the
+Build the SIH 2026 idea-submission deck for PS 26161 (JalRaksha) on top of the
 official SIH template.
 
     python build_ppt.py
 
 Reads : SIH2026-IDEA-Presentation-Format.pptx   (official template, unmodified)
-Writes: FloodView_SIH2026_PS26161.pptx
+Writes: JalRaksha_SIH2026_PS26161.pptx
 
 Hard constraints enforced by this script, taken from the template's own
 "IMPORTANT INSTRUCTIONS" slide:
@@ -33,9 +33,14 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
+# The template and the deck live at the repo root, where the SIH submission
+# expects them; resolve them from there (as build_deck.py does) so the script
+# works from any working directory. A copy of this script used to sit at the
+# root beside them, and HERE-relative paths only worked for that copy.
 HERE = Path(__file__).resolve().parent
-TEMPLATE = HERE / "SIH2026-IDEA-Presentation-Format.pptx"
-OUTPUT = HERE / "FloodView_SIH2026_PS26161.pptx"
+ROOT = HERE.parent.parent
+TEMPLATE = ROOT / "SIH2026-IDEA-Presentation-Format.pptx"
+OUTPUT = ROOT / "JalRaksha_SIH2026_PS26161.pptx"
 
 # --------------------------------------------------------------------------- #
 # Palette — sampled from the template so the deck matches rather than clashes.
@@ -57,7 +62,7 @@ BODY_FONT = "Calibri"
 # CONTENT
 # --------------------------------------------------------------------------- #
 
-IDEA_NAME = "FloodView"
+IDEA_NAME = "JalRaksha"
 TEAM_NAME = "TEAM NAME"  # <-- replace with your registered team name
 
 TITLE_FIELDS = [

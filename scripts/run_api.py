@@ -1,5 +1,5 @@
 """
-Start the FloodView API for local/demo use.
+Start the JalRaksha API for local/demo use.
 
 This wrapper exists because the launch configuration format has no field for
 environment variables, and the API needs two of them set before any module is
@@ -7,12 +7,12 @@ imported:
 
   CELERY_EAGER=1        run Celery tasks synchronously in-process, so POST /runs
                         works without a Redis broker and a separate worker
-                        (services/api/floodview_service/worker.py, ~line 27).
-  FLOODVIEW_DATA_DIR    where the pre-baked DEMs, keyframes, exports and the
+                        (services/api/jalraksha_service/worker.py, ~line 27).
+  JALRAKSHA_DATA_DIR    where the pre-baked DEMs, keyframes, exports and the
                         SQLite database live (config.py, ~line 17).
 
 It also pins the working directory to the repo root. That is not cosmetic: the
-export paths recorded in data/floodview.db are RELATIVE, and main.py resolves
+export paths recorded in data/jalraksha.db are RELATIVE, and main.py resolves
 them against the process CWD, so starting the API from anywhere else silently
 breaks every /files/... URL the frontend requests.
 
@@ -48,30 +48,30 @@ def main() -> None:
     args = parser.parse_args()
 
     os.chdir(REPO_ROOT)
-    os.environ.setdefault("FLOODVIEW_DATA_DIR", "./data")
+    os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")
     # Earth Engine. `earthengine authenticate` writes credentials to
     # ~/.config/earthengine, but EE also needs a Cloud project with the EE API
     # enabled, and that is what this variable names. Without it gee_status()
     # reports "not set" and BOTH the Sentinel-1 overlay and the GHSL
     # population-at-risk panel go dark, even though the credentials are valid.
     # setdefault, so a real environment variable still wins.
-    os.environ.setdefault("FLOODVIEW_GEE_PROJECT", "sih-prototype-506812")
+    os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")
     if not args.broker:
         os.environ["CELERY_EAGER"] = "1"
 
     api_dir = REPO_ROOT / "services" / "api"
-    if not (api_dir / "floodview_service" / "main.py").exists():
+    if not (api_dir / "jalraksha_service" / "main.py").exists():
         raise SystemExit(f"API package not found under {api_dir}")
     sys.path.insert(0, str(api_dir))
 
     import uvicorn
 
     print(f"[run_api] repo root      : {REPO_ROOT}")
-    print(f"[run_api] data dir       : {os.environ['FLOODVIEW_DATA_DIR']}")
+    print(f"[run_api] data dir       : {os.environ['JALRAKSHA_DATA_DIR']}")
     print(f"[run_api] eager tasks    : {os.environ.get('CELERY_EAGER') == '1'}")
-    print(f"[run_api] gee project    : {os.environ.get('FLOODVIEW_GEE_PROJECT') or '<unset>'}")
+    print(f"[run_api] gee project    : {os.environ.get('JALRAKSHA_GEE_PROJECT') or '<unset>'}")
     print(f"[run_api] listening on   : http://{args.host}:{args.port}")
-    uvicorn.run("floodview_service.main:app", host=args.host, port=args.port,
+    uvicorn.run("jalraksha_service.main:app", host=args.host, port=args.port,
                 reload=args.reload, app_dir=str(api_dir))
 
 

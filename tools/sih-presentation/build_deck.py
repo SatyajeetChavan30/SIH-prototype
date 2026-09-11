@@ -1,10 +1,10 @@
 """
-Build the SIH 2026 idea-submission deck for PS 26161 (FloodView).
+Build the SIH 2026 idea-submission deck for PS 26161 (JalRaksha).
 
     python tools/sih-presentation/build_deck.py
 
 Reads : SIH2026-IDEA-Presentation-Format.pptx   (official template, unmodified)
-Writes: FloodView_SIH2026_Idea.pptx
+Writes: JalRaksha_SIH2026_Idea.pptx
 
 Constraints taken from the template's own IMPORTANT INSTRUCTIONS slide:
   * Maximum six slides INCLUDING the title slide, so slide 7 is deleted.
@@ -35,7 +35,7 @@ from pptx.util import Inches, Pt
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 TEMPLATE = ROOT / "SIH2026-IDEA-Presentation-Format.pptx"
-OUTPUT = ROOT / "FloodView_SIH2026_Idea.pptx"
+OUTPUT = ROOT / "JalRaksha_SIH2026_Idea.pptx"
 IMG = HERE / "assets" / "prepared"
 LOGOS = HERE / "assets" / "logos"
 
@@ -458,7 +458,7 @@ def delete_slide(prs, index):
 
 
 def logo_mark(slide, x, y, d, *, ring=NAVY, water=TEAL):
-    """The FloodView mark: a dam wall holding water, inside a navy disc."""
+    """The JalRaksha mark: a dam wall holding water, inside a navy disc."""
     disc = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y), Inches(d), Inches(d))
     disc.fill.solid()
     disc.fill.fore_color.rgb = ring
@@ -494,7 +494,7 @@ def logo_mark(slide, x, y, d, *, ring=NAVY, water=TEAL):
 
 
 def wordmark(slide, x, y, w, *, size=32):
-    """Two-tone FloodView wordmark: 'Jal' navy, 'Raksha' teal."""
+    """Two-tone JalRaksha wordmark: 'Jal' navy, 'Raksha' teal."""
     tb = textbox(slide, x, y, w, size / 60.0 + 0.16, anchor=MSO_ANCHOR.MIDDLE)
     para = tb.text_frame.paragraphs[0]
     para.space_after = Pt(0)
@@ -578,7 +578,7 @@ def slide2(s):
     # The template's title placeholder spans x=0.20..12.20, which runs under the
     # team-name oval on the left and the SIH logo on the right. Re-seat it
     # between the two rather than letting either clip the idea title.
-    retitle(s, "FLOODVIEW — dam-break screening, with the model checked", size=21)
+    retitle(s, "JALRAKSHA — dam-break screening, with the model checked", size=21)
     for sh in s.shapes:
         if sh.name.startswith("Title"):
             sh.left, sh.width = Inches(1.90), Inches(8.65)
@@ -661,7 +661,7 @@ def slide2(s):
         y2 + 0.30,
         rw - 0.24,
         [
-            ["Current practice", "FloodView"],
+            ["Current practice", "JalRaksha"],
             ["Weeks of specialist setup", "Minutes, 4 inputs"],
             ["Licence + field survey", "Free data, no survey"],
             ["No independent check", "Scored vs Delft3D FM"],
@@ -893,7 +893,7 @@ def slide4(s):
         w - 0.24,
         [
             ["Engine", "RMSE vs exact", "Depth at dam"],
-            ["FloodView 2D SWE", "0.0317 m", "4.532 m"],
+            ["JalRaksha 2D SWE", "0.0317 m", "4.532 m"],
             ["Delft3D FM (dflowfm-cli)", "0.0349 m", "4.515 m"],
         ],
         [3.74, 1.60, 1.34],
@@ -1194,7 +1194,7 @@ def slide6(s):
         [
             "**Reproduce every number on this deck:**   "
             "python scripts/validate_against_delft3d.py --case ritter   |   "
-            "floodview run --dam tehri   |   dashboard at localhost:3000",
+            "jalraksha run --dam tehri   |   dashboard at localhost:3000",
         ],
         size=9.2,
         color=WHITE,

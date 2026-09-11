@@ -15,18 +15,18 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from floodview.delft3d.setup import (
+from jalraksha.delft3d.setup import (
     create_rectangular_grid,
     interpolate_bathymetry_to_grid,
     generate_initial_conditions,
     write_mdu_file,
     setup_delft3d_model,
 )
-from floodview.delft3d.runner import (
+from jalraksha.delft3d.runner import (
     is_dflowfm_available,
     run_delft3d_simulation,
 )
-from floodview.delft3d.comparison import (
+from jalraksha.delft3d.comparison import (
     rasterize_sph_particles,
     compute_comparison_metrics,
     compare_gauge_arrivals,
@@ -221,7 +221,7 @@ class TestDelft3DComparison:
         # (volume each carries) / (cell area), and rasterize_sph_particles used
         # to substitute a hardcoded 1.0 m3 when it was absent, which rescaled
         # every depth in the comparison by an arbitrary factor. A real result
-        # from floodview.sph.pysph_runner always carries it.
+        # from jalraksha.sph.pysph_runner always carries it.
         sph = {
             "x": np.array([5.0, 15.0, 25.0]),
             "y": np.array([5.0, 15.0, 25.0]),
@@ -366,7 +366,7 @@ class TestUgridFacesToGrid:
         `.reshape(ny, nx)` passes on row-major input and silently scrambles the
         field on real input.
         """
-        from floodview.delft3d.runner import _faces_to_grid  # noqa: F401
+        from jalraksha.delft3d.runner import _faces_to_grid  # noqa: F401
 
         gy, gx = np.meshgrid(np.arange(ny) * dx, np.arange(nx) * dx,
                              indexing="ij")
@@ -376,7 +376,7 @@ class TestUgridFacesToGrid:
         return face_x[order], face_y[order], order
 
     def test_places_every_value_at_its_own_coordinate(self):
-        from floodview.delft3d.runner import _faces_to_grid
+        from jalraksha.delft3d.runner import _faces_to_grid
 
         nx, ny, dx = 12, 9, 10.0
         face_x, face_y, order = self._regular_mesh(nx, ny, dx)
@@ -398,7 +398,7 @@ class TestUgridFacesToGrid:
         the two disagree, so a future 'simplification' to .reshape() fails here
         instead of silently producing a scrambled flood map.
         """
-        from floodview.delft3d.runner import _faces_to_grid
+        from jalraksha.delft3d.runner import _faces_to_grid
 
         nx, ny = 12, 9
         face_x, face_y, _ = self._regular_mesh(nx, ny)
@@ -413,7 +413,7 @@ class TestUgridFacesToGrid:
         undo a known flattening, not to invent a raster from a mesh that never
         was one.
         """
-        from floodview.delft3d.runner import _faces_to_grid
+        from jalraksha.delft3d.runner import _faces_to_grid
 
         face_x = np.array([0.0, 1.0, 2.5, 4.0, 7.0])
         face_y = np.array([0.0, 1.0, 0.5, 3.0, 2.0])
@@ -422,7 +422,7 @@ class TestUgridFacesToGrid:
 
     def test_already_gridded_input_is_untouched(self):
         """The built-in fallback solver already returns 2D; it must pass through."""
-        from floodview.delft3d.runner import _faces_to_grid
+        from jalraksha.delft3d.runner import _faces_to_grid
 
         grid = np.zeros((7, 5), dtype=np.float32)
         assert _faces_to_grid(grid, None, None).shape == (7, 5)

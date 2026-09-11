@@ -1,4 +1,4 @@
-# FloodView Dam-Break Modelling System Dockerfile
+# JalRaksha Dam-Break Modelling System Dockerfile
 FROM python:3.11-slim
 
 # Install system dependencies (GDAL/GEOS for GeoTIFF and Shapefile processing)
@@ -14,12 +14,12 @@ WORKDIR /app
 
 # Copy requirement / pyproject files
 COPY pyproject.toml /app/
-COPY floodview /app/floodview
+COPY jalraksha /app/jalraksha
 
-# Install FloodView and dependencies
+# Install JalRaksha and dependencies
 RUN pip install --no-cache-dir -e .
 
-# This image packages the floodview library and its CLI only.
+# This image packages the jalraksha library and its CLI only.
 #
 # It previously launched a Streamlit dashboard on 8501; that dashboard has been
 # removed, superseded by the React frontend + FastAPI service. Those are built
@@ -29,4 +29,4 @@ RUN pip install --no-cache-dir -e .
 # Default to the CLI's help rather than a server: the image has no web
 # component to serve, and silently exposing a port nothing listens on is worse
 # than doing nothing.
-CMD ["python", "-m", "floodview.cli", "--help"]
+CMD ["python", "-m", "jalraksha.cli", "--help"]

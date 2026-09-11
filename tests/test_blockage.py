@@ -1,5 +1,5 @@
 """
-Tests for landslide-dam geometry (floodview.terrain.blockage).
+Tests for landslide-dam geometry (jalraksha.terrain.blockage).
 
 These assert against closed-form truth and against invariants, never against a
 band chosen to make the current implementation pass. Two of them are worth
@@ -23,8 +23,8 @@ and no DEM on disk.
 import numpy as np
 import pytest
 
-from floodview.solver.types import Grid
-from floodview.terrain.blockage import (
+from jalraksha.solver.types import Grid
+from jalraksha.terrain.blockage import (
     BlockageError,
     NATURAL_DAM_VOLUME_RANGE_M3,
     burn_barrier,
@@ -500,7 +500,7 @@ class TestObservationConditioning:
         """
         import inspect
 
-        import floodview.terrain.blockage as blockage
+        import jalraksha.terrain.blockage as blockage
 
         source = inspect.getsource(blockage)
         assert "condition_bed_to_observed_lake" not in source, (
@@ -556,7 +556,7 @@ class TestNaturalDamIndices:
 class TestLocateBarrier:
     def _utm_grid(self):
         """A 200 m grid over the Bhagirathi, in the CRS load_dem_as_grid produces."""
-        from floodview.terrain.domain import latlon_to_utm
+        from jalraksha.terrain.domain import latlon_to_utm
 
         _, easting, northing = latlon_to_utm(30.38, 79.20)
         return Grid(
@@ -581,7 +581,7 @@ class TestLocateBarrier:
         bed = np.full((grid.ny, grid.nx), 1500.0)
         bed[100, 98] = 1400.0  # a channel two cells west of the requested point
 
-        from floodview.terrain.domain import latlon_to_utm
+        from jalraksha.terrain.domain import latlon_to_utm
         from pyproj import Transformer
 
         transformer = Transformer.from_crs("EPSG:32644", "EPSG:4326", always_xy=True)

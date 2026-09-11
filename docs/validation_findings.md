@@ -9,7 +9,7 @@ dimrset build 2025-10-20, `dflowfm-cli.exe` 1.2.184.
 
 ---
 
-## 1. FloodView vs Delft3D FM vs Ritter — the validation case
+## 1. JalRaksha vs Delft3D FM vs Ritter — the validation case
 
 ```bash
 python scripts/validate_against_delft3d.py --case ritter
@@ -22,7 +22,7 @@ other.
 
 | | RMSE vs exact | max abs error | depth at dam |
 | :--- | ---: | ---: | ---: |
-| FloodView 2D SWE | **0.0317 m** | 0.2644 m | 4.532 m |
+| JalRaksha 2D SWE | **0.0317 m** | 0.2644 m | 4.532 m |
 | Delft3D FM | **0.0349 m** | 0.2265 m | 4.515 m |
 | exact (4h₀/9) | — | — | **4.444 m** |
 
@@ -33,7 +33,7 @@ Figure: `data/validation/ritter_validation.png`.
 
 ### The boundary artifact, and why the first numbers were wrong
 
-The first run scored FloodView at 0.0445 m and Delft3D at 0.0897 m — Delft3D
+The first run scored JalRaksha at 0.0445 m and Delft3D at 0.0897 m — Delft3D
 apparently twice as bad. It was an artifact. The **outermost cell** of the
 closed D-Flow FM domain accumulates water: 1.06 m on a 2000 m domain, still
 0.41 m at 4000 m, while its immediate neighbours sat at 0.001–0.03 m. A genuine
@@ -52,7 +52,7 @@ domain edge.
 ## 2. Sentinel-1 SAR water extent — works on plains, not in gorges
 
 ```bash
-python -m pytest tests/test_gee.py -q     # with FLOODVIEW_GEE_PROJECT set
+python -m pytest tests/test_gee.py -q     # with JALRAKSHA_GEE_PROJECT set
 ```
 
 Water mask from VV backscatter, thresholded per scene by a split-based Otsu
@@ -243,7 +243,7 @@ valley-floor error.
 
 Also asserted at the **file** level, because a correct dict inside a process
 nobody is running is not a label: every written GeoTIFF carries
-`FLOODVIEW_NOT_A_SURVEY`, and an operator-placed barrier never carries a
+`JALRAKSHA_NOT_A_SURVEY`, and an operator-placed barrier never carries a
 satellite scene id.
 
 ---
@@ -641,7 +641,7 @@ stands. The refusal is not an artefact of how much river the box caught.
 
 ### The remedy was built, and it does not work — measured 2026-09-04
 
-`floodview/gee/terrain_correction.py` now implements the local-incidence-angle
+`jalraksha/gee/terrain_correction.py` now implements the local-incidence-angle
 masking this section named as the fix: shadow and layover classified from the
 signed range-plane slope against Copernicus GLO-30 and the scene's own geometry,
 excluded before any histogram is derived. It is applied in both
@@ -800,7 +800,7 @@ Caveats on this measurement:
 Found by `/code-quality-deep-dive` on a clean tree; the solver core passed every
 item on that skill's checklist and none of this touched it.
 
-`floodview/impact/hazard.py` declares itself "the SINGLE source of truth for
+`jalraksha/impact/hazard.py` declares itself "the SINGLE source of truth for
 hazard classification". It was neither single nor self-consistent.
 
 | # | Location | Form | Live? |

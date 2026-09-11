@@ -28,7 +28,7 @@ import rasterio
 from affine import Affine
 from rasterio.crs import CRS
 
-from floodview.terrain.dem_update import (
+from jalraksha.terrain.dem_update import (
     NOT_A_SURVEY_NOTICE,
     BlockageSpec,
     DemUpdateError,
@@ -120,10 +120,10 @@ class TestProvenance:
         with rasterio.open(path) as src:
             tags = src.tags()
 
-        assert tags["FLOODVIEW_PRODUCT"] == "observation_conditioned_dem_update"
-        assert tags["FLOODVIEW_NOT_A_SURVEY"] == NOT_A_SURVEY_NOTICE
+        assert tags["JALRAKSHA_PRODUCT"] == "observation_conditioned_dem_update"
+        assert tags["JALRAKSHA_NOT_A_SURVEY"] == NOT_A_SURVEY_NOTICE
         for forbidden in ("photogrammetr", "insar", "derived from imagery"):
-            assert forbidden in tags["FLOODVIEW_NOT_A_SURVEY"].lower()
+            assert forbidden in tags["JALRAKSHA_NOT_A_SURVEY"].lower()
         assert tags["SOURCE_DEM_MD5"]
         assert tags["OBSERVATION_SOURCE"] in (
             "sentinel1_grd", "cached", "manual_operator_input",
@@ -255,11 +255,11 @@ class TestDeltaAdd:
 
         assert set(np.unique(mask)).issubset({0, 1}), "A mask must stay a mask."
         assert mask.sum() > 0
-        assert tags["FLOODVIEW_PRODUCT"] == "impounded_lake_extent"
-        assert "INITIAL CONDITION" in tags["FLOODVIEW_LAYER_MEANING"]
-        assert "not a solver output" in tags["FLOODVIEW_LAYER_MEANING"]
+        assert tags["JALRAKSHA_PRODUCT"] == "impounded_lake_extent"
+        assert "INITIAL CONDITION" in tags["JALRAKSHA_LAYER_MEANING"]
+        assert "not a solver output" in tags["JALRAKSHA_LAYER_MEANING"]
         # The not-a-survey notice travels with every product, not only the DEM.
-        assert tags["FLOODVIEW_NOT_A_SURVEY"] == NOT_A_SURVEY_NOTICE
+        assert tags["JALRAKSHA_NOT_A_SURVEY"] == NOT_A_SURVEY_NOTICE
 
     def test_the_lake_mask_area_agrees_with_the_reported_volume(
         self, stale_dem, spec, tmp_path
@@ -356,7 +356,7 @@ class TestContentAddressing:
 
     def test_the_cache_key_names_the_product_not_the_dam(self):
         key = cache_key(BARRIER_LAT, BARRIER_LON, DOMAIN_RADIUS_KM, "abc123")
-        assert key.startswith("floodview://dem/observation-conditioned/")
+        assert key.startswith("jalraksha://dem/observation-conditioned/")
         assert "abc123" in key
 
 
@@ -372,7 +372,7 @@ class TestNamingCollisions:
         included. Writing to a subdirectory makes that structurally impossible,
         and this test is what keeps it there.
         """
-        from floodview.cache import get_cached_dem
+        from jalraksha.cache import get_cached_dem
 
         dem_dir = stale_dem.parent
         _write(stale_dem, spec, dem_dir / "updated")
@@ -402,7 +402,7 @@ class TestOfflinePath:
         The offline path is the demo's guaranteed floor, so it must not consult
         Earth Engine even to ask whether it is available.
         """
-        import floodview.gee.auth as auth
+        import jalraksha.gee.auth as auth
 
         def _explode(*args, **kwargs):
             raise AssertionError(
@@ -464,7 +464,7 @@ class TestDamConfigHandoff:
     def test_the_handoff_satisfies_the_blockage_ensembles_refusal(
         self, stale_dem, spec, tmp_path
     ):
-        from floodview.terrain.breach import synthesize_scenario_ensemble
+        from jalraksha.terrain.breach import synthesize_scenario_ensemble
 
         _, provenance = _write(stale_dem, spec, tmp_path / "updated")
         dam_config = {

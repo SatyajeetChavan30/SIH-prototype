@@ -11,7 +11,7 @@ coloured flood line on it. Both panels apply a layer opacity (0.7 / 0.75), which
 made the grey translucent rather than absent — the map just looked washed out,
 which reads as a style choice rather than a bug.
 
-`floodview/export/keyframes.py` now writes RGBA with dry fully transparent, so
+`jalraksha/export/keyframes.py` now writes RGBA with dry fully transparent, so
 NEW runs are correct without this script. But the depth arrays a run was
 rendered from are discarded once it finishes, so already-exported frames cannot
 be re-rendered without re-running the solver. This converts them in place
@@ -41,7 +41,7 @@ import argparse
 from pathlib import Path
 
 #: The exact RGB the classifier uses for DRY. Must match
-#: floodview/impact/hazard.py::HazardClassifier.color_map[HazardLevel.DRY].
+#: jalraksha/impact/hazard.py::HazardClassifier.color_map[HazardLevel.DRY].
 DRY_RGB = (128, 128, 128)
 
 

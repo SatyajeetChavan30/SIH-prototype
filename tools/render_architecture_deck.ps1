@@ -9,7 +9,7 @@
 #>
 
 param(
-    [string]$Deck = "FloodView_Architecture_Deck.pptx",
+    [string]$Deck = "JalRaksha_Architecture_Deck.pptx",
     [int]$Width = 2000
 )
 

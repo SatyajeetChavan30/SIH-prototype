@@ -1,4 +1,4 @@
-name: FloodView CI/CD Pipeline
+name: JalRaksha CI/CD Pipeline
 
 on:
   push:
@@ -34,4 +34,4 @@ jobs:
 
       - name: Run Test Suite
         run: |
-          pytest --cov=floodview --cov-report=term-missing
+          pytest --cov=jalraksha --cov-report=term-missing

@@ -1,6 +1,6 @@
 # DOCUMENT 1 — LITERATURE SURVEY & CASE STUDIES
 
-**Project:** FloodView — Dam-Break Inundation Modelling
+**Project:** JalRaksha — Dam-Break Inundation Modelling
 **SIH 2026 · PS 26161 · NTRO · Disaster Management · Software**
 
 > **Note on gaps:** this document was originally stored as plain text, which stripped its formula blocks. The two affected places (§5.5 level-pool routing, §7.3 FD2320 hazard rating) are marked inline with `⬚ [formula missing from source]`.
@@ -297,7 +297,7 @@ Keyword frequency across the document **[V]**:
 
 Two strategic consequences:
 
-**(a) HEC-RAS is not our competitor — it is our baseline.** Indian dam-safety practice already standardised on it. Positioning FloodView *against* HEC-RAS invites the response "CWC already chose HEC-RAS." Positioning it as producing results *cross-checkable against* HEC-RAS makes it complementary and immediately legible to Indian practitioners.
+**(a) HEC-RAS is not our competitor — it is our baseline.** Indian dam-safety practice already standardised on it. Positioning JalRaksha *against* HEC-RAS invites the response "CWC already chose HEC-RAS." Positioning it as producing results *cross-checkable against* HEC-RAS makes it complementary and immediately legible to Indian practitioners.
 
 **(b) The PS's named methods are absent from Indian dam-safety guidance entirely.** SPH and Delft3D appear zero times. This confirms the PS is not restating existing CWC practice — it is asking for something Indian dam-safety documentation does not currently cover. That is the space we occupy.
 

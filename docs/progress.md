@@ -22,16 +22,16 @@ gorge refusal from finding #2 below, rendering correctly end-to-end.
 A Delft3D FM validation harness was added on top of the finished Parts 1–4
 system (exports, honest engine labelling, real PySPH, live GEE):
 
-- **`floodview/delft3d/ugrid.py`** — real UGRID-1.0 mesh writer. The previous
+- **`jalraksha/delft3d/ugrid.py`** — real UGRID-1.0 mesh writer. The previous
   `NetFile` was an INI stub the FM kernel could not read; this was the
   blocking defect.
-- **`floodview/delft3d/dfm_model.py`** — full D-Flow FM input set (`_net.nc`,
+- **`jalraksha/delft3d/dfm_model.py`** — full D-Flow FM input set (`_net.nc`,
   `.mdu`, initial-field samples, observation points, `dimr_config.xml`).
-- **`floodview/delft3d/runner.py`** — finds `dflowfm-cli.exe` (previously only
+- **`jalraksha/delft3d/runner.py`** — finds `dflowfm-cli.exe` (previously only
   looked for `dflowfm`), auto-discovers Deltares installs, sets the kernel's
   own `PATH` (`share`, `lib`) before invoking it.
-- **`floodview/validation/delft3d_benchmark.py`** + **`scripts/validate_against_delft3d.py`**
-  — runs the Ritter dam-break through both FloodView and a real Delft3D FM
+- **`jalraksha/validation/delft3d_benchmark.py`** + **`scripts/validate_against_delft3d.py`**
+  — runs the Ritter dam-break through both JalRaksha and a real Delft3D FM
   kernel, scores both against the exact analytical solution, plots a
   three-curve comparison figure.
 - **CLAUDE.md** — the "never claim Delft3D" rule is now conditional on
@@ -50,7 +50,7 @@ against theory, 3 boundary cells trimmed each end (see finding below):
 
 | | RMSE vs exact | depth at dam |
 |---|---:|---:|
-| FloodView 2D SWE | 0.0317 m | 4.532 m |
+| JalRaksha 2D SWE | 0.0317 m | 4.532 m |
 | Delft3D FM | 0.0349 m | 4.515 m |
 | exact (4h₀/9) | — | 4.444 m |
 
@@ -60,7 +60,7 @@ Reproduce: `python scripts/validate_against_delft3d.py --case ritter`
 
 ### Two findings worth remembering
 
-1. **The first Ritter numbers were wrong** (FloodView 0.0445 vs Delft3D 0.0897,
+1. **The first Ritter numbers were wrong** (JalRaksha 0.0445 vs Delft3D 0.0897,
    Delft3D looking twice as bad) — an outermost-cell accumulation artifact in
    the closed D-Flow FM domain, not a real solver difference. Now trimmed and
    shaded on the figure.
@@ -89,12 +89,12 @@ record in `docs/dashboard_integration.md`; the short version:
   regressions used and members converged.
 - **Validation tab** runs the blocking gates against the live build: lake at
   rest 5.98e-14 m/s, mass conservation 0.000000%, Ritter RMSE 0.0317 m
-  (FloodView) vs 0.0349 m (Delft3D FM), with all three curves on one axis.
+  (JalRaksha) vs 0.0349 m (Delft3D FM), with all three curves on one axis.
 - **Impact tab** — live GHSL population at risk, Graham loss-of-life ranges,
   FD2320 hazard classes, and explicit "no data source integrated" cards where
   there genuinely is none (buildings).
 - **Run picker** (`GET /runs`) replaces typing a 32-character hex id.
-- **Earth Engine is live** — `FLOODVIEW_GEE_PROJECT=sih-prototype-506812`, set
+- **Earth Engine is live** — `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set
   in `scripts/run_api.py`.
 - **Delft3D FM genuinely runs** and returns real gauge arrivals from `_his.nc`.
 
@@ -185,7 +185,7 @@ water leave would have hidden the same defect behind a nicer graph.
 
 **Preset defaults are unchanged.** `domain_margins_km` was used as a per-request
 override for this investigation, not written into
-`floodview/presets.py::khadakwasla`. Every default Khadakwasla run, the dashboard
+`jalraksha/presets.py::khadakwasla`. Every default Khadakwasla run, the dashboard
 demo included, still gets the same 27 km dam-centred square. The cached DEM at
 `data/dem/dem_18.44_73.77_clipped.tif` was widened to 240 x 188 km (40 km west /
 200 km east / 94 km north and south) to support the wider domain; it is a
@@ -226,7 +226,9 @@ transmissive boundary is the model's only exit, the flood front is
 volume-limited and stops at east 23.5 km, and the nearest edge was 40 km away.
 Moving the boundary 3.5 km *inside* the front (`--domain exit`) drains 96.4% of
 the released volume and reaches **zero SEVERE and zero EXTREME cells at 9.44 h**
-against a pre-fix baseline of 46 stuck SEVERE cells and ~42% trapped.
+against a pre-fix baseline of 46 stuck SEVERE cells and ~42% trapped. (Class
+names as recorded; SEVERE was retired by the FD2320 unification on 2026-09-11 —
+see `validation_findings.md` §10.)
 
 That run clips the study area on purpose — it answers "when does the flood clear
 a 28 × 26 km area around Pune", not "the water ceased to exist" — and it changed
@@ -270,9 +272,9 @@ labelled as a terrain estimate next time that preset is touched.
   (picker name, caption burned into every PNG, `is_synthetic: true` in both
   `run_summary.json` and `params_json`). Now largely superseded by `e2e09ea3`,
   which is a real solve that reaches zero severe cells.
-- **`FloodView_Icon.png` / `FloodView_Icon.svg` / `icons/`** — branding assets
-  (`FloodView_Icon_Options.png`, `FloodView_Icons.zip`). Not referenced by code.
-- **`FloodView_MultiHazard_Workflow.drawio`** — an editable draw.io flowchart of
+- **`JalRaksha_Icon.png` / `JalRaksha_Icon.svg` / `icons/`** — branding assets
+  (`JalRaksha_Icon_Options.png`, `JalRaksha_Icons.zip`). Not referenced by code.
+- **`JalRaksha_MultiHazard_Workflow.drawio`** — an editable draw.io flowchart of
   the full multi-hazard pipeline: satellite monitoring feedback loop, hazard-type
   branch (dam breach / river blockage), breach-mode and near-field/far-field
   splits, validation gate, export engine, storage. Legend marks the satellite and
@@ -291,14 +293,15 @@ labelled as a terrain estimate next time that preset is touched.
   (`dam_class_outside_fitted_population`), not silently absorbed.
 - **Khadakwasla's structural figures are UNVETTED** — 39.6 m / 85.31 MCM /
   14.72 km2 from a secondary review, not a primary CWC/NRLD register entry.
-  Tagged in `floodview/presets.py` and pinned by a test so the tag cannot be
+  Tagged in `jalraksha/presets.py` and pinned by a test so the tag cannot be
   dropped silently.
 - **`prototype specs.md` §17** still has not been appended with the newer
   unvetted coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`,
   `MIN_JRC_PRECISION`, `WARNING_LEAD_TIME_S`, Ritter celerity factor).
-- **`.coverage` is tracked** and is a test artifact; `node_modules/` is tracked
-  deliberately (offline-first vendoring), which is why dependency changes show
-  as thousands of modified files.
+- **Resolved 2026-09-11 (`94a994e`):** `.coverage` and `frontend/node_modules/`
+  are no longer tracked. Both were committed before their `.gitignore` rules
+  existed, so the rules never applied. `npm install` in `frontend/` restores the
+  dependencies on a fresh clone; the offline demo copy on disk is unaffected.
 - **Rishi Ganga has no quantitative benchmark yet.** The published HEC-RAS
   figures need **channel** coordinates for Rishiganga and Tapovan; the gazetteer
   town centres sit 1,319 m and 79 m above the nearest channel and were removed.

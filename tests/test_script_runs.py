@@ -30,7 +30,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "services" / "api"))
 
-pytest.importorskip("floodview_service", reason="API service not importable")
+pytest.importorskip("jalraksha_service", reason="API service not importable")
 
 
 @pytest.fixture
@@ -41,10 +41,10 @@ def service(tmp_path, monkeypatch):
     CWD, so the chdir is what actually isolates it.
     """
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("FLOODVIEW_DATA_DIR", "./data")
+    monkeypatch.setenv("JALRAKSHA_DATA_DIR", "./data")
 
-    from floodview_service import db
-    from floodview_service.config import settings
+    from jalraksha_service import db
+    from jalraksha_service.config import settings
 
     monkeypatch.setattr(settings, "DATA_DIR", tmp_path / "data", raising=False)
     monkeypatch.setattr(settings, "DATABASE_URL",
@@ -73,7 +73,7 @@ def test_run_is_visible_while_it_is_still_solving(service, tmp_path):
     The whole point of registering at START. A five-hour run that only appears
     once finished is invisible for the part of its life you would want to watch.
     """
-    from floodview_service.script_runs import registered_run
+    from jalraksha_service.script_runs import registered_run
 
     with registered_run("khadakwasla", {"name": "Test run"}, "swe",
                         {"ensemble_size": 1}) as run:
@@ -96,7 +96,7 @@ def test_worker_pid_is_recorded_so_the_stale_sweep_spares_a_live_run(service):
     this, restarting the API would kill the row of a script run that is still
     solving — defeating the exact durability scripts exist for.
     """
-    from floodview_service.script_runs import registered_run
+    from jalraksha_service.script_runs import registered_run
 
     with registered_run("khadakwasla", {"name": "Live"}, "swe", {}) as run:
         assert service.get_run(run.run_id)["params"]["worker_pid"] == os.getpid()
@@ -114,7 +114,7 @@ def test_a_crash_marks_the_run_failed_rather_than_leaving_it_running(service):
     A permanently "running" row is indistinguishable from a live one to the
     stale sweep, so it would linger forever.
     """
-    from floodview_service.script_runs import registered_run
+    from jalraksha_service.script_runs import registered_run
 
     run_id = None
     with pytest.raises(ValueError):
@@ -132,7 +132,7 @@ def test_exiting_without_finish_is_also_a_failure(service):
     Falling out of the block without calling finish() means no exports and no
     gauges were recorded. Marking it done would list an empty run as complete.
     """
-    with __import__("floodview_service.script_runs", fromlist=["x"]).registered_run(
+    with __import__("jalraksha_service.script_runs", fromlist=["x"]).registered_run(
         "khadakwasla", {"name": "Forgot"}, "swe", {}
     ) as run:
         run_id = run.run_id
@@ -147,8 +147,8 @@ def test_finished_run_satisfies_the_picker_and_playback_contract(service, tmp_pa
     All four conditions at once, because a run that satisfies three of them
     fails in a way that looks like a different bug entirely.
     """
-    from floodview_service.config import settings
-    from floodview_service.script_runs import registered_run
+    from jalraksha_service.config import settings
+    from jalraksha_service.script_runs import registered_run
 
     with registered_run("khadakwasla", {"name": "Contract run"}, "swe",
                         {"ensemble_size": 1}) as run:
@@ -202,7 +202,7 @@ def test_a_run_without_keyframes_still_registers_but_says_so(service, tmp_path, 
     depth series — but it must be visible in the output, because the symptom is
     a run that lists and then shows nothing.
     """
-    from floodview_service.script_runs import registered_run
+    from jalraksha_service.script_runs import registered_run
 
     with registered_run("khadakwasla", {"name": "No frames"}, "delft3d", {}) as run:
         run.finish({"raster_paths": {}, "arrival_times": {}})
@@ -222,7 +222,7 @@ def test_the_gauge_mapping_is_shared_with_the_api_path():
     """
     import inspect
 
-    from floodview_service import tasks
+    from jalraksha_service import tasks
 
     source = inspect.getsource(tasks.run_dam_break_task)
     assert "gauge_rows_from_result" in source

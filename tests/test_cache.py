@@ -1,5 +1,5 @@
 """
-Unit tests for floodview.cache module.
+Unit tests for jalraksha.cache module.
 
 Tests:
 - Cache miss/hit logic
@@ -13,7 +13,7 @@ import pytest
 from pathlib import Path
 import json
 
-from floodview.cache import (
+from jalraksha.cache import (
     check_cache,
     store_cache,
     clear_cache,

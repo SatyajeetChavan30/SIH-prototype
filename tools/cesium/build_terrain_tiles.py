@@ -5,7 +5,7 @@ Why self-hosted (integration brief §5.5.1): Cesium World Terrain is global,
 low-resolution, and — critically — NOT the surface the solver ran on. If the 3D
 terrain and the simulation terrain disagree, the flood overlay floats through
 hills or clips underground at the seams, which reads as fake immediately. Tiling
-the same Copernicus GLO-30 DEM that floodview/terrain/conditioning.py feeds the
+the same Copernicus GLO-30 DEM that jalraksha/terrain/conditioning.py feeds the
 solver makes them match by construction.
 
 Format: heightmap-1.0, not quantized-mesh. cesium-terrain-builder is a C++ build
@@ -208,7 +208,7 @@ def build_tileset(
     layer = {
         "tilejson": "2.1.0",
         "name": dem_path.stem,
-        "description": "FloodView self-hosted terrain (Copernicus GLO-30, same DEM as solver)",
+        "description": "JalRaksha self-hosted terrain (Copernicus GLO-30, same DEM as solver)",
         "version": "1.0.0",
         "format": "heightmap-1.0",
         "attribution": "Copernicus DEM GLO-30 (c) ESA",
@@ -243,7 +243,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.dem.exists():
-        raise SystemExit(f"DEM not found: {args.dem} — run floodview.dem.fetch_dem first.")
+        raise SystemExit(f"DEM not found: {args.dem} — run jalraksha.dem.fetch_dem first.")
 
     print(f"Tiling {args.dem} -> {args.out} (levels 0..{args.max_level})")
     summary = build_tileset(args.dem, args.out, args.max_level)

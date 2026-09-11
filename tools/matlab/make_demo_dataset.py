@@ -61,11 +61,11 @@ def main() -> None:
         raise SystemExit(
             f"DEM not found: {args.dem}\n"
             f"Fetch it first:\n"
-            f'  python -c "from floodview.dem import fetch_dem; '
+            f'  python -c "from jalraksha.dem import fetch_dem; '
             f"fetch_dem(30.3789, 78.4789, domain_radius_km=60.0, cache_dir='./data')\""
         )
 
-    from floodview.export.matlab_export import export_simulation_mat
+    from jalraksha.export.matlab_export import export_simulation_mat
 
     t0 = time.time()
 
@@ -73,7 +73,7 @@ def main() -> None:
         # Build the domain directly — no solver, no breach ensemble. Same
         # load_dem_as_grid() the solver uses, so the terrain is identical to what
         # a later full run will produce.
-        from floodview.terrain.domain import build_domain
+        from jalraksha.terrain.domain import build_domain
 
         print(f"[terrain-only] {args.dem}")
         grid, state, _ = build_domain(
@@ -92,7 +92,7 @@ def main() -> None:
             "num_completed": 0,
         }
     else:
-        from floodview.run import run_dam_break_ensemble
+        from jalraksha.run import run_dam_break_ensemble
 
         print(f"[full run] {args.duration/3600:.1f} h simulated @ {args.resolution:.0f} m")
         result = run_dam_break_ensemble(
