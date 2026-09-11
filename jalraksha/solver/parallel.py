@@ -228,9 +228,12 @@ def run_ensemble_member(
 
         # backend="cpu" always: this IS the CPU path. The GPU runs members
         # through ensemble_cuda instead, and a pool worker must never try CUDA.
-        solver = SWESolver(
-            grid, manning_n=float(np.mean(manning_field)), cfl=MEMBER_CFL, backend="cpu"
-        )
+        #
+        # The per-cell Manning field, not its mean. Until 2026-09-12 every
+        # member got float(np.mean(manning_field)), which silently turned a
+        # land-cover roughness field back into a uniform one: the exact failure
+        # terrain/roughness.py records having shipped once already.
+        solver = SWESolver(grid, manning_n=manning_field, cfl=MEMBER_CFL, backend="cpu")
 
         state = state_init.copy()
         t_sim = 0.0

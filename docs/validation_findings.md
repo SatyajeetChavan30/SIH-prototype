@@ -939,10 +939,43 @@ six orders of magnitude above round-off, and far below anything physical.
 - **Serial algorithms and I/O**: the breach-routing ODE (sequential in time),
   priority-flood depression filling (a heap), DEM fetch and exports.
 
-**Carried over unchanged, and flagged.** The GPU ensemble reproduces the CPU
-member loop exactly, including one behaviour that needs fixing on both backends
-together: the member solver uses the MEAN of the Manning field, not the field
-itself.
+### Ensemble members use the per-cell Manning field (fixed 2026-09-12)
+
+Every ensemble member used to be solved with a UNIFORM Manning's n equal to the
+mean of the field it was handed. On the CPU that was
+`SWESolver(manning_n=float(np.mean(field)))`; the GPU built the same uniform
+field, on purpose, so the two backends could be compared. That silently undid
+`terrain/roughness.py`, whose whole point is that friction follows land cover.
+Both backends now solve with the field itself. The GPU builds and validates it
+with the same `SWESolver` code as the CPU, so a field the CPU refuses (a
+negative n, a wrong shape) fails every member on both backends with the same
+message.
+
+**What it changes, measured.** The test case is a 200 × 160 valley at 100 m,
+30 minutes, with a peak of 8,000 m³/s. It uses a WorldCover-style class map:
+tree cover (n = 0.100) on the slopes, cropland (0.040) on the floodplain, a
+permanent-water channel (0.030), and a built-up block (0.080) downstream. The
+field's mean is 0.091, because tree cover dominates the area, so averaging
+makes the channel three times rougher than it is. With the per-cell field:
+
+- the flood reaches 308 cells, against 170 with the mean;
+- it reaches channel reaches that the averaged run never wets;
+- it floods part of the built-up block (mean h_max 2.6 m), which the averaged
+  run never reaches.
+
+Where both runs wet a cell, the per-cell field brings arrival earlier by a
+median of 209 s (699 s earlier at the 5th percentile). h_max differs by 70%
+in relative L2.
+
+**What it does NOT change today.** `terrain/domain.py::build_domain` hands
+every run a UNIFORM field (dam_config "manning_n", default 0.03), because
+nothing in the pipeline fetches WorldCover yet, and the mean of a uniform field
+is that field. Every run made through `run_dam_break_ensemble` so far is
+therefore unaffected; the fix takes effect as soon as a non-uniform field is
+supplied. Runs written before it are NOT reclassified. The run summary now
+records the field the members were actually solved with (`roughness`: min,
+max and mean n, distinct values, fraction at the default, `is_uniform`, and a
+one-line note), so a uniform field can no longer pass for a land-cover one.
 
 ### The member-loop timestep: one dt per step (fixed 2026-09-12)
 

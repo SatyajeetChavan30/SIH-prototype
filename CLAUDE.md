@@ -1020,8 +1020,13 @@ estimate, and measurement replaced it.
   synthetic valley. It changed nothing measurable on Khadakwasla, where the
   shrink fires once in about 75,000 steps. `TestMemberTimestep` pins
   clock = physics time and CFL validity.
-- **One member-loop quirk is still carried on purpose:** the member solver uses
-  the MEAN Manning's n, not the field. Fix it on both backends together.
+- **Ensemble members use the per-cell Manning field** (fixed 2026-09-12). Both
+  backends used to solve every member with the field's MEAN. On a
+  WorldCover-style valley that made a smooth channel three times too rough, and
+  the flood reached 170 cells instead of 308. Current pipeline runs are
+  unaffected, because `build_domain` still supplies a uniform field
+  (dam_config `manning_n`, default 0.03). `run_summary.json` now carries
+  `roughness`, describing the field the members were actually solved with.
 - **CPU pool workers are pinned to `backend="cpu"`**, because 16 worker
   processes each opening a CUDA context on a 6 GB card would fail. Ensemble
   chunks are sized to 60% of FREE VRAM (`ensemble_cuda.VRAM_FRACTION`); a

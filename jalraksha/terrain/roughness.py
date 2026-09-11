@@ -42,7 +42,7 @@ References:
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -209,6 +209,30 @@ def manning_field_summary(
         "fraction_at_default": float(at_default.mean()),
         "is_uniform": bool(np.allclose(field, field.flat[0])),
     }
+
+
+def roughness_provenance(
+    manning_field: np.ndarray, default_n: float = DEFAULT_MANNING_N
+) -> Dict[str, Any]:
+    """
+    The roughness a run was actually solved with, for its run summary.
+
+    ``manning_field_summary`` plus how the field was applied. Every ensemble
+    member solves with the field cell by cell (solver/parallel.py,
+    solver/ensemble_cuda.py). Until 2026-09-12 each member was given the
+    field's MEAN instead, so a summary written before then that describes a
+    non-uniform field describes roughness its members never used.
+    """
+    summary = manning_field_summary(manning_field, default_n)
+    if summary["is_uniform"]:
+        note = f"Uniform roughness: every cell has n = {summary['min_n']:g}."
+    else:
+        note = (
+            f"Spatially varying roughness, n = {summary['min_n']:g} to "
+            f"{summary['max_n']:g} across {summary['distinct_values']} values, "
+            f"applied cell by cell in every ensemble member."
+        )
+    return {**summary, "applied": "per_cell", "note": note}
 
 
 def get_manning_value(

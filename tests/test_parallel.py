@@ -237,6 +237,18 @@ class TestGpuEnsemble:
         assert results[0]["success"] is False and "Q_t" in results[0]["error"]
         assert results[1]["success"] is True
 
+    def test_a_manning_field_the_cpu_refuses_fails_the_same_way(self):
+        grid, state, manning = _domain()
+        bad = manning.copy()
+        bad[0, 0] = -0.01
+        kwargs = dict(i_breach=6, j_breach=6, solver_duration_s=10.0)
+        cpu = run_ensemble(_hydrographs(2), grid, state, bad, n_workers=1, backend="cpu", **kwargs)
+        gpu = run_ensemble(_hydrographs(2), grid, state, bad, backend="cuda", **kwargs)
+        for a, b in zip(cpu, gpu, strict=True):
+            assert a["success"] is False and b["success"] is False
+            assert a["error"] == b["error"]
+            assert "negative" in a["error"]
+
 
 class TestBackendFallback:
     """A GPU failure must fall back to the CPU, loudly, and say so in every result."""
@@ -354,3 +366,33 @@ class TestMemberTimestep:
         max_slope = float(np.max(np.abs(np.diff(q_arr) / np.diff(t_arr))))
         bound = 0.5 * max_slope * sum(dt * dt for _, dt, _ in steps)
         assert abs(result["volume_released_m3"] - exact) <= bound + 1e-9 * exact
+
+
+class TestMemberRoughness:
+    """
+    Every member solves with the per-cell Manning field, not its mean.
+
+    Until 2026-09-12 each member got float(np.mean(manning_field)), which turned
+    a land-cover roughness field back into a uniform one without a word.
+    """
+
+    @staticmethod
+    def _channelled(grid):
+        """Rough valley sides (n = 0.12) around a smooth channel (n = 0.02)."""
+        field = np.full((grid.ny, grid.nx), 0.12)
+        field[:, grid.nx // 2 - 2 : grid.nx // 2 + 3] = 0.02
+        return field
+
+    def test_member_uses_the_field_not_its_mean(self):
+        grid, state, _, hydrographs = _valley(members=1)
+        field = self._channelled(grid)
+        kwargs = dict(i_breach=grid.nx // 2, j_breach=3, solver_duration_s=300.0)
+        with_field = run_ensemble_member(0, hydrographs[0], grid, state, field, **kwargs)
+        with_mean = run_ensemble_member(
+            0, hydrographs[0], grid, state, np.full_like(field, field.mean()), **kwargs
+        )
+        assert with_field["success"] and with_mean["success"]
+        assert not np.allclose(with_field["h_max"], with_mean["h_max"])
+        # The smooth channel carries the flood further than a valley that is
+        # uniformly as rough as the average.
+        assert np.isfinite(with_field["t_arrival"]).sum() > np.isfinite(with_mean["t_arrival"]).sum()

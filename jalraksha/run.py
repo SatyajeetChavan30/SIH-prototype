@@ -27,6 +27,7 @@ from jalraksha.solver.core import SWESolver
 from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
 from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
+from jalraksha.terrain.roughness import roughness_provenance
 from jalraksha.presets import get_gauges
 
 
@@ -1054,6 +1055,10 @@ def run_dam_break_ensemble(
     )
     if solver_backend:
         print(f"  Solver backend: {solver_backend['solver_backend_label']}")
+    # The roughness the members were actually solved with. Every member uses
+    # the per-cell field, so a summary of the field IS a summary of what ran.
+    roughness = roughness_provenance(manning_field)
+    print(f"  Roughness: {roughness['note']}")
 
     if len(results_ensemble) == 0:
         return {"error": "No ensemble members completed successfully"}
@@ -1149,6 +1154,7 @@ def run_dam_break_ensemble(
         "num_completed": len(results_ensemble),
         "num_ensemble": ensemble_size,
         "solver_backend": solver_backend,
+        "roughness": roughness,
         "gauges": gauges,
         "grid": {
             "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,

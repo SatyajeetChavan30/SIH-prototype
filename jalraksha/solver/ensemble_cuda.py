@@ -10,11 +10,10 @@ and compares the answers. A second copy is only safe with that test in place:
 the parallel.py docstring records how an unbound copy once computed different
 physics from the sequential path.
 
-The member loop is reproduced exactly. That includes one behaviour that looks
-like a defect and is carried over deliberately, because a GPU port that silently
-changed the physics could not be validated against the CPU: the solver runs
-with manning_n = mean(manning_field), a uniform field, not the spatially
-varying one. It belongs in a separate fix, applied to both backends together.
+The member loop is reproduced exactly, down to the roughness. Every member
+solves with the per-cell Manning field, validated and built by the same SWESolver
+code the CPU member uses. (Until 2026-09-12 both backends gave every member the
+field's MEAN instead; they were fixed together.)
 
 ONE TIMESTEP PER STEP. The injection, the step and the member clock all use the
 same dt, which choose_injection_step picks exactly as
@@ -55,7 +54,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 import numpy as np
 from numba import cuda
 
-from .core import CFL_MAX, DT_MAX_DEFAULT
+from .core import CFL_MAX, DT_MAX_DEFAULT, SWESolver
 from .engine_cuda import PAD, CudaSWEEngine
 from .flux import H_DRY_DEFAULT, NO_NEIGHBOUR, VELOCITY_MAX_DEFAULT
 from .flux_cuda import _inverse_dt_cell, finalize_dt, launch_grid
@@ -365,20 +364,35 @@ def run_ensemble_gpu(
         runnable.append((sample_id, t_hydro, q_hydro, metadata))
 
     if runnable:
+        # The per-cell field, validated and built exactly as the CPU member's
+        # SWESolver builds it. A field the CPU refuses therefore fails every
+        # member here too, with the same message, rather than running.
+        try:
+            manning = SWESolver(grid, manning_n=manning_field, backend="cpu").manning_field
+        except Exception as e:
+            for sample_id, _, _, _ in runnable:
+                results[sample_id] = {
+                    "sample_id": sample_id,
+                    "error": f"{type(e).__name__}: {e}",
+                    "success": False,
+                }
+                if on_member_done is not None:
+                    on_member_done()
+            runnable = []
+
+    if runnable:
         want_frames = (
             snapshot_sample_id is not None
             and snapshot_times is not None
             and len(snapshot_times) > 0
         )
         chunk = ensemble_chunk_size(grid, len(runnable), len(snapshot_times) if want_frames else 0)
-        # One uniform field, as the CPU member loop builds (see module docstring).
-        manning_uniform = np.full((grid.ny, grid.nx), float(np.mean(manning_field)), dtype=DTYPE)
         for start in range(0, len(runnable), chunk):
             for result in _run_chunk(
                 runnable[start : start + chunk],
                 grid,
                 state_init,
-                manning_uniform,
+                manning,
                 i_breach,
                 j_breach,
                 float(solver_duration_s),
@@ -395,7 +409,7 @@ def _run_chunk(
     batch,
     grid,
     state_init,
-    manning_uniform,
+    manning_field,
     i_breach,
     j_breach,
     solver_duration_s,
@@ -410,7 +424,7 @@ def _run_chunk(
     engine = CudaSWEEngine(
         grid,
         state_init.b,
-        manning_uniform,
+        manning_field,
         n_members,
         boundary="transmissive",
         use_muscl=True,
