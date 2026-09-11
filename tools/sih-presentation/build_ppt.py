@@ -33,9 +33,14 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
+# The template and the deck live at the repo root, where the SIH submission
+# expects them; resolve them from there (as build_deck.py does) so the script
+# works from any working directory. A copy of this script used to sit at the
+# root beside them, and HERE-relative paths only worked for that copy.
 HERE = Path(__file__).resolve().parent
-TEMPLATE = HERE / "SIH2026-IDEA-Presentation-Format.pptx"
-OUTPUT = HERE / "FloodView_SIH2026_PS26161.pptx"
+ROOT = HERE.parent.parent
+TEMPLATE = ROOT / "SIH2026-IDEA-Presentation-Format.pptx"
+OUTPUT = ROOT / "FloodView_SIH2026_PS26161.pptx"
 
 # --------------------------------------------------------------------------- #
 # Palette — sampled from the template so the deck matches rather than clashes.

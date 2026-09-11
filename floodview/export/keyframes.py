@@ -344,7 +344,7 @@ def export_keyframes(
         metadata={
             "description": "Flood keyframes for FloodView dam-break visualization",
             "license": "CC BY 4.0 (data: Copernicus DEM, ESA WorldCover)",
-            "note": "FD2320 depth-velocity hazard classification; terrain-matched.",
+            "note": "FD2320 hazard classification, depth-only (|V| taken as 0, so fast water is under-stated); terrain-matched.",
         },
     )
 

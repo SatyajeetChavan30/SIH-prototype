@@ -176,7 +176,7 @@ def page_system_architecture():
          "Terrain Preparation\n------------------------------------\nDownloads satellite elevation data\nand prepares a digital model of\nthe land:\n- Smooths out artefacts\n- Identifies the dam location\n- Maps ground types (forest,\n  urban, farmland) to determine\n  how fast water moves over them", "#065F46", fs=6.5, r=0.02)
 
     _box(ax, 5.0, 4.5, 3.5, 1.8,
-         "Flood Impact Assessment\n-----------------------------\nEstimates real-world damage:\n  Low risk (ankle-deep)\n  Medium (waist-deep)\n  High (2-5 metres)\n  Extreme (>5 metres)\nAlso estimates buildings at risk\nand potential casualties using\npublished government formulas", RED, fs=6.5, r=0.02)
+         "Flood Impact Assessment\n-----------------------------\nFD2320 hazard, depth + speed:\n  Low\n  Moderate (from 0.5 m still water)\n  Significant (from 1.5 m)\n  Extreme (from 4 m, or less if fast)\nAlso estimates buildings at risk\nand potential casualties using\npublished government formulas", RED, fs=6.5, r=0.02)
 
     _box(ax, 8.9, 4.5, 3.8, 1.8,
          "Quality Checks (Automated)\n------------------------------\n4 mandatory tests must pass\nbefore ANY result is released:\n\n1. Still-water test (PASS)\n2. No water lost (PASS)\n3. No negative depths (PASS)\n4. Matches industry tool (PASS)\n\nIf any fail, results are blocked.", GREEN, fs=6.5, r=0.02)

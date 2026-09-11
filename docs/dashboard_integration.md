@@ -390,7 +390,7 @@ the whole argument for doing it.
 | Load precomputed | instant, no compute |
 | 2D map + scrub | 9 tiles, overlay changes with the clock, FD2320 legend |
 | 3D terrain | textured, four gauge entities labelled with distances |
-| Gauges | Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, *severe* |
+| Gauges | Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, *severe* (recorded before the FD2320 unification; the badge now reads *extreme*) |
 | Ensemble | dam-class caveat surfaced for the gravity dam |
 | Validation | 3 PASS / 0 FAIL, three-curve Ritter chart |
 | Impact | 322 PAR of 295,025, GHSL, Graham range |
@@ -624,7 +624,8 @@ them, each labelled `TERRAIN-DERIVED`.
   `run_khadakwasla_drainage_check.py` register themselves, so they are durable
   *and* listed in the picker while they solve.
 - **The demo run to load is `e2e09ea3`** (Khadakwasla, exit domain, 200 m, 30 h):
-  it is the only run whose hazard reaches zero SEVERE and zero EXTREME cells.
+  it is the only run whose hazard reaches zero SEVERE and zero EXTREME cells
+  (class names as recorded before the FD2320 unification retired SEVERE).
   When showing it, say that its domain is deliberately clipped to 28 × 26 km so
   the flood can cross a boundary — 96.4% of the volume left the box and is
   downstream, unmodelled — and that Hadapsar and Magarpatta City sit 3.0 km from

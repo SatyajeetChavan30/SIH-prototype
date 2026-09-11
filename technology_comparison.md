@@ -122,7 +122,7 @@
 | Method | Delft3D | HEC-RAS 2D | FloodView |
 |:---|:---|:---|:---|
 | **Ensemble Approach** | Manual | Manual | **Automated Monte Carlo** |
-| **Breach Regressions** | 1 (user picks) | 1 (user picks) | **4 (Froehlich, MacDonald, Wahl, Xu-Zhang)** |
+| **Breach Regressions** | 1 (user picks) | 1 (user picks) | **4 by default (Froehlich, MacDonald, Costa, Von Thun); Xu-Zhang implemented but quarantined** |
 | **Uncertainty Bounds** | None | None | **Wahl 5th-95th percentile** |
 | **Output Statistics** | Single run | Single run | **Median, p05, p95** |
 | **Number of Members** | 1 | 1 | **10-1000** |

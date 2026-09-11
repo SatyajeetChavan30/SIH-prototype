@@ -113,92 +113,57 @@ Multi-tier validation framework:
 5. **Demo-day network**: Assume offline operation. Cache all data locally on first fetch.
 6. **Licensing**: Check `prototype specs.md` for approved vs forbidden data sources.
 
-## Project Setup Progress (Aug 2026)
+## Repository layout
 
-### ✅ Completed
-- **CLAUDE.md** initialized with full project guidance (500+ lines)
-- **4 skills created**:
-  - `/verify-floodview` — Multi-tier validation (analytical tests, correctness gates, benchmarks)
-  - `/build-phase` — Phase executor with dependency tracking
-  - `/improve-architecture` — Codebase structure audit (HTML explorer + grilling)
-  - `/code-quality-deep-dive` — Exhaustive numerical + safety review
-- **Hooks configured** (.claude/settings.json):
-  - PostToolUse/Write|Edit → Auto-format with ruff
-  - PreToolUse/Bash → Warn on forbidden data sources
-- **Environment**:
-  - ruff 0.16.4 installed (`python -m ruff`)
-  - .gitignore configured
-  - Python 3.14.2 available
-- **Architecture Improved** (Aug 23, 2026):
-  - ✅ Created `floodview/` package structure (Phase 0 skeleton + stubs for Phases 1–7)
-  - ✅ Implemented Phase 0 modules: config.py, cli.py, cache.py, dem.py
-  - ✅ Moved presentation tooling to `tools/sih-presentation/`
-  - ✅ Created tests/ directory with conftest.py
-  - ✅ Documented deep-module design principles
-
-### 🏗️ Package Structure
+Every phase in the build order above is implemented. The tree below is the real
+one as of 2026-09-11; it replaces an August "Project Setup Progress" block that
+still listed most modules as Phase stubs.
 
 ```
-floodview/
-├── __init__.py           — Package init (phase boundaries documented)
-├── config.py             — Config loading & validation (Phase 0)
-├── cli.py                — CLI entry point (Phase 0)
-├── cache.py              — Cache management (Phase 0)
-├── dem.py                — DEM fetch from Copernicus (Phase 0)
-├── solver/
-│   ├── __init__.py       — Phase 1+: HLLC, Audusse, analytical tests
-│   ├── core.py           — (Phase 1)
-│   ├── flux.py           — (Phase 1)
-│   └── types.py          — (Phase 1)
-├── terrain/
-│   ├── __init__.py       — Phase 2+: DEM conditioning, breach regressions
-│   ├── conditioning.py   — (Phase 2)
-│   └── breach.py         — (Phase 3)
-├── export/
-│   ├── __init__.py       — Phase 5+: GeoTIFF, Shapefile, KML export
-│   ├── geotiff.py        — (Phase 5)
-│   ├── shapefile.py      — (Phase 5)
-│   └── kml.py            — (Phase 5)
-└── sph/
-    ├── __init__.py       — Phase 7+: SPH near-field coupling
-    └── coupling.py       — (Phase 7)
+floodview/                 core library
+├── api.py                 rapid analytic estimate (no solver) + legacy HTTP handler
+├── cli.py, config.py      CLI entry point and config validation (Phase 0)
+├── cache.py, dem.py       DEM tile cache and Copernicus GLO-30 fetch (Phase 0)
+├── presets.py             dam and blockage-site presets
+├── run.py                 end-to-end dam-break / blockage pipeline (Phase 4)
+├── hardening.py           input validation and error types
+├── solver/                2D SWE: types, flux (HLLC + Audusse), core, parallel ensemble
+├── terrain/               conditioning, domain, breach regressions, natural_dam,
+│                          blockage (barrier burn), dem_update, roughness
+├── export/                geotiff (COG), shapefile, kml, keyframes, xdmf_export,
+│                          matlab_export, georef
+├── impact/                hazard (FD2320), population (PAR), damage, fatality
+├── gee/                   Earth Engine: auth, sar, blockage_detect, terrain_correction,
+│                          population (GHSL), built_up, worldcover, grid_fetch
+├── delft3d/               Deltares D-Flow FM: setup, dfm_model, runner, ugrid, comparison
+├── sph/                   near-field WCSPH: domain, core, coupling, pysph_runner
+└── validation/            metrics, benchmarks, delft3d_benchmark, sensitivity
 
-tests/
-├── conftest.py           — Pytest fixtures (temp cache, sample config)
-├── test_cache.py         — (Phase 0 tests)
-├── test_dem.py           — (Phase 0 tests)
-├── test_solver.py        — (Phase 1 tests)
-└── test_export.py        — (Phase 5 tests)
-
-tools/
-└── sih-presentation/
-    ├── build_ppt.py      — SIH deck generation (moved from root)
-    ├── check_ppt.py      — Deck validation (moved from root)
-    └── README.md         — Presentation tooling docs
+services/api/floodview_service/   FastAPI backend: main (routes), tasks (run pipeline),
+                                  run_worker (subprocess runs), script_runs, db, schemas
+frontend/src/                     React + Vite dashboard: App, api.js, hazard.js,
+                                  panels/ (11 tabs and panels), state/SimulationClock
+scripts/                          long runs and maintenance (run_blockage, drainage check,
+                                  validate_against_delft3d, register/backfill, run_api)
+paraview/                         ParaView render pipeline (static, animation, cameras)
+tools/                            sih-presentation/ decks, architecture diagrams,
+                                  cesium/ terrain tiles, matlab/, paraview/ dataset builders
+tests/                            32 test modules + conftest.py
+docs/                             validation_findings, dashboard_integration, progress,
+                                  DECISIONS, VERIFICATION_LOG, the Technical Reference
+                                  Manual; archive/ holds dated status snapshots
 ```
 
-### 🚀 Ready To Start
-- **Phase 0 (Skeleton)**: Run `/build-phase 0`
-  - ✅ CLI entry point: `floodview run --dam tehri --lat ... --lon ... --height ... --storage ...`
-  - ✅ Config validation: `floodview validate --config floodview.yaml`
-  - ✅ Cache management: `floodview cache --list` / `--clear`
-  - ✅ DEM fetch: Copernicus GLO-30 from public AWS COGs
-- **Phase 1 (Solver Core)**: Run `/build-phase 1` then `/verify-floodview analytical`
-  - 2D SWE implementation (HLLC, Audusse, MUSCL)
-  - Analytical test validation
+**Skills** in `.claude/skills/`: `verify-floodview`, `build-phase`,
+`improve-architecture`, `code-quality-deep-dive`, and `developing-with-streamlit`
+— the last is a leftover, since the Streamlit dashboard was removed.
+`build-phase` checks `.phase_N.complete` marker files; they are local build
+state and have been git-ignored since `94a994e`, so a fresh clone has none.
 
-### 📋 Recommended Plugin Installs
-```
-/plugin install skill-creator@claude-plugins-official
-/plugin install jupyter@claude-plugins-official
-/plugin install playwright@claude-plugins-official  # For Phase 10 dashboard
-```
-
-### 📊 Build Timeline
-- **Critical path**: Phases 0 → 1 → 4 (gate on tests at each)
-- **Minimum viable**: Phases 0–5 + Phase 7 (reduced) = working sim with export
-- **Full scope**: All 18 phases for complete Tier-1/2 system with dashboard
-- **Demo-day strategy**: Pre-cache all data after Phase 0, assume offline
+**Hooks** (`.claude/settings.json`): ruff auto-format on Write/Edit, and a
+warning on forbidden data sources before Bash. Note that `pyproject.toml`'s
+ruff config lists `W503`, which ruff does not recognise, so ruff currently fails
+to load it and the format hook does nothing until that entry is removed.
 
 ## Architecture Rules (Deep Modules Principle)
 

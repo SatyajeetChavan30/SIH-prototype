@@ -91,7 +91,8 @@ tests/
 ├── test_breach.py                 # Phase 3 tests
 └── test_phase4.py                 # Phase 4 integration tests
 
-docs/
+docs/                              # (as originally planned — SPEC.md, SOLVER.md and
+│                                  #  docs/README.md were never written; see CLAUDE.md)
 ├── SPEC.md                        # Prototype specification (source of truth)
 ├── DECISIONS.md                   # This file
 ├── VERIFICATION_LOG.md            # Coefficient verification tracker
@@ -315,7 +316,8 @@ PR submitted → pytest (all analytical + gates + unit) → Pass? → Merge
 
 ## 13. Corridor Conditioning Is Opt-In, and It Produces Modified Terrain
 
-**Context:** A 24 h Khadakwasla run never receded — 46 cells stuck SEVERE, ~42%
+**Context:** A 24 h Khadakwasla run never receded — 46 cells stuck SEVERE (a class
+retired on 2026-09-11; see `validation_findings.md` §10), ~42%
 of released volume trapped. Three mechanism fixes (breach notch, threshold-limited
 depression fill, asymmetric downstream domain) were implemented and did not clear
 it. Bilinear downsampling of a narrow channel manufactures local minima that exist

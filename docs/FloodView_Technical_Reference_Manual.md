@@ -26,6 +26,34 @@
 > the 2026-09-03 reading, and the file counts, line counts and defect tally above
 > have **not** been recomputed.
 
+> **Amendment (2026-09-11) — superseded sections.** Two commits replaced code
+> this audit describes. `dd1e766` unified FD2320 hazard classification on the
+> published rating HR = d(|V| + 0.5) + DF, retired the `severe` class, renamed
+> the hazard shapefile classes, deleted `PopulationEstimator`, made the DEM
+> interpolation fallback raise on an all-nodata window, and gated breach
+> regression families. `94a994e` stopped tracking `node_modules/`, the frontend
+> DEM tiles, `.coverage` and the phase markers. Each affected section carries a
+> **SUPERSEDED** or **RESOLVED** callout under its heading; the table below also
+> lists places inside defect catalogues and patch lists that have no heading of
+> their own. The status documents this manual cites as sources —
+> `PROGRESS_SUMMARY.md`, `BUILD_STATUS.md`, `ARCHITECTURE_IMPROVEMENTS.md`,
+> `SUMMARY.txt`, `PHASE_3_4_SUMMARY.txt`, `report.md` and
+> `floodview/solver/PHASE1_STATUS.md` — now live in `docs/archive/`.
+>
+> | Where | Topic now superseded |
+> | :--- | :--- |
+> | §2.5, §5.1 | "7.10 m, *severe*" gauge evidence |
+> | §5.2, §5.4.8, §5.8.6 | `node_modules/` described as tracked |
+> | §2.4.6.2, §2.4.6.4 | frontend five-level hazard lists and gauge-badge edges |
+> | §3.4.4, §3.10, §5.4.4 | DEM interpolation falling back to a flat bed |
+> | §3.7.5, P0-17 | `synthesize_breach_ensemble` signature without family validation |
+> | §4B.1, §4B.5, §4B.10, C-04, C-05, P0-03, VQ-08 (§6.6.1) | `PopulationEstimator`, settlement densities, demographic shares |
+> | §4B.2, C-06, P0-05 | box classifier, `SEVERE`, velocity demoting to DRY |
+> | §4C.3.4, §4C.5.4, §4C.5.5, §4C.12, §5.3.6 | shapefile medium/high classes, the second FD2320 scheme, `DRY_DEPTH_M = 0.1` |
+>
+> Findings not listed here were not touched by either commit and stand as
+> written. `docs/validation_findings.md` §10 records the hazard change in full.
+
 ---
 
 ## How to read this manual
@@ -391,6 +419,8 @@ The literature backing for the decomposition is Maranzoni & Tomirotti (2023), *W
 
 #### 2.5 Decision-support use case and real-world utility
 
+> **SUPERSEDED (2026-09-11).** The Gauges-badge evidence quoted here ("7.10 m, *severe*") predates the FD2320 unification. `severe` is no longer a class; that depth now reads *extreme*. See `docs/validation_findings.md` §10 and the current source.
+
 Three concrete decision-support uses are implied by the delivered outputs:
 
 1. **Warning lead time.** Per-gauge arrival times with p05/p95 bands answer "how long do we have at Rishikesh?" — the number an incident commander acts on. The dashboard demonstrated *"Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, severe."*
@@ -571,6 +601,8 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 #### 5.1 User personas
 
+> **SUPERSEDED (2026-09-11).** The "7.10 m, *severe*" gauge quote predates the FD2320 unification; the badge now reads *extreme*. See `docs/validation_findings.md` §10 and the current source.
+
 **NDRF / SDRF (National and State Disaster Response Forces).** The arrival-time consumer. What they need from FloodView is lead time at named downstream towns with an uncertainty band, and a hazard class per area so staging and evacuation can be prioritised. The dashboard's Gauges tab is built for exactly this read: *"Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, severe."* Note that `RESEARCH-FINDINGS.md` cautions against transposing responder organisations between events: the Phuktal responders were *"Army, BRO, NDMA, CWC, DRDO, IAF, NHPC, LAHDC — NOT ITBP or NDRF"*, while ITBP/NDRF/DRDO were the Rishiganga 2021 responders.
 
 **CWC / Central Dam Safety Organisation.** The portfolio-screening consumer. The Tier-1 framing exists for this persona: run every dam in the register, rank by downstream consequence, commission Tier-2/3 studies at the top of the list. The relevant statutory context recorded in `PS-26161-official.md` is the *"NDSA Emergency Action Plan backlog, Dam Safety Act 2021 deadline"* — but the same file is explicit that this is a **support** story, not the headline: *"Do not lead with the NDSA/EAP compliance backlog. NTRO is not the dam-safety regulator."*
@@ -584,6 +616,8 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 **Researchers and academic users.** The reproducibility consumer. Served by the MIT licence, the open dependency stack, the analytical test harness, the Delft3D cross-check script, and the verification log's discipline of never fabricating a coefficient.
 
 #### 5.2 Deployment environment
+
+> **SUPERSEDED (2026-09-11).** `node_modules/` is no longer tracked in git (`94a994e`): it had been committed before its `.gitignore` rule existed. Run `npm install` in `frontend/` on a fresh clone.
 
 **Laptop-class hardware.** Every measured figure in §3 comes from a single machine: 16 logical cores, RAM tight enough that the ensemble worker cap is set by memory rather than cores (*"each worker is a full interpreter at ~400 MB"*), and a consumer GPU (RTX 4050) that was evaluated and rejected for float64 work. `DECISIONS.md` rejects Docker-only deployment for exactly this reason: *"Project must run on demo-day laptop without Docker (network unreliable, setup time). Python venv preferred."*
 
@@ -6833,6 +6867,8 @@ more than 20000 MCM storage would display clamped even though the state holds th
 
 ##### 2.4.6.2 `Map2D.jsx` (278 lines) — Leaflet 2D
 
+> **SUPERSEDED (2026-09-11).** The hazard legend now has four levels (low / moderate / significant / extreme), read from `frontend/src/hazard.js`. A stored summary carrying a legacy `severe` count is folded into extreme by `foldLegacyLevels`, so old runs lose no cells. See `docs/validation_findings.md` §10 and the current source.
+
 **Props:** `{ dam = DAM, gauges = GAUGES, reach, result }`. **Internal state:** `sar`, `showSar`
 (default `true`). **Clock:** `const { current } = useSimulationClock()`.
 
@@ -7157,6 +7193,8 @@ both time widgets on, one red `<Entity>` point for the dam labelled `"{name} ({h
 blue `<Entity>` point per gauge labelled `"{name} — {distance} km"`.
 
 ##### 2.4.6.4 `GaugesPanel.jsx` (169 lines)
+
+> **SUPERSEDED (2026-09-11).** `hazardClass(depth)` now mirrors `HazardClassifier.classify_depth_only`: edges 0.05 / 0.5 / 1.5 / 4.0 m for dry / low / moderate / significant / extreme. There is no `severe`. See `docs/validation_findings.md` §10 and the current source.
 
 **Props:** `{ result, dam }`. No internal state, no effects — a pure render of
 `result.gauges`.
@@ -8442,6 +8480,8 @@ Returns the input unchanged when the two resolutions differ by less than 0.1 m. 
 
 ##### 3.4.4 `interpolate_dem_to_grid`
 
+> **SUPERSEDED (2026-09-11).** There is no fallback any more. The fill value is the mean of the FINITE source cells; a window with no finite cell raises `ValueError` instead of producing a NaN or 100 m flat bed, and the bare `except Exception` is gone, so an interpolator failure surfaces.
+
 Builds `RegularGridInterpolator((dem_y, dem_x), …, method="linear", bounds_error=False, fill_value=mean_val)` over pixel-centre coordinates from `np.linspace`, flipping the DEM when `dem_bounds.top > dem_bounds.bottom`. Out-of-bounds cells and any exception fall back to the DEM's `nanmean` (or 100.0 for an empty array). It returns **float32**, in violation of the stated float64 solver precision policy, and its blanket `except Exception:` will convert any interpolation error into a flat plane at the mean elevation — a silent, physically plausible-looking wrong answer.
 
 ##### 3.4.5 `apply_edge_detection`
@@ -8750,6 +8790,8 @@ DEFAULT_REGRESSION_FAMILIES = ("froehlich", "macdonald", "costa", "von_thun")
 ```
 
 ##### 3.7.5 The Monte-Carlo ensemble sampler
+
+> **SUPERSEDED (2026-09-11).** `synthesize_breach_ensemble` now validates `regression_families` against `REGRESSION_FAMILY_ALIASES`: an unknown name raises `ValueError` (it used to fall through to Froehlich), and a quarantined family (Xu & Zhang) raises `UnverifiedRegressionError` unless `allow_unverified_regressions=True`. `ensemble_statistics` reports `unverified_regressions`.
 
 ```python
 def synthesize_breach_ensemble(dam_config: Dict, num_samples: int = 100,
@@ -10735,6 +10777,8 @@ such rather than reconstructed.
 
 #### 4B.1 Package layout and import graph
 
+> **SUPERSEDED (2026-09-11).** `floodview/impact/__init__.py` now exports `HazardClassifier`, `HazardLevel`, `compute_par`, `compute_population_exposure` and the `damage` names. `PopulationEstimator` no longer exists. See `docs/validation_findings.md` §10 and the current source.
+
 ```
 floodview/impact/__init__.py      19 lines   exports 3 classes
 floodview/impact/hazard.py       249 lines   FD2320 classification
@@ -10814,6 +10858,8 @@ imports patched in, which is noted where relevant.
 ---
 
 #### 4B.2 Hazard classification — `floodview/impact/hazard.py`
+
+> **SUPERSEDED (2026-09-11).** This module was rewritten. The continuous rating HR = d(|V| + 0.5) + DF, classed at 0.75 / 1.25 / 2.5, is now the only definition. The box-classifier threshold table described below is deleted, `SEVERE` is retired, `classify(depth, velocity_x, velocity_y)` refuses a single component, `classify_from_speed` takes a magnitude, and DF is a named parameter. The velocity-demotes-to-DRY defect (C-06) cannot occur. See `docs/validation_findings.md` §10 and the current source.
 
 ##### 4B.2.1 The two parallel classification schemes
 
@@ -11389,6 +11435,8 @@ elsewhere in the same file, but the parameter is at least exposed.
 ---
 
 #### 4B.5 Population at risk — `floodview/impact/population.py`
+
+> **SUPERSEDED (2026-09-11).** `PopulationEstimator` and `DemographicGroup` were deleted rather than repaired (C-04). Only `compute_population_exposure` and `compute_par` remain, and `compute_par` now counts cells wet at exactly t = 0 (`>= 0`, previously `> 0`). See `docs/validation_findings.md` §10 and the current source.
 
 ##### 4B.5.1 The two routes, and which one the application uses
 
@@ -13416,6 +13464,8 @@ created them.
 
 ### 4C.3.4 `export_hazard_classification_polygons(...)`
 
+> **SUPERSEDED (2026-09-11).** The inline class table below is deleted. The exporter now calls `HazardClassifier.classify_from_speed`, and the classes are low / moderate / significant / extreme, so the export keys are `shp_hazard_moderate_zip` / `shp_hazard_significant_zip` (formerly `medium` / `high`). See `docs/validation_findings.md` §10 and the current source.
+
 `shapefile.py:255`:
 
 ```python
@@ -13810,6 +13860,8 @@ For each selected key time:
 
 ### 4C.5.4 Colour ramp and hazard palette
 
+> **SUPERSEDED (2026-09-11).** Five colours now: the SEVERE class and its red (255, 0, 0) are gone, and the second, shapefile-only scheme this section criticises no longer exists. See `docs/validation_findings.md` §10 and the current source.
+
 There is no ramp — the palette is a six-entry lookup owned by
 `HazardClassifier` (`floodview/impact/hazard.py:55-61`):
 
@@ -13828,6 +13880,8 @@ holds for the keyframes — but not across the system, since `shapefile.py` inve
 a second four-class FD2320 scheme (§4C.3.4) and `kml.py` a third (a single red).
 
 ### 4C.5.5 Alpha / transparency handling
+
+> **SUPERSEDED (2026-09-11).** `DRY_DEPTH_M` is now an alias of `floodview.impact.hazard.WET_THRESHOLD_M` = 0.05 m, not a literal 0.1 m, so the transparent area is exactly the area the classifier calls DRY.
 
 ```python
 DRY_DEPTH_M = 0.1
@@ -17078,6 +17132,8 @@ figure in the wrong direction.
 
 ##### C-04 — `PopulationEstimator` returns zero population for every input
 
+> **RESOLVED (2026-09-11, `dd1e766`).** `PopulationEstimator` was deleted; see §4B.5.
+
 **Location:** `floodview/impact/population.py:227` (`if settlement_type in self.settlement_data:`).
 
 **Defect.** `_get_population_density` reads `settlement_type = settlement_grid[i, j]`,
@@ -17152,6 +17208,8 @@ over a uniform settlement grid and compare `population_affected` against
 `sum(density) * cell_area`; the ratio is 4.
 
 ##### C-06 — FD2320 hazard classification has a velocity ceiling with no catch-all: a 3 m / 10 m/s cell classifies as DRY
+
+> **RESOLVED (2026-09-11, `dd1e766`).** The box classifier was replaced by the HR index, where velocity can only raise hazard. `tests/test_impact.py::test_a_fast_deep_flow_is_not_classified_dry` pins it.
 
 **Location:** `floodview/impact/hazard.py:105` (`velocity_ok = velocity_grid <= thresholds["max_velocity"]`).
 
@@ -19995,6 +20053,8 @@ by 100.
 
 ##### P0-03 — `PopulationEstimator` returns zero for every input (C-04)
 
+> **RESOLVED (2026-09-11, `dd1e766`).** Not applied as written: the class was deleted instead of patched, so the `SETTLEMENT_CODES` patch below is moot.
+
 **Location.** `floodview/impact/population.py:227`
 (`if settlement_type in self.settlement_data:` inside `_get_population_density`).
 
@@ -20276,6 +20336,8 @@ the denominator.
 ---
 
 ##### P0-05 — FD2320 hazard classification: velocity ceilings with no catch-all classify deep fast water as DRY (C-06)
+
+> **RESOLVED (2026-09-11, `dd1e766`).** Not applied as written: the classifier was replaced by the published HR index rather than given a catch-all, and SEVERE was retired rather than re-banded.
 
 **Location.** `floodview/impact/hazard.py:88-120` (`HazardClassifier.classify`),
 thresholds at `:46-52`, docstring at `:11-17`.

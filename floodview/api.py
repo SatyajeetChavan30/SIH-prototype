@@ -127,8 +127,10 @@ def rapid_estimate(dam_config: Dict, ensemble_size: int = 10) -> Dict:
     Generate a rapid analytic estimate of flood parameters without running
     the full 2D SWE solver.
 
-    Uses shallow-water wave-celerity approximation and Xu-Zhang peak outflow
-    regression. Suitable for API demo responses; not for production use.
+    Uses a shallow-water wave-celerity approximation and the default breach
+    ensemble (Froehlich, MacDonald, Costa, Von Thun — see
+    breach.DEFAULT_REGRESSION_FAMILIES). Suitable for API demo responses; not
+    for production use.
 
     Args:
         dam_config: Dam parameter dict (name, lat, lon, height_m, storage_mm3).

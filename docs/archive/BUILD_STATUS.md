@@ -1,3 +1,5 @@
+> **Historical snapshot (2026-08-24) — not the current state.** Archived on 2026-09-11. See `CLAUDE.md` and `docs/validation_findings.md` for the current system.
+
 # FloodView Build Status — 2026-08-24
 
 > **This is a dated snapshot. Its numbers are no longer current.** Kept as a

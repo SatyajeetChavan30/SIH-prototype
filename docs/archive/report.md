@@ -1,3 +1,5 @@
+> **Historical snapshot (2026-08-30) — not the current state.** Archived on 2026-09-11. See `CLAUDE.md` and `docs/validation_findings.md` for the current system.
+
 # FloodView — Technical Reference Document
 
 **Version:** 1.0  

@@ -21,8 +21,11 @@ from PIL import ImageFont
 from pptx import Presentation
 from pptx.util import Emu
 
+# The deck lives at the repo root (see build_ppt.py for why this is not
+# HERE-relative).
 HERE = Path(__file__).resolve().parent
-DECK = HERE / "FloodView_SIH2026_PS26161.pptx"
+ROOT = HERE.parent.parent
+DECK = ROOT / "FloodView_SIH2026_PS26161.pptx"
 
 FONT_DIR = Path("C:/Windows/Fonts")
 FILES = {

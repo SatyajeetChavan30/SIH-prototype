@@ -226,7 +226,9 @@ transmissive boundary is the model's only exit, the flood front is
 volume-limited and stops at east 23.5 km, and the nearest edge was 40 km away.
 Moving the boundary 3.5 km *inside* the front (`--domain exit`) drains 96.4% of
 the released volume and reaches **zero SEVERE and zero EXTREME cells at 9.44 h**
-against a pre-fix baseline of 46 stuck SEVERE cells and ~42% trapped.
+against a pre-fix baseline of 46 stuck SEVERE cells and ~42% trapped. (Class
+names as recorded; SEVERE was retired by the FD2320 unification on 2026-09-11 —
+see `validation_findings.md` §10.)
 
 That run clips the study area on purpose — it answers "when does the flood clear
 a 28 × 26 km area around Pune", not "the water ceased to exist" — and it changed
@@ -296,9 +298,10 @@ labelled as a terrain estimate next time that preset is touched.
 - **`prototype specs.md` §17** still has not been appended with the newer
   unvetted coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`,
   `MIN_JRC_PRECISION`, `WARNING_LEAD_TIME_S`, Ritter celerity factor).
-- **`.coverage` is tracked** and is a test artifact; `node_modules/` is tracked
-  deliberately (offline-first vendoring), which is why dependency changes show
-  as thousands of modified files.
+- **Resolved 2026-09-11 (`94a994e`):** `.coverage` and `frontend/node_modules/`
+  are no longer tracked. Both were committed before their `.gitignore` rules
+  existed, so the rules never applied. `npm install` in `frontend/` restores the
+  dependencies on a fresh clone; the offline demo copy on disk is unaffected.
 - **Rishi Ganga has no quantitative benchmark yet.** The published HEC-RAS
   figures need **channel** coordinates for Rishiganga and Tapovan; the gazetteer
   town centres sit 1,319 m and 79 m above the nearest channel and were removed.

@@ -10,11 +10,11 @@ FloodView is a high-performance Python package for dam-break inundation modellin
     *   *Far-Field*: Well-balanced 2D Shallow Water Equation (SWE) solver utilizing HLLC flux schemes, Audusse hydrostatic reconstruction, and MUSCL reconstruction with Manning's friction.
     *   *Near-Field*: Weakly Compressible Smoothed Particle Hydrodynamics (WCSPH) solver utilizing a Tait equation of state, hand-off boundary coupling, and PySPH integration.
 *   **Offline-First & Local Caching**: Automated DEM tile cache retrieval (Copernicus GLO-30 DEM from public AWS COG servers) with local fallbacks, assuming zero network reliability on site.
-*   **Probabilistic Monte Carlo Breach Ensemble**: Generates 100-member breach hydrograph ensembles using Froehlich, MacDonald, and Xu-Zhang regressions with Wahl uncertainty bands.
+*   **Probabilistic Monte Carlo Breach Ensemble**: Generates 100-member breach hydrograph ensembles drawing on Froehlich (1995), MacDonald & Langridge-Monopolis (1984), Costa (1985) and Von Thun & Gillette (1990) with Wahl (2004) uncertainty bands. Xu & Zhang (2009) is implemented but quarantined — it fails a back-check against Teton — and is refused unless `allow_unverified_regressions=True` is passed.
 *   **River Blockage (Landslide Dam) Scenario**: Half the events PS-26161 names are natural blockages rather than dam failures. A landslide barrier is burned into the terrain, *proven* to span the valley, and its impounded volume **measured** by hypsometric fill of the modified DEM — a natural dam has no published gross storage, so the pipeline refuses to run one whose storage came from a slider. Released through Costa (1985), the one transcribed regression whose fitting population included natural dams.
 *   **Observation-Conditioned DEM Update**: A landslide changes the terrain, and the cached DEM predates it. Copernicus GLO-30 is rewritten with the barrier burned in and written as a new GeoTIFF carrying full provenance. Every pixel outside the modified footprint stays bit-identical to the Copernicus source. It is **not** photogrammetry and every product says so — see the note below.
 *   **Automated Impact & Fatality Assessment**:
-    *   FD2320 Flood Hazard Classification (Low, Moderate, High, Extreme).
+    *   FD2320 Flood Hazard Classification — the published hazard rating HR = d(|V| + 0.5) + DF, classed Low / Moderate / Significant / Extreme at 0.75 / 1.25 / 2.5.
     *   Jonkman (2008), Graham (1999), and DeKay-McClelland (1993) fatality models.
     *   India-specific JRC depth-damage economic loss curves.
 *   **Interactive Web Dashboard**: React + Vite frontend (Leaflet 2D map, Cesium 3D globe, playback timeline) served by a FastAPI backend, with peak discharge histograms, gauge arrival time envelopes, and export tools.
@@ -190,7 +190,8 @@ relief), crest height sets the impounded volume steeply:
 ### 1c. Drainage controls — when a flood refuses to recede
 
 Three request fields exist because a 24 h Khadakwasla run once peaked and then
-held flat, with 46 cells stuck at SEVERE and ~42% of the released volume trapped.
+held flat, with 46 cells stuck at SEVERE (a hazard class since retired — see
+`docs/validation_findings.md` §10) and ~42% of the released volume trapped.
 All three default to the safe setting; they are documented here because turning
 one off brings the plateau back, and because a wider domain is expensive.
 
@@ -335,6 +336,17 @@ python -m pytest tests/test_validation.py -v --tb=short
 ```
 
 ---
+
+## 📚 Documentation map
+
+| Document | What it is |
+| :--- | :--- |
+| [`CLAUDE.md`](CLAUDE.md) | Authoritative project guide: hard rules, repository layout, and the record of every defect found and fixed. Start here. |
+| [`docs/validation_findings.md`](docs/validation_findings.md) | Measured results, numbered sections; §10 is the FD2320 hazard unification. |
+| [`docs/dashboard_integration.md`](docs/dashboard_integration.md) | How every module reaches the browser, and the demo path. |
+| [`docs/VERIFICATION_LOG.md`](docs/VERIFICATION_LOG.md) | The unvetted-coefficient queue. |
+| [`docs/FloodView_Technical_Reference_Manual.md`](docs/FloodView_Technical_Reference_Manual.md) | Full audit of the 2026-09-03 codebase; sections superseded since are marked. |
+| [`docs/archive/`](docs/archive/) | Dated status snapshots, kept as history, not current. |
 
 ## ⚠️ Important Guidelines & Constraints
 

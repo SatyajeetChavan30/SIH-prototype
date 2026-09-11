@@ -1,3 +1,5 @@
+> **Historical snapshot (2026-08-24) — not the current state.** Archived on 2026-09-11. See `CLAUDE.md` and `docs/validation_findings.md` for the current system.
+
 # Phase 1 Solver Core — Status & Handoff
 
 **Date:** 2026-08-24  
