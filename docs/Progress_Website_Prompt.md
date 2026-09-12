@@ -114,7 +114,7 @@ Then a table (turning into stacked cards on mobile) with columns: **#** · **Req
 | D12 | Real Indian dam and river | Done | Khadakwasla dam (Pune, Maharashtra) and Rishi Ganga (Chamoli, Uttarakhand), on open data only |
 
 ### 5 — Measured results (`#results`)
-Heading: **Measured results**. Sub-heading: *Every number here was measured on our code. Computing times are real (wall-clock) time on a 16-core CPU with no GPU — not simulated flood time.*
+Heading: **Measured results**. Sub-heading: *Every number here was measured on our code. Computing times are real (wall-clock) time — not simulated flood time — and each one states the hardware it ran on, because the solver runs on either a 16-core CPU or an NVIDIA GPU and the two differ by 11–20×.*
 
 **Block A — Benchmark against theory and Delft3D FM.** A card with a small horizontal bar chart, "RMSE vs exact solution — lower is better":
 - (PROJECT NAME) 2D solver: **0.0317 m**

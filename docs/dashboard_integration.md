@@ -90,6 +90,36 @@ with the cause unrecoverable from any endpoint.
 | `GET /backends` | Which compute backends this machine can really run, behind the control panel's Compute selector. `cuda` is listed only when a float64 CUDA kernel actually compiles and runs; a present NVIDIA driver is not enough, and believing otherwise is how the project carried "CUDA does not work here" for months while only NVVM was missing. The probe runs in a SHORT-LIVED SUBPROCESS: calling it inside uvicorn would park a CUDA context on ~300 MB of a 6 GB card for the server's whole life, competing with the run subprocess that needs it. Cached per API process. |
 | `GET /gee/blockage` | Has a new water body — a forming landslide-dammed lake — appeared on this reach? Differences a Sentinel-1 pre-event median against a **single** post-event scene, subtracts JRC permanent water, and requires what remains to sit on a watercourse. Same three-state contract as `/gee/latest`: live, cached, or a refusal that says why. There is no fourth state and nothing here fabricates a lake. |
 
+## Choosing the compute backend from the control panel
+
+`GET /backends` exists to be *shown*, not merely answered, and the panel spends
+its screen space on the refusal rather than on the happy path.
+
+- **The Compute selector** (`frontend/src/panels/ControlPanel.jsx:395-411`) has
+  `auto` (default), CPU and GPU. The GPU option carries the device name when the
+  probe found one — "GPU — NVIDIA GeForce RTX 4050 Laptop GPU" — and falls back
+  to the generic "GPU (CUDA, float64)" label otherwise.
+- **A missing option explains itself.** The GPU entry is rendered `disabled` when
+  `backends.cuda_available` is false, and `backends.cuda_reason` — the probe's
+  own words — is printed beneath the selector. That is deliberate: this project
+  believed it had no usable GPU for months when the only missing piece was NVVM,
+  and a silently absent dropdown entry is exactly how that belief survives. A
+  greyed-out option with a reason beside it is a diagnosis; an absent one is not.
+- **The choice is carried on `dam_config["solver_backend"]`**, the same channel
+  as `fill_max_depth_m` and `notch_breach`, so neither the Celery task signature
+  nor `run_worker`'s payload had to change to add it.
+- **A `cuda` request this machine cannot serve is refused at submission**
+  (`main.py`, 422 with the probe's reason), on the precedent of the Earth Engine
+  check: failing now beats failing after the terrain and the breach ensemble have
+  already been built.
+- **The Ensemble tab reports what actually ran.**
+  `frontend/src/panels/EnsemblePanel.jsx:134-138` shows a "Computed on" line
+  taken from `result.solver_backend.solver_backend_label`, with the reason on
+  hover. It reads from the **members**, not from the request, so a run submitted
+  as `auto` that fell back to the CPU says CPU — which is the whole point, since
+  a timing quoted against the wrong hardware is a false measurement. The line is
+  absent for runs that predate the backend, the same way the p05/p95 band is.
+
 ## Dashboard tabs
 
 **2D + 3D** · **Gauges** · **Ensemble** · **Impact** · **SPH** · **Comparison**
@@ -616,7 +646,21 @@ them, each labelled `TERRAIN-DERIVED`.
   Without it the globe renders but shows an Ion warning. Pre-existing.
 - **Runs created before this work have no ensemble statistics, no p05/p95 band
   and no peak depth** — those fields did not exist when they were written. They
-  render as blanks, correctly. New runs are complete.
+  render as blanks, correctly. New runs are complete. The same applies to the
+  Ensemble tab's "Computed on" line for every run predating the GPU backend.
+- **The GPU is per-run, not per-server, and a second concurrent run may not get
+  it.** Ensemble chunks are sized to 60% of *free* VRAM, so a second run that
+  cannot fit falls back to the CPU and records that in its own provenance. A
+  demo that submits two runs at once will therefore see two different "Computed
+  on" labels, which is correct rather than a defect. CPU pool workers are pinned
+  to `backend="cpu"` regardless — 16 worker processes each opening a CUDA
+  context on a 6 GB card would fail.
+- **Near-field SPH never uses the GPU here.** PySPH's OpenCL path is wired in,
+  but compyle 0.9.1 generates its kernels using `ast.Str`, which Python 3.14
+  removed. Detected and reported rather than guessed; whether a newer compyle or
+  Python 3.13 would run it is untested. A `solver="both"` or `solver="sph"` run
+  can therefore show a GPU label for its SWE members and still spend its
+  near-field seconds on the CPU.
 - Runs orphaned by an API restart are marked failed at startup; eight were
   stuck at `running` in the demo database.
 - **A run submitted from the dashboard can still die with the server** where the

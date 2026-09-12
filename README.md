@@ -127,6 +127,8 @@ floor.**
 ### Prerequisites
 *   Python 3.11+
 *   GDAL/GEOS system libraries (required for rasterio, geopandas, and shapely)
+*   *Optional:* an NVIDIA GPU and its driver, for the CUDA solver backend. The
+    CUDA **toolkit** is not required — see below.
 
 ### Linux (Ubuntu/Debian) Installation
 ```bash
@@ -144,6 +146,22 @@ pip install -e .[dev,viz]
     conda activate jalraksha
     pip install -e .[dev,viz]
     ```
+
+### Optional: the GPU solver backend
+
+```bash
+pip install -e ".[gpu]"
+```
+
+That extra is `numba-cuda[cu12]` plus `pyopencl`. **Only the NVIDIA driver is
+needed, not the CUDA toolkit** — numba-cuda ships NVVM and NVRTC as pip wheels.
+That distinction is worth stating plainly, because a missing NVVM is the entire
+reason this project believed for months that it had no usable GPU; the driver
+was present the whole time. Measured once it worked: **11–20× faster than the
+CPU path**, float64 on both, with identical step counts
+(`docs/validation_findings.md` §11).
+
+Without the extra nothing breaks — the solver runs on the CPU and says so.
 
 ---
 
@@ -221,8 +239,26 @@ curl -X POST http://localhost:8000/runs -H "Content-Type: application/json" -d '
 ### 2. Run the CLI Simulation (Tehri Dam Demo)
 Execute a 3-member ensemble run for Tehri Dam:
 ```bash
-python -m jalraksha.cli run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540 --ensemble-size 3
+python -m jalraksha.cli run --dam tehri --lat 30.3789 --lon 78.4789 --height 260 --storage 3540 --ensemble-size 3 --backend auto
 ```
+
+`--backend` takes `auto` (the default), `cpu` or `cuda`. `auto` uses the GPU
+where a float64 CUDA kernel really compiles and runs, and the CPU otherwise,
+recording which it picked and why. An explicit `--backend cuda` that cannot run
+**raises** rather than quietly falling back — a run that silently changed
+hardware would carry a false timing and a false provenance label.
+
+### 2b. Choosing the backend from the dashboard
+
+The control panel has a **Compute** selector with the same three choices. The
+GPU option is disabled when this machine cannot offer one, and the probe's own
+reason is printed beneath it, so a missing option explains itself. `GET
+/backends` is what it reads. A `cuda` request that cannot run is refused at
+submission with that reason rather than after the terrain and breach ensemble
+have been built.
+
+The Ensemble tab then shows a **"Computed on"** line taken from the members
+themselves, so a run that fell back to the CPU says CPU.
 
 ### 3. Start the REST API Service
 Launch the background HTTP API service on port `8502`:
@@ -248,6 +284,8 @@ configured and *reported as absent* when not — nothing is silently substituted
 | `JALRAKSHA_PVPYTHON_EXE` | Full path to `pvpython.exe`, used to build the per-run `.pvsm` state. | As above. |
 | `JALRAKSHA_GEE_PROJECT` | Google Cloud project ID for **Google Earth Engine** — powers the observed Sentinel-1 water extent, the GHSL population-at-risk figure, and new-water detection for river blockages. | `GET /gee/latest` and `GET /gee/blockage` answer `source: "unavailable"` with the reason, and runs publish no population-at-risk figure. Nothing is estimated in their place. The **manual** blockage path is unaffected and needs no Earth Engine at all. |
 | `JALRAKSHA_DATA_DIR` | Where DEMs, exports, keyframes and the SQLite DB live. | `./data` |
+| `JALRAKSHA_SOLVER_BACKEND` | Overrides the solver backend when it would otherwise be `auto` — `cpu` or `cuda`. This is how `scripts/` pick a backend; the CLI has `--backend` and the dashboard has its Compute selector. | `auto`: the GPU is used where a float64 CUDA kernel compiles and runs, the CPU otherwise, and the choice plus its reason travel with every result. An explicit `cuda` that cannot run **raises** — it never quietly runs on the CPU, because the timing and the provenance label would both then be false. |
+| `JALRAKSHA_SPH_BACKEND` | Near-field PySPH backend — `auto`, `opencl` or `cpu`. | `auto`, which currently resolves to `cpu` on Python 3.14: compyle 0.9.1 generates PySPH's GPU kernels using `ast.Str`, which 3.14 removed. Detected and reported, not guessed. |
 
 ```bash
 export JALRAKSHA_DFLOWFM_EXE="C:/Program Files/Deltares/Delft3D FM Suite 2026.01 HM/plugins/DeltaShell.Dimr/kernels/x64/bin/dflowfm-cli.exe"
@@ -344,7 +382,7 @@ python -m pytest tests/test_validation.py -v --tb=short
 | Document | What it is |
 | :--- | :--- |
 | [`CLAUDE.md`](CLAUDE.md) | Authoritative project guide: hard rules, repository layout, and the record of every defect found and fixed. Start here. |
-| [`docs/validation_findings.md`](docs/validation_findings.md) | Measured results, numbered sections; §10 is the FD2320 hazard unification. |
+| [`docs/validation_findings.md`](docs/validation_findings.md) | Measured results, numbered sections; §10 is the FD2320 hazard unification, §11 the GPU backend. |
 | [`docs/dashboard_integration.md`](docs/dashboard_integration.md) | How every module reaches the browser, and the demo path. |
 | [`docs/VERIFICATION_LOG.md`](docs/VERIFICATION_LOG.md) | The unvetted-coefficient queue. |
 | [`docs/JalRaksha_Technical_Reference_Manual.md`](docs/JalRaksha_Technical_Reference_Manual.md) | Full audit of the 2026-09-03 codebase; sections superseded since are marked. |

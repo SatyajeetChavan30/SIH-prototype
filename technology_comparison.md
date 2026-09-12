@@ -225,7 +225,7 @@
 |:---|:---|:---|:---|:---|
 | **Software License** | Free | Free | Free | **Free** |
 | **Data (DEM)** | Free (manual) | Free (manual) | Free (manual) | **Free (automated)** |
-| **Compute** | Workstation | Workstation | GPU workstation | **Any CPU** |
+| **Compute** | Workstation | Workstation | GPU workstation | **Any CPU; an NVIDIA GPU is optional and 11–20× faster** |
 | **Training** | Days-weeks | Days-weeks | Weeks | **Hours** |
 | **Maintenance** | Manual updates | Manual updates | Manual updates | **pip update** |
 
