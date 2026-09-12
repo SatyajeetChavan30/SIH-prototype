@@ -358,6 +358,52 @@ whole fill design exists to avoid.
 
 ---
 
+## 14. GPU Backend: float64 CUDA, With the CPU Kept as the Reference
+
+**Context:** A GPU port was declined twice on an estimate: float64 on a consumer
+GPU (this laptop's RTX 4050 runs FP32/FP64 at 64:1) "would likely be slower" than
+the numba CPU kernels. The estimate was never measured, and the build machine
+could not run CUDA at all because NVVM was missing.
+
+**Decision:** Add a float64 CUDA backend (numba-cuda) behind
+`backend="auto" | "cuda" | "cpu"`, overridable with `JALRAKSHA_SOLVER_BACKEND`.
+The default is `auto`: the GPU where a float64 CUDA kernel can run, the CPU
+otherwise. The numba CPU path stays as the reference implementation and the
+fallback.
+
+**Rationale:**
+- Measured, it is faster, not slower: **12.6×** for one member at 376 × 480,
+  **20.3×** at 600 × 600, and **11.5×** for a 30-member ensemble against the
+  CPU's own process pool (`validation_findings.md` §11).
+- float64 is kept, so every gate threshold is unchanged and no part of the
+  correctness argument had to be redone. PERF-6's precondition for relaxing
+  precision never came into play.
+- One physics source. The scalar functions in `solver/flux.py` ending in
+  `_impl` (minmod, Audusse, HLLC, friction, the per-cell CFL term) compile for
+  both targets, so HLLC is not written twice.
+
+**Consequences:**
+- The GPU agrees with the CPU to round-off, not bit for bit (NVVM FMA
+  contraction). Tests bound the difference rather than demanding equality, and
+  the GPU must pass every blocking gate on its own.
+- Every result records which backend ran (`solver_backend`, label, reason, and
+  device). `auto` falls back to the CPU loudly, with the reason; an explicit
+  `cuda` request that cannot run raises instead.
+- The batched GPU ensemble is a second implementation of the member loop.
+  `tests/test_parallel.py::TestGpuEnsemble` binds it to the first.
+- `pip install -e ".[gpu]"` adds the GPU dependencies; core dependencies are
+  unchanged. After the first install nothing needs the network, so the
+  offline-first rule holds.
+- Near-field SPH stays on the CPU on Python 3.14. PySPH's GPU code generator
+  (compyle 0.9.1) uses `ast.Str`, which 3.14 removed.
+
+**Rejected alternatives:** float32 or mixed precision (every gate would have to
+be re-derived, and float64 turned out to be fast enough); CuPy `RawKernel` (a
+second, CUDA C copy of HLLC); dropping the CPU path (machines without an NVIDIA
+GPU, CI, and the fallback itself).
+
+---
+
 ## References & Future Refinements
 
 - **Numerical analysis:** Toro 2001, Audusse 2004 (cited above)
@@ -373,5 +419,5 @@ whole fill design exists to avoid.
 ---
 
 **Document maintained by:** Claude Code (SIH 2026 team)  
-**Last updated:** 2026-09-06  
+**Last updated:** 2026-09-12  
 **Next review:** After Phase 1 completion (approx. 2026-08-28)

@@ -25,6 +25,7 @@ from jalraksha.terrain.roughness import (
     LandCoverUnavailableError,
     assign_manning_from_worldcover,
     manning_field_summary,
+    roughness_provenance,
 )
 
 CRS = "EPSG:32643"
@@ -173,3 +174,20 @@ def test_summary_exposes_a_uniform_field_as_uniform(grid):
     assert summary["is_uniform"] is True
     assert summary["fraction_at_default"] == 1.0
     assert summary["distinct_values"] == 1
+
+
+def test_run_provenance_of_a_uniform_field_says_so():
+    """What run_summary.json carries: the field the members were solved with."""
+    provenance = roughness_provenance(np.full((NY, NX), DEFAULT_MANNING_N))
+    assert provenance["is_uniform"] is True
+    assert provenance["applied"] == "per_cell"
+    assert provenance["note"].startswith("Uniform roughness")
+
+
+def test_run_provenance_of_a_land_cover_field_reports_its_range(worldcover_raster, grid):
+    field = assign_manning_from_worldcover(str(worldcover_raster), grid)
+    provenance = roughness_provenance(field)
+    assert provenance["is_uniform"] is False
+    assert provenance["applied"] == "per_cell"
+    assert provenance["min_n"] < provenance["max_n"]
+    assert "cell by cell" in provenance["note"]

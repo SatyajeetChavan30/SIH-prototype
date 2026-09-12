@@ -14,6 +14,15 @@ export async function listDams() {
   return r.json();
 }
 
+// Which compute backends this machine can actually run, for the Compute
+// selector. "cuda" appears only when a float64 CUDA kernel really compiles and
+// runs there -- a present NVIDIA driver is not enough.
+export async function getSolverBackends() {
+  const r = await fetch(`${API}/backends`);
+  if (!r.ok) throw new Error(`Could not read solver backends (${r.status})`);
+  return r.json();
+}
+
 export async function submitRun(req) {
   const r = await fetch(`${API}/runs`, {
     method: "POST",

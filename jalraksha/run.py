@@ -27,6 +27,7 @@ from jalraksha.solver.core import SWESolver
 from jalraksha.solver.parallel import run_ensemble
 from jalraksha.terrain.domain import build_domain, compute_breach_location, latlon_to_utm, compute_utm_zone
 from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
+from jalraksha.terrain.roughness import roughness_provenance
 from jalraksha.presets import get_gauges
 
 
@@ -646,6 +647,35 @@ def _notch_breach_into_bed(
     )
 
 
+def hydrograph_discharge(
+    t_s: float, dt_s: float, q_t_array: np.ndarray, t_array: np.ndarray
+) -> float:
+    """
+    Breach discharge (m³/s) at time t_s, by linear interpolation of the hydrograph.
+
+    Zero before the first sample (including at exactly t_array[0]) and after the
+    last. dt_s matters only when the discharge series is longer than the time
+    series, where it extends the final interval.
+
+    The single definition of "what the breach releases at t". The injector below
+    uses it, the tests use it to check the released volume, and
+    solver/ensemble_cuda.py mirrors it on the GPU.
+    """
+    idx = np.searchsorted(t_array, t_s)
+    if idx >= len(q_t_array) or idx == 0:
+        return 0
+    # Linear interpolation
+    t_prev = t_array[idx - 1]
+    t_next = t_array[idx] if idx < len(t_array) else t_prev + dt_s
+    q_prev = q_t_array[idx - 1]
+    q_next = q_t_array[idx] if idx < len(q_t_array) else q_prev
+
+    if t_next > t_prev:
+        alpha = (t_s - t_prev) / (t_next - t_prev)
+        return (1 - alpha) * q_prev + alpha * q_next
+    return q_prev
+
+
 def inject_breach_hydrograph(
     state: "State",
     grid: Grid,
@@ -670,24 +700,7 @@ def inject_breach_hydrograph(
 
     Modifies state.u, state.v, state.h at breach cell to enforce discharge.
     """
-    # Find current discharge from hydrograph
-    # Interpolate linearly if t_s falls between two time steps
-    idx = np.searchsorted(t_array, t_s)
-    if idx >= len(q_t_array) or idx == 0:
-        q_current = 0
-    else:
-        # Linear interpolation
-        t_prev = t_array[idx - 1]
-        t_next = t_array[idx] if idx < len(t_array) else t_prev + dt_s
-        q_prev = q_t_array[idx - 1]
-        q_next = q_t_array[idx] if idx < len(q_t_array) else q_prev
-
-        if t_next > t_prev:
-            alpha = (t_s - t_prev) / (t_next - t_prev)
-            q_current = (1 - alpha) * q_prev + alpha * q_next
-        else:
-            q_current = q_prev
-
+    q_current = hydrograph_discharge(t_s, dt_s, q_t_array, t_array)
     if q_current <= 0:
         return  # No injection
 
@@ -777,6 +790,7 @@ def run_dam_break_ensemble(
     fill_max_depth_m: float = 3.0,
     condition_corridor_m: float = 0.0,
     notch_breach: bool = True,
+    backend: Optional[str] = "auto",
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -832,6 +846,11 @@ def run_dam_break_ensemble(
             hazard classification instead of letting it recede.
         use_synthetic_terrain: Emergency fallback to an analytic valley instead
             of the real DEM. Results are not real terrain — see build_domain.
+        backend: Compute backend for the ensemble: "auto", "cpu" or "cuda"
+            (jalraksha/solver/backend.py). "auto" honours
+            JALRAKSHA_SOLVER_BACKEND and then picks the GPU where a float64
+            CUDA kernel runs. Both backends solve the same float64 physics;
+            the result records which one did, under "solver_backend".
 
     Returns:
         {
@@ -988,6 +1007,7 @@ def run_dam_break_ensemble(
         snapshot_times=snapshot_times,
         n_workers=n_workers,
         progress_cb=_member_progress,
+        backend=backend,
     )
 
     for member in member_results:
@@ -1025,6 +1045,27 @@ def run_dam_break_ensemble(
             depth_series = member["depth_series"]
 
     print(f"\n  Completed: {len(results_ensemble)}/{ensemble_size} members")
+
+    # Which hardware produced the members, and why (solver/backend.py). Every
+    # member carries it, a GPU run that fell back to the CPU included, so the
+    # run reports the backend its members actually used rather than the one
+    # that was asked for.
+    solver_backend = next(
+        (
+            {key: member.get(key) for key in (
+                "solver_backend", "solver_backend_label",
+                "solver_backend_reason", "solver_device",
+            )}
+            for member in member_results if member.get("solver_backend")
+        ),
+        None,
+    )
+    if solver_backend:
+        print(f"  Solver backend: {solver_backend['solver_backend_label']}")
+    # The roughness the members were actually solved with. Every member uses
+    # the per-cell field, so a summary of the field IS a summary of what ran.
+    roughness = roughness_provenance(manning_field)
+    print(f"  Roughness: {roughness['note']}")
 
     if len(results_ensemble) == 0:
         return {"error": "No ensemble members completed successfully"}
@@ -1119,6 +1160,8 @@ def run_dam_break_ensemble(
         "volume_balance": _summarize_volume_balance(volume_balance_members),
         "num_completed": len(results_ensemble),
         "num_ensemble": ensemble_size,
+        "solver_backend": solver_backend,
+        "roughness": roughness,
         "gauges": gauges,
         "grid": {
             "nx": grid.nx, "ny": grid.ny, "dx": grid.dx, "dy": grid.dy,

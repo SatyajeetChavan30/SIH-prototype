@@ -162,10 +162,13 @@ def build_domain(
         b_init=bed_elevation,
     )
 
-    # Manning's n. TODO: UNVETTED — a uniform 0.03 stands in for the ESA
-    # WorldCover lookup in terrain/roughness.py, which is still a stub returning
-    # this same constant. 0.03 is a conventional natural-channel value
-    # (Chow 1959, Table 5-6); a real land-cover field is Phase 2 work.
+    # Manning's n. TODO: UNVETTED — a uniform value (dam_config "manning_n",
+    # default 0.03) stands in for land cover. terrain/roughness.py can put ESA
+    # WorldCover onto this grid (assign_manning_from_worldcover), but nothing
+    # here fetches WorldCover yet. 0.03 is a conventional natural-channel value
+    # (Chow 1959, Table 5-6). The run summary reports the field actually solved
+    # with (roughness_provenance), so a uniform field cannot pass for a
+    # land-cover one.
     manning_field = np.full(
         (grid.ny, grid.nx), dam_config.get("manning_n", 0.03), dtype=np.float64
     )

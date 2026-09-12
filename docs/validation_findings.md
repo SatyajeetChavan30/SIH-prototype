@@ -791,6 +791,19 @@ Caveats on this measurement:
   either raises. Costa (1985) is the only active natural-dam regression, so a
   blockage ensemble has no inter-method spread and takes its range from a
   prediction band whose width is itself an unvetted placeholder (rows 19–22).
+- **A real GPU out-of-memory has never happened.** Ensemble chunks are sized
+  from free VRAM, and the fall-back from a failing GPU ensemble to the CPU is
+  tested, but only with a simulated failure (`TestBackendFallback`). No run has
+  actually exhausted the 6 GB card (two concurrent API runs on large grids
+  would be the way to do it). The code is written to fall back; that it does so
+  under real memory pressure is untested.
+- **GPU SPH has never produced a result.** The OpenCL path is wired and
+  requests float64, but on Python 3.14 PySPH's code generator (compyle 0.9.1)
+  cannot build its kernels, so every SPH run so far is a CPU run. Whether a
+  compyle release without `ast.Str`, or Python 3.13, would run it is untested.
+- **The GPU speed-ups are from one machine.** Every figure in §11 is from this
+  laptop's RTX 4050 (FP32/FP64 = 64). A GPU with more float64 throughput would
+  change the speed-up, not the physics; nothing else has been measured.
 
 
 ---
@@ -844,3 +857,201 @@ Two consequences worth stating plainly:
 `hazard_weights`, which drives `weighted_hazard_index`, remains **UNVETTED**:
 FD2320 publishes classes, not a weighting between them, and no source has been
 identified for those numbers.
+
+## 11. GPU backend: float64 on a laptop RTX 4050, measured 2026-09-12
+
+The project declined a GPU port twice (`solver/parallel.py`, Technical Reference
+PERF-6) on an estimate. Consumer Ada GPUs run float64 at 1/64 of float32 (the
+driver reports an FP32/FP64 ratio of 64 for this card), so "a float64 CUDA port
+would likely be slower than these CPU kernels". The estimate was never
+measured, and on this machine it could not have been: the NVIDIA driver was
+present but NVVM was not, so `numba.cuda` could not compile anything.
+`pip install "numba-cuda[cu12]"` now supplies NVVM and NVRTC as pip wheels.
+
+**Performance.** Same float64 physics, same machine (16 logical cores),
+measured with nothing else running. JIT compilation is excluded on both sides.
+
+| Case | CPU (numba) | GPU (CUDA) | Speed-up |
+| :--- | ---: | ---: | ---: |
+| One member, 376 × 480 cells, 600 s simulated, 1,765 steps | 72.4 s (41.0 ms/step) | 5.74 s (3.25 ms/step) | **12.6×** |
+| One member, 600 × 600 cells, 600 s simulated, 1,865 steps | 136.4 s (73.1 ms/step) | 6.72 s (3.60 ms/step) | **20.3×** |
+| 30-member ensemble, 376 × 480, 900 s each (CPU: its own pool of 8 workers) | 455.6 s | 39.7 s | **11.5×** |
+
+Step counts are identical on both backends in every row (the ensemble's mean is
+1,132.3 steps per member on each). The single-member speed-up GROWS with the
+grid, because 376 × 480 does not fill the GPU: going from 180 k to 360 k cells
+costs it only 3.25 ms to 3.60 ms per step. The ensemble speed-up is lower than
+the single-member one because the CPU side is no longer one process: it spreads
+members over worker processes, which is the CPU's best case.
+
+Why the estimate was wrong: it compared peak float64 FLOP rates, but the CPU
+kernels never come near the CPU's peak. They are scalar loops, and the 2.37×
+scaling from 1 to 16 threads recorded in `parallel.py` shows they are held back
+by memory and synchronisation, not arithmetic. The ratio that decides the
+question is achieved throughput: 4.4–4.9 million cell-updates per second on the
+CPU against 55.5 million (376 × 480) and 100 million (600 × 600) on the GPU.
+Nobody had measured it.
+
+**Correctness. The GPU is held to the gates, not merely to the CPU.**
+
+- Every test in `tests/test_solver.py` (the blocking gates plus Ritter, Stoker
+  and Thacker) is parametrized over both backends: 42 passed, 21 on each.
+- Lake at rest over random bathymetry: |V| = 5.1e-14 m/s on the GPU against
+  6.0e-14 on the CPU (gate: 1e-8). Closed-box mass drift: 4.3e-16 (gate: 1e-3).
+- The Delft3D Ritter cross-check (`scripts/validate_against_delft3d.py --case
+  ritter`), run on the GPU: JalRaksha RMSE 0.0317 m and depth at the dam
+  4.532 m. These are the same figures to four decimals as the CPU result in §1.
+- Same inputs on both backends: step counts are identical, h_max agrees to
+  ≤5e-15 relative, arrival times agree to 3.6e-15 s, and volume balances agree
+  to 1e-15. The batched ensemble's snapshot frames are bit-identical (they are
+  float32).
+- The full pipeline on real terrain: Khadakwasla, 8 members, 2 h at 200 m
+  (270 × 270), run through `run_dam_break_ensemble` on each backend. Gauge
+  arrivals agree to 9e-13 s, the h_max statistics are identical, and the
+  released volume of 67.206 MCM agrees to 5e-15. The first attempt at this
+  comparison disagreed by up to 310 s, and that was not the solver:
+  `run.py` does not seed the breach ensemble, so the two runs drew different
+  hydrographs. The rerun pins the seed.
+- Whole-pipeline wall-clock for that configuration, including the DEM
+  preparation and exports that do not run on the GPU: 369.7 s on the CPU
+  process pool against 52.8 s on the GPU (7.0×). This was measured on the
+  unseeded pair, so the two drew different hydrographs and the figure is
+  indicative, not exact.
+
+**Not bit-identical, and deliberately not tested as if it were.** NVVM fuses
+`a*b + c` into a single-rounding FMA, and numba-cuda has no switch to stop it.
+libdevice's `pow` can also differ from the C runtime's by an ulp. Measured on
+a probe kernel, 89% of results are bit-identical and the maximum difference is
+8.9e-16. The equivalence tests (`tests/test_solver_cuda.py`,
+`tests/test_parallel.py::TestGpuEnsemble`) therefore bound the difference about
+six orders of magnitude above round-off, and far below anything physical.
+
+**What did not move to the GPU, and why:**
+
+- **Near-field SPH.** PySPH's OpenCL backend is wired in (`--opencl
+  --use-double`, NVIDIA preferred over the AMD iGPU). But PySPH generates its
+  GPU kernels through compyle 0.9.1, which still uses `ast.Str`, and Python
+  3.14 removed it. The first GPU kernel dies with `module 'ast' has no
+  attribute 'Str'`. `resolve_sph_backend` detects this from compyle's own
+  source and falls back to the CPU, recording the reason. The CPU still-water
+  gate was re-run at 8,000 particles over 2 s: residual speed 0.27 m/s,
+  hydrostatic slope error 4.7%, density error 0.60%, 148 s wall-clock.
+- **Serial algorithms and I/O**: the breach-routing ODE (sequential in time),
+  priority-flood depression filling (a heap), DEM fetch and exports.
+
+### Ensemble members use the per-cell Manning field (fixed 2026-09-12)
+
+Every ensemble member used to be solved with a UNIFORM Manning's n equal to the
+mean of the field it was handed. On the CPU that was
+`SWESolver(manning_n=float(np.mean(field)))`; the GPU built the same uniform
+field, on purpose, so the two backends could be compared. That silently undid
+`terrain/roughness.py`, whose whole point is that friction follows land cover.
+Both backends now solve with the field itself. The GPU builds and validates it
+with the same `SWESolver` code as the CPU, so a field the CPU refuses (a
+negative n, a wrong shape) fails every member on both backends with the same
+message.
+
+**What it changes, measured.** The test case is a 200 × 160 valley at 100 m,
+30 minutes, with a peak of 8,000 m³/s. It uses a WorldCover-style class map:
+tree cover (n = 0.100) on the slopes, cropland (0.040) on the floodplain, a
+permanent-water channel (0.030), and a built-up block (0.080) downstream. The
+field's mean is 0.091, because tree cover dominates the area, so averaging
+makes the channel three times rougher than it is. With the per-cell field:
+
+- the flood reaches 308 cells, against 170 with the mean;
+- it reaches channel reaches that the averaged run never wets;
+- it floods part of the built-up block (mean h_max 2.6 m), which the averaged
+  run never reaches.
+
+Where both runs wet a cell, the per-cell field brings arrival earlier by a
+median of 209 s (699 s earlier at the 5th percentile). h_max differs by 70%
+in relative L2.
+
+**What it does NOT change today.** `terrain/domain.py::build_domain` hands
+every run a UNIFORM field (dam_config "manning_n", default 0.03), because
+nothing in the pipeline fetches WorldCover yet, and the mean of a uniform field
+is that field. Every run made through `run_dam_break_ensemble` so far is
+therefore unaffected; the fix takes effect as soon as a non-uniform field is
+supplied. Runs written before it are NOT reclassified. The run summary now
+records the field the members were actually solved with (`roughness`: min,
+max and mean n, distinct values, fraction at the default, `is_uniform`, and a
+one-line note), so a uniform field can no longer pass for a land-cover one.
+
+### The member-loop timestep: one dt per step (fixed 2026-09-12)
+
+The member loop used three different timesteps per iteration. It injected the
+breach hydrograph with the CFL timestep computed BEFORE injection. The solver
+step then recomputed its own timestep on the post-injection state. And the
+member clock advanced by the first of the two. Measured on a 200 × 160 valley
+over 30 simulated minutes, for peak outflows of 2,000, 8,000 and 20,000 m³/s,
+the member clock ran 2.6%, 1.9% and 1.8% ahead of the physics time actually
+integrated. Arrival times are stamped with that clock, so they read late by the
+same fraction of elapsed time. The released volume exceeded what the hydrograph
+delivers over the integrated time by 1.2%, 0.8% and 0.7%. In the worst single
+step, the injection used a timestep 14–28× longer than the step the solver then
+took.
+
+**The fix.** `parallel.inject_with_one_timestep`, and its GPU mirror
+`ensemble_cuda.choose_injection_step`, pick ONE timestep. They start from the
+pre-injection CFL limit and inject. If the post-injection limit is lower, they
+shrink to it and re-inject. The step and the clock then use that same dt.
+`tests/test_parallel.py::TestMemberTimestep` asserts the three properties this
+buys:
+
+- the member clock equals the integrated physics time, to round-off;
+- every step is CFL-valid for the state it actually integrates;
+- the released volume equals Σ Q(tₙ)·Δtₙ exactly, and equals the hydrograph
+  integral to within the left-Riemann bound.
+
+**Why this rule, measured.** Four ways to use a single timestep were run on the
+dry valley (200 × 160 at 100 m, 30 minutes), with and without a 25 m notch at
+the breach cell (as `notch_breach` cuts one), for peaks of 2,000 and
+20,000 m³/s. Each was scored against the chosen rule run at a tenth of the
+timestep (CFL 0.03). Ranges are across the four cases:
+
+| Scheme | Clock vs physics | Released vs hydrograph | Worst step, × its CFL limit | Arrival error vs reference: median / p99 / max |
+| :--- | :--- | :--- | :--- | :--- |
+| old: three timesteps | +1.5% to +2.6% | +0.6% to +1.2% | ≤ 1 | 1.0–7.5 s / 9.3–15.8 s / 20.7–28.9 s |
+| inject and step with the pre-injection dt | exact | −0.14% to −0.16% | **13.7× to 43.4×** | 1.1–1.8 s / 3.5–21.2 s / 20.9–32.3 s |
+| step first, then inject | exact | −0.14% to −0.16% | ≤ 1 | 1.3–2.5 s / 3.7–15.0 s / 20.9–28.9 s |
+| **pre-injection dt, shrunk to the post-injection limit (chosen)** | exact | −0.07% to −0.09% | ≤ 1 | **0.13–0.55 s / 0.24–1.82 s / 0.38–2.99 s** |
+
+"Released vs hydrograph" is measured against the trapezoid integral. The
+exact-clock schemes sit just below it by the left-Riemann error of holding Q at
+its value at the start of each step.
+
+- **Using the pre-injection dt as it stands is rejected.** It runs the step up
+  to 43× over its CFL limit. It happened not to blow up here, because only one
+  cell is affected, but nothing guarantees that.
+- **Stepping first and injecting afterwards is stable but 5–10× less
+  accurate.** The source lags the transport by one step, and the first
+  injection lands as a single slug of up to `dt_max` (30 s) of outflow.
+- **The chosen rule costs 3–13% more CPU wall-clock**, from the extra CFL
+  evaluation on steps that need the shrink. A notched breach cell needs it on
+  almost every step. It costs nothing on the GPU, where each trial is O(1).
+- **How many trials it takes, and how close to the limit it steps.** Almost
+  every step settles in one or two trial injections. The most any step needed
+  was 6, on the 20,000 m³/s un-notched case, so the cap of 8
+  (`MAX_INJECTION_PASSES`) was never reached. Where adding water RAISES the
+  breach cell's limit (the wet-fraction term), the shrink converges on the
+  limit from above without ever crossing it. The first version therefore spent
+  all 8 trials on 4 steps and ended within 5e-7 of the limit. Acceptance now
+  has an explicit relative slack of one part in a million
+  (`INJECTION_CFL_RTOL`): a Courant number of 0.3000003 against the 0.3
+  ceiling, where the positivity proof holds to 0.5. The worst step measured is
+  1.0000009× its limit, and `injection_step_overruns`, which counts steps that
+  ran out of trials above the limit, is 0 in every case.
+
+**What it changes.**
+
+- On the dry valley above, arrival times move EARLIER by up to 2.6% of elapsed
+  time, and the ~1% over-injection is gone.
+- On Khadakwasla (8 members from a fixed seed, 2 h at 200 m), nothing
+  measurable changed, on either backend: gauge arrivals moved by less than
+  0.5 s, and released volume by less than 0.001 MCM. The shrink fired in 1 of
+  about 75,000 member-steps. On that domain the breach cell almost never sets
+  the CFL limit, so the old and new loops pick the same dt.
+- Runs written before the fix are NOT reclassified. Their arrival times carry
+  whatever bias the old loop had on their terrain: up to about 2.6% late where
+  the breach cell set the timestep, and nothing measurable on the Khadakwasla
+  configuration.

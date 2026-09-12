@@ -128,6 +128,10 @@ def write_run_summary(
         "ensemble": _ensemble_summary(result) if isinstance(result, dict) else None,
         "grid": _grid_summary(result) if isinstance(result, dict) else None,
         "solver_params": dict(solver_params),
+        # GPU or CPU, and why: run.py takes it from the members themselves.
+        "solver_backend": result.get("solver_backend") if isinstance(result, dict) else None,
+        # The Manning field the members were solved with (terrain/roughness.py).
+        "roughness": result.get("roughness") if isinstance(result, dict) else None,
         "dem": {
             "dem_used": dem_path,
             "dem_update": (

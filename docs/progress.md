@@ -1,7 +1,11 @@
-# Progress checkpoint — 2026-09-06
+# Progress checkpoint — 2026-09-12
 
 Snapshot of what is done, what is running, and what is left, written for
 picking the work back up without re-deriving context.
+
+The body below was written on 2026-09-06 and still reads true; the GPU backend
+section near the end is the 2026-09-12 addition, and the "Next step" list under
+it supersedes the one that stood before.
 
 ## Servers, verified running
 
@@ -295,9 +299,11 @@ labelled as a terrain estimate next time that preset is touched.
   14.72 km2 from a secondary review, not a primary CWC/NRLD register entry.
   Tagged in `jalraksha/presets.py` and pinned by a test so the tag cannot be
   dropped silently.
-- **`prototype specs.md` §17** still has not been appended with the newer
-  unvetted coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`,
-  `MIN_JRC_PRECISION`, `WARNING_LEAD_TIME_S`, Ritter celerity factor).
+- **The verification queue has not been appended** with the newer unvetted
+  coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`, `MIN_JRC_PRECISION`,
+  `WARNING_LEAD_TIME_S`, Ritter celerity factor). The queue lives in
+  `docs/VERIFICATION_LOG.md`; the `prototype specs.md` §17 this item used to
+  name is not on disk and was last tracked at `3a83ff1`.
 - **Resolved 2026-09-11 (`94a994e`):** `.coverage` and `frontend/node_modules/`
   are no longer tracked. Both were committed before their `.gitignore` rules
   existed, so the rules never applied. `npm install` in `frontend/` restores the
@@ -340,15 +346,85 @@ labelled as a terrain estimate next time that preset is touched.
   exist so the dashboard can be driven without colliding with a dev API on
   :8000. Harmless; delete if unwanted.
 
+## GPU backend, and two ensemble defects (2026-09-12)
+
+Three commits, and the second two are corrections to the member loop that the
+GPU port exposed by forcing a second implementation of it.
+
+**`5fa86b8` — a float64 CUDA backend, measured rather than estimated.**
+`parallel.py` used to argue that consumer Ada runs float64 at about 1/64 of
+float32 and that a GPU port would therefore be *slower*. That was an estimate,
+and it was wrong: one member at 376 × 480 went 72.4 s → 5.74 s (12.6×), one at
+600 × 600 went 136.4 s → 6.72 s (20.3×), and a 30-member ensemble went 455.6 s
+on the CPU process pool → 39.7 s (11.5×). The speed-up grows with grid size
+because 376 × 480 does not fill the GPU.
+
+What actually blocked it for months was not arithmetic throughput but a missing
+**NVVM** — the driver was present all along. `pip install -e ".[gpu]"` supplies
+it as a wheel; the CUDA toolkit is not needed.
+
+`SWESolver` and `run_ensemble` take `backend="auto" | "cuda" | "cpu"` and
+`JALRAKSHA_SOLVER_BACKEND` overrides `auto`. An explicit `cuda` that cannot run
+**raises**; it never quietly runs on the CPU, because every timing and every
+provenance label would then be false. `solver_backend`, its label, its reason
+and the device travel with every member and reach `run_summary.json`, the
+Ensemble tab and the Validation tab. Physics is single-source: the `_impl`
+functions in `solver/flux.py` compile twice, under `njit` and under
+`cuda.jit(device=True)`. Four pieces are mirrored rather than shared and
+`tests/test_solver_cuda.py` pins them against the CPU. Backends differ at about
+1e-15 because NVVM contracts `a*b + c` into an FMA — expected, and never to be
+"fixed" with fastmath, which breaks the C-property.
+
+Full record: `docs/validation_findings.md` §11, `docs/DECISIONS.md` §14.
+
+**`5fa86b8` also fixed the member timestep.** The old loop ran three separate
+dt values per member step, so the clock advanced 1.8–2.6% ahead of the physics
+on a dry synthetic valley. `inject_with_one_timestep` (CPU) and
+`choose_injection_step` (GPU) now shrink the pre-injection CFL dt until the step
+is still CFL-valid *after* the injection, to within `INJECTION_CFL_RTOL = 1e-6`,
+and the injection, the step and the clock all use that one dt. It changed
+nothing measurable on Khadakwasla, where the shrink fires about once in 75,000
+steps.
+
+**`af996b7` — ensemble members now solve with the per-cell Manning field.** Both
+backends were solving every member with the field's *mean*. On a
+WorldCover-style valley that made a smooth channel three times too rough and the
+flood reached 170 cells instead of 308. Pipeline runs to date are unaffected
+because `build_domain` still hands over a uniform field (dam_config
+`manning_n`, default 0.03) — which is exactly why it survived so long.
+`run_summary.json` now carries a `roughness` block describing the field the
+members were really solved with, so "uniform" can no longer hide inside a
+land-cover-derived name.
+
+**`b9baf75` — the backend is selectable from the dashboard.** `POST /runs` takes
+`backend`, carried on `dam_config["solver_backend"]` — the same channel as
+`fill_max_depth_m` and `notch_breach`, so neither the Celery task signature nor
+`run_worker`'s payload changed. `GET /backends` reports what this machine can
+really offer, and a `cuda` request it cannot serve is refused **at submission**
+with the probe's own words, on the precedent of the Earth Engine check: failing
+now beats failing twenty minutes into a solve.
+
+Still open here: CPU pool workers are pinned to `backend="cpu"` (16 processes
+each opening a CUDA context on a 6 GB card would fail), ensemble chunks are
+sized to `VRAM_FRACTION = 0.60` of free VRAM, and both that fraction and
+`INJECTION_CFL_RTOL` are chosen rather than fitted — queue row 38. Near-field
+SPH stays on the CPU under Python 3.14 (compyle 0.9.1 uses `ast.Str`); whether
+a newer compyle or Python 3.13 would run it is untested.
+
 ## Next step, if resuming
 
 The drainage loop is closed (run `e2e09ea3`). The open loop with a number
-attached to it is now the other direction: **isolate what the `exit` run's four
-simultaneous changes each contributed.** The cheapest cut is the exit domain at
-200 m for 30 h *without* `--condition-corridor`, which separates the boundary
-from the conditioning; it costs roughly the same 2,740 s.
+attached to it is still the other direction: **isolate what the `exit` run's
+four simultaneous changes each contributed.** The cheapest cut is the exit
+domain at 200 m for 30 h *without* `--condition-corridor`, which separates the
+boundary from the conditioning. It cost roughly 2,740 s on the CPU; on the GPU
+it should now be minutes, which makes the whole attribution matrix affordable
+rather than a one-shot choice — that is the largest practical consequence of
+`5fa86b8` for the work queue.
 
 Then rehearse the full demo script end to end and screenshot each tab — the
 twelve-step judge walkthrough has still never been run start to finish on a
-quiet machine. After that, pre-bake a clean set of demo runs (one good SWE run
-per dam) and prune the 29 accumulated test runs from the picker.
+quiet machine, and it now has one more control to exercise (the Compute
+selector, including its disabled state on a machine with no GPU). After that,
+pre-bake a clean set of demo runs (one good SWE run per dam) and prune the 29
+accumulated test runs from the picker.
