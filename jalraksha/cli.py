@@ -59,6 +59,13 @@ def main():
     run_parser.add_argument(
         "--time", type=float, default=1800.0, help="Simulation duration in seconds (default 1800)"
     )
+    run_parser.add_argument(
+        "--backend", choices=("auto", "cpu", "cuda"), default="auto",
+        help="Compute backend for the ensemble (default auto: the GPU wherever "
+             "a float64 CUDA kernel runs, the CPU otherwise). 'cuda' raises "
+             "rather than falling back silently. JALRAKSHA_SOLVER_BACKEND sets "
+             "the same thing for scripts.",
+    )
 
     # `jalraksha validate` — check config only
     validate_parser = subparsers.add_parser("validate", help="Validate configuration")
@@ -154,6 +161,7 @@ def cmd_run(args):
             output_dir=args.output_dir,
             solver_duration_s=float(getattr(args, "time", 1800.0)),
             target_resolution=200.0,
+            backend=getattr(args, "backend", "auto"),
         )
 
         update_run_status(run_id, "done", 100.0)

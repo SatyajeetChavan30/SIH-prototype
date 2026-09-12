@@ -1651,6 +1651,11 @@ def run_dam_break_task(
                 margins_km=dam_config.get("domain_margins_km"),
                 fill_max_depth_m=float(dam_config.get("fill_max_depth_m", 3.0)),
                 notch_breach=bool(dam_config.get("notch_breach", True)),
+                # Per-request compute backend (main.py::submit_run), on the same
+                # dam_config channel as the domain-shape overrides above. The
+                # Delft3D branch below is unaffected: that kernel is a CPU
+                # binary regardless.
+                backend=dam_config.get("solver_backend", "auto"),
             )
             # Persist gauge results from the pipeline.
             #
@@ -1808,6 +1813,10 @@ def run_dam_break_task(
                 "target_resolution": target_resolution,
                 "domain_radius_km": dam_config.get("domain_radius_km"),
                 "scenario_type": dam_config.get("scenario_type", "dam_break"),
+                # What was ASKED for. The backend that actually ran is the
+                # summary's own "solver_backend" block, taken from the members;
+                # the two differ whenever "auto" chose.
+                "solver_backend_requested": dam_config.get("solver_backend", "auto"),
             },
             dem_path=dem_path,
             dem_provenance=dem_provenance,

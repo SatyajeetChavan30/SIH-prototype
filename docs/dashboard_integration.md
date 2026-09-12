@@ -87,6 +87,7 @@ with the cause unrecoverable from any endpoint.
 | `GET /runs` | All runs, newest first, with export counts. Backs the run picker — loading a previous run previously meant typing a 32-character hex id. |
 | `GET /validation` | The correctness gates as pass/fail plus curves. Cached; `?refresh=true` re-runs. |
 | `GET /gee/status` | Earth Engine availability without needing a reach. |
+| `GET /backends` | Which compute backends this machine can really run, behind the control panel's Compute selector. `cuda` is listed only when a float64 CUDA kernel actually compiles and runs; a present NVIDIA driver is not enough, and believing otherwise is how the project carried "CUDA does not work here" for months while only NVVM was missing. The probe runs in a SHORT-LIVED SUBPROCESS: calling it inside uvicorn would park a CUDA context on ~300 MB of a 6 GB card for the server's whole life, competing with the run subprocess that needs it. Cached per API process. |
 | `GET /gee/blockage` | Has a new water body — a forming landslide-dammed lake — appeared on this reach? Differences a Sentinel-1 pre-event median against a **single** post-event scene, subtracts JRC permanent water, and requires what remains to sit on a watercourse. Same three-state contract as `/gee/latest`: live, cached, or a refusal that says why. There is no fourth state and nothing here fabricates a lake. |
 
 ## Dashboard tabs

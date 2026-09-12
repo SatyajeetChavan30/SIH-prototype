@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   listDams, submitRun, pollUntilDone, getResult, openInParaview,
-  listRuns, getGeeStatus, getBlockageDetection,
+  listRuns, getGeeStatus, getBlockageDetection, getSolverBackends,
 } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
@@ -43,6 +43,11 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   const [detection, setDetection] = useState(null);
   const [ensemble, setEnsemble] = useState(100);
   const [solver, setSolver] = useState("swe");
+  // Which hardware solves the ensemble. "auto" keeps today's behaviour: the GPU
+  // where a float64 CUDA kernel runs, the CPU otherwise. Forcing "cpu" is how
+  // you leave the card free for a long ensemble already in flight.
+  const [backend, setBackend] = useState("auto");
+  const [backends, setBackends] = useState(null);
   // 180 min, not 30. At 30 minutes the flood covers ~3.7 km and Khadakwasla's
   // nearest gauge is 10.5 km away, so the default guaranteed an empty arrival
   // table and the message "The flood did not reach any gauge within the
@@ -70,6 +75,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       .catch(() => setDams([]));
     refreshRuns();
     getGeeStatus().then(setGee).catch(() => setGee(null));
+    getSolverBackends().then(setBackends).catch(() => setBackends(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -198,6 +204,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       scenario_type: scenarioType,
       ensemble_size: ensemble,
       solver,
+      backend,
       solver_duration_s: (durationMin || 30) * 60,
       target_resolution: TARGET_RESOLUTION_M,
       ...(isBlockage ? {
@@ -382,6 +389,35 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         <div style={{ fontSize: 10, color: "#b00020", marginTop: 4 }}>
           Select SWE or near-field SPH for this river scenario. Delft3D FM is
           configured for dam-break hydrographs only.
+        </div>
+      )}
+
+      <label>Compute</label>
+      <select value={backend} onChange={(e) => setBackend(e.target.value)}>
+        <option value="auto">Auto — GPU when available</option>
+        {/* Disabled rather than hidden: an operator looking for the GPU should
+            be told WHY it is not on offer, not left wondering. The reason is
+            the probe's own words, from GET /backends. */}
+        <option value="cuda" disabled={backends ? !backends.cuda_available : false}>
+          {backends?.cuda_device ? `GPU — ${backends.cuda_device}` : "GPU (CUDA, float64)"}
+        </option>
+        <option value="cpu">CPU (numba, float64)</option>
+      </select>
+      {backends && !backends.cuda_available && (
+        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+          No GPU available here: {backends.cuda_reason}
+        </div>
+      )}
+      {backend === "cpu" && (
+        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+          Same float64 physics, measured 11–20x slower than the GPU on this
+          machine. Useful to keep the card free for a run already in flight.
+        </div>
+      )}
+      {solver === "delft3d" && (
+        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+          The Deltares kernel is a CPU binary whatever this is set to; the
+          choice applies to the SWE ensemble.
         </div>
       )}
       {isBlockage && blockageIncomplete && (

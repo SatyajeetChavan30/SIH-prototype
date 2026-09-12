@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import threading
 from pathlib import Path
@@ -33,6 +34,7 @@ from jalraksha_service.schemas import (
     ComparisonResult, DamPreset, GeoSarResponse,
     EnsembleSummary, GridSummary, EngineInfo, RunListEntry,
     GeeStatus, ValidationCheck, ValidationResult, BlockageDetectionResponse,
+    SolverBackendInfo,
 )
 from jalraksha_service.worker import celery_app
 
@@ -116,6 +118,70 @@ def health() -> Dict[str, str]:
     return {"status": "ok", "service": "JalRaksha API v1"}
 
 
+#: Cached answer to "can this machine run the float64 CUDA backend".
+_BACKEND_PROBE: Dict[str, Any] = {}
+_BACKEND_PROBE_LOCK = threading.Lock()
+
+
+def _probe_cuda_out_of_process() -> Dict[str, Any]:
+    """
+    Ask a SHORT-LIVED subprocess whether a float64 CUDA kernel compiles here.
+
+    Out of process deliberately. jalraksha.solver.backend.cuda_probe() compiles
+    and launches a kernel, which creates a CUDA context; run inside the API
+    server that context would hold roughly 300 MB of a 6 GB card for the
+    server's whole life, competing with the run subprocess that actually needs
+    it. The answer cannot change while the machine is up, so it is cached.
+    """
+    code = (
+        "import json;"
+        "from jalraksha.solver.backend import cuda_probe;"
+        "ok, detail, device = cuda_probe();"
+        "print(json.dumps({'cuda_available': bool(ok), 'cuda_reason': detail,"
+        " 'cuda_device': device}))"
+    )
+    try:
+        probe = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(Path(__file__).resolve().parents[3]),
+        )
+        payloads = [ln for ln in probe.stdout.splitlines() if ln.startswith("{")]
+        if probe.returncode == 0 and payloads:
+            return json.loads(payloads[-1])
+        noise = (probe.stderr or probe.stdout or "").strip().splitlines()
+        return {"cuda_available": False, "cuda_device": None,
+                "cuda_reason": f"probe failed: {noise[-1] if noise else 'no output'}"}
+    except Exception as exc:
+        return {"cuda_available": False, "cuda_device": None,
+                "cuda_reason": f"probe failed ({type(exc).__name__}: {exc})"}
+
+
+def solver_backend_info() -> Dict[str, Any]:
+    """Which compute backends this machine can really offer, cached per process."""
+    with _BACKEND_PROBE_LOCK:
+        if not _BACKEND_PROBE:
+            _BACKEND_PROBE.update(_probe_cuda_out_of_process())
+    probe = dict(_BACKEND_PROBE)
+    available = [b for b in settings.SOLVER_BACKENDS
+                 if b != "cuda" or probe.get("cuda_available")]
+    return {**probe, "available": available, "default": "auto"}
+
+
+@app.get("/backends", response_model=SolverBackendInfo)
+def list_backends() -> Dict[str, Any]:
+    """
+    What the control panel's Compute selector may offer, and why not more.
+
+    "cuda" is listed only when a float64 CUDA kernel really compiles and runs
+    here. A present NVIDIA driver is not enough: this project believed it had
+    no usable GPU for months while the only missing piece was NVVM
+    (docs/validation_findings.md section 11). `cuda_reason` carries the probe's
+    own words so a missing option explains itself.
+    """
+    return solver_backend_info()
+
+
 @app.get("/dams", response_model=List[DamPreset])
 def list_dams() -> List[Dict[str, Any]]:
     return settings.DEMO_DAMS
@@ -125,6 +191,23 @@ def list_dams() -> List[Dict[str, Any]]:
 def submit_run(req: RunRequest):
     if req.solver not in settings.SOLVERS:
         raise HTTPException(422, f"Invalid solver {req.solver!r}; choose from {settings.SOLVERS}")
+    if req.backend not in settings.SOLVER_BACKENDS:
+        raise HTTPException(
+            422,
+            f"Invalid backend {req.backend!r}; choose from {settings.SOLVER_BACKENDS}",
+        )
+    # Refuse an impossible GPU request HERE, for the same reason the Earth
+    # Engine check below refuses at submission: failing now beats failing after
+    # the terrain and the breach ensemble have already been built.
+    if req.backend == "cuda":
+        probe = solver_backend_info()
+        if not probe.get("cuda_available"):
+            raise HTTPException(
+                422,
+                f"backend='cuda' was requested, but this machine cannot run a "
+                f"float64 CUDA kernel: {probe.get('cuda_reason')}. Choose 'cpu', "
+                f"or 'auto' to use the GPU only where one exists.",
+            )
     if req.scenario_type != "dam_break" and req.solver not in {"swe", "sph"}:
         raise HTTPException(
             422,
@@ -144,6 +227,7 @@ def submit_run(req: RunRequest):
         dam_config["domain_margins_km"] = req.domain_margins_km
     dam_config["fill_max_depth_m"] = req.fill_max_depth_m
     dam_config["notch_breach"] = req.notch_breach
+    dam_config["solver_backend"] = req.backend
 
     # Detection needs Earth Engine, and a run that cannot detect and has no
     # manual barrier to fall back on has nothing to burn into the DEM. Checked
@@ -186,6 +270,7 @@ def submit_run(req: RunRequest):
             "solver_duration_s": req.solver_duration_s,
             "target_resolution": req.target_resolution,
             "scenario_type": req.scenario_type,
+            "solver_backend": req.backend,
         },
     }
     run_id = db.create_run(dam_id, run_record, req.solver)

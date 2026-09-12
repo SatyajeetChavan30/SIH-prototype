@@ -22,6 +22,15 @@ class RunRequest(BaseModel):
     breach_mode: str = "central"
     ensemble_size: int = Field(100, ge=1, le=10000)
     solver: str = Field("swe", description="swe | delft3d | both")
+    backend: str = Field(
+        "auto",
+        description="Compute backend for the SWE ensemble: auto | cpu | cuda. "
+                    "'auto' uses the GPU wherever a float64 CUDA kernel runs "
+                    "and the CPU otherwise; 'cuda' is refused at submission "
+                    "when it cannot run, rather than failing after the terrain "
+                    "and breach ensemble are already built. The Delft3D kernel "
+                    "is a CPU binary whatever this says.",
+    )
     solver_duration_s: float = Field(
         1800.0, gt=0,
         description="Simulated time (s). Compute cost scales with this — 1800 s "
@@ -314,6 +323,26 @@ class RunRequest(BaseModel):
                     f"cannot be resolved on this grid — widen the deposit or "
                     f"refine target_resolution."
                 )
+
+
+class SolverBackendInfo(BaseModel):
+    """
+    GET /backends — which compute backends this machine can actually run.
+
+    The control panel's Compute selector is built from this. "cuda" is listed
+    only when a float64 CUDA kernel really compiles and runs here: an NVIDIA
+    driver on its own is not enough, which is exactly how this project carried
+    "CUDA does not work on the build machine" while the only missing piece was
+    NVVM (docs/validation_findings.md section 11). `cuda_reason` is the probe's
+    own words, so an absent option explains itself in the UI instead of just
+    being greyed out.
+    """
+
+    available: List[str] = Field(default_factory=lambda: ["auto", "cpu"])
+    default: str = "auto"
+    cuda_available: bool = False
+    cuda_device: Optional[str] = None
+    cuda_reason: Optional[str] = None
 
 
 class RunStatus(BaseModel):

@@ -1027,6 +1027,15 @@ estimate, and measurement replaced it.
   unaffected, because `build_domain` still supplies a uniform field
   (dam_config `manning_n`, default 0.03). `run_summary.json` now carries
   `roughness`, describing the field the members were actually solved with.
+- **The dashboard picks the backend.** `POST /runs` takes `backend`
+  ("auto" | "cpu" | "cuda"), carried on `dam_config["solver_backend"]` — the
+  same channel as `fill_max_depth_m` and `notch_breach`, so neither the Celery
+  task signature nor `run_worker`'s payload changed. `GET /backends` says what
+  this machine can really offer, and a `cuda` request that cannot run is
+  REFUSED AT SUBMISSION with the probe's own reason, on the precedent of the
+  Earth Engine check: failing now beats failing after the terrain and the
+  breach ensemble are built. The CLI has `--backend`; scripts keep using
+  `JALRAKSHA_SOLVER_BACKEND`.
 - **CPU pool workers are pinned to `backend="cpu"`**, because 16 worker
   processes each opening a CUDA context on a 6 GB card would fail. Ensemble
   chunks are sized to 60% of FREE VRAM (`ensemble_cuda.VRAM_FRACTION`); a

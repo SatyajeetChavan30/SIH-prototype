@@ -790,6 +790,7 @@ def run_dam_break_ensemble(
     fill_max_depth_m: float = 3.0,
     condition_corridor_m: float = 0.0,
     notch_breach: bool = True,
+    backend: Optional[str] = "auto",
 ) -> Dict:
     """
     Run full end-to-end dam-break simulation for ensemble of breach hydrographs.
@@ -845,6 +846,11 @@ def run_dam_break_ensemble(
             hazard classification instead of letting it recede.
         use_synthetic_terrain: Emergency fallback to an analytic valley instead
             of the real DEM. Results are not real terrain — see build_domain.
+        backend: Compute backend for the ensemble: "auto", "cpu" or "cuda"
+            (jalraksha/solver/backend.py). "auto" honours
+            JALRAKSHA_SOLVER_BACKEND and then picks the GPU where a float64
+            CUDA kernel runs. Both backends solve the same float64 physics;
+            the result records which one did, under "solver_backend".
 
     Returns:
         {
@@ -1001,6 +1007,7 @@ def run_dam_break_ensemble(
         snapshot_times=snapshot_times,
         n_workers=n_workers,
         progress_cb=_member_progress,
+        backend=backend,
     )
 
     for member in member_results:

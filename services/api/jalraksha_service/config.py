@@ -321,6 +321,13 @@ class Settings:
     # the other three and must not read as a drop-in alternative to them.
     SOLVERS: List[str] = ["swe", "delft3d", "both", "sph"]
 
+    # Compute backends the SWE ensemble can run on (jalraksha/solver/backend.py).
+    # "auto" takes the GPU where a float64 CUDA kernel actually compiles and
+    # runs, the CPU otherwise. GET /backends reports which of these this machine
+    # can really offer, so the control panel never presents a GPU that is not
+    # there.
+    SOLVER_BACKENDS: List[str] = ["auto", "cpu", "cuda"]
+
     def ensure_dirs(self) -> None:
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         (self.DATA_DIR / "exports").mkdir(parents=True, exist_ok=True)
