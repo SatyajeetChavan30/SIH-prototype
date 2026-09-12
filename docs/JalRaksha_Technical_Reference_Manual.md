@@ -8,52 +8,31 @@
 | | |
 | :--- | :--- |
 | **Document type** | Full system architecture specification and technical deep-dive |
-| **Codebase analysed** | 138 files · 37,582 lines of Python, JSX, and documentation |
-| **Analysis scope** | Every source file read in full; no sampling |
-| **Manual length** | ~199,456 words |
-| **Defects catalogued** | 546 findings across 9 subsystems, each with file:line and a proposed fix |
-| **Generated** | 2026-09-03 |
-| **Amended** | 2026-09-06 — see below |
+| **Codebase** | 140 Python files · 55,626 lines of Python; 19 JS/JSX files; 41 Markdown files (tracked, excluding `node_modules/`) |
+| **Analysis scope** | Every source file read in full on 2026-09-03; files changed since then re-read at each revision below. Not a fresh full read at every revision — §"How to read this manual" says how to tell. |
+| **Manual length** | ~207,600 words · 26,100 lines |
+| **Defects catalogued** | ID-keyed findings across 9 subsystems, each with `file:line` and a proposed fix. Entries fixed since the original read say so in place and name the commit. |
+| **First written** | 2026-09-03, against commit `16a8575` |
+| **Last revised** | 2026-09-12 |
 
-> **About the 2026-09-06 amendment.** The figures above describe the original
-> full-codebase read of 2026-09-03. This revision is a **targeted amendment**, not
-> a fresh read: six new subsections cover work that landed afterwards — a second
-> (hypothetical) blockage site, depression fill and corridor conditioning, the
-> breach notch and asymmetric domains, job-object breakaway and script-registered
-> runs, a labelled synthetic demo asset, and the Khadakwasla drainage
-> measurement. Each is marked "Amendment (2026-09-06)" and states where it
-> supersedes the surrounding text. Everything outside those subsections is still
-> the 2026-09-03 reading, and the file counts, line counts and defect tally above
-> have **not** been recomputed.
-
-> **Amendment (2026-09-11) — superseded sections.** Two commits replaced code
-> this audit describes. `dd1e766` unified FD2320 hazard classification on the
-> published rating HR = d(|V| + 0.5) + DF, retired the `severe` class, renamed
-> the hazard shapefile classes, deleted `PopulationEstimator`, made the DEM
-> interpolation fallback raise on an all-nodata window, and gated breach
-> regression families. `94a994e` stopped tracking `node_modules/`, the frontend
-> DEM tiles, `.coverage` and the phase markers. Each affected section carries a
-> **SUPERSEDED** or **RESOLVED** callout under its heading; the table below also
-> lists places inside defect catalogues and patch lists that have no heading of
-> their own. The status documents this manual cites as sources —
-> `PROGRESS_SUMMARY.md`, `BUILD_STATUS.md`, `ARCHITECTURE_IMPROVEMENTS.md`,
-> `SUMMARY.txt`, `PHASE_3_4_SUMMARY.txt`, `report.md` and
-> `jalraksha/solver/PHASE1_STATUS.md` — now live in `docs/archive/`.
+> **This manual states the current truth first.** It used to carry dated
+> `SUPERSEDED` / `RESOLVED` blockquotes layered over stale text, and that
+> convention failed in a way worth recording: by 2026-09-12 the file argued in
+> one place that a GPU port had been correctly declined and reported in another,
+> 160 lines later, that the port shipped and was 12.6× faster — with nothing
+> linking the two. A reader cannot be asked to reconstruct three dated strata
+> across 690 headings.
 >
-> | Where | Topic now superseded |
-> | :--- | :--- |
-> | §2.5, §5.1 | "7.10 m, *severe*" gauge evidence |
-> | §5.2, §5.4.8, §5.8.6 | `node_modules/` described as tracked |
-> | §2.4.6.2, §2.4.6.4 | frontend five-level hazard lists and gauge-badge edges |
-> | §3.4.4, §3.10, §5.4.4 | DEM interpolation falling back to a flat bed |
-> | §3.7.5, P0-17 | `synthesize_breach_ensemble` signature without family validation |
-> | §4B.1, §4B.5, §4B.10, C-04, C-05, P0-03, VQ-08 (§6.6.1) | `PopulationEstimator`, settlement densities, demographic shares |
-> | §4B.2, C-06, P0-05 | box classifier, `SEVERE`, velocity demoting to DRY |
-> | §4C.3.4, §4C.5.4, §4C.5.5, §4C.12, §5.3.6 | shapefile medium/high classes, the second FD2320 scheme, `DRY_DEPTH_M = 0.1` |
+> So an entry now **leads with what is true now**, names the commit that made it
+> true, and keeps the original finding beneath it only where the defect explains
+> the fix. Where an audited defect is fixed, the entry says FIXED rather than
+> being deleted — a register that quietly loses its closed entries cannot be used
+> to check whether anything was ever done. The per-revision record is in
+> **Revision history** at the end of this manual, and `git log` holds the rest.
 >
-> Findings not listed here were not touched by either commit and stand as
-> written. `docs/validation_findings.md` §10 records the hazard change in full.
-
+> Citations are machine-checked. `python tools/check_citations.py` resolves every
+> `` `path:line` `` in this file against the worktree and fails on any that does
+> not — see Revision history for what that is and is not able to prove.
 ---
 
 ## How to read this manual
@@ -68,8 +47,15 @@ Where two project documents contradict each other, both readings are given with
 their sources rather than one being silently chosen. Where a claim could not be
 verified from the code, that is stated explicitly rather than glossed.
 
-Two conventions matter throughout:
+Three conventions matter throughout:
 
+- **Current state first.** An entry that has been overtaken by a later commit
+  leads with what is true now and names that commit, and keeps the original
+  finding beneath it only where the defect explains the fix. A fixed defect is
+  marked FIXED rather than deleted. The **Revision history** at the end of this
+  manual says which sections each revision actually re-read — everything else
+  still dates from the 2026-09-03 full read, and this manual does not pretend
+  otherwise.
 - **Simulated time versus wall-clock time.** These are different quantities and
   are never used interchangeably here. "Three hours" refers to the physical
   duration of a modelled flood; wall-clock compute figures are always given with
@@ -231,6 +217,8 @@ Two conventions matter throughout:
     - [5.x Amendment (2026-09-06) — what closed, and what did not](#5-x-amendment-2026-09-06-what-closed-and-what-did-not)
 - **[6. Remediation & Action Plan](#section-6)**
   - [6. Remediation and Action Plan](#6-remediation-and-action-plan)
+- **[Revision history](#revision-history)**
+  - [The 2026-09-12 revision](#the-2026-09-12-revision)
 
 ---
 
@@ -419,7 +407,8 @@ The literature backing for the decomposition is Maranzoni & Tomirotti (2023), *W
 
 #### 2.5 Decision-support use case and real-world utility
 
-> **SUPERSEDED (2026-09-11).** The Gauges-badge evidence quoted here ("7.10 m, *severe*") predates the FD2320 unification. `severe` is no longer a class; that depth now reads *extreme*. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** The Gauges-badge evidence quoted here ("7.10 m, *severe*") predates the FD2320 unification. `severe` is no longer a class; that depth now reads *extreme*.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 Three concrete decision-support uses are implied by the delivered outputs:
 
@@ -509,7 +498,36 @@ Three traps found while measuring, each of which had silently eaten the benefit:
 2. **Native thread pools** — each worker starts its own OpenBLAS/OMP pool; 16 of them exhausted RAM outright (`OpenBLAS error: Memory allocation still failed`). Fixed by exporting single-thread environment variables in the parent *before* the pool spawns, because children inherit `os.environ` and an initializer runs too late.
 3. **A per-member threshold was the wrong test** — whether the pool wins depends on ensemble size, not member duration. The code now estimates both totals from a timed probe and picks the cheaper. A 16-member run was being sent down the sequential path by the old rule.
 
-**GPU acceleration was evaluated and declined**, and the reasoning is a performance claim in its own right: the hot loop is `@njit(parallel=True)` scalar kernels on `float64`, which `solver/types.py` documents as *"not negotiable"* because the lake-at-rest gate needs it. Consumer Ada (RTX 4050) runs float64 at 1/64 of float32 (~0.2 vs ~13 TFLOPS), *"so a float64 CUDA port would likely be slower than the current CPU kernels"*, and `flux.py:48` deliberately forbids `fastmath` because the well-balanced C-property depends on strict IEEE ordering. `numba.cuda` was also non-functional on the build machine (driver present, `nvvm.dll` absent).
+**GPU acceleration was declined on an estimate, and the estimate was wrong.** The
+reasoning as it stood in this audit ran: the hot loop is `@njit(parallel=True)`
+scalar kernels on `float64`, which `jalraksha/solver/types.py` documents as *"not
+negotiable"* because the lake-at-rest gate needs it; consumer Ada (RTX 4050) runs
+float64 at 1/64 of float32 (~0.2 vs ~13 TFLOPS), *"so a float64 CUDA port would
+likely be slower than the current CPU kernels"*; and `numba.cuda` was in any case
+non-functional on the build machine (driver present, `nvvm.dll` absent).
+
+The throughput ratio is real and the conclusion drawn from it was not. **Measured
+on 2026-09-12, the float64 CUDA backend is 11–20× faster than the CPU path**, on
+the same RTX 4050, float64 on both sides, with identical step counts: one member
+at 376 × 480 went 72.4 s → 5.74 s (12.6×), one at 600 × 600 went 136.4 s →
+6.72 s (20.3×), and a 30-member ensemble went 455.6 s on the CPU process pool →
+39.7 s (11.5×). The speed-up grows with grid size, because 376 × 480 does not
+fill the device. A peak-FLOPS ratio does not predict a memory-bound stencil, and
+nothing here was measured until it was built.
+
+The missing `nvvm.dll` was the actual blocker, and it was never a hardware
+limitation: `numba-cuda` ships NVVM and NVRTC as pip wheels, so `pip install -e
+".[gpu]"` supplies them and the CUDA toolkit is not required. The driver had been
+present throughout.
+
+One clause of the original reasoning survives intact and is now load-bearing in
+the opposite direction: `jalraksha/solver/flux.py` still forbids `fastmath`,
+because the well-balanced C-property depends on strict IEEE ordering. The two
+backends consequently differ by about 1e-15 — NVVM contracts `a*b + c` into an
+FMA and numba-cuda offers no switch to stop it. That difference is expected, must
+never be closed with `fastmath`, and is why no test asserts bit-equality between
+backends. See §5 and `docs/validation_findings.md` §11 for the full measurement,
+and `docs/DECISIONS.md` §14 for the decision record.
 
 #### 3.5 Measured vs extrapolated — the honest summary
 
@@ -574,7 +592,7 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 |---|---|---|---|
 | CLI | `jalraksha/cli.py` | **Working** | `jalraksha run --dam tehri --lat … --lon … --height … --storage …`; `validate`; `cache --list / --clear` |
 | Standard-library REST API (port 8502) | `jalraksha/api.py` | **Working (post-fix)** | `/health`, `/api/v1/dams`, `/api/v1/gauges`, `/api/v1/simulate`. Switched from `HTTPServer` to `ThreadingHTTPServer` with `daemon_threads`: 21 tests in 19.87 s → 2.05 s |
-| FastAPI service (port 8000) | `services/api/jalraksha_service/main.py` | **Working** | 12 endpoints including `POST /runs`, `GET /runs`, `GET /runs/{id}/result`, `GET /runs/{id}/comparison`, `GET /validation`, `GET /gee/status`, `GET /gee/latest`, `POST /runs/{id}/open-paraview` |
+| FastAPI service (port 8000) | `services/api/jalraksha_service/main.py` | **Working** | 14 endpoints including `GET /backends`, `POST /runs`, `GET /runs`, `GET /runs/{id}/result`, `GET /runs/{id}/comparison`, `GET /validation`, `GET /gee/status`, `GET /gee/latest`, `POST /runs/{id}/open-paraview` |
 | Subprocess run worker | `services/api/jalraksha_service/run_worker.py` | **Working** | Every endpoint answers in ~0.21 s while a run is actively solving |
 | Celery + Redis broker path | `services/api/jalraksha_service/worker.py` | **Partial** | Available via `scripts/run_api.py --broker`; not the default, *"because Redis as a demo-day dependency is what `CELERY_EAGER` exists to avoid."* `CELERY_EAGER=1` runs tasks in an in-process background thread |
 | Run persistence / DB | `services/api/jalraksha_service/db.py` | **Working (post-fix)** | `run_summary.json` persisted and served on `RunResult`; failure reasons persisted; `max_depth_m` and `par_estimate` were columns written `None` on every path since creation — now real |
@@ -601,7 +619,8 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 #### 5.1 User personas
 
-> **SUPERSEDED (2026-09-11).** The "7.10 m, *severe*" gauge quote predates the FD2320 unification; the badge now reads *extreme*. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** The "7.10 m, *severe*" gauge quote predates the FD2320 unification; the badge now reads *extreme*.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **NDRF / SDRF (National and State Disaster Response Forces).** The arrival-time consumer. What they need from JalRaksha is lead time at named downstream towns with an uncertainty band, and a hazard class per area so staging and evacuation can be prioritised. The dashboard's Gauges tab is built for exactly this read: *"Deccan Gymkhana 1h 40m, band 1h 25m–1h 41m, 7.10 m, severe."* Note that `RESEARCH-FINDINGS.md` cautions against transposing responder organisations between events: the Phuktal responders were *"Army, BRO, NDMA, CWC, DRDO, IAF, NHPC, LAHDC — NOT ITBP or NDRF"*, while ITBP/NDRF/DRDO were the Rishiganga 2021 responders.
 
@@ -617,7 +636,8 @@ Status vocabulary: **Working** = exercised end-to-end with recorded evidence; **
 
 #### 5.2 Deployment environment
 
-> **SUPERSEDED (2026-09-11).** `node_modules/` is no longer tracked in git (`94a994e`): it had been committed before its `.gitignore` rule existed. Run `npm install` in `frontend/` on a fresh clone.
+**Current state (2026-09-11).** `node_modules/` is no longer tracked in git (`94a994e`): it had been committed before its `.gitignore` rule existed. Run `npm install` in `frontend/` on a fresh clone.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **Laptop-class hardware.** Every measured figure in §3 comes from a single machine: 16 logical cores, RAM tight enough that the ensemble worker cap is set by memory rather than cores (*"each worker is a full interpreter at ~400 MB"*), and a consumer GPU (RTX 4050) that was evaluated and rejected for float64 work. `DECISIONS.md` rejects Docker-only deployment for exactly this reason: *"Project must run on demo-day laptop without Docker (network unreliable, setup time). Python venv preferred."*
 
@@ -676,7 +696,7 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 **G4 — Licensing: approved and avoided.**
 *Rule (`CLAUDE.md`):* *"Copernicus DEM (free) and Google Open Buildings (CC BY 4.0) are approved. Avoid FABDEM (CC BY-NC-SA), MERIT (CC BY-NC/ODbL), and OSM (ODbL share-alike) in redistributed outputs."*
 *Rationale:* Non-commercial clauses and share-alike obligations propagate into anything JalRaksha redistributes. An ODbL-derived layer inside a shipped `.shp` would encumber the whole product; PySPH was chosen over alternatives partly on licence (BSD).
-*Enforced at:* `DECISIONS.md` §1 and §5 source-selection tables; `prototype specs.md` (referenced as the approved-vs-forbidden list); code review.
+*Enforced at:* `DECISIONS.md` §1 and §5 source-selection tables; code review. (This rule used to cite `prototype specs.md` as the approved-vs-forbidden list. That file is no longer on disk — last tracked at commit `3a83ff1` — so the DECISIONS.md tables are now the list.)
 
 **G5 — Metric CRS only, never degrees, in the solver.**
 *Rule (`CLAUDE.md`):* *"**Metric CRS for all solver operations** — never degrees. Cell-centred finite volume on uniform Cartesian grids."* And in Gotchas: *"Always verify metric CRS (EPSG:32643 for India or equivalent UTM). Never mix degrees and metres in the solver."*
@@ -802,7 +822,7 @@ Each rule below is numbered, stated, given its rationale, and located at its enf
 | `jalraksha/export/matlab_export.py` | MATLAB-readable output | 7 |
 | `jalraksha/api.py` | Standard-library `ThreadingHTTPServer` REST API (:8502) | 8 |
 | `jalraksha/hardening.py` | Offline mode, robustness | cross-cutting |
-| `services/api/jalraksha_service/main.py` | FastAPI app, 12 endpoints, static `/files` mount, `/tiles`, CORS | 8 |
+| `services/api/jalraksha_service/main.py` | FastAPI app, 14 endpoints, static `/files` mount, `/tiles`, CORS | 8 |
 | `services/api/jalraksha_service/tasks.py` | Task orchestration; `_run_comparison` | 8 |
 | `services/api/jalraksha_service/run_worker.py` | Subprocess run worker (own interpreter, own GIL) | 8 |
 | `services/api/jalraksha_service/worker.py` | Celery worker path (`--broker`) | 8 |
@@ -1155,7 +1175,7 @@ Corroborating evidence for "live" over "stubbed": measured GHSL population figur
 - **Terrain-corrected local-incidence-angle masking (Small 2011)** is the documented fix for SAR over steep terrain and is *not implemented*.
 - **ParaView spec-Section-17 Phases 6, 8 and 9 are unbuilt** — scientific overlays, video export, LOD optimization.
 - **No screenshot of the dashboard exists.** *"The Browser pane was not displayed during this work, so UI claims come from page text, DOM inspection and server-side renders rather than from looking at pixels."*
-- **`prototype specs.md` §17 has not been appended** with the newer unvetted coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`, `MIN_JRC_PRECISION`, `WARNING_LEAD_TIME_S`, Ritter celerity factor).
+- **The verification queue has not been appended** with the newer unvetted coefficients (`ALPHA_VISCOSITY`, `MIN_TILE_SEPARABILITY`, `MIN_JRC_PRECISION`, `WARNING_LEAD_TIME_S`, Ritter celerity factor). The queue is `docs/VERIFICATION_LOG.md`; the `prototype specs.md` §17 this item used to name has not been on disk since commit `3a83ff1`, and headings elsewhere that still say "Spec §17" mean that table.
 - **All 18 queued coefficients in `VERIFICATION_LOG.md` remain unverified** — items #1–6 marked ❌ TODO (blocking Phase 3, which `BUILD_STATUS.md` nonetheless marks ✅ COMPLETE), items #7–18 marked ⏳ DEFERRED.
 - **The Cesium Ion token lives in a git-ignored file.** *"A fresh clone needs it re-created or the globe falls back to Cesium's default token with no terrain."*
 - **The full twelve/thirteen-step judge walkthrough has been driven once**, finding four bugs; `docs/progress.md`'s "next step" is to rehearse it end to end on a quiet machine and pre-bake a clean demo run per dam.
@@ -1243,7 +1263,7 @@ docstring is stale relative to the code.
 The dependency-direction rule ("phases build on earlier phases only") is
 violated exactly once and knowingly: `run.py::write_export_products` (Phase 4)
 imports `jalraksha.export` (Phase 5). The justification is written into the
-function docstring at `run.py:93-99` — `run.py` is treated as the *top-level
+function docstring at `jalraksha/run.py:94-100` — `run.py` is treated as the *top-level
 orchestrator* rather than a Phase-4 layer module, and because
 `jalraksha.export` never imports `jalraksha.run`, the import graph stays
 acyclic.
@@ -1251,7 +1271,7 @@ acyclic.
 #### 2b.1.3 `_repair_proj_data_path()` — the PROJ_LIB repair
 
 Signature: `def _repair_proj_data_path() -> None`. Called unconditionally at
-import time (`__init__.py:90`).
+import time (`jalraksha/__init__.py:90`).
 
 **The breakage it works around.** Any machine that also has PostgreSQL/PostGIS,
 QGIS, or another GDAL stack installed may export a system-wide `PROJ_LIB`
@@ -1269,7 +1289,7 @@ That takes out reprojection, and with it the entire terrain pipeline
 
 **The algorithm.**
 
-1. Define `_layout_ok(proj_db: Path) -> bool` (`__init__.py:60`). It opens the
+1. Define `_layout_ok(proj_db: Path) -> bool` (`jalraksha/__init__.py:60`). It opens the
    candidate database **read-only via a SQLite URI**
    (`sqlite3.connect(f"file:{proj_db}?mode=ro", uri=True)`) and runs:
    ```sql
@@ -1279,7 +1299,7 @@ That takes out reprojection, and with it the entire terrain pipeline
    (missing file, unexpected schema, locked DB) returns `False` — "unreadable
    or unexpected schema — treat as unusable".
 2. Read the inherited configuration: `os.environ.get("PROJ_DATA") or
-   os.environ.get("PROJ_LIB")` (`__init__.py:73`). Note the precedence:
+   os.environ.get("PROJ_LIB")` (`jalraksha/__init__.py:73`). Note the precedence:
    `PROJ_DATA` (PROJ 9 spelling) wins over `PROJ_LIB` (legacy spelling).
 3. If a value is configured **and** `_layout_ok(Path(configured)/"proj.db")`,
    return immediately. A valid inherited database — including a deliberate
@@ -1294,7 +1314,7 @@ That takes out reprojection, and with it the entire terrain pipeline
    environment as it found it.
 
 **Why `find_spec` and not `import rasterio`.** This is the subtlest part of the
-module and its docstring spells it out (`__init__.py:48-54`). PROJ resolves its
+module and its docstring spells it out (`jalraksha/__init__.py:48-54`). PROJ resolves its
 search path **once**, when the native library is first loaded, and ignores
 later mutations of `os.environ`. An earlier version of this function located
 the replacement database by doing `import rasterio` — which loaded PROJ under
@@ -1322,7 +1342,7 @@ is no warning emitted at step 5.
 **File**: `/mnt/user-data/uploads/SIH prototype/jalraksha/run.py` (833 lines,
 37 KB). Module docstring calls this "the MANDATORY core deliverable (Spec §4)".
 
-Module-level imports (`run.py:18-30`):
+Module-level imports (`jalraksha/run.py:18-30`):
 
 ```python
 import os, warnings
@@ -1359,20 +1379,20 @@ def run_dam_break_ensemble(
     progress_cb: Optional[Callable[[float, str], None]] = None,
 ) -> Dict:
 ```
-(`run.py:521-534`)
+(`jalraksha/run.py:522-535`)
 
 `dam_config` keys read by this function and its callees:
 
 | Key | Type | Unit | Read at | Required? |
 |---|---|---|---|---|
 | `name` | `str` | — | `run.py:585`, `802`, `write_export_products` | yes (bare `[...]` access) |
-| `lat` | `float` | degrees N | `run.py:630` | yes |
-| `lon` | `float` | degrees E | `run.py:631` | yes |
+| `lat` | `float` | degrees N | `jalraksha/run.py:631` | yes |
+| `lon` | `float` | degrees E | `jalraksha/run.py:632` | yes |
 | `height_m` | `float` | m above lowest foundation | breach regressions | yes |
 | `storage_mm3` | `float` | MCM (10⁶ m³) | breach regressions | yes |
 | `dam_type` | `str` | — | breach regressions | yes |
 | `failure_mode` | `str` | — | breach regressions | yes |
-| `dam_id` | `str` | — | `run.py:638` via `.get()` | optional |
+| `dam_id` | `str` | — | `jalraksha/run.py:639` via `.get()` | optional |
 | `surface_area_km2` | `float` | km² | `reservoir_storage_curve` | optional |
 | `manning_n` | `float` | s·m^(−1/3) | `build_domain`, `.get(..., 0.03)` | optional |
 
@@ -1403,12 +1423,12 @@ write must never take down a simulation that is otherwise succeeding."
 
 | pct | label | Emitted at |
 |---|---|---|
-| `8.0` | `"Building terrain domain"` | `run.py:613` |
-| `18.0` | `"Generating breach ensemble"` | `run.py:644` |
+| `8.0` | `"Building terrain domain"` | `jalraksha/run.py:614` |
+| `18.0` | `"Generating breach ensemble"` | `jalraksha/run.py:645` |
 | `25.0` | `f"Solving {ensemble_size} ensemble members"` | `run.py:659` |
-| 25.0→75.0 | `f"Solving member {done}/{total}"` | `run.py:678-681` |
+| 25.0→75.0 | `f"Solving member {done}/{total}"` | `jalraksha/run.py:197-200` |
 | `75.0` | `"Computing arrival times"` | `run.py:733` |
-| `85.0` | `"Aggregating ensemble statistics"` | `run.py:752` |
+| `85.0` | `"Aggregating ensemble statistics"` | `jalraksha/run.py:765` |
 | `92.0` | `"Writing export products"` | `run.py:781` |
 
 The member-level sub-progress is computed by the closure
@@ -1426,7 +1446,7 @@ the bridge.
 
 **Gap**: nothing ever reports `100.0`. The bar tops out at 92 % and the caller
 (`services/api/.../tasks.py`) is responsible for marking the run done. Also,
-the two early-return error paths (`run.py:627`, `run.py:654`) return
+the two early-return error paths (`jalraksha/run.py:628`, `jalraksha/run.py:684`) return
 `{"error": ...}` **without** any terminal progress report, so a consumer
 watching only the callback sees a run frozen at 8 % or 18 %.
 
@@ -1436,26 +1456,26 @@ There is no preset lookup inside `run_dam_break_ensemble`. Preset resolution is
 the **caller's** job: `DamPreset.to_dam_config()` (`presets.py:128-180`)
 produces the dict, and the caller passes it in. Three callers do this
 correctly (`tools/paraview/make_dataset.py:288`,
-`scripts/backfill_xdmf.py:97`, `services/api/.../tasks.py:1219`);
-`jalraksha/cli.py:106-114` does **not** — it hand-builds a dict with no
+`scripts/backfill_xdmf.py:97`, `services/api/jalraksha_service/tasks.py:1219`);
+`jalraksha/cli.py:113-121` does **not** — it hand-builds a dict with no
 `dam_id`, which silently disables this dam's gauge corridor (§2b.6.4).
 
 The only preset-derived lookup inside `run.py` is
 `define_downstream_gauges(dam_lat, dam_lon, dam_config.get("dam_id"))` at
-`run.py:638`.
+`jalraksha/run.py:639`.
 
 #### 2b.2.4 Step 0b — DEM fetch (also not here)
 
 `run_dam_break_ensemble` takes `dem_path: str` and never fetches. DEM
 acquisition is Phase 0 (`jalraksha.dem.fetch_dem`), invoked by
-`cli.py:100` and by `tasks.py::_resolve_dem`. `run.py` performs **no**
+`jalraksha/cli.py:107` and by `tasks.py::_resolve_dem`. `run.py` performs **no**
 existence check on `dem_path`; a bad path surfaces as an exception inside
-`build_domain`, which is caught at `run.py:625` and converted to
+`build_domain`, which is caught at `jalraksha/run.py:626` and converted to
 `{"error": str(e)}`.
 
 #### 2b.2.5 Step 1 — terrain conditioning and domain build
 
-`run.py:611-635`.
+`jalraksha/run.py:612-636`.
 
 ```python
 grid, state_init, manning_field = build_domain(
@@ -1503,10 +1523,10 @@ restating because they are the source of a class of historical bugs:
    cell. Impounding the reservoir here as well would double-count the water.
 
 **Failure handling**: the whole block is wrapped in `try/except Exception as e`
-and returns `{"error": str(e)}` (`run.py:625-627`). The exception type and
+and returns `{"error": str(e)}` (`jalraksha/run.py:626-628`). The exception type and
 traceback are lost — only `str(e)` survives.
 
-**Breach location** (`run.py:630-635`):
+**Breach location** (`jalraksha/run.py:631-636`):
 
 ```python
 utm_zone = compute_utm_zone(dam_lat, dam_lon)          # int((lon+180)/6)+1
@@ -1514,7 +1534,7 @@ i_breach, j_breach, b_breach = compute_breach_location(
     state_init, grid, dam_lat, dam_lon, utm_zone)
 ```
 
-`compute_breach_location` (`domain.py:193`) returns
+`compute_breach_location` (`jalraksha/terrain/domain.py:196`) returns
 `(i_breach: int, j_breach: int, b_breach: float)`. Its implementation is
 trivial by construction: `load_dem_as_grid` centres the domain on the dam, so
 `i_breach = grid.nx // 2`, `j_breach = grid.ny // 2`, and
@@ -1523,12 +1543,12 @@ trivial by construction: `load_dem_as_grid` centres the domain on the dam, so
 accepted but not used to locate the cell — the centring assumption does all the
 work. `b_breach` is computed and returned but **never used** by `run.py`.
 
-**Gauges** (`run.py:637-639`): `define_downstream_gauges(dam_lat, dam_lon,
+**Gauges** (`jalraksha/run.py:638-640`): `define_downstream_gauges(dam_lat, dam_lon,
 dam_config.get("dam_id"))` → `List[Dict]`. See §2b.4.1.
 
 #### 2b.2.6 Step 2 — breach hydrograph ensemble
 
-`run.py:641-654`.
+`jalraksha/run.py:642-655`.
 
 ```python
 hydrographs   = synthesize_breach_ensemble(dam_config, num_samples=ensemble_size)
@@ -1562,9 +1582,9 @@ Failure handling is the same pattern: `{"error": str(e)}` at `run.py:652-654`.
 
 #### 2b.2.7 Step 3 — the Monte-Carlo ensemble loop
 
-`run.py:656-728`.
+`jalraksha/run.py:686-758`.
 
-**Representative-member selection for snapshots** (`run.py:670-676`):
+**Representative-member selection for snapshots** (`jalraksha/run.py:700-706`):
 
 ```python
 snapshot_sample_id = None
@@ -1582,7 +1602,7 @@ member. `np.argmin` breaks ties toward the lowest index. `snapshot_times` is
 `n_snapshots` evenly spaced values in `[0, solver_duration_s]` inclusive of
 both endpoints, so the first requested time is exactly `t = 0`.
 
-The rationale, from the docstring (`run.py:554-561`): "recording every member's
+The rationale, from the docstring (`jalraksha/run.py:555-562`): "recording every member's
 full time series is memory-prohibitive for large ensembles, so only one
 representative member is snapshotted." At 30 frames × 3 fields
 (`depth`, `velocity_x`, `velocity_y`) × float32 × an `nx·ny` grid, a
@@ -1612,7 +1632,7 @@ def run_ensemble(
     progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> List[Dict[str, Any]]
 ```
-(`parallel.py:265-277`)
+(`jalraksha/solver/parallel.py:392-404`)
 
 Module constants:
 
@@ -1627,7 +1647,7 @@ Module constants:
 `n_workers = os.cpu_count() or 1` when `None`, then clamped to
 `max(1, min(int(n_workers), len(hydrographs) or 1))`.
 
-**Task construction** (`parallel.py:307-320`): a 9-tuple per member; the ninth
+**Task construction** (`jalraksha/solver/parallel.py:528-541`): a 9-tuple per member; the ninth
 element is `snapshot_times if sample_id == snapshot_sample_id else None`, which
 is how exactly one member records a depth series.
 
@@ -1647,12 +1667,12 @@ initializer=_init_worker)` runs them via `executor.map`. **The probe result is
 kept, never discarded.** Because member 0 always runs serially, achievable
 speedup is Amdahl-bounded on that one member.
 
-`_worker_memory_cap(pool_size)` (`parallel.py:232-240`) clamps to
+`_worker_memory_cap(pool_size)` (`jalraksha/solver/parallel.py:359-367`) clamps to
 `max(1, min(pool_size, int(available_mb // 400)))` using
 `psutil.virtual_memory().available`, i.e. ~400 MB of interpreter per worker;
 without psutil it returns `min(pool_size, 8)`.
 
-`_SINGLE_THREAD_ENV` (`parallel.py:223-229`) sets
+`_SINGLE_THREAD_ENV` (`jalraksha/solver/parallel.py:345-351`) sets
 `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`,
 `NUMEXPR_NUM_THREADS`, `NUMBA_NUM_THREADS` all to `"1"` **in the parent** before
 the pool starts (spawned children inherit `os.environ`; an initializer runs too
@@ -1688,7 +1708,7 @@ def run_ensemble_member(
     snapshot_times: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]
 ```
-(`parallel.py:74-84`) — "the SINGLE definition of what running one member
+(`jalraksha/solver/parallel.py:189-199`) — "the SINGLE definition of what running one member
 means." Both the sequential and process-pool paths call it, so results cannot
 diverge between them.
 
@@ -1696,10 +1716,11 @@ Body, step by step:
 
 1. Local imports of `SWESolver` and `inject_breach_hydrograph` so pool workers
    resolve them on their own side of the fork/spawn boundary.
-2. `solver = SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)`
-   — note the **scalar mean** of the Manning field, not the field itself, and
-   `cfl=0.3` chosen because `SWESolver` silently clamps to its own `CFL_MAX`
-   and the previous `cfl=0.9` made the `max_steps` estimate ~3× wrong.
+2. `solver = SWESolver(grid, manning_n=manning_field, cfl=0.3, backend=...)`
+   — the per-cell field, and `cfl=0.3` chosen because `SWESolver` silently clamps
+   to its own `CFL_MAX` and the previous `cfl=0.9` made the `max_steps` estimate
+   ~3× wrong. As audited this line passed `float(np.mean(manning_field))`, the
+   **scalar mean**; commit `af996b7` passes the field (F2 in §4.1, P1-15 in §6).
 3. `state = state_init.copy()`; `t_sim = 0.0`;
    `dt_adaptive = solver.compute_cfl_timestep(state)`.
 4. Accumulators, all `float64` shape `(ny, nx)`:
@@ -1735,7 +1756,7 @@ Return on success:
 success=True}`. On failure: `{sample_id, error: "TypeName: message",
 success=False}` — failures are reported, never silently dropped.
 
-`_snapshot(state, time_s)` (`parallel.py:56-71`) returns
+`_snapshot(state, time_s)` (`jalraksha/solver/parallel.py:171-186`) returns
 `{"time_s": float, "depth": h.astype(float32), "velocity_x": u.astype(float32),
 "velocity_y": v.astype(float32)}`. Velocities are captured because the MATLAB
 viewer draws velocity vectors; the cost is 3× a depth-only snapshot.
@@ -1749,7 +1770,7 @@ def inject_breach_hydrograph(
     q_t_array: np.ndarray, t_array: np.ndarray,
 ) -> None
 ```
-(`run.py:457-466`) — mutates `state.h` in place, returns `None`.
+(`jalraksha/run.py:458-467`) — mutates `state.h` in place, returns `None`.
 
 1. `idx = np.searchsorted(t_array, t_s)`.
 2. If `idx >= len(q_t_array) or idx == 0`: `q_current = 0` (no injection). This
@@ -1758,14 +1779,14 @@ def inject_breach_hydrograph(
    `(t_next, q_next)` with `alpha = (t_s - t_prev)/(t_next - t_prev)`, guarding
    `t_next > t_prev`.
 4. `if q_current <= 0: return`.
-5. The actual source term (`run.py:515-518`):
+5. The actual source term (`jalraksha/run.py:516-519`):
    ```python
    cell_area = grid.dx * grid.dy          # m²
    delta_h   = q_current * dt_s / cell_area   # m³/s · s / m² = m
    state.h[j_breach, i_breach] += delta_h
    ```
 
-The extended comment at `run.py:502-514` records why this is a **mass** source
+The extended comment at `jalraksha/run.py:503-515` records why this is a **mass** source
 rather than an imposed velocity. The previous version set `u = Q/(h·width)` and
 added no mass; against a dry bed that is a no-op (the solver zeroes velocities
 in dry cells), so no water ever entered the domain. It only appeared to work
@@ -1800,7 +1821,7 @@ If `len(results_ensemble) == 0`, return
 
 #### 2b.2.12 Step 4 — gauge analysis
 
-`run.py:730-747`:
+`jalraksha/run.py:743-760`:
 
 ```python
 arrival_times_gauges = compute_arrival_times_at_gauges(
@@ -1813,7 +1834,7 @@ Fully documented in §2b.4.
 
 #### 2b.2.13 Step 5 — ensemble statistics
 
-`run.py:749-776`.
+`jalraksha/run.py:762-789`.
 
 ```python
 h_max_ensemble_array = np.array(h_max_ensemble)        # (M, ny, nx)
@@ -1851,7 +1872,7 @@ Console summary lines print `np.nanmax` of `h_max_median`, `h_max_p95` and
 
 #### 2b.2.14 Step 6 — export
 
-`run.py:778-792` calls `write_export_products(...)`. See §2b.2.16.
+`jalraksha/run.py:791-805` calls `write_export_products(...)`. See §2b.2.16.
 
 #### 2b.2.15 Impact analysis — *not* in `run.py`
 
@@ -1896,17 +1917,17 @@ def write_export_products(
     depth_series: Optional[List[Dict]] = None,
 ) -> Dict[str, str]
 ```
-(`run.py:75-84`)
+(`jalraksha/run.py:76-85`)
 
 Two private helpers govern the whole module's honesty policy:
 
-* `_attempt(kind, writer, *args, **kwargs)` (`run.py:33-50`) — runs one writer,
+* `_attempt(kind, writer, *args, **kwargs)` (`jalraksha/run.py:34-51`) — runs one writer,
   returning `None` on failure but printing `[FAIL] {kind}: {type}: {msg}` and a
   full `traceback.print_exc()`. Each writer is independent ("a missing KML is
   no reason to withhold a valid GeoTIFF"), but a failure is never swallowed,
   "because the alternative (a quiet skip) is indistinguishable from a product
   that was never requested."
-* `_record(paths, kind, path)` (`run.py:53-72`) — **adds an export to the
+* `_record(paths, kind, path)` (`jalraksha/run.py:54-73`) — **adds an export to the
   manifest only if the file really exists on disk.** This is the guard the
   module exists to enforce: "A recorded path to a file that was never written
   is the worst outcome available: the service stores it, the API serves a
@@ -1941,7 +1962,7 @@ four `.tif` path strings that nothing ever wrote, and the service recorded them
 
 #### 2b.2.17 The returned dict
 
-`run.py:801-833`:
+`jalraksha/run.py:815-847`:
 
 ```python
 {
@@ -2087,7 +2108,7 @@ def define_downstream_gauges(
     dam_lat: float, dam_lon: float, dam_id: Optional[str] = None
 ) -> List[Dict]
 ```
-(`run.py:218-220`)
+(`jalraksha/run.py:219-221`)
 
 Resolution order:
 
@@ -2126,12 +2147,12 @@ def compute_arrival_times_at_gauges(
     channel_search_m: float = 1200.0,  # metres
 ) -> Dict
 ```
-(`run.py:276-283`)
+(`jalraksha/run.py:277-284`)
 
 **Step 1 — grid geometry.** `x_centres, y_centres = grid.cell_centres_2d()`,
 each `(ny, nx)` in metres.
 
-**Step 2 — the domain UTM zone** (`run.py:316`):
+**Step 2 — the domain UTM zone** (`jalraksha/run.py:317`):
 
 ```python
 domain_zone = int(str(grid.crs).split(":")[-1]) % 100
@@ -2142,7 +2163,7 @@ fixes: "Rishikesh sits in zone 43 while the Tehri domain is zone 44, so its
 easting was measured from a different central meridian and the 'nearest cell'
 lookup below landed hundreds of km away."
 
-**Step 3 — extent guard** (`run.py:320-338`). `x_min, x_max, y_min, y_max =
+**Step 3 — extent guard** (`jalraksha/run.py:321-339`). `x_min, x_max, y_min, y_max =
 grid.extent()`. A gauge whose projected `(x_utm, y_utm)` falls outside gets:
 
 ```python
@@ -2160,7 +2181,7 @@ cell's arrival time."
 `j_gauge, i_gauge = np.unravel_index(np.argmin(dist_to_gauge),
 dist_to_gauge.shape)`.
 
-**Step 5 — channel snapping** (`run.py:356-362`). When `bed_elevation is not
+**Step 5 — channel snapping** (`jalraksha/run.py:357-363`). When `bed_elevation is not
 None and channel_search_m > 0`:
 
 ```python
@@ -2183,7 +2204,7 @@ past it — while Devprayag, 15 km further downstream, happened to land on the
 channel and did report an arrival. Reporting the far gauge wet and the near one
 dry is the giveaway that this is a sampling artifact, not physics."
 
-**Step 6 — per-member extraction** (`run.py:364-375`). For each member, read
+**Step 6 — per-member extraction** (`jalraksha/run.py:365-376`). For each member, read
 `t_arr = result["t_arrival"][j_gauge, i_gauge]`; keep it iff `np.isfinite(t_arr)
 and t_arr > 0`. Members with no `t_arrival` key are skipped.
 
@@ -2229,7 +2250,7 @@ chapter brief asks for it; it does not exist in the code.
 def _no_arrival_reason(gauge: Dict, bed_elevation, grid: Grid,
                        j_gauge: int, i_gauge: int) -> str
 ```
-(`run.py:405-406`)
+(`jalraksha/run.py:406-407`)
 
 With no bed data: `"No arrival detected within the simulated time."` Otherwise:
 read `gauge_bed = bed_elevation[j_gauge, i_gauge]`, find the thalweg as
@@ -2301,7 +2322,7 @@ not have."
 
 #### 2b.5.2 The two records, in full
 
-**TEHRI** (`presets.py:201-228`)
+**TEHRI** (`jalraksha/presets.py:201-228`)
 
 | Field | Value |
 |---|---|
@@ -2333,7 +2354,7 @@ inverse-projects to 30.369248 N, 78.622323 E — 13.8 km away — and is
 **deliberately not used**, because the repo coordinate is the one the cached
 DEM, the gauge geometry, and every verified artifact were built on.
 
-**KHADAKWASLA** (`presets.py:236-359`)
+**KHADAKWASLA** (`jalraksha/presets.py:236-359`)
 
 | Field | Value |
 |---|---|
@@ -2432,7 +2453,7 @@ the Tehri corridor, unconditionally."
 
 The prohibition is stated in two governance documents:
 
-* `README.md:205` — "**Mullaperiyar Dam**: Explicitly forbidden from simulation
+* `README.md:394` — "**Mullaperiyar Dam**: Explicitly forbidden from simulation
   due to active litigation. All demonstrations must utilize **Tehri Dam** as the
   reference benchmark case."
 * `CLAUDE.md:14` — "**Mullaperiyar is explicitly forbidden** (active Supreme
@@ -2464,7 +2485,7 @@ and runs. See §2b.11 finding **F-01**.
 
 ### 2b.6 The CLI — `jalraksha/cli.py`
 
-**File**: 169 lines. Entry point declared in `pyproject.toml:82-83`:
+**File**: 169 lines. Entry point declared in `pyproject.toml:91-92`:
 
 ```toml
 [project.scripts]
@@ -2486,11 +2507,13 @@ docstring saying "via click").
 | `--storage` | `float` | `None` | "Gross storage (million m³)" |
 | `--output-dir` | `str` | `"./data"` | "Cache and output directory" |
 | `--ensemble-size` | `int` | `10` | "Number of breach ensemble members" |
+| `--time` | `float` | `1800.0` | "Simulation duration in seconds (default 1800)" |
+| `--backend` | `{auto,cpu,cuda}` | `"auto"` | Compute backend for the ensemble. `auto` uses the GPU wherever a float64 CUDA kernel runs and the CPU otherwise; `cuda` **raises** rather than falling back silently, because a run that quietly changed hardware would carry a false timing and a false provenance label. `JALRAKSHA_SOLVER_BACKEND` sets the same thing for scripts. |
 
 (The `--lat`/`--lon` help text says "metric CRS", which is wrong — they are
 decimal degrees.)
 
-Behaviour (`cmd_run`, `cli.py:71-132`):
+Behaviour (`cmd_run`, `jalraksha/cli.py:78-139`):
 
 1. If `--config` given, `config = load_config(args.config)`; otherwise require
    all of `--dam --lat --lon --height --storage` or raise `ConfigError`. The
@@ -2594,7 +2617,7 @@ def stop_api_server(server: HTTPServer) -> None:
 ```
 
 `ThreadingHTTPServer`, **not** plain `HTTPServer`. The reason is documented at
-`api.py:302-312`: the plain server handles requests strictly one at a time on a
+`jalraksha/api.py:302-312`: the plain server handles requests strictly one at a time on a
 single `serve_forever` thread, "so any slow handler blocks every request behind
 it — and `/api/v1/simulate` is slow by nature: it runs the breach ensemble,
 which is ~22 s on the first call while Numba compiles and ~0.5 s afterwards.
@@ -2636,7 +2659,7 @@ Paths are normalised with `urlparse(self.path).path.rstrip("/")`, so
 #### 2b.7.3 `GET /api/v1/dams`
 
 * `200` → `{"dams": DEMO_DAMS}` where `DEMO_DAMS` is a module-level list of two
-  dicts (`api.py:30-55`):
+  dicts (`jalraksha/api.py:30-55`):
 
 | id | name | lat | lon | height_m | storage_mm3 | dam_type | river | state |
 |---|---|---|---|---|---|---|---|---|
@@ -3112,7 +3135,7 @@ Each finding gives `file:line`, severity, and a concrete fix.
 ---
 
 **F-01 — CRITICAL — The Mullaperiyar prohibition is never enforced.**
-`jalraksha/hardening.py:258-282`. `check_forbidden_sources` has zero production
+`jalraksha/hardening.py:255-279`. `check_forbidden_sources` has zero production
 call sites (verified: only `tests/test_hardening.py:169` references it) and it
 returns a list rather than raising. A `POST /api/v1/simulate` naming
 Mullaperiyar passes `validate_dam_config` and runs.
@@ -3141,8 +3164,8 @@ if str(config.get("dam_id", "")).lower() in FORBIDDEN_DAM_IDS:
 ---
 
 **F-02 — HIGH — `cli.py` reports success on a failed run.**
-`jalraksha/cli.py:116-125`. `run_dam_break_ensemble` returns `{"error": ...}` on
-three paths (`run.py:627`, `654`, `728`); `cmd_run` never inspects the result
+`jalraksha/cli.py:123-132`. `run_dam_break_ensemble` returns `{"error": ...}` on
+three paths (`jalraksha/run.py:628`, `654`, `728`); `cmd_run` never inspects the result
 and unconditionally prints `[SUCCESS] Simulation completed successfully!` and
 exits 0.
 
@@ -3158,9 +3181,9 @@ print(f"\n[SUCCESS] {results['num_completed']}/{results['num_ensemble']} members
 ---
 
 **F-03 — HIGH — The CLI cannot resolve a dam preset, so non-Tehri runs report no
-gauges.** `jalraksha/cli.py:106-114`. The hand-built `dam_config` omits
+gauges.** `jalraksha/cli.py:113-121`. The hand-built `dam_config` omits
 `dam_id`, `domain_radius_km` and `surface_area_km2`, so
-`define_downstream_gauges` (`run.py:638`) receives `None` and returns `[]` for
+`define_downstream_gauges` (`jalraksha/run.py:639`) receives `None` and returns `[]` for
 any dam outside the Tehri bounding box — and the run uses a 60 km domain even
 for Khadakwasla, whose DEM supports 27.9 km.
 
@@ -3268,7 +3291,7 @@ def test_run_dam_break_ensemble_on_synthetic_terrain(tmp_path):
 
 **F-07 — HIGH — `hardening.py` is almost entirely unwired.**
 `jalraksha/hardening.py` (whole module) vs `jalraksha/run.py:585` and
-`jalraksha/cli.py:71`. Only `validate_dam_config` is called anywhere, and only
+`jalraksha/cli.py:78`. Only `validate_dam_config` is called anywhere, and only
 from `api.py:273`. `run_dam_break_ensemble`'s first statement dereferences
 `dam_config['name']`, so a malformed config yields a bare `KeyError`.
 
@@ -3312,7 +3335,7 @@ except Exception as exc:
 ---
 
 **F-09 — MEDIUM — `threshold_h` is dead in `compute_arrival_times_at_gauges`.**
-`jalraksha/run.py:280`. The parameter is documented as "Depth threshold for
+`jalraksha/run.py:281`. The parameter is documented as "Depth threshold for
 arrival (m)" and never referenced; the real threshold is
 `solver/parallel.py:37::ARRIVAL_THRESHOLD_M = 0.1`, applied when `t_arrival` is
 built. Passing `threshold_h=1.0` silently does nothing.
@@ -3463,7 +3486,7 @@ except Exception:
 ---
 
 **F-17 — MEDIUM — `grid.crs` parsing is brittle in two places.**
-`jalraksha/run.py:316` and
+`jalraksha/run.py:317` and
 `services/api/jalraksha_service/tasks.py:1015`:
 `int(str(grid.crs).split(":")[-1]) % 100`. A WKT or PROJ-string CRS raises
 `ValueError`; a geographic CRS such as `EPSG:4326` silently yields "zone 26".
@@ -3482,11 +3505,11 @@ def _utm_zone_from_crs(crs: str) -> int:
 ---
 
 **F-18 — MEDIUM — Unbounded single-cell depth injection.**
-`jalraksha/run.py:515-518`. `delta_h = q_current * dt_s / (dx*dy)` with no cap.
+`jalraksha/run.py:516-519`. `delta_h = q_current * dt_s / (dx*dy)` with no cap.
 At Tehri peak outflow (~10⁵ m³/s), `dt_s = 30 s` and 200 m cells, one step adds
 ~75 m of water to one cell — a shock the CFL controller then has to absorb, and
 the likeliest cause of the "timestep has probably collapsed" warning
-(`parallel.py:190-195`).
+(`jalraksha/solver/parallel.py:312-317`).
 
 ```python
 delta_h = q_current * dt_s / cell_area
@@ -3521,7 +3544,7 @@ if "JALRAKSHA_GEE_PROJECT" not in os.environ:
 ---
 
 **F-20 — MEDIUM — Hardcoded solver parameters in the CLI.**
-`jalraksha/cli.py:121-122`: `solver_duration_s=1800.0` and
+`jalraksha/cli.py:128-129`: `solver_duration_s=1800.0` and
 `target_resolution=200.0` with no flags; `domain_radius_km` falls to 60.0. A
 30-minute simulation cannot reach Haridwar at 58.4 km.
 
@@ -3539,7 +3562,7 @@ run_parser.add_argument("--workers", type=int, default=None,
 ---
 
 **F-21 — LOW — Hardcoded `"EPSG:32643"` in the CLI's ad-hoc config.**
-`jalraksha/cli.py:88`. Tehri is zone 44 (`EPSG:32644`, per
+`jalraksha/cli.py:95`. Tehri is zone 44 (`EPSG:32644`, per
 `TEHRI.epsg`). Harmless today because `load_dem_as_grid` auto-detects, but it is
 a wrong value sitting in a config dict.
 
@@ -3552,7 +3575,7 @@ config = {..., "crs": f"EPSG:{(32600 if args.lat >= 0 else 32700) + zone}"}
 ---
 
 **F-22 — LOW — Falsy-value bug in the CLI's required-argument check.**
-`jalraksha/cli.py:78`: `if not all([args.dam, args.lat, args.lon, args.height,
+`jalraksha/cli.py:85`: `if not all([args.dam, args.lat, args.lon, args.height,
 args.storage])`. A dam at longitude `0.0` (Greenwich) or latitude `0.0` is
 rejected as "missing".
 
@@ -3649,7 +3672,7 @@ better, drop the number from the note and let
 **F-29 — LOW — Unvetted coefficients still shipping.**
 `jalraksha/presets.py:213-219` (`TEHRI.frl_m = 830.0`,
 `crest_m = 839.5`, both marked `TODO: UNVETTED`),
-`presets.py:275-282` (`KHADAKWASLA.height_m = 39.6`,
+`jalraksha/presets.py:275-282` (`KHADAKWASLA.height_m = 39.6`,
 `storage_mm3 = 85.31`, "STILL UNVETTED as primary sources"),
 `presets.py:356-358` (`surface_area_km2 = 14.72`, FAO 1989),
 `terrain/domain.py:~152` (uniform Manning `0.03`, "TODO: UNVETTED"). These are
@@ -3701,7 +3724,7 @@ available and are flagged rather than asserted:
   `solver/parallel.py:118` and `:141` but `solver/core.py` was outside this
   chapter's file list; the exact numeric values are not stated here.
 * Whether `epsg_from_crs` accepts non-`EPSG:` CRS strings was not checked;
-  `run.py:134` relies on it raising.
+  `jalraksha/run.py:135` relies on it raising.
 
 ---
 
@@ -3788,7 +3811,7 @@ its static-asset serving, and its container/deployment definition. Every claim
 below is anchored to a file and line in the source tree under
 `services/api/jalraksha_service/`, `services/api/`, and the repository root.
 
-The service's own stated design rule (`__init__.py:8-10`) is that **nothing in it
+The service's own stated design rule (`services/api/jalraksha_service/__init__.py:8-10`) is that **nothing in it
 reimplements simulation logic**:
 
 ```python
@@ -3797,11 +3820,11 @@ Every job is a thin wrapper around the existing pipeline
 (`run_dam_break_ensemble`) and the existing rapid estimate (`api.rapid_estimate`).
 ```
 
-A second, equally load-bearing rule appears in `config.py:15-17`: **the service
+A second, equally load-bearing rule appears in `services/api/jalraksha_service/config.py:15-17`: **the service
 depends on the library, never the reverse.** Consequences of that rule are visible
 throughout — the dam registry lives in the service, reach resolution lives in the
-service (`main.py:709-731`), and the wire-shape adapter `_demo_dam_from_preset`
-(`config.py:25-72`) exists specifically so that the library's `DamPreset` dataclass
+service (`services/api/jalraksha_service/main.py:797-819`), and the wire-shape adapter `_demo_dam_from_preset`
+(`jalraksha/config.py:25-72`) exists specifically so that the library's `DamPreset` dataclass
 is never given knowledge of the HTTP surface.
 
 #### 2C.1 Module map
@@ -3812,7 +3835,7 @@ is never given knowledge of the HTTP surface.
 | `jalraksha_service/config.py` | 242 | Env-driven `Settings` singleton, `DEMO_DAMS` registry |
 | `jalraksha_service/db.py` | 290 | Thin metadata store (sqlite3 / psycopg), 3 tables |
 | `jalraksha_service/schemas.py` | 427 | 15 Pydantic v2 models |
-| `jalraksha_service/main.py` | 936 | FastAPI app: 12 routes, 2 static mounts, validation gates |
+| `jalraksha_service/main.py` | 1,275 | FastAPI app: 14 routes, 2 static mounts, validation gates |
 | `jalraksha_service/tasks.py` | 1439 | Celery task `jalraksha.run_dam_break` + helpers |
 | `jalraksha_service/worker.py` | 31 | Celery app construction, `CELERY_EAGER` switch |
 | `jalraksha_service/run_worker.py` | 128 | Out-of-process single-run entry point |
@@ -3827,7 +3850,7 @@ is never given knowledge of the HTTP surface.
 ### 2C.2 Service configuration (`config.py`)
 
 Configuration is a plain class with class-level attributes evaluated **at import
-time**, not a `pydantic.BaseSettings`. The reader is `_env` (`config.py:21-22`):
+time**, not a `pydantic.BaseSettings`. The reader is `_env` (`services/api/jalraksha_service/config.py:21-22`):
 
 ```python
 def _env(key: str, default: str) -> str:
@@ -3836,21 +3859,21 @@ def _env(key: str, default: str) -> str:
 
 Because `_env` returns `str` unconditionally, every setting is either a string or a
 value derived from one — there is no type coercion, no validation, and no error on
-a malformed value. `settings = Settings()` is instantiated once at `config.py:242`.
+a malformed value. `settings = Settings()` is instantiated once at `services/api/jalraksha_service/config.py:242`.
 
 #### 2C.2.1 Every setting
 
 | Attribute | Type | Env var | Default | Effect |
 |---|---|---|---|---|
-| `DATA_DIR` | `Path` | `JALRAKSHA_DATA_DIR` | `Path("./data")` | Root for exports, keyframes, tiles, DEMs, the SQLite DB, GEE caches, the ParaView `.pvsm` states, and the subprocess payload scratch dir. Mounted as `/files` (`main.py:83`). Relative by default, therefore **CWD-dependent**. |
+| `DATA_DIR` | `Path` | `JALRAKSHA_DATA_DIR` | `Path("./data")` | Root for exports, keyframes, tiles, DEMs, the SQLite DB, GEE caches, the ParaView `.pvsm` states, and the subprocess payload scratch dir. Mounted as `/files` (`services/api/jalraksha_service/main.py:85`). Relative by default, therefore **CWD-dependent**. |
 | `REDIS_URL` | `str` | `REDIS_URL` | `redis://localhost:6379/0` | Celery broker **and** result backend (`worker.py:12-13`). |
 | `DATABASE_URL` | `str` | `DATABASE_URL` | `sqlite:///./data/jalraksha.db` | Selects the backend in `db._connect` (`db.py:29-40`) by string prefix and the placeholder style in `db._placeholder` (`db.py:43-44`). |
 | `DEMO_DAMS` | `List[dict]` | — | 5 entries | Backs `GET /dams`, `RunRequest.to_dam_config`, `_run_preset`, and `_resolve_reach`. Not env-configurable. |
-| `PARAVIEW_EXE` | `str` | `JALRAKSHA_PARAVIEW_EXE` | `C:/Program Files/ParaView 6.2.0/bin/paraview.exe` | GUI binary launched by `POST /runs/{id}/open-paraview` (`main.py:930`). Existence-checked at `main.py:842`. |
+| `PARAVIEW_EXE` | `str` | `JALRAKSHA_PARAVIEW_EXE` | `C:/Program Files/ParaView 6.2.0/bin/paraview.exe` | GUI binary launched by `POST /runs/{id}/open-paraview` (`services/api/jalraksha_service/main.py:1024`). Existence-checked at `services/api/jalraksha_service/main.py:936`. |
 | `PVPYTHON_EXE` | `str` | `JALRAKSHA_PVPYTHON_EXE` | `C:/Program Files/ParaView 6.2.0/bin/pvpython.exe` | Headless ParaView Python used to build the `.pvsm` state (`main.py:910`). **Not** existence-checked. |
 | `DFLOWFM_EXE` | `str` | `JALRAKSHA_DFLOWFM_EXE` | `""` (empty) | Passed to `run_delft3d_simulation(..., dflowfm_path=settings.DFLOWFM_EXE or None)` (`tasks.py:799`). Empty means "auto-discover". |
-| `GEE_PROJECT` | `str` | `JALRAKSHA_GEE_PROJECT` | `""` (empty) | Google Cloud project with the Earth Engine API enabled. Note: **the service never reads this attribute** — `jalraksha.gee.auth` reads the same environment variable directly (`config.py:220-221`, `jalraksha/gee/auth.py:41`). The `Settings` attribute is documentation, not a code path. |
-| `SOLVERS` | `List[str]` | — | `["swe", "delft3d", "both", "sph"]` | Whitelist enforced in `submit_run` (`main.py:126-127`). |
+| `GEE_PROJECT` | `str` | `JALRAKSHA_GEE_PROJECT` | `""` (empty) | Google Cloud project with the Earth Engine API enabled. Note: **the service never reads this attribute** — `jalraksha.gee.auth` reads the same environment variable directly (`services/api/jalraksha_service/config.py:220-221`, `jalraksha/gee/auth.py:41`). The `Settings` attribute is documentation, not a code path. |
+| `SOLVERS` | `List[str]` | — | `["swe", "delft3d", "both", "sph"]` | Whitelist enforced in `submit_run` (`services/api/jalraksha_service/main.py:192-193`). |
 
 `CELERY_EAGER` is **not** a `Settings` attribute. It is read directly from the
 process environment in `worker.py:27`:
@@ -3865,10 +3888,10 @@ The comparison is a strict equality against the string `"1"` — `CELERY_EAGER=t
 sets it to `"1"` unless `--broker` is passed; `docker-compose.yml` never sets it, so
 the compose stack takes the real-broker path.
 
-`Settings.ensure_dirs()` (`config.py:235-239`) creates `DATA_DIR`, `DATA_DIR/exports`,
-`DATA_DIR/keyframes` and `DATA_DIR/tiles`. It is called once at `main.py:39`, at
+`Settings.ensure_dirs()` (`services/api/jalraksha_service/config.py:235-239`) creates `DATA_DIR`, `DATA_DIR/exports`,
+`DATA_DIR/keyframes` and `DATA_DIR/tiles`. It is called once at `services/api/jalraksha_service/main.py:41`, at
 module import, before the FastAPI app is constructed — the `/tiles` mount at
-`main.py:90` would raise on a missing directory otherwise.
+`services/api/jalraksha_service/main.py:92` would raise on a missing directory otherwise.
 
 #### 2C.2.2 Executable auto-discovery when a path is unset
 
@@ -3880,7 +3903,7 @@ converts to `None` via `settings.DFLOWFM_EXE or None`. Resolution then happens i
    `os.path.abspath(custom_path)`.
 2. If `custom_path` is truthy but is **not** a file — print a diagnostic and
    return `None`. It deliberately does **not** fall through to PATH
-   (`runner.py:46-55`): "An explicitly configured path that is wrong is a
+   (`jalraksha/delft3d/runner.py:46-55`): "An explicitly configured path that is wrong is a
    configuration error, not a reason to quietly search PATH instead and run
    something else."
 3. Otherwise `shutil.which("dflowfm-cli")` then `shutil.which("dflowfm")`
@@ -3891,18 +3914,18 @@ converts to `None` via `settings.DFLOWFM_EXE or None`. Resolution then happens i
    `C:\Program Files\Deltares\*\plugins\DeltaShell.Dimr\kernels\x64\bin\dflowfm-cli.exe`.
 5. If nothing is found, `run_delft3d_simulation` falls back to JalRaksha's own 2D
    SWE solver and records `delft3d_binary_used=False` with a `fallback_reason`
-   (`runner.py:451-457`). Per `config.py:203-206`, the fallback result must be
+   (`runner.py:451-457`). Per `services/api/jalraksha_service/config.py:203-206`, the fallback result must be
    labelled "Delft3D-class, NOT Delft3D FM" and never presented as Delft3D itself.
 
 **ParaView.** There is *no* auto-discovery. `PARAVIEW_EXE` is checked with
-`os.path.exists` (`main.py:842`) and a miss returns a structured
+`os.path.exists` (`services/api/jalraksha_service/main.py:936`) and a miss returns a structured
 `{"launched": False, "reason": "paraview_not_found", ...}` payload. `PVPYTHON_EXE`
 is passed straight to `subprocess.run` (`main.py:910, 920`) with no existence check
 at all — see finding S-16.
 
 **Earth Engine.** No discovery; `jalraksha.gee.auth.gee_status()` reports
 `available=False` with a human-readable reason naming the missing variable and the
-free registration URL (`config.py:216-219`).
+free registration URL (`services/api/jalraksha_service/config.py:216-219`).
 
 #### 2C.2.3 The `DEMO_DAMS` registry
 
@@ -3917,17 +3940,17 @@ Five entries, four hand-written and one adapted from a library preset:
 | `khadakwasla` | via `_demo_dam_from_preset(KHADAKWASLA)` | from preset | from preset | 51.3 (UNVETTED) | 33.5 (UNVETTED) | masonry gravity (UNVETTED) | from preset | from preset | from preset | from preset |
 
 The empty gauge lists for bhakra/idukki/hirakud are deliberate
-(`config.py:126-129`): "Publishing an empty list is the honest answer; publishing
+(`services/api/jalraksha_service/config.py:126-129`): "Publishing an empty list is the honest answer; publishing
 Tehri's towns here is what the old duplicated gauge lists effectively did." Only
 tehri and khadakwasla have staged DEMs, so the other three fail at
 `tasks._resolve_dem` (`tasks.py:65-71`) with an actionable `FileNotFoundError`
 rather than silently simulating the wrong terrain.
 
 The Tehri entry is the one place where preset values are **retyped rather than
-copied** (`config.py:101-105`: "Tehri's entry is hand-written rather than built
+copied** (`services/api/jalraksha_service/config.py:101-105`: "Tehri's entry is hand-written rather than built
 from its preset, so these have to be repeated here"). It also omits
 `surface_area_km2`, which `RunRequest.to_dam_config` then pops
-(`schemas.py:58-59`), leaving the solver on `breach.py`'s cone-shaped-reservoir
+(`services/api/jalraksha_service/schemas.py:67-68`), leaving the solver on `breach.py`'s cone-shaped-reservoir
 fallback for Tehri while Khadakwasla gets a real storage curve. This is a genuine
 scientific inconsistency between two dams in the same registry (finding S-40).
 
@@ -3935,7 +3958,7 @@ scientific inconsistency between two dams in the same registry (finding S-40).
 
 ### 2C.3 Complete API reference
 
-The application is constructed at `main.py:42`:
+The application is constructed at `services/api/jalraksha_service/main.py:44`:
 
 ```python
 app = FastAPI(title="JalRaksha API", version="1.0",
@@ -3949,25 +3972,47 @@ FastAPI therefore also publishes `/docs` (Swagger UI), `/redoc`, and
 
 | # | Method | Path | Handler (`main.py`) | Query / path params | Request body | Response model | Status codes |
 |---:|---|---|---|---|---|---|---|
-| 1 | GET | `/health` | `health` :114 | — | — | `Dict[str,str]` | 200 |
-| 2 | GET | `/dams` | `list_dams` :119 | — | — | `List[DamPreset]` | 200 |
-| 3 | POST | `/runs` | `submit_run` :124 | — | `RunRequest` | `RunStatus` | 200, 422 |
-| 4 | GET | `/runs` | `list_runs` :407 | `limit: int = 50` | — | `List[RunListEntry]` | 200, 422 |
-| 5 | GET | `/runs/{run_id}` | `run_status` :235 | `run_id: str` | — | `RunStatus` | 200, 404 |
-| 6 | GET | `/runs/{run_id}/result` | `run_result` :247 | `run_id: str` | — | `RunResult` | 200, 404, 409 |
-| 7 | GET | `/runs/{run_id}/comparison` | `run_comparison` :333 | `run_id: str` | — | `ComparisonResult` | 200, 404 |
-| 8 | POST | `/runs/{run_id}/open-paraview` | `open_in_paraview` :786 | `run_id: str` | — | untyped `Dict[str,Any]` | 200, 404, 500 |
-| 9 | GET | `/gauges/{run_id}` | `run_gauges` :374 | `run_id: str` | — | `List[GaugeResult]` | 200, 404 |
-| 10 | GET | `/gee/status` | `gee_status_endpoint` :423 | — | — | `GeeStatus` | 200, 500 |
-| 11 | GET | `/gee/latest` | `gee_latest` :734 | `reach: str = "bhagirathi"` | — | `GeoSarResponse` | 200 |
-| 12 | GET | `/validation` | `validation` :493 | `refresh: bool = False` | — | `ValidationResult` | 200 |
-| M1 | GET/HEAD | `/files/{path:path}` | `StaticFiles` mount :83 | filesystem path under `DATA_DIR` | — | raw bytes | 200, 404, 405 |
-| M2 | GET/HEAD | `/tiles/{path:path}` | `StaticFiles` mount :90 | path under `DATA_DIR/tiles` | — | raw bytes | 200, 404, 405 |
+| 1 | GET | `/health` | `health` :116 | — | — | `Dict[str,str]` | 200 |
+| 2 | GET | `/backends` | `list_backends` :171 | — | — | `SolverBackendInfo` | 200 |
+| 3 | GET | `/dams` | `list_dams` :185 | — | — | `List[DamPreset]` | 200 |
+| 4 | POST | `/runs` | `submit_run` :190 | — | `RunRequest` | `RunStatus` | 200, 422 |
+| 5 | GET | `/runs` | `list_runs` :617 | `limit: int = 50` | — | `List[RunListEntry]` | 200, 422 |
+| 6 | GET | `/runs/{run_id}` | `run_status` :430 | `run_id: str` | — | `RunStatus` | 200, 404 |
+| 7 | GET | `/runs/{run_id}/result` | `run_result` :442 | `run_id: str` | — | `RunResult` | 200, 404, 409 |
+| 8 | GET | `/runs/{run_id}/comparison` | `run_comparison` :543 | `run_id: str` | — | `ComparisonResult` | 200, 404 |
+| 9 | POST | `/runs/{run_id}/open-paraview` | `open_in_paraview` :1125 | `run_id: str` | — | untyped `Dict[str,Any]` | 200, 404, 500 |
+| 10 | GET | `/gauges/{run_id}` | `run_gauges` :584 | `run_id: str` | — | `List[GaugeResult]` | 200, 404 |
+| 11 | GET | `/gee/status` | `gee_status_endpoint` :633 | — | — | `GeeStatus` | 200, 500 |
+| 12 | GET | `/gee/latest` | `gee_latest` :954 | `reach: str = "bhagirathi"` | — | `GeoSarResponse` | 200 |
+| 13 | GET | `/gee/blockage` | `gee_blockage` :1006 | `reach: str = "rishi_ganga"`, `date_pre: str \| None`, `date_post: str \| None` | — | `BlockageDetectionResponse` | 200 |
+| 14 | GET | `/validation` | `validation` :703 | `refresh: bool = False` | — | `ValidationResult` | 200 |
+| M1 | GET/HEAD | `/files/{path:path}` | `StaticFiles` mount :85 | filesystem path under `DATA_DIR` | — | raw bytes | 200, 404, 405 |
+| M2 | GET/HEAD | `/tiles/{path:path}` | `StaticFiles` mount :92 | path under `DATA_DIR/tiles` | — | raw bytes | 200, 404, 405 |
+
+Two of these postdate the 2026-09-03 audit and are described where they belong
+rather than only here.
+
+**`GET /backends`** reports which compute backends this machine can really offer,
+and exists to be *shown* rather than merely answered: `cuda` is listed only when a
+float64 CUDA kernel actually compiles and runs, and the response carries the
+probe's own `cuda_reason` so the control panel can grey the option out with the
+reason printed beside it. A present NVIDIA driver is not sufficient — believing it
+was is how this project carried "CUDA does not work here" for months while the
+only missing piece was NVVM. The probe runs in a **short-lived subprocess** and is
+cached per API process: calling it inside uvicorn would park a CUDA context on
+~300 MB of a 6 GB card for the server's whole life, competing with the run
+subprocess that needs the card to do the actual work.
+
+**`GET /gee/blockage`** answers whether a new water body — a forming
+landslide-dammed lake — has appeared on a reach, by differencing a Sentinel-1
+pre-event median against a single post-event scene. It keeps the same
+three-states-and-no-fourth contract as `/gee/latest`: live, cached, or a refusal
+that states its reason. Nothing on this path fabricates a lake.
 
 **There are no dedicated download or export endpoints.** Every downloadable product
 (COG GeoTIFFs, zipped shapefiles, KML/KMZ, keyframe PNGs, XDMF/HDF5, comparison
 figures, JSON summaries) is served through the `/files` static mount. The result
-endpoint returns `/files/...` URLs via `_to_file_url` (`main.py:93-99`) and the
+endpoint returns `/files/...` URLs via `_to_file_url` (`services/api/jalraksha_service/main.py:95-101`) and the
 frontend resolves them against the API origin (`frontend/src/api.js::resolveApiUrl`).
 There is likewise **no** `DELETE /runs/{id}`, no run-cancel endpoint, and no
 pagination cursor.
@@ -4024,17 +4069,17 @@ Signature: `def submit_run(req: RunRequest)`. Declared `response_model=RunStatus
 
 Body: `RunRequest` (§2C.4.1). Processing, in order:
 
-1. `req.solver not in settings.SOLVERS` → `HTTPException(422, ...)` (`main.py:126-127`).
+1. `req.solver not in settings.SOLVERS` → `HTTPException(422, ...)` (`services/api/jalraksha_service/main.py:192-193`).
 2. `req.to_dam_config()`; a `ValueError` becomes `HTTPException(422, str(e))`
-   (`main.py:128-131`). This covers both "unknown dam_id" and "no vetted value for
+   (`services/api/jalraksha_service/main.py:211-214`). This covers both "unknown dam_id" and "no vetted value for
    height_m, storage_mm3, dam_type".
 3. A `run_record` is built as `{**dam_config, "_solver_params": {...}}`
-   (`main.py:143-150`) so a finished run records *at what resolution, duration and
+   (`services/api/jalraksha_service/main.py:226-233`) so a finished run records *at what resolution, duration and
    ensemble size* it ran, not merely which dam. The namespaced `_solver_params` key
    cannot collide with a dam field.
 4. `run_id = db.create_run(dam_id, run_record, req.solver)` — a `uuid4().hex`
    (32 hex chars), status `"queued"`, `created_at` = UTC ISO-8601.
-5. Dispatch (`main.py:154-157`):
+5. Dispatch (`services/api/jalraksha_service/main.py:238-241`):
    ```python
    if celery_app.conf.task_always_eager:
        _spawn_run_subprocess(run_id, task_args)
@@ -4122,7 +4167,7 @@ Example response (200):
 #### 2C.3.6 `GET /runs/{run_id}`
 
 Path param `run_id: str` (no format constraint — any string is accepted and looked
-up). Delegates to `_run_status` (`main.py:225-232`), which 404s on
+up). Delegates to `_run_status` (`services/api/jalraksha_service/main.py:310-317`), which 404s on
 `db.get_run(run_id) is None` and merges `progress_pct` / `phase` out of the stored
 `params_json`.
 
@@ -4150,25 +4195,37 @@ The heaviest read path. Behaviour:
 
 - 404 if the run is unknown.
 - **409** if `run["status"] != "done"`: `{"detail": "Run not done (status=running)"}`
-  (`main.py:250-251`).
+  (`services/api/jalraksha_service/main.py:335-336`).
 - Otherwise it stitches together five on-disk artifacts plus two DB tables:
 
 | Source | Read at | Produces |
 |---|---|---|
-| `exports` table | `main.py:253` | `exports[]`, `keyframe_manifest_url` |
-| `gauge_results` table | `main.py:254` | `gauges[]` |
-| keyframe `manifest.json` | `main.py:257-262` | `hazard_summary` (last keyframe's) |
+| `exports` table | `services/api/jalraksha_service/main.py:338` | `exports[]`, `keyframe_manifest_url` |
+| `gauge_results` table | `services/api/jalraksha_service/main.py:339` | `gauges[]` |
+| keyframe `manifest.json` | `services/api/jalraksha_service/main.py:342-347` | `hazard_summary` (last keyframe's) |
 | `population_at_risk.json` | `main.py:267-276` | `population_at_risk` |
-| `run_summary.json` | `main.py:282` | `ensemble`, `grid`, `engine`, `rapid_estimate` |
-| `impact` export | `main.py:283` | `impact` |
-| `sph_near_field.json` | `main.py:284` | `sph` |
+| `run_summary.json` | `services/api/jalraksha_service/main.py:367` | `ensemble`, `grid`, `solver_params`, `solver_backend`, `roughness`, `dem`, `rapid_estimate` |
+| `impact` export | `services/api/jalraksha_service/main.py:368` | `impact` |
+| `sph_near_field.json` | `services/api/jalraksha_service/main.py:369` | `sph` |
 | presence of `comparison_metrics` | `main.py:286-288` | `comparison_url` |
+
+`run_summary.json` is **written by `write_run_summary`
+(`services/api/jalraksha_service/script_runs.py:107`), not by `main.py`** — a
+deliberate sharing, because `tasks.py` and the standalone scripts in `scripts/`
+both need to produce it and two copies would eventually disagree about what a
+minority arrival is. Two of its keys postdate the 2026-09-03 audit:
+`solver_backend`, which carries the hardware a run's members were really solved
+on (taken from the members, so a `cuda` request that fell back says CPU), and
+`roughness`, which reports `is_uniform` and `fraction_at_default` for the Manning
+field. The second exists because the default pipeline field is uniform and a
+uniform field is indistinguishable from one that was collapsed to its mean unless
+something says which it is — see F2 in §4.1.
 
 Artifact loading goes through `_read_export_json` (`main.py:311-330`), which
 returns `None` and **prints the kind and reason** on failure — deliberately not a
 bare `except: pass`, because "a corrupt file was indistinguishable from one that
-was never written" (`main.py:318-319`). The `hazard_summary` read at
-`main.py:257-262` is the exception: it still uses `except Exception: pass`.
+was never written" (`services/api/jalraksha_service/main.py:403-404`). The `hazard_summary` read at
+`services/api/jalraksha_service/main.py:342-347` is the exception: it still uses `except Exception: pass`.
 
 Example response (200), heavily abridged:
 ```json
@@ -4227,7 +4284,7 @@ Side effects: none, but note that failed reads print to stdout.
 
 404 on unknown run (via `_run_status`). Otherwise reads the
 `comparison_metrics` export and reshapes it into a fixed key set
-(`main.py:348-364`). If the file is missing or unparseable, it returns **200** with
+(`services/api/jalraksha_service/main.py:433-449`). If the file is missing or unparseable, it returns **200** with
 `metrics: {}` and `maps: []` — the failure is swallowed by
 `except Exception: pass` (`main.py:369-370`).
 
@@ -4285,7 +4342,7 @@ An unknown-but-existing run with no gauges returns `[]` with 200.
 
 #### 2C.3.10 `GET /gee/status`
 
-Imports `jalraksha.gee.auth` lazily inside the handler (`main.py:436`) and returns
+Imports `jalraksha.gee.auth` lazily inside the handler (`services/api/jalraksha_service/main.py:522`) and returns
 `GeeStatus(available, reason, project)`. Any exception from Earth Engine
 initialisation that `gee_status()` does not itself catch escapes as an unhandled
 500.
@@ -4298,7 +4355,7 @@ initialisation that `gee_status()` does not itself catch escapes as an unhandled
 
 #### 2C.3.11 `GET /gee/latest`
 
-Query: `reach: str = "bhagirathi"`. `_resolve_reach` (`main.py:709-731`) matches
+Query: `reach: str = "bhagirathi"`. `_resolve_reach` (`services/api/jalraksha_service/main.py:797-819`) matches
 the lower-cased input against each demo dam's `id`, `river` **or** `name`. An
 unmatched reach returns **200** with `source="unavailable"` and a reason listing
 the known reaches — not a 404. A matched reach yields a bounding box of
@@ -4309,7 +4366,7 @@ square.
 `DATA_DIR/gee/sar/<reach>`. `SarUnavailableError` is caught and reported;
 `source` is one of exactly three values — `sentinel1_grd`, `cached`,
 `unavailable` — with the docstring stating flatly "There is no fourth state.
-Synthetic data is never returned here" (`schemas.py:405-408`).
+Synthetic data is never returned here" (`services/api/jalraksha_service/schemas.py:434-437`).
 
 Unknown reach (200):
 ```json
@@ -4335,14 +4392,14 @@ Success (200):
 
 `threshold_db` is `Optional` with **no default** on purpose — it previously
 defaulted to `-17.0`, so a request that fetched nothing still answered with a
-plausible-looking threshold (`schemas.py:410-413`).
+plausible-looking threshold (`services/api/jalraksha_service/schemas.py:439-442`).
 
 #### 2C.3.12 `GET /validation`
 
 Query: `refresh: bool = False`. Three-state behaviour:
 
 1. Cache present and `refresh` false → return it with `cached=true`,
-   `status="done"` (`main.py:510-514`).
+   `status="done"` (`services/api/jalraksha_service/main.py:596-600`).
 2. Otherwise, under `_VALIDATION_LOCK`, start a **daemon background thread**
    running `_run_validation_checks` if one is not already active, and return
    immediately with `status="running"`, `checks=[]` (`main.py:520-526`).
@@ -4400,7 +4457,7 @@ Response when done (200), abridged:
 #### 2C.3.13 `POST /runs/{run_id}/open-paraview`
 
 The only endpoint that launches a GUI application on the API host. It is
-**local-only by construction** (`main.py:790-796`) and returns a structured result
+**local-only by construction** (`services/api/jalraksha_service/main.py:883-889`) and returns a structured result
 rather than raising, because the failure modes are genuinely different:
 
 | `reason` | Meaning | Condition (`main.py`) |
@@ -4413,7 +4470,7 @@ rather than raising, because the failure modes are genuinely different:
 
 A 404 is still raised for an unknown `run_id` (via `_run_status`).
 
-State-file caching logic (`main.py:868-926`) is worth stating precisely. The
+State-file caching logic (`services/api/jalraksha_service/main.py:962-1020`) is worth stating precisely. The
 `.pvsm` is rebuilt when it is missing **or** older than the newest of:
 the `.xdmf` dataset, `paraview/render_static.py`, `paraview/camera_presets.py`,
 and `main.py` itself (`main.py:886-892`). Including `main.py` in the generator set
@@ -4434,9 +4491,9 @@ cmd = [
 ]
 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 ```
-`preset` comes from `_run_preset` (`main.py:386-404`), which looks the dam up in
+`preset` comes from `_run_preset` (`services/api/jalraksha_service/main.py:471-489`), which looks the dam up in
 `DEMO_DAMS` and falls back to `_PARAVIEW_FALLBACK = {"vertical_exaggeration": 1.5,
-"nominal_depth_m": 25.0}` (`main.py:383`). Before this, every dam rendered at 1.5×
+"nominal_depth_m": 25.0}` (`services/api/jalraksha_service/main.py:468`). Before this, every dam rendered at 1.5×
 and a 25 m colour ramp — for Khadakwasla (1,170 m relief over 54 km) that is a
 near-flat plate and a 13.4 m flood washed out to pale blue.
 
@@ -4466,7 +4523,7 @@ Fifteen models, all `pydantic.BaseModel` (v2, per `requirements.txt:8`,
 decorators anywhere in the file — all cross-field validation lives in the plain
 method `RunRequest.to_dam_config`.
 
-#### 2C.4.1 `RunRequest` (`schemas.py:9-102`) — used by `POST /runs`
+#### 2C.4.1 `RunRequest` (`services/api/jalraksha_service/schemas.py:9-102`) — used by `POST /runs`
 
 | Field | Type | Default | Constraint | Units | Notes |
 |---|---|---|---|---|---|
@@ -4476,7 +4533,7 @@ method `RunRequest.to_dam_config`.
 | `height_m` | `Optional[float]` | `None` | none | m | |
 | `storage_mm3` | `Optional[float]` | `None` | none | MCM (10⁶ m³) | Name says mm3; description says MCM |
 | `dam_type` | `str` | `"embankment"` | none | — | Free text; not enumerated |
-| `failure_mode` | `str` | `"overtopping"` | none | — | Reaches only `xu_zhang_2009_peak_outflow`, which is not in `DEFAULT_REGRESSION_FAMILIES`, so **it changes nothing in a default ensemble** (`schemas.py:91-96`) |
+| `failure_mode` | `str` | `"overtopping"` | none | — | Reaches only `xu_zhang_2009_peak_outflow`, which is not in `DEFAULT_REGRESSION_FAMILIES`, so **it changes nothing in a default ensemble** (`services/api/jalraksha_service/schemas.py:100-105`) |
 | `breach_mode` | `str` | `"central"` | none | — | **Never read** — `to_dam_config` does not copy it into `cfg`; dead field |
 | `ensemble_size` | `int` | `100` | `ge=1, le=10000` | count | |
 | `solver` | `str` | `"swe"` | none in schema | — | Validated in the endpoint against `settings.SOLVERS`; description reads `"swe \| delft3d \| both"` and omits `sph` |
@@ -4484,22 +4541,22 @@ method `RunRequest.to_dam_config`.
 | `target_resolution` | `float` | `200.0` | `gt=0` | m | **No lower bound** — 0.01 is accepted |
 | `breach_formation_time_s` | `Optional[float]` | `None` | `gt=0` | s | `None` → module default (~27 min). Travels into member metadata as `failure_time_assumed` |
 
-`to_dam_config()` (`schemas.py:37-102`) is the conversion. Preset branch:
+`to_dam_config()` (`services/api/jalraksha_service/schemas.py:46-111`) is the conversion. Preset branch:
 
 - Look up `dam_id` in `settings.DEMO_DAMS`; unknown → `ValueError`.
 - Rename `id` → `dam_id`, because `define_downstream_gauges` and `rapid_estimate`
-  both look for the latter (`schemas.py:44-47`).
+  both look for the latter (`services/api/jalraksha_service/schemas.py:53-56`).
 - Pop `domain_radius_km` and `gauges` (not solver inputs), then re-insert
   `domain_radius_km` — a deliberate round-trip so it survives but does not "ride
   along into breach.py" as a raw dam field.
 - Drop `surface_area_km2` if `None`, so `breach.py`'s own fallback path is
   unchanged (`schemas.py:55-59`).
 - Refuse if any of `height_m`, `storage_mm3`, `dam_type` is `None`
-  (`schemas.py:70-82`). This also replaces a real crash: the two lines below it do
+  (`services/api/jalraksha_service/schemas.py:79-91`). This also replaces a real crash: the two lines below it do
   `float(cfg.get("height_m", 100))`, and `.get`'s default only fires on a *missing*
   key — a present-but-`None` value raised `TypeError` and surfaced as an opaque 500.
 
-Custom branch (`schemas.py:83-89`): requires all of `lat`, `lon`, `height_m`,
+Custom branch (`services/api/jalraksha_service/schemas.py:92-98`): requires all of `lat`, `lon`, `height_m`,
 `storage_mm3`, else `ValueError("Provide dam_id or all of lat/lon/height_m/storage_mm3")`.
 Name is hardcoded to `"Custom"`.
 
@@ -4537,10 +4594,10 @@ numbers (finding S-38).
 
 Two design notes worth carrying forward. `GaugeResult` (the per-run *outcome*)
 deliberately carries no coordinates, while `GaugePoint` (the static *geometry*)
-deliberately carries no timings (`schemas.py:336-345`). And `DamPreset`'s
+deliberately carries no timings (`services/api/jalraksha_service/schemas.py:365-374`). And `DamPreset`'s
 optionality "affects DISPLAY only" — `RunRequest.to_dam_config` refuses to build a
 solver config when any of the three structural fields is missing, so a null can
-never reach the breach regressions (`schemas.py:365-368`).
+never reach the breach regressions (`services/api/jalraksha_service/schemas.py:394-397`).
 
 ---
 
@@ -4549,7 +4606,7 @@ never reach the breach regressions (`schemas.py:365-368`).
 #### 2C.5.1 Schema
 
 Three tables, created idempotently by `init_db()` (`db.py:47-94`). No geometry
-columns; everything spatial stays on disk referenced by path (`db.py:9-11`).
+columns; everything spatial stays on disk referenced by path (`services/api/jalraksha_service/db.py:9-11`).
 
 **`runs`**
 
@@ -4657,7 +4714,7 @@ S-9. There is no downgrade path and no way to drop or rename a column.
 
 | Function | Lines | SQL | Callers |
 |---|---|---|---|
-| `init_db` | 51-91 | 3 × `CREATE TABLE IF NOT EXISTS`; 4 × `ALTER TABLE ... ADD COLUMN` | `main.py:40` (import time), `main.py:104` (startup event) |
+| `init_db` | 51-91 | 3 × `CREATE TABLE IF NOT EXISTS`; 4 × `ALTER TABLE ... ADD COLUMN` | `services/api/jalraksha_service/main.py:42` (import time), `services/api/jalraksha_service/main.py:106` (startup event) |
 | `create_run` | 117-122 | `INSERT INTO runs (run_id, dam_id, params_json, status, created_at, solver) VALUES (?,?,?,?,?,?)` | `submit_run` |
 | `update_run_status` | 136-150 | `SELECT params_json FROM runs WHERE run_id = ?` then `UPDATE runs SET status = ?, params_json = ?, error = ? WHERE run_id = ?` | `run_dam_break_task` (start, every `report`, done, failed), `run_worker.main` (failure) |
 | `list_runs` | 169-175 | `SELECT r.run_id, r.dam_id, r.status, r.created_at, r.solver, r.error, (SELECT COUNT(*) FROM exports e WHERE e.run_id = r.run_id), (SELECT COUNT(*) FROM gauge_results g WHERE g.run_id = r.run_id), r.params_json FROM runs r ORDER BY r.created_at DESC` | `GET /runs` |
@@ -4675,7 +4732,7 @@ connections' worth of work.
 
 `mark_stale_runs_failed` (`db.py:194-215`) exists because "tasks run in-process
 (CELERY_EAGER), so a process exit kills them with no chance to update their own
-row"; there were eight such rows in the demo database (`main.py:107-108`). Its
+row"; there were eight such rows in the demo database (`services/api/jalraksha_service/main.py:109-110`). Its
 `WHERE` clause has no time or ownership predicate, which is safe only under the
 eager assumption — see finding S-11.
 
@@ -4736,7 +4793,7 @@ in `run_worker.py` (see below). Task registration happens through the deferred
 import at the bottom of `worker.py:31`.
 
 In the broker path (`docker-compose.yml`, no `CELERY_EAGER`), `submit_run` calls
-`celery_app.send_task("jalraksha.run_dam_break", args=task_args)` (`main.py:157`)
+`celery_app.send_task("jalraksha.run_dam_break", args=task_args)` (`services/api/jalraksha_service/main.py:241`)
 and the `worker` container running `celery -A jalraksha_service.worker worker -l info`
 picks it up. The Celery result backend is written but **never read** by anything —
 status flows exclusively through the database.
@@ -4755,13 +4812,13 @@ This is a semantic overload worth naming explicitly: `task_always_eager` in Cele
 means "run synchronously in this process", but here it selects a **subprocess**.
 The name now means the opposite of what Celery means by it.
 
-The original implementation was `threading.Thread(...)` (`main.py:165-168`), and it
+The original implementation was `threading.Thread(...)` (`services/api/jalraksha_service/main.py:249-252`), and it
 starved the server. The reason is precise and physical:
 
 > A dam-break run is CPU-bound throughout and holds the GIL: the flux kernels are
 > `@njit` without `nogil=True`, and the delft3d/both path is pure Python plus PySPH
 > plus matplotlib. Uvicorn runs single-process, single-loop, so the API was starved
-> for the whole run. (`main.py:167-172`)
+> for the whole run. (`services/api/jalraksha_service/main.py:251-256`)
 
 Numba's `@njit` compiles to machine code but, absent `nogil=True`, the generated
 wrapper **holds the interpreter lock for the entire duration of each call**. A flux
@@ -4773,14 +4830,14 @@ is pure Python plus PySPH plus matplotlib, which hold the GIL by executing
 bytecode.
 
 **The measured symptom** was `GET /validation` returning nothing after 120 seconds
-while a run was in flight, and every dashboard request crawling (`main.py:173-176`,
-`run_worker.py:16-19`, `schemas.py:315-318`). A demo where clicking a tab hangs the
+while a run was in flight, and every dashboard request crawling (`services/api/jalraksha_service/main.py:257-260`,
+`run_worker.py:16-19`, `services/api/jalraksha_service/schemas.py:324-327`). A demo where clicking a tab hangs the
 page for minutes is not usable, and the cause is structural rather than a slow
 query.
 
 **What the subprocess fixes.** A child process has its own interpreter and its own
 GIL, so the API keeps answering at full speed regardless of what the solver is
-doing (`main.py:180-182`). The manual reports the endpoint latency during an active
+doing (`services/api/jalraksha_service/main.py:264-266`). The manual reports the endpoint latency during an active
 run at approximately **0.21 s** after the change. I have not independently
 reproduced that measurement from this source tree — it is a documented figure from
 the project's own testing and I am reporting it as such.
@@ -4810,7 +4867,7 @@ the project's own testing and I am reporting it as such.
    so the argument vector is passed to `execve` unsplit — shell metacharacters in
    the temp filename would be inert. `stdout=None, stderr=None` inherits the
    parent's streams so the solver's own progress printing still lands in the API
-   log, "which is where it has always been read from" (`main.py:219-220`).
+   log, "which is where it has always been read from" (`services/api/jalraksha_service/main.py:304-305`).
 5. Print `[api] run {run_id} dispatched to a subprocess` and **return
    immediately**. The `Popen` object is discarded — there is no handle, no PID
    record, no `wait()`, no timeout, and no way to cancel.
@@ -4821,7 +4878,7 @@ the project's own testing and I am reporting it as such.
 (`run_worker.py:117-127`) inserts `services/api` and the repo root onto `sys.path`
 and `os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")` before calling `main()`.
 
-`main()` (`run_worker.py:51-114`):
+`main()` (`services/api/jalraksha_service/run_worker.py:51-114`):
 
 - Requires exactly one argv element, else prints usage and returns **2**.
 - Reads and parses the payload **before** importing `db` and `worker`, because
@@ -4840,7 +4897,7 @@ and `os.environ.setdefault("JALRAKSHA_DATA_DIR", "./data")` before calling `main
   ```
   `.apply()` rather than a direct call is essential: the task is `bind=True`, so
   the underlying function takes `self` first and "invoking it directly would shift
-  every argument by one and pass `None` as the run_id" (`run_worker.py:77-81`).
+  every argument by one and pass `None` as the run_id" (`services/api/jalraksha_service/run_worker.py:77-81`).
 - `except BaseException` — deliberately broad — prints the failure and traceback to
   stderr and writes `db.update_run_status(run_id, "failed", 0.0, error=detail,
   phase="Failed")`, then returns **1**. The reasoning (`run_worker.py:96-99`): the
@@ -4891,7 +4948,7 @@ shapefile / KML products written by `write_export_products`;
 |---|---|---|
 | Task body | `except Exception` → print, `db.update_run_status(run_id, "failed", 0.0, error=detail)`, return failure dict | `tasks.py:1429-1439` |
 | Child process | `except BaseException` → stderr + traceback + duplicate `update_run_status`, exit 1 | `run_worker.py:95-108` |
-| API restart | `mark_stale_runs_failed()` at startup rewrites every `running`/`queued` row to `failed` with "Orphaned by an API restart..." | `db.py:194-215`, `main.py:109-111` |
+| API restart | `mark_stale_runs_failed()` at startup rewrites every `running`/`queued` row to `failed` with "Orphaned by an API restart..." | `db.py:194-215`, `services/api/jalraksha_service/main.py:111-113` |
 | Progress writes | `except Exception` → print only; never fails the run | `tasks.py:1190-1193` |
 | Comparison | `except Exception` → traceback + writes a `comparison_metrics.json` whose body *is* the reason; never fails the run | `tasks.py:852-902` |
 | XDMF | `except XdmfExportError` / `except Exception` → print, return `None`; never fails the run | `tasks.py:951-958` |
@@ -4907,15 +4964,15 @@ run that hangs stays `running` until the API is restarted, at which point
 ### 2C.7 Progress reporting
 
 The contract has two parts: a **percentage** and a **phase string**. The
-motivation is stated identically in three places (`schemas.py:109-112`,
-`tasks.py:1182-1188`, `db.py:140-143`): before the phase existed, the only status
+motivation is stated identically in three places (`services/api/jalraksha_service/schemas.py:118-121`,
+`services/api/jalraksha_service/tasks.py:1182-1188`, `db.py:140-143`): before the phase existed, the only status
 writes were 5 % at submission and 100 % at the end, so a twenty-minute run
 displayed a frozen "running 5 %" throughout — indistinguishable from a hang, and
 reported as one. A percentage alone cannot distinguish a slow stage from a hung one,
 and this pipeline has stages that legitimately run for many minutes.
 
 **The callback.** `run_dam_break_task` defines a closure and hands it to the
-pipeline as `progress_cb` (`tasks.py:1181-1193`, passed at `tasks.py:1227`):
+pipeline as `progress_cb` (`services/api/jalraksha_service/tasks.py:1181-1193`, passed at `tasks.py:1227`):
 
 ```python
 def report(pct: float, label: str) -> None:
@@ -4953,7 +5010,7 @@ back along with `status` and `error`. Storing progress inside `params_json` "kee
 the schema minimal" but means every progress tick is a read-modify-write of the
 whole run record, with no transaction around the pair.
 
-**Surfacing.** `_run_status` (`main.py:225-232`) merges them back out:
+**Surfacing.** `_run_status` (`services/api/jalraksha_service/main.py:310-317`) merges them back out:
 ```python
 return {**run,
         "progress_pct": float(params.get("progress_pct", 0.0)),
@@ -4979,8 +5036,8 @@ hinting — the cadence is hardcoded on the client.
 ```python
 app.mount("/files", StaticFiles(directory=str(settings.DATA_DIR)), name="files")
 ```
-(`main.py:83`.) This exposes the **entire** `DATA_DIR` tree read-only over HTTP.
-The rationale (`main.py:79-82`) is that the worker writes exports, keyframes and
+(`services/api/jalraksha_service/main.py:85`.) This exposes the **entire** `DATA_DIR` tree read-only over HTTP.
+The rationale (`services/api/jalraksha_service/main.py:81-84`) is that the worker writes exports, keyframes and
 comparison images to disk with no web server involved, and the frontend has to be
 able to load them.
 
@@ -4994,17 +5051,17 @@ able to load them.
 | `data/keyframes/<run_id>/manifest.json` + PNGs | `export_keyframes` (`tasks.py:1346-1351`) | `/files/keyframes/...` |
 | `data/simulation/<run_id>.xdmf`, `.h5`, `.pvsm` | `_write_xdmf` (`tasks.py:928`), pvpython (`main.py:869`) | `/files/simulation/...` |
 | `data/tiles/**` | `tools/cesium/build_terrain_tiles.py` | `/files/tiles/...` **and** `/tiles/...` |
-| `data/gee/sar/<reach>/*` | `latest_observed_extent` (`main.py:764`) | `/files/gee/...` |
+| `data/gee/sar/<reach>/*` | `latest_observed_extent` (`services/api/jalraksha_service/main.py:853`) | `/files/gee/...` |
 | `data/gee/ghsl/epsg<n>_<x0>_<y0>_<nx>x<ny>/*` | `fetch_population_on_grid` (`tasks.py:206-207`) | `/files/gee/...` |
 | `data/delft3d/<dam_id>/*` | `build_dfm_model` (`tasks.py:433-442`) | `/files/delft3d/...` |
-| `data/runs/<run_id>_*.json` | `_spawn_run_subprocess` payload (`main.py:199-205`) | `/files/runs/...` |
-| `data/validation_cache.json` | `_store_validation_cache` (`main.py:466-472`) | `/files/validation_cache.json` |
+| `data/runs/<run_id>_*.json` | `_spawn_run_subprocess` payload (`services/api/jalraksha_service/main.py:284-290`) | `/files/runs/...` |
+| `data/validation_cache.json` | `_store_validation_cache` (`services/api/jalraksha_service/main.py:552-558`) | `/files/validation_cache.json` |
 
 #### 2C.8.2 Path resolution
 
 Two directions:
 
-**Disk → URL.** `_to_file_url` (`main.py:93-99`):
+**Disk → URL.** `_to_file_url` (`services/api/jalraksha_service/main.py:95-101`):
 ```python
 try:
     rel = Path(path_str).resolve().relative_to(settings.DATA_DIR.resolve())
@@ -5025,7 +5082,7 @@ is still inside it, raising `HTTPException(404)` otherwise. Encoded traversal
 hand-rolled path joining from user input** anywhere in `main.py`: `run_id` reaches
 the filesystem only at `main.py:869` (`DATA_DIR/simulation/{run_id}.pvsm`) and only
 after `_run_status` has confirmed the id exists in the database, and `reach`
-reaches the filesystem only at `main.py:764` after `_resolve_reach` has matched it
+reaches the filesystem only at `services/api/jalraksha_service/main.py:853` after `_resolve_reach` has matched it
 against the `DEMO_DAMS` whitelist. Classic path traversal is therefore **not**
 present; the exposure risk is the breadth of what `/files` serves, not the
 resolution of the path.
@@ -5037,14 +5094,14 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 ```
-(`main.py:46-48`.) **Every origin, every method, every header.** `allow_credentials`
+(`services/api/jalraksha_service/main.py:48-50`.) **Every origin, every method, every header.** `allow_credentials`
 is not set, so it defaults to `False` — which is the one thing that keeps this from
 being catastrophic, because a wildcard origin with credentials is rejected by
 browsers anyway. The stated motive is that the Vite dev server on `localhost:3000`
 and the API on `localhost:8000` are different origins.
 
 A second middleware stamps CORS headers on static responses unconditionally
-(`main.py:51-77`):
+(`services/api/jalraksha_service/main.py:53-79`):
 ```python
 response = await call_next(request)
 if request.url.path.startswith(("/files/", "/tiles/")):
@@ -5068,7 +5125,7 @@ environment-driven origin list and no production tightening anywhere in the tree
 ```python
 app.mount("/tiles", StaticFiles(directory=str(settings.DATA_DIR / "tiles")), name="tiles")
 ```
-(`main.py:90`.) This serves the Cesium quantized-mesh terrain tiles built by
+(`services/api/jalraksha_service/main.py:92`.) This serves the Cesium quantized-mesh terrain tiles built by
 `tools/cesium/build_terrain_tiles.py` from the same DEM the solver conditions.
 It duplicates `/files/tiles/`. The stated reason for having it at all
 (`main.py:85-89`) is that Docker Compose serves tiles through the dedicated nginx
@@ -5171,7 +5228,7 @@ compose. Conversely, `mark_stale_runs_failed()` — written for the eager assump
 
 `depends_on` here is start-order only; neither entry uses
 `condition: service_healthy`, and no service declares a `healthcheck`. Since
-`main.py:40` calls `db.init_db()` at **import time**, an API container that starts
+`services/api/jalraksha_service/main.py:42` calls `db.init_db()` at **import time**, an API container that starts
 before Postgres accepts connections crashes on boot rather than retrying.
 
 **The documented open question — the frontend's `3000:3000` mapping.** The compose
@@ -5259,7 +5316,7 @@ jalraksha = ["*.yaml", "*.yml"]
 The tree contains four further packages with `__init__.py` that are **not listed**:
 `jalraksha.delft3d`, `jalraksha.gee`, `jalraksha.impact`, `jalraksha.validation`.
 All four are imported by the service (`tasks.py:771-772`, `tasks.py:189-193`,
-`main.py:436`, `main.py:651`). Editable installs commonly paper over this by adding
+`services/api/jalraksha_service/main.py:522`, `main.py:651`). Editable installs commonly paper over this by adding
 the project root to `sys.path`, which is why the images work; a wheel build would
 omit them.
 
@@ -5294,7 +5351,7 @@ Severity is my assessment for a system deployed beyond a single trusted laptop. 
 a demo confined to `127.0.0.1`, most of the security items drop a level.
 
 #### S-1 (CRITICAL) No authentication or authorisation on any endpoint
-`main.py:114-936`. Every route — including `POST /runs` (unbounded compute),
+`services/api/jalraksha_service/main.py:116-938`. Every route — including `POST /runs` (unbounded compute),
 `POST /runs/{id}/open-paraview` (spawns a GUI process on the host) and
 `GET /validation?refresh=true` (starts a Delft3D kernel) — is anonymous. `/docs`
 and `/openapi.json` advertise the surface.
@@ -5316,7 +5373,7 @@ app = FastAPI(..., dependencies=[Depends(require_key)])
 ```
 
 #### S-2 (HIGH) The `/files` mount publishes the SQLite database
-`main.py:83` + `config.py:85`. `DATABASE_URL` defaults to
+`services/api/jalraksha_service/main.py:85` + `jalraksha/config.py:85`. `DATABASE_URL` defaults to
 `sqlite:///./data/jalraksha.db`, which sits **inside** `DATA_DIR`, so
 `GET /files/jalraksha.db` downloads the entire metadata store. The same mount also
 exposes `validation_cache.json`, the GEE caches, the Delft3D model directories, and
@@ -5333,7 +5390,7 @@ DATABASE_URL: str = _env("DATABASE_URL", "sqlite:///./var/jalraksha.db")
 ```
 
 #### S-3 (HIGH) Wildcard CORS with wildcard methods and headers
-`main.py:46-48`. Any web page can drive the whole API from a victim's browser.
+`services/api/jalraksha_service/main.py:48-50`. Any web page can drive the whole API from a victim's browser.
 Mitigated only by `allow_credentials` defaulting to `False`.
 
 *Fix.*
@@ -5346,7 +5403,7 @@ app.add_middleware(CORSMiddleware, allow_origins=_ORIGINS,
 ```
 
 #### S-4 (MEDIUM) Unconditional `Access-Control-Allow-Origin: *` on static assets
-`main.py:74-76`. Correct for the Leaflet/Cesium cache-poisoning problem it solves,
+`services/api/jalraksha_service/main.py:76-78`. Correct for the Leaflet/Cesium cache-poisoning problem it solves,
 but it hard-codes `*` and so survives any tightening of S-3.
 
 *Fix.* Echo the configured origin instead of `*`:
@@ -5357,7 +5414,7 @@ response.headers.setdefault("Access-Control-Allow-Origin", allow)
 ```
 
 #### S-5 (HIGH) `POST /runs` has no rate limit and no concurrency cap
-`main.py:154-157`, `main.py:214-221`. In eager mode every request spawns a
+`services/api/jalraksha_service/main.py:238-241`, `services/api/jalraksha_service/main.py:299-306`. In eager mode every request spawns a
 CPU-saturating OS process with no ceiling; N requests spawn N processes. In broker
 mode it is bounded by worker concurrency but the queue is unbounded.
 
@@ -5402,7 +5459,7 @@ target_resolution: float = Field(200.0, ge=10.0, le=2000.0,
 `db.py:106-109`. The guard matches `"duplicate column"`, which is SQLite's wording.
 PostgreSQL reports `column "arrival_p05_s" of relation "gauge_results" already
 exists`, so the `raise` fires and `init_db()` — called at import time
-(`main.py:40`) — takes the container down on every start after the first. I have
+(`services/api/jalraksha_service/main.py:42`) — takes the container down on every start after the first. I have
 not executed a Postgres instance here to confirm the exact message text; the claim
 rests on PostgreSQL's documented `42701 duplicate_column` error string.
 
@@ -5433,7 +5490,7 @@ except ImportError:
 ```
 
 #### S-11 (HIGH) `mark_stale_runs_failed` kills live runs
-`db.py:194-215` called from `main.py:109`. The `WHERE status IN ('running','queued')`
+`db.py:194-215` called from `services/api/jalraksha_service/main.py:111`. The `WHERE status IN ('running','queued')`
 clause has no ownership or age predicate. Under compose the API and the Celery
 worker are separate containers, so restarting the API marks every run the worker is
 *currently executing* as failed; the worker then writes `done` over it later,
@@ -5488,13 +5545,13 @@ plus `CREATE INDEX IF NOT EXISTS ix_exports_run ON exports(run_id)` and the
 equivalent on `gauge_results(run_id)`.
 
 #### S-15 (MEDIUM) `GET /runs?limit=` is unvalidated
-`main.py:408`. Negative values produce Python's negative-slice semantics
+`services/api/jalraksha_service/main.py:493`. Negative values produce Python's negative-slice semantics
 (`rows[:-5]` returns everything but the last five); huge values are accepted.
 
 *Fix.* `def list_runs(limit: int = Query(50, ge=1, le=500)) -> List[RunListEntry]:`
 
 #### S-16 (MEDIUM) `PVPYTHON_EXE` is not existence-checked, and `subprocess.run` can raise
-`main.py:910, 920`. `PARAVIEW_EXE` is checked at `main.py:842`, but a missing
+`main.py:910, 920`. `PARAVIEW_EXE` is checked at `services/api/jalraksha_service/main.py:936`, but a missing
 `pvpython` raises `FileNotFoundError` and a slow render raises
 `subprocess.TimeoutExpired` — both escape the handler as an unhandled HTTP 500,
 defeating the endpoint's whole structured-result design.
@@ -5512,7 +5569,7 @@ except (OSError, subprocess.TimeoutExpired) as exc:
 ```
 
 #### S-17 (HIGH) `GET /validation` retries forever when a gate crashes
-`main.py:487-490` clears `_VALIDATION_RUNNING["active"]` in `finally` but writes no
+`services/api/jalraksha_service/main.py:573-576` clears `_VALIDATION_RUNNING["active"]` in `finally` but writes no
 cache on failure. The next poll — the frontend polls every 2000 ms — therefore
 starts a **new** background thread running two 1000-step solves plus a Delft3D
 kernel launch. A single reproducible gate failure becomes an unbounded loop of
@@ -5538,7 +5595,7 @@ except Exception as exc:
 `validation_cache.json`, mirroring `_spawn_run_subprocess`.
 
 #### S-19 (MEDIUM) `_VALIDATION_LOCK` / `_VALIDATION_RUNNING` are process-local
-`main.py:453-454`. With `uvicorn --workers N`, N concurrent Delft3D kernels can run
+`services/api/jalraksha_service/main.py:539-540`. With `uvicorn --workers N`, N concurrent Delft3D kernels can run
 against the same scratch directory — the exact condition the guard was written to
 prevent (`main.py:449-452`).
 
@@ -5546,7 +5603,7 @@ prevent (`main.py:449-452`).
 sweep, or an advisory Postgres lock.
 
 #### S-20 (MEDIUM) The spawned process is fire-and-forget
-`main.py:214-221`. The `Popen` object is discarded: no PID recorded, no `wait()`
+`services/api/jalraksha_service/main.py:299-306`. The `Popen` object is discarded: no PID recorded, no `wait()`
 (so POSIX zombies accumulate until the API exits), no timeout, no kill path.
 
 *Fix.* Record the child and reap it:
@@ -5583,7 +5640,7 @@ strings breaks or corrupts the statement.
 *Fix.* Use `_placeholder(1)` in an f-string, as the other functions already do.
 
 #### S-23 (MEDIUM) `_to_file_url` leaks absolute host paths
-`main.py:98-99`. A path outside `DATA_DIR` is returned verbatim into the JSON
+`services/api/jalraksha_service/main.py:100-101`. A path outside `DATA_DIR` is returned verbatim into the JSON
 response, disclosing the server's filesystem layout and yielding a URL the browser
 cannot fetch.
 
@@ -5653,7 +5710,7 @@ artifact — so the failure is silent-ish and permanent.
 extra: `RUN pip install --no-cache-dir -e ".[viz]"`.
 
 #### S-29 (MEDIUM) `pyproject.toml` omits four real subpackages
-`pyproject.toml:86` lists five packages; `jalraksha.delft3d`, `jalraksha.gee`,
+`pyproject.toml:95` lists five packages; `jalraksha.delft3d`, `jalraksha.gee`,
 `jalraksha.impact` and `jalraksha.validation` all have `__init__.py` and are all
 imported by the service. Editable installs mask this; a wheel would not.
 
@@ -5672,7 +5729,7 @@ reachable on the compose network without the port publication.
 the password from an env file, and set `command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]`.
 
 #### S-31 (MEDIUM) `depends_on` without health conditions, and `init_db()` at import time
-`docker-compose.yml:40-42, 57-59` + `main.py:40`. The API crashes on boot if
+`docker-compose.yml:40-42, 57-59` + `services/api/jalraksha_service/main.py:42`. The API crashes on boot if
 Postgres is not yet accepting connections.
 
 *Fix.* Add a `healthcheck` to `postgres` (`pg_isready`) and
@@ -5698,14 +5755,14 @@ from `http://localhost:3000` will be blocked.
 
 #### S-34 (MEDIUM) `except Exception: pass` in the comparison endpoint
 `main.py:369-370`. A corrupt `comparison_metrics.json` is indistinguishable from an
-absent one — the exact failure `_read_export_json` (`main.py:318-319`) was written
+absent one — the exact failure `_read_export_json` (`services/api/jalraksha_service/main.py:403-404`) was written
 to eliminate everywhere else.
 
 *Fix.* Replace the inline block with
 `data = _read_export_json(exports_rows, "comparison_metrics", run_id) or {}`.
 
 #### S-35 (LOW) `db.init_db()` runs twice and at import time
-`main.py:40` and `main.py:104`. Import-time side effects also mean merely importing
+`services/api/jalraksha_service/main.py:42` and `services/api/jalraksha_service/main.py:106`. Import-time side effects also mean merely importing
 the module creates directories and a database file.
 
 *Fix.* Delete the module-level `db.init_db()` and `settings.ensure_dirs()` calls
@@ -5713,7 +5770,7 @@ and keep them in the startup handler (converted to a `lifespan` context manager,
 since `@app.on_event` is deprecated).
 
 #### S-36 (LOW) Deprecated `@app.on_event("startup")`
-`main.py:102`. Removed in newer Starlette/FastAPI.
+`services/api/jalraksha_service/main.py:104`. Removed in newer Starlette/FastAPI.
 
 *Fix.*
 ```python
@@ -5729,7 +5786,7 @@ app = FastAPI(..., lifespan=lifespan)
 ```
 
 #### S-37 (LOW) Subprocess payloads are written into the web-served tree
-`main.py:199-205` writes `DATA_DIR/runs/<run_id>_*.json`, reachable at
+`services/api/jalraksha_service/main.py:284-290` writes `DATA_DIR/runs/<run_id>_*.json`, reachable at
 `/files/runs/...` until `run_worker.py:112` unlinks it. Contents are dam
 configuration, not secrets, but the directory is also never cleaned if the child
 never starts.
@@ -5739,7 +5796,7 @@ never starts.
 
 #### S-38 (LOW) Hardcoded physical constants in the service layer
 - `schemas.py:100-101` — breach bottom = `height_m * 0.1`; fallback height `100`.
-- `main.py:383` — `_PARAVIEW_FALLBACK = {"vertical_exaggeration": 1.5, "nominal_depth_m": 25.0}`.
+- `services/api/jalraksha_service/main.py:468` — `_PARAVIEW_FALLBACK = {"vertical_exaggeration": 1.5, "nominal_depth_m": 25.0}`.
 - `main.py:706` — `SAR_WINDOW_DEG = 0.10`.
 - `tasks.py:82-84` — `SPH_WINDOW_RADIUS_KM = 0.6`, `SPH_WINDOW_RESOLUTION_M = 30.0`, `SPH_DURATION_S = 15.0`.
 - `tasks.py:293-302` — `DELFT3D_TARGET_CELLS = 400`, `DELFT3D_MIN_RADIUS_KM = 15.0`, `DELFT3D_MAX_RADIUS_KM = 70.0`, `DELFT3D_DURATION_S = 10800.0`.
@@ -5767,9 +5824,9 @@ WARNING_LEAD_TIME_S = float(os.environ.get("JALRAKSHA_WARNING_LEAD_TIME_S", "0")
 and omit the PAR buckets (keeping total exposure) when unset.
 
 #### S-40 (MEDIUM) Tehri's registry entry is hand-written and drifts from its preset
-`config.py:89-113`. Tehri's `height_m`/`storage_mm3`/`vertical_exaggeration`/
+`jalraksha/config.py:89-113`. Tehri's `height_m`/`storage_mm3`/`vertical_exaggeration`/
 `nominal_depth_m` are retyped rather than copied, and `surface_area_km2` is absent
-entirely — so `to_dam_config` pops it (`schemas.py:58-59`) and Tehri routes through
+entirely — so `to_dam_config` pops it (`services/api/jalraksha_service/schemas.py:67-68`) and Tehri routes through
 `breach.py`'s cone-reservoir fallback while Khadakwasla, sourced from its preset,
 gets a real storage curve. The same dam can produce different reservoirs depending
 on which registry a caller reads.
@@ -5791,7 +5848,7 @@ so the OpenAPI schema stops advertising a knob that does nothing.
 the check from the endpoint into schema validation.
 
 #### S-43 (LOW) `failure_mode` is accepted but has no effect
-`schemas.py:91-96` documents that it reaches only `xu_zhang_2009_peak_outflow`,
+`services/api/jalraksha_service/schemas.py:100-105` documents that it reaches only `xu_zhang_2009_peak_outflow`,
 which is not in `DEFAULT_REGRESSION_FAMILIES` and whose coefficients are
 unverified. The API advertises a parameter that changes nothing.
 
@@ -5823,7 +5880,7 @@ structure, and no correlation ids beyond the run id embedded in the message text
 `uvicorn`'s log config, so severity and destination become configurable.
 
 #### S-47 (LOW) Stale documentation in `main.py`'s module docstring and compose header
-`main.py:4-13` lists eight routes and omits `/runs` (GET), `/validation`,
+`services/api/jalraksha_service/main.py:4-13` lists eight routes and omits `/runs` (GET), `/validation`,
 `/gee/status`, and `/runs/{id}/open-paraview`. `docker-compose.yml:1` says
 "5-service stack" while defining six.
 
@@ -5837,7 +5894,7 @@ docstring drifts.
 It is worth recording what this layer gets conspicuously right, because several of
 the design notes are the direct result of a bug that was found and reasoned about:
 
-- **No silent fallbacks.** `_resolve_dem` (`tasks.py:55-71`) deliberately removed an
+- **No silent fallbacks.** `_resolve_dem` (`services/api/jalraksha_service/tasks.py:55-71`) deliberately removed an
   "any `.tif` in the folder" fallback that made Bhakra runs report plausible
   arrival times over a Pune DEM. `_existing_exports` (`tasks.py:961-984`) refuses to
   record a path to a file that was never written. `GET /gee/latest` has exactly
@@ -5972,7 +6029,7 @@ prevents accidental `npm publish`.
 
 The two exact pins (`cesium` and `resium`) are not accidental. resium's `<Viewer>` wrapper reaches
 into Cesium internals and classifies each prop as either a `cesiumProps` (applied at construction
-*and* on update) or an `otherProps` (applied at construction only). `Scene3D.jsx:38-55` documents the
+*and* on update) or an `otherProps` (applied at construction only). `frontend/src/panels/Scene3D.jsx:38-55` documents the
 consequence at length: `terrainProvider` is in `otherProps` and the Viewer definition carries no
 `update` handler, so resium *silently discards* a terrain provider supplied after construction. That
 behaviour is version-specific. Pinning both packages exactly is the correct defensive choice; what is
@@ -6006,7 +6063,7 @@ globe. (See finding F-52.)
 
 There is **no** `lint`, `test`, `typecheck` or `format` script, and no ESLint configuration file
 anywhere in the repository — despite four source files carrying `// eslint-disable-next-line`
-directives (`api.js:81`, `ControlPanel.jsx:54`, `Scene3D.jsx:90`, `entities.js` has none but
+directives (`api.js:81`, `frontend/src/panels/ControlPanel.jsx:59`, `Scene3D.jsx:90`, `entities.js` has none but
 `Scene3D.jsx:90` does). Those directives are inert. There is also no lockfile
 (`package-lock.json` / `pnpm-lock.yaml`) in the uploaded tree; I cannot verify whether one exists in
 the real repository and is simply not part of this snapshot, so I state that as unverified rather
@@ -6051,7 +6108,7 @@ plugins: [react(), cesium()],
 Order matters only in that both must be present; `react()` handles JSX, `cesium()` handles assets.
 
 **The `loadEnv` vs `process.env` trap.** This is documented at length in the file itself
-(`vite.config.js:11-23`) and again in `docs/dashboard_integration.md:334-341`. The config used to
+(`frontend/vite.config.js:11-23`) and again in `docs/dashboard_integration.md:365-372`. The config used to
 read shell variables directly:
 
 ```js
@@ -6138,7 +6195,7 @@ all are frozen at build time.
 | `VITE_CESIUM_ION_ASSET_ID` | `""` | `Scene3D.jsx:9` | Numeric ion asset id of the uploaded conditioned DEM. |
 
 The default for `VITE_TILES_URL` deserves a note. `vite.config.js:38-41` defaults it to the API's own
-`/tiles` static mount (which exists — `services/api/jalraksha_service/main.py:90` mounts
+`/tiles` static mount (which exists — `services/api/jalraksha_service/main.py:92` mounts
 `StaticFiles(DATA_DIR / "tiles")`), so a bare local dev session needs no separate tile server.
 `docker-compose.yml:74` overrides it to `http://localhost:8080`, the nginx `tiles` service. But
 `Scene3D.jsx:7` carries a *different* fallback:
@@ -6170,7 +6227,7 @@ itself is absent, as one would expect of a git-ignored secret.
    sets a warning string naming both required variables, returning `undefined` as the provider.
 5. resium constructs the Viewer with `terrainProvider: undefined` → Cesium substitutes
    `EllipsoidTerrainProvider`, a perfectly smooth globe.
-6. The red warning banner at `Scene3D.jsx:243-251` renders over the bottom of the 3D pane:
+6. The red warning banner at `frontend/src/panels/Scene3D.jsx:243-251` renders over the bottom of the 3D pane:
    *"No terrain source configured (set VITE_CESIUM_ION_TOKEN + VITE_CESIUM_ION_ASSET_ID, or build a
    self-hosted tileset at http://localhost:8000/tiles/terrain). Flood overlay is NOT aligned with
    real topography."*
@@ -6178,7 +6235,7 @@ itself is absent, as one would expect of a git-ignored secret.
    force and the Viewer requests default ion base imagery.
 
 This is the correct behaviour and it is stated as a known gap in
-`docs/dashboard_integration.md:446-447`. The globe still renders, the flood overlay still animates,
+`docs/dashboard_integration.md:477-478`. The globe still renders, the flood overlay still animates,
 and the panel says loudly that the overlay is not topographically aligned — which is exactly the
 right trade for a demo where a silently flat globe would be read as a working result.
 
@@ -6259,7 +6316,7 @@ App                                       (App.jsx:171)
 
 ##### 2.4.2.3 The tab model
 
-`App.jsx:65-76` builds the tab list dynamically on every render:
+`frontend/src/App.jsx:65-76` builds the tab list dynamically on every render:
 
 ```js
 const tabs = [
@@ -6358,7 +6415,7 @@ The supporting mechanics:
 - `minHeight: 0` / `minWidth: 0` are repeated on **every** flex and grid child in the tree
   (`App.jsx:83, 105, 107, 110, 114, 159`). The comment at `:101-103` explains why: flex and grid
   children default to `min-height: auto`, which means a self-sizing widget cannot shrink its
-  container below its own content size. `docs/dashboard_integration.md:98-100` records the observed
+  container below its own content size. `docs/dashboard_integration.md:129-131` records the observed
   symptom — *"the Cesium viewer grew without bound (52,748 px against a 557 px viewport)"* — a
   runaway feedback loop where Cesium sized itself to its container, the container grew to fit, and
   Cesium resized again.
@@ -6371,7 +6428,7 @@ seconds-per-click rebuild cost, but it does not scale to dozens of panels.
 
 ##### 2.4.2.5 Top-level state and data flow
 
-All shared state lives in `Workspace` (`App.jsx:27-146`):
+All shared state lives in `Workspace` (`frontend/src/App.jsx:27-146`):
 
 | State | Initial | Set by | Consumed by |
 | :--- | :--- | :--- | :--- |
@@ -6398,7 +6455,7 @@ const gauges = selectedDam ? (selectedDam.gauges || []) : GAUGES;
 why selecting **Custom** in the control panel falls back to displaying Tehri's dam marker and Tehri's
 four gauges (finding F-13).
 
-`onRunLoaded` (`App.jsx:42-63`) is the funnel through which every completed run enters the app:
+`onRunLoaded` (`frontend/src/App.jsx:42-63`) is the funnel through which every completed run enters the app:
 
 ```js
 const onRunLoaded = (runResult) => {
@@ -6482,7 +6539,7 @@ export function resolveApiUrl(pathOrUrl) {
 ```
 
 Every endpoint that returns a file path returns it as `/files/...` — the API's `StaticFiles` mount at
-`services/api/jalraksha_service/main.py:83` — rather than as an absolute URL, because the API does not
+`services/api/jalraksha_service/main.py:85` — rather than as an absolute URL, because the API does not
 know its own public origin. `resolveApiUrl` is the client-side half of that contract: pass through
 anything already absolute (`http://` or `https://`), otherwise prefix the API origin. The falsy guard
 returns the input unchanged so `undefined` stays `undefined` rather than becoming
@@ -6511,7 +6568,7 @@ consistently emits leading slashes, but it is an unchecked contract.
 | `pollUntilDone(...)` `:79` | — | loops `getRun` | — | via `getRun` | terminal `RunStatus` |
 | `openInParaview(runId)` `:99` | POST | `/runs/{id}/open-paraview` | — | **yes**, with body-aware error | `{launched, reason, detail}` |
 
-All twelve endpoints exist server-side; I verified the route table in
+All fourteen endpoints exist server-side; I verified the route table in
 `services/api/jalraksha_service/main.py` (lines 114–786). `getGauges()` is **dead code** — zero call
 sites in any panel (finding F-45); the gauge data reaches the UI through `RunResult.gauges` instead.
 `getRun()` is only reached indirectly, through `pollUntilDone`.
@@ -6520,7 +6577,7 @@ sites in any panel (finding F-45); the gauge data reaches the UI through `RunRes
 plain fetches never check `r.ok`. `r.json()` on a FastAPI error response does not throw — a 404 or 422
 returns a well-formed `{"detail": "..."}` body — so the failure propagates as data. `submitRun` is the
 sharpest case: on a 422 it resolves to `{detail: [...]}`, `.run_id` is `undefined`, and
-`ControlPanel.jsx:126` immediately calls `runId.slice(0, 8)` and throws a `TypeError` whose message
+`frontend/src/panels/ControlPanel.jsx:132` immediately calls `runId.slice(0, 8)` and throws a `TypeError` whose message
 ("Cannot read properties of undefined") the user then sees rendered as the run status (finding F-09).
 
 Three functions do it well and are the pattern the others should follow. `getResult` throws a typed
@@ -6539,7 +6596,7 @@ It distinguishes two categories, and the comment at `:91-98` explains the distin
 failures (no dataset on disk, ParaView not installed) come back as HTTP 200 with
 `{launched: false, detail: "..."}`, because those are expected states a user needs to read, not
 exceptions; genuine HTTP errors (404 for an unknown run) throw, carrying FastAPI's `detail` string
-when the body parsed. `ControlPanel.jsx:180` consumes exactly that contract:
+when the body parsed. `frontend/src/panels/ControlPanel.jsx:186` consumes exactly that contract:
 `res?.launched ? "ParaView opening…" : res?.detail || "could not launch"`.
 
 The function also documents a real deployment constraint (`:93-94`): the endpoint opens a ParaView
@@ -6568,7 +6625,7 @@ export async function pollUntilDone(runId, onTick, timeoutMs = 600000) {
 - **Termination:** three conditions — `status === "done"` (returns the status object),
   `status === "failed"` (also **returns**, does not throw; the caller inspects `final.status`), or the
   elapsed-time guard exceeding `timeoutMs` (**throws** `"Run timed out"`).
-- **Default timeout:** 600000 ms = **10 minutes**, and `ControlPanel.jsx:129` does not override it.
+- **Default timeout:** 600000 ms = **10 minutes**, and `frontend/src/panels/ControlPanel.jsx:135` does not override it.
 
 The 10-minute default is a real risk. `docs/dashboard_integration.md:304-313` records that Delft3D
 runs took *~20 minutes* before SPH was gated to `solver="both"`, and even at the improved 47 seconds,
@@ -6583,7 +6640,7 @@ component that started it unmounts the loop continues to completion, calling `on
 404 (deleted run, wrong id) never terminates the loop early — `s.status` is `undefined` on the error
 body, so it polls uselessly for the full ten minutes (finding F-10).
 
-`ControlPanel.jsx:129-135` supplies the `onTick`:
+`frontend/src/panels/ControlPanel.jsx:135-141` supplies the `onTick`:
 
 ```js
 const final = await pollUntilDone(runId, (s) =>
@@ -6867,7 +6924,8 @@ more than 20000 MCM storage would display clamped even though the state holds th
 
 ##### 2.4.6.2 `Map2D.jsx` (278 lines) — Leaflet 2D
 
-> **SUPERSEDED (2026-09-11).** The hazard legend now has four levels (low / moderate / significant / extreme), read from `frontend/src/hazard.js`. A stored summary carrying a legacy `severe` count is folded into extreme by `foldLegacyLevels`, so old runs lose no cells. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** The hazard legend now has four levels (low / moderate / significant / extreme), read from `frontend/src/hazard.js`. A stored summary carrying a legacy `severe` count is folded into extreme by `foldLegacyLevels`, so old runs lose no cells.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **Props:** `{ dam = DAM, gauges = GAUGES, reach, result }`. **Internal state:** `sar`, `showSar`
 (default `true`). **Clock:** `const { current } = useSimulationClock()`.
@@ -7160,7 +7218,7 @@ existed, hit the `if (!viewer) return` and never ran again — the initial fly-t
 and the globe sat at Cesium's default home view over North America. Clicking 'Dam site' did not rescue
 it either, because `selected` was already 'dam' so nothing changed and the effect did not re-fire. The
 3D panel therefore showed the whole Earth for the entire demo."* (Corroborated by
-`docs/dashboard_integration.md:355-361`.) The retry budget is ~5 s (50 × 100 ms), deliberately bounded
+`docs/dashboard_integration.md:386-392`.) The retry budget is ~5 s (50 × 100 ms), deliberately bounded
 *"so a viewer that never mounts cannot leave a timer running for the life of the page."* The cleanup
 sets `cancelled = true` but does not `clearTimeout` the pending timer, which is benign because `fly`
 checks `cancelled` first (finding F-36, low).
@@ -7169,7 +7227,7 @@ checks `cancelled` first (finding F-36, low).
 re-flies imperatively rather than relying on a state change that would not occur — *"Without this,
 pressing the button for the already-selected view does nothing, which reads as a dead button."*
 
-**The `<Viewer full />` bug.** `Scene3D.jsx:231-235`:
+**The `<Viewer full />` bug.** `frontend/src/panels/Scene3D.jsx:231-235`:
 
 ```jsx
 // position:relative both anchors the absolutely-positioned overlays below
@@ -7194,7 +7252,8 @@ blue `<Entity>` point per gauge labelled `"{name} — {distance} km"`.
 
 ##### 2.4.6.4 `GaugesPanel.jsx` (169 lines)
 
-> **SUPERSEDED (2026-09-11).** `hazardClass(depth)` now mirrors `HazardClassifier.classify_depth_only`: edges 0.05 / 0.5 / 1.5 / 4.0 m for dry / low / moderate / significant / extreme. There is no `severe`. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** `hazardClass(depth)` now mirrors `HazardClassifier.classify_depth_only`: edges 0.05 / 0.5 / 1.5 / 4.0 m for dry / low / moderate / significant / extreme. There is no `severe`.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **Props:** `{ result, dam }`. No internal state, no effects — a pure render of
 `result.gauges`.
@@ -7228,7 +7287,7 @@ resolution. Point depths are indicative only."*
 `dam_type`, `dam_class_note`. Plus `result.gauges[].arrival_p05_s/arrival_p95_s`.
 
 The empty state (`:24-51`) is the panel's most interesting logic and is a direct fix from the demo
-walkthrough (`docs/dashboard_integration.md:365-369`). It branches on solver:
+walkthrough (`docs/dashboard_integration.md:396-400`). It branches on solver:
 
 ```js
 const isSwe = result?.solver === "swe" || result?.solver === "sph";
@@ -7420,10 +7479,10 @@ the frontend).
 
 **Deliberately not run on mount.** The JSDoc at `:24-26`: *"The Ritter cross-check launches the Delft3D
 kernel, so a tab that auto-ran it would fire a solver on every page load. The server caches the result;
-the button asks for it."* `api.js:64-66` carries the same warning.
+the button asks for it."* `frontend/src/api.js:73-75` carries the same warning.
 
 **The live blocking gates.** Three, described at `:14-22`, and they mirror the CI merge gates exactly
-(same seeds, grids, thresholds) — `docs/dashboard_integration.md:104-112`:
+(same seeds, grids, thresholds) — `docs/dashboard_integration.md:135-143`:
 
 | Gate | What it proves | Documented result |
 | :--- | :--- | :--- |
@@ -7512,7 +7571,7 @@ These are correct-by-design behaviours that read as defects if you do not know a
 recorded in `docs/dashboard_integration.md`.
 
 1. **Runs predating the `run_summary.json` work render blanks.**
-   `docs/dashboard_integration.md:448-450`: *"Runs created before this work have no ensemble
+   `docs/dashboard_integration.md:479-481`: *"Runs created before this work have no ensemble
    statistics, no p05/p95 band and no peak depth — those fields did not exist when they were written.
    They render as blanks, correctly. New runs are complete."* Concretely, for such a run:
    - `EnsemblePanel` shows its empty state (`:24-51`), and for a SWE run correctly attributes it to the
@@ -7524,18 +7583,18 @@ recorded in `docs/dashboard_integration.md`.
    - `EnsemblePanel`'s arrival chart draws bars with **zero-length error whiskers** (`:78-82`), because
      the offsets collapse to 0 — a median with no visible band.
    The named example is the long-standing Tehri demo run `fe41411e` (21 exports) —
-   `docs/dashboard_integration.md:396-398` advises using a freshly baked run for the demo.
+   `docs/dashboard_integration.md:427-429` advises using a freshly baked run for the demo.
 2. **The Sentinel-1 overlay is not guaranteed to appear.** Both dams currently refuse their latest
    scene on the JRC 0.5-precision gate (Tehri scored 0.486); which scene is "latest" changes day to
-   day (`docs/dashboard_integration.md:391-395`). `SarStatus` renders this as a one-line collapsed
+   day (`docs/dashboard_integration.md:422-426`). `SarStatus` renders this as a one-line collapsed
    badge, not an error.
 4. **Cesium 3D terrain needs an Ion token.** Without it the globe renders on a flat ellipsoid with a
    red banner (§2.4.1.3).
-5. **No synthetic overlay is ever produced.** `docs/dashboard_integration.md:155-156` — the earlier
+5. **No synthetic overlay is ever produced.** `docs/dashboard_integration.md:186-187` — the earlier
    spec asked for one; it was deliberately not built.
 6. **The SPH tab is conditional** and appears only for runs carrying `sph` output.
 7. **The ParaView button only works when the API and the browser share a machine** — the window opens
-   on the API's host (`api.js:93-94`).
+   on the API's host (`frontend/src/api.js:102-103`).
 8. **Playback does not stop at the end of the sequence**, and playback speed is fixed at 500 ms/frame
    regardless of the clock's `speed` field.
 9. **Loading a run with no keyframe manifest leaves the previous run's animation on screen** — see
@@ -7579,7 +7638,7 @@ class ErrorBoundary extends React.Component {
 </Pane>
 ```
 
-**F-02 — `pollUntilDone` default timeout is 10 minutes. `src/api.js:79`. HIGH.**
+**F-02 — `pollUntilDone` default timeout is 10 minutes. `frontend/src/api.js:88`. HIGH.**
 A run exceeding it shows `failed: Run timed out` while the backend completes normally. Raise the
 default and pass an explicit budget derived from the request:
 
@@ -7648,7 +7707,7 @@ keyframes: (m.keyframes || []).flatMap((kf) => {
 
 **F-09 — Six API functions never check `r.ok`. `src/api.js:13, 18, 27, 38, 43, 74`. HIGH.**
 FastAPI error bodies parse cleanly as JSON, so failures propagate as data. `submitRun` is the worst
-case: `.run_id` is `undefined` and `ControlPanel.jsx:126` throws a `TypeError` whose message the user
+case: `.run_id` is `undefined` and `frontend/src/panels/ControlPanel.jsx:132` throws a `TypeError` whose message the user
 sees as the run status.
 
 ```js
@@ -7665,7 +7724,7 @@ export const submitRun  = (req) => fetch(`${API}/runs`, {
 }).then((r) => json(r, "submitRun"));
 ```
 
-**F-10 — `pollUntilDone` never terminates early on a 404. `src/api.js:83-85`. MEDIUM.**
+**F-10 — `pollUntilDone` never terminates early on a 404. `frontend/src/api.js:92-94`. MEDIUM.**
 With `getRun` unchecked, `s.status` is `undefined` on an error body and the loop polls uselessly for
 the full timeout. Fixed by F-09; additionally treat an unknown status as fatal:
 
@@ -7675,7 +7734,7 @@ if (!["queued", "running", "done", "failed"].includes(s.status)) {
 }
 ```
 
-**F-11 — `pollUntilDone` is not cancellable. `src/api.js:82`. MEDIUM.**
+**F-11 — `pollUntilDone` is not cancellable. `frontend/src/api.js:91`. MEDIUM.**
 `onTick` (→ `setStatus`) keeps firing after unmount. Accept an `AbortSignal`:
 
 ```js
@@ -7685,7 +7744,7 @@ export async function pollUntilDone(runId, onTick, timeoutMs, signal) {
     ...
 ```
 
-**F-12 — "Custom" dam posts Tehri's hardcoded coordinates. `src/panels/ControlPanel.jsx:118`. HIGH.**
+**F-12 — "Custom" dam posts Tehri's hardcoded coordinates. `frontend/src/panels/ControlPanel.jsx:124`. HIGH.**
 `...(isCustom ? { lat: DAM.lat, lon: DAM.lon } : {})` — there is no lat/lon input in the UI, so
 "Custom" silently means "Tehri's location with your sliders". Either add the inputs or rename the
 option:
@@ -7752,7 +7811,7 @@ const BASEMAP = import.meta.env.VITE_BASEMAP_URL || "https://{s}.tile.openstreet
 ```
 plus a pre-baked local tile directory served from `VITE_TILES_URL` for demo day.
 
-**F-19 — Default dam is `list[0]`. `src/panels/ControlPanel.jsx:49`. MEDIUM.**
+**F-19 — Default dam is `list[0]`. `frontend/src/panels/ControlPanel.jsx:54`. MEDIUM.**
 Implicit ordering assumption. Have `/dams` publish `is_default` and select on it:
 `selectDam((list.find((d) => d.is_default) || list[0]).id, list)`.
 
@@ -7761,7 +7820,7 @@ Implicit ordering assumption. Have `/dams` publish `is_default` and select on it
 state holds the true value. Derive from `dams`:
 `max={Math.max(400, ...dams.map((d) => d.height_m || 0))}`.
 
-**F-21 — Ensemble size up to 10 000 with no guard. `src/panels/ControlPanel.jsx:213`. MEDIUM.**
+**F-21 — Ensemble size up to 10 000 with no guard. `frontend/src/panels/ControlPanel.jsx:220`. MEDIUM.**
 Selectable in one drag; a denial of service on the demo machine. Cap at a documented figure (e.g. 500)
 or show an estimated runtime beside the slider.
 
@@ -7801,7 +7860,7 @@ layer.show = layersRef.current.length === indexRef.current;
 ```
 with an `indexRef` mirroring `index`.
 
-**F-25 — FD2320 thresholds duplicated in the frontend. `src/panels/GaugesPanel.jsx:112-120`. MEDIUM.**
+**F-25 — FD2320 thresholds duplicated in the frontend. `frontend/src/panels/GaugesPanel.jsx:112-120`. MEDIUM.**
 The docstring itself notes the backend module's docstring and implementation disagree. Serve the bands
 from the API (`GET /hazard/bands`) or emit them into `RunResult` so there is one source of truth.
 
@@ -7816,17 +7875,17 @@ placed before the `if (!ensemble)` branch.
 Every keyframe PNG is fetched and decoded twice in development. The `cancelled` flag prevents duplicate
 layers, but the cost is real on a large manifest. Cache providers by `png_url` in a module-level `Map`.
 
-**F-28 — Graham fatality rate table hardcoded in JSX. `src/panels/ImpactPanel.jsx:103-108`. MEDIUM.**
+**F-28 — Graham fatality rate table hardcoded in JSX. `frontend/src/panels/ImpactPanel.jsx:103-108`. MEDIUM.**
 A published scientific constant table living only in the presentation layer will drift from any
 server-side implementation. Move it to the API response (`result.impact.graham_rates`) and render
 whatever the run actually used.
 
-**F-29 — `<a download>` is ignored cross-origin. `src/panels/DownloadsPanel.jsx:143-147`. MEDIUM.**
+**F-29 — `<a download>` is ignored cross-origin. `frontend/src/panels/DownloadsPanel.jsx:143-147`. MEDIUM.**
 On any deployment where the API is not same-origin, clicking navigates the SPA away instead of
 downloading. Either have the API send `Content-Disposition: attachment` on `/files/*`, or add
 `target="_blank" rel="noopener"` so at least the app is not lost.
 
-**F-30 — Pointless `<Cell>` children with no `fill`. `src/panels/EnsemblePanel.jsx:165-167`. LOW.**
+**F-30 — Pointless `<Cell>` children with no `fill`. `frontend/src/panels/EnsemblePanel.jsx:174-176`. LOW.**
 Delete the map.
 
 **F-31 — Three metric cards render raw floats. `src/panels/ComparisonPanel.jsx:67-69`. LOW.**
@@ -7894,7 +7953,7 @@ Not derived from the dam's domain radius. Compute an initial zoom from `dam.doma
 **F-44 — Array keys use non-unique names. `Map2D.jsx:84`, `ControlPanel.jsx:408`, `GaugesPanel.jsx:60`, `ComparisonPanel.jsx:120`, `ValidationPanel.jsx:99`, `Scene3D.jsx:270`. LOW.**
 Duplicate gauge or check names collide. Key on a composite (`${g.name}@${g.distance_km}`) or an id.
 
-**F-45 — `getGauges()` is dead code. `src/api.js:37-40`. LOW.**
+**F-45 — `getGauges()` is dead code. `frontend/src/api.js:46-49`. LOW.**
 Zero call sites; gauge data arrives via `RunResult.gauges`. Delete it or document it as an external API.
 
 **F-46 — Tab bar has no ARIA roles. `src/App.jsx:84-91`. LOW.**
@@ -7913,7 +7972,7 @@ the keyboard tab order.
 **F-47 — `useMemo` dependency array omits `seekTo`/`next`/`prev`. `src/state/SimulationClock.jsx:48`. LOW.**
 Consistent in practice because `index` is listed, but an `exhaustive-deps` violation waiting to break.
 
-**F-48 — String-equality state machine for the ParaView button. `src/panels/ControlPanel.jsx:250`. LOW.**
+**F-48 — String-equality state machine for the ParaView button. `frontend/src/panels/ControlPanel.jsx:257`. LOW.**
 `pvStatus === "launching ParaView…"` — a typo silently disables the guard. Use a boolean
 `pvBusy` state.
 
@@ -7927,7 +7986,7 @@ Lists three of eight tabs.
 **F-51 — `index.html` has no favicon, `<noscript>` or meta description. `frontend/index.html:3-7`. LOW.**
 
 **F-52 — No lint/test tooling; four inert `eslint-disable` directives. `frontend/package.json:6-10`. MEDIUM.**
-`api.js:81`, `ControlPanel.jsx:54`, `Scene3D.jsx:90` all disable rules that no configured linter
+`api.js:81`, `frontend/src/panels/ControlPanel.jsx:59`, `Scene3D.jsx:90` all disable rules that no configured linter
 enforces. Add `eslint` + `eslint-plugin-react-hooks` and a `"lint": "eslint src"` script; the hooks
 rule alone would have flagged F-47.
 
@@ -7977,29 +8036,29 @@ def validate_config(config: Dict[str, Any]) -> None
 def setup_cache(output_dir: Optional[str] = None) -> Path
 ```
 
-`load_config(config_path)` — if `config_path` is `None`, defaults to `Path("jalraksha.yaml")` in the current working directory (`config.py:54-55`). Raises `ConfigError` if the file does not exist. Dispatch is on suffix: `.yaml`/`.yml` → `yaml.safe_load`, `.json` → `json.load`, anything else → `ConfigError(f"Unsupported format: {suffix}")`. Parse errors of either kind are re-raised as `ConfigError`. On success it calls `validate_config(config)` and returns the raw dict — there is no normalisation, no key renaming, no defaulting, and no type coercion.
+`load_config(config_path)` — if `config_path` is `None`, defaults to `Path("jalraksha.yaml")` in the current working directory (`jalraksha/config.py:54-55`). Raises `ConfigError` if the file does not exist. Dispatch is on suffix: `.yaml`/`.yml` → `yaml.safe_load`, `.json` → `json.load`, anything else → `ConfigError(f"Unsupported format: {suffix}")`. Parse errors of either kind are re-raised as `ConfigError`. On success it calls `validate_config(config)` and returns the raw dict — there is no normalisation, no key renaming, no defaulting, and no type coercion.
 
-`validate_config(config)` — returns `None`, raises `ConfigError`. It prints a `[OK] Config validated: …` line on success (`config.py:121-124`), which makes it unsuitable for library use inside a server process.
+`validate_config(config)` — returns `None`, raises `ConfigError`. It prints a `[OK] Config validated: …` line on success (`jalraksha/config.py:121-124`), which makes it unsuitable for library use inside a server process.
 
-`setup_cache(output_dir)` — defaults to `Path("./data")` when `output_dir` is `None`, then creates three subdirectories with `parents=True, exist_ok=True`: `dem/`, `gee/`, `results/` (`config.py:143-145`). It returns the cache *root*, not any subdirectory, and prints `[OK] Cache directory ready: …`.
+`setup_cache(output_dir)` — defaults to `Path("./data")` when `output_dir` is `None`, then creates three subdirectories with `parents=True, exist_ok=True`: `dem/`, `gee/`, `results/` (`jalraksha/config.py:143-145`). It returns the cache *root*, not any subdirectory, and prints `[OK] Cache directory ready: …`.
 
 ##### 3.1.2 Every documented config field
 
-The module docstring (`config.py:7-14`) declares the intended schema. Only three of these fields are actually enforced; the rest are documentation only.
+The module docstring (`jalraksha/config.py:7-14`) declares the intended schema. Only three of these fields are actually enforced; the rest are documentation only.
 
 | Key | Type | Units | Default | Validation | Enforced? |
 |---|---|---|---|---|---|
-| `dam_location` | `(lat, lon)` pair | degrees | none — required | unpacked as two values, each passed through `float()`; `TypeError`/`ValueError` → `ConfigError` | yes (`config.py:97-101`) |
-| `dam_height` | float | metres | none — required | `> 0` | yes (`config.py:104-105`) |
-| `gross_storage` | float | million cubic metres (MCM) | none — required | `> 0` | yes (`config.py:106-107`) |
-| `crs` | str | — | absent ⇒ unchecked | must contain the substring `"32643"` **or** `"UTM"` (case-insensitive) | yes, only if present (`config.py:91-94`) |
+| `dam_location` | `(lat, lon)` pair | degrees | none — required | unpacked as two values, each passed through `float()`; `TypeError`/`ValueError` → `ConfigError` | yes (`jalraksha/config.py:97-101`) |
+| `dam_height` | float | metres | none — required | `> 0` | yes (`jalraksha/config.py:104-105`) |
+| `gross_storage` | float | million cubic metres (MCM) | none — required | `> 0` | yes (`jalraksha/config.py:106-107`) |
+| `crs` | str | — | absent ⇒ unchecked | must contain the substring `"32643"` **or** `"UTM"` (case-insensitive) | yes, only if present (`jalraksha/config.py:91-94`) |
 | `breach_mode` | str | — | none | documented as `'overtopping' \| 'piping' \| 'seepage'`; **never validated** | no |
 | `output_dir` | path | — | `./data` via `setup_cache` | none | no |
-| `manning_n` | float | dimensionless | documented default 0.03 | `if "manning_n" in config:` … `pass` with a `TODO` | no (`config.py:117-119`) |
+| `manning_n` | float | dimensionless | documented default 0.03 | `if "manning_n" in config:` … `pass` with a `TODO` | no (`jalraksha/config.py:117-119`) |
 | `time_step` | float | seconds | none | documented as "validated by CFL"; **no CFL check exists here** | no |
 | `dam_name` | str | — | `'unnamed'` in the print | none | no |
 
-The forbidden-source check (`config.py:110-114`) stringifies the whole config with `str(config).lower()` and searches for three substrings: `"india-wris"`, `"bhuvan"`, `"cartoudem"`. Any hit raises `ConfigError`.
+The forbidden-source check (`jalraksha/config.py:110-114`) stringifies the whole config with `str(config).lower()` and searches for three substrings: `"india-wris"`, `"bhuvan"`, `"cartoudem"`. Any hit raises `ConfigError`.
 
 ##### 3.1.3 Environment variables
 
@@ -8008,20 +8067,22 @@ The forbidden-source check (`config.py:110-114`) stringifies the whole config wi
 | Variable | Read at | Default | Purpose |
 |---|---|---|---|
 | `JALRAKSHA_DATA_DIR` | `services/api/jalraksha_service/config.py:78`; set via `setdefault` in `scripts/run_api.py:46`, `scripts/backfill_xdmf.py:52`, `services/api/jalraksha_service/run_worker.py:127` | `./data` | Root for results, exports, keyframe manifests, terrain tiles. **The library's own cache path is *not* derived from it** — `fetch_dem` defaults to `Path("./data")` independently (`dem.py:361-362`) and `cache.get_cached_dem` to `Path("./data/dem")`. |
-| `JALRAKSHA_GEE_PROJECT` | `jalraksha/gee/auth.py:41,52`; service `config.py:222` | `""` | Earth Engine project; empty means GEE unavailable. |
-| `JALRAKSHA_DFLOWFM_EXE` | service `config.py:210`; `jalraksha/delft3d/runner.py` | `""` (search `PATH`) | Delft3D FM kernel. |
+| `JALRAKSHA_GEE_PROJECT` | `jalraksha/gee/auth.py:41,52`; service `services/api/jalraksha_service/config.py:222` | `""` | Earth Engine project; empty means GEE unavailable. |
+| `JALRAKSHA_DFLOWFM_EXE` | service `services/api/jalraksha_service/config.py:210`; `jalraksha/delft3d/runner.py` | `""` (search `PATH`) | Delft3D FM kernel. |
 | `JALRAKSHA_PARAVIEW_EXE` / `JALRAKSHA_PVPYTHON_EXE` | service `config.py:194,196` | `C:/Program Files/ParaView 6.2.0/bin/…` | ParaView launch. |
 | `REDIS_URL`, `DATABASE_URL`, `CELERY_EAGER` | service `config.py:82,86`, `worker.py:27` | `redis://localhost:6379/0`, `sqlite:///./data/jalraksha.db`, unset | Task queue / DB. |
 | `PROJ_LIB`, `PROJ_DATA` | **written** by `jalraksha/__init__.py:85-86`, **deleted** by `jalraksha/dem.py:50-51` | — | PROJ database location. See §3.3.2 — these two behaviours are in direct conflict. |
 | `GDAL_DISABLE_READDIR_ON_OPEN` | `os.environ.setdefault` at `dem.py:54`, and again per-open in `rasterio.Env` at `dem.py:283` | `EMPTY_DIR` | See §3.3.4. |
+| `JALRAKSHA_SOLVER_BACKEND` | `jalraksha/solver/backend.py:28` | unset (= `auto`) | Solver compute backend: `cpu` or `cuda`. Consulted only when the caller asked for `auto`, so an explicit `backend=` argument or `--backend` always wins. An explicit `cuda` that cannot run raises; it never silently becomes a CPU run, because the timing and the provenance label would both then be false. Added 2026-09-12. |
+| `JALRAKSHA_SPH_BACKEND` | `jalraksha/sph/pysph_runner.py:111` | unset (= `auto`) | Near-field PySPH backend: `opencl` or `cpu`. `auto` currently resolves to `cpu` on Python 3.14 — compyle 0.9.1 generates PySPH's GPU kernels using `ast.Str`, which 3.14 removed — and `resolve_sph_backend` detects that from compyle's own source rather than guessing. Added 2026-09-12. |
 
 ##### 3.1.4 Defects in the configuration layer
 
-1. **`"cartoudem"` is a typo for `"cartodem"`** (`config.py:110`). A config containing `CartoDEM` — the exact string the project's own constraints forbid — passes validation, because `"cartoudem" not in "cartodem"`. This is the one check in the file whose whole purpose is a hard project rule, and it does not fire.
+1. **`"cartoudem"` is a typo for `"cartodem"`** (`jalraksha/config.py:110`). A config containing `CartoDEM` — the exact string the project's own constraints forbid — passes validation, because `"cartoudem" not in "cartodem"`. This is the one check in the file whose whole purpose is a hard project rule, and it does not fire.
 
-2. **The CRS whitelist rejects the correct UTM zone for the demo dam.** `config.py:93` accepts a CRS string only if it contains `"32643"` or `"UTM"`. Tehri sits at 78.4789 °E; `dem.latlon_to_utm_zone` computes `floor((78.4789+180)/6)+1 = 44`, and `conditioning.load_dem_as_grid` therefore builds the domain in **EPSG:32644**. A config that honestly declares `crs: "EPSG:32644"` raises `ConfigError`. The test suite's own `sample_config` fixture (`tests/conftest.py`) declares `"crs": "EPSG:32643"` and comments it "UTM zone 43N (India)", cementing the wrong zone.
+2. **The CRS whitelist rejects the correct UTM zone for the demo dam.** `jalraksha/config.py:93` accepts a CRS string only if it contains `"32643"` or `"UTM"`. Tehri sits at 78.4789 °E; `dem.latlon_to_utm_zone` computes `floor((78.4789+180)/6)+1 = 44`, and `conditioning.load_dem_as_grid` therefore builds the domain in **EPSG:32644**. A config that honestly declares `crs: "EPSG:32644"` raises `ConfigError`. The test suite's own `sample_config` fixture (`tests/conftest.py`) declares `"crs": "EPSG:32643"` and comments it "UTM zone 43N (India)", cementing the wrong zone.
 
-3. **`import yaml  # To be added to pyproject.toml`** (`config.py:31`) is a module-scope import of a dependency the comment admits may not be declared. Any import of `jalraksha.config` on a machine without PyYAML is an `ImportError`, not a graceful degradation.
+3. **`import yaml  # To be added to pyproject.toml`** (`jalraksha/config.py:31`) is a module-scope import of a dependency the comment admits may not be declared. Any import of `jalraksha.config` on a machine without PyYAML is an `ImportError`, not a graceful degradation.
 
 4. `validate_config` uses `print()` rather than `logging`, so validation output cannot be silenced or captured in a service context.
 
@@ -8125,7 +8186,7 @@ Note also what the hash check *is* and *is not*: it detects local corruption of 
 What works with **zero network**, given a populated cache:
 
 - `check_cache(..., offline_mode=True)` on any registered, present, hash-matching file.
-- `fetch_dem(..., offline_mode=True)` **iff every tile the bounding box touches has been registered under its exact COG URL**, or the finished product key hits first. The product-key probe at `dem.py:380-386` deliberately runs with `offline_mode=False` even in offline mode, so that a miss there is non-fatal and the per-tile path still gets its chance.
+- `fetch_dem(..., offline_mode=True)` **iff every tile the bounding box touches has been registered under its exact COG URL**, or the finished product key hits first. The product-key probe at `jalraksha/dem.py:380-386` deliberately runs with `offline_mode=False` even in offline mode, so that a miss there is non-fatal and the per-tile path still gets its chance.
 - All of `terrain/conditioning.py`, `terrain/domain.py`, `terrain/roughness.py` and `terrain/breach.py`. None of them opens a socket. `load_dem_as_grid` reads a local GeoTIFF; the breach module is pure NumPy plus a numba kernel.
 - `get_cached_dem`, `get_cache_metadata`, `list_cache`, `clear_cache`.
 
@@ -8296,7 +8357,7 @@ This is a **square in degrees**, whose east-west extent in metres therefore matc
 4. Tiles are enumerated and printed.
 5. Per tile: `check_cache(tile_url, cache_dem_dir, offline_mode=offline_mode)` → hit, or offline error, or fetch, or synthetic fallback; then `store_cache(...)` with `format`, `product`, `synthetic`, `window_bbox`. A `CacheError` during registration is downgraded to a warning with the note that "a registration failure costs performance, not correctness". The comment at `dem.py:454-457` records that nothing used to write `CACHE_METADATA.json` at all, so "every run re-fetched every tile and `--offline-mode` could never succeed".
 6. Mosaic: single tile → used directly; otherwise `rasterio.merge.merge(...)` with the profile taken from `mosaics[0]`, written to `mosaic_{lat:.2f}_{lon:.2f}.tif`. Failures raise `DEMError(f"Failed to mosaic tiles: {e}")`. Note the file handles are closed only on the success path.
-7. Clip and nodata (`dem.py:507-577`):
+7. Clip and nodata (`jalraksha/dem.py:507-577`):
 
 ```python
 nodata_value = src.nodata if src.nodata is not None else -9999.0
@@ -8480,7 +8541,8 @@ Returns the input unchanged when the two resolutions differ by less than 0.1 m. 
 
 ##### 3.4.4 `interpolate_dem_to_grid`
 
-> **SUPERSEDED (2026-09-11).** There is no fallback any more. The fill value is the mean of the FINITE source cells; a window with no finite cell raises `ValueError` instead of producing a NaN or 100 m flat bed, and the bare `except Exception` is gone, so an interpolator failure surfaces.
+**Current state (2026-09-11).** There is no fallback any more. The fill value is the mean of the FINITE source cells; a window with no finite cell raises `ValueError` instead of producing a NaN or 100 m flat bed, and the bare `except Exception` is gone, so an interpolator failure surfaces.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 Builds `RegularGridInterpolator((dem_y, dem_x), …, method="linear", bounds_error=False, fill_value=mean_val)` over pixel-centre coordinates from `np.linspace`, flipping the DEM when `dem_bounds.top > dem_bounds.bottom`. Out-of-bounds cells and any exception fall back to the DEM's `nanmean` (or 100.0 for an empty array). It returns **float32**, in violation of the stated float64 solver precision policy, and its blanket `except Exception:` will convert any interpolation error into a flat plane at the mean elevation — a silent, physically plausible-looking wrong answer.
 
@@ -8508,7 +8570,7 @@ def build_domain(dam_config: Dict[str, Any], dem_path: str,
 
 Required keys: `dam_config["lat"]`, `dam_config["lon"]`. Optional: `manning_n` (default 0.03).
 
-**The `h` / `b` assignment, and the documented historical bug.** The docstring is unambiguous (`domain.py:81-88`):
+**The `h` / `b` assignment, and the documented historical bug.** The docstring is unambiguous (`jalraksha/terrain/domain.py:81-88`):
 
 > Bed elevation goes into `State.b`; `State.h` (water DEPTH) starts at zero. That distinction is the whole point of this function and was previously inverted: the old implementation assigned the elevation field to `state_init.h`, leaving the bed flat at zero, so every run began with the entire domain under ~1500 m of standing water. Every gauge then "arrived" within a fraction of a second because the domain was already wet at t=0.
 
@@ -8545,7 +8607,7 @@ manning_field = np.full((grid.ny, grid.nx),
 
 with the same `TODO: UNVETTED` comment naming Chow 1959, Table 5-6.
 
-**Synthetic fallback** (`use_synthetic_terrain=True`, off by default) calls `_synthetic_domain` and issues a `warnings.warn` stating that arrival times and depths "must not be reported as screening results". The analytic surface (`domain.py:181-190`) is:
+**Synthetic fallback** (`use_synthetic_terrain=True`, off by default) calls `_synthetic_domain` and issues a `warnings.warn` stating that arrival times and depths "must not be reported as screening results". The analytic surface (`jalraksha/terrain/domain.py:184-193`) is:
 
 ```python
 downstream_slope = 0.01 * (rows - centre) * target_resolution
@@ -8791,7 +8853,8 @@ DEFAULT_REGRESSION_FAMILIES = ("froehlich", "macdonald", "costa", "von_thun")
 
 ##### 3.7.5 The Monte-Carlo ensemble sampler
 
-> **SUPERSEDED (2026-09-11).** `synthesize_breach_ensemble` now validates `regression_families` against `REGRESSION_FAMILY_ALIASES`: an unknown name raises `ValueError` (it used to fall through to Froehlich), and a quarantined family (Xu & Zhang) raises `UnverifiedRegressionError` unless `allow_unverified_regressions=True`. `ensemble_statistics` reports `unverified_regressions`.
+**Current state (2026-09-11).** `synthesize_breach_ensemble` now validates `regression_families` against `REGRESSION_FAMILY_ALIASES`: an unknown name raises `ValueError` (it used to fall through to Froehlich), and a quarantined family (Xu & Zhang) raises `UnverifiedRegressionError` unless `allow_unverified_regressions=True`. `ensemble_statistics` reports `unverified_regressions`.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 ```python
 def synthesize_breach_ensemble(dam_config: Dict, num_samples: int = 100,
@@ -8831,11 +8894,11 @@ failure_time_frac = min(max(failure_time_frac, 0.25 * frac_median), 4.0 * frac_m
 failure_time_frac = min(max(failure_time_frac, 0.002), 0.6)
 ```
 
-and finally `t_fail = failure_time_frac * HYDROGRAPH_MIN_DURATION_S` (10800 s). The long comment at `breach.py:137-160` explains why this knob had to exist: formation time "was fixed at `CRITICAL_FAILURE_FRAC` of a hardcoded 3 h, about 27 minutes for every dam ever run", and the only other scenario knob — `failure_mode` — "reaches exactly one function, `xu_zhang_2009_peak_outflow`", which is quarantined, so "selecting 'piping' produced a hydrograph identical to 'overtopping' in every value, differing only in a label. A scenario-generation tool whose scenario selector changes nothing is worse than one that offers no selector at all." `test_failure_mode_alone_still_changes_nothing` pins that limitation rather than papering over it.
+and finally `t_fail = failure_time_frac * HYDROGRAPH_MIN_DURATION_S` (10800 s). The long comment at `jalraksha/terrain/breach.py:137-160` explains why this knob had to exist: formation time "was fixed at `CRITICAL_FAILURE_FRAC` of a hardcoded 3 h, about 27 minutes for every dam ever run", and the only other scenario knob — `failure_mode` — "reaches exactly one function, `xu_zhang_2009_peak_outflow`", which is quarantined, so "selecting 'piping' produced a hydrograph identical to 'overtopping' in every value, differing only in a label. A scenario-generation tool whose scenario selector changes nothing is worse than one that offers no selector at all." `test_failure_mode_alone_still_changes_nothing` pins that limitation rather than papering over it.
 
 **The absolute 0.6 clamp is a real defect.** It caps `t_fail` at `0.6 × 10800 = 6480 s = 1.8 h` regardless of what the caller asked for. The module's own docstring cites VTG's formation time for Tehri's 234 m head as **4.9 h (resistant) or 3.5 h (erodible)** — both silently truncated to 1.8 h. `test_the_released_volume_is_unchanged_by_how_fast_it_leaves` even passes `12636.0` s, which is clamped to 6480 s, and the test cannot detect it because it only asserts a volume bound.
 
-**Metadata** written per member (`breach.py:331-366`): `member_id`, `manning_n`, `q_peak` (= routed peak), `q_peak_m3_s`, `q_peak_regression_m3_s` (the pre-routing regression value), `failure_time_s`, `failure_time_assumed` (True iff the caller pinned `breach_formation_time_s`), `height_m`, `storage_mm3`, `method`, `regression`, `regressions_used`, `extrapolation_ratio`, `dam_type`, `dam_class_outside_fitted_population`, `dam_class_note`, `unverified_regression`, `source_note`.
+**Metadata** written per member (`jalraksha/terrain/breach.py:331-366`): `member_id`, `manning_n`, `q_peak` (= routed peak), `q_peak_m3_s`, `q_peak_regression_m3_s` (the pre-routing regression value), `failure_time_s`, `failure_time_assumed` (True iff the caller pinned `breach_formation_time_s`), `height_m`, `storage_mm3`, `method`, `regression`, `regressions_used`, `extrapolation_ratio`, `dam_type`, `dam_class_outside_fitted_population`, `dam_class_note`, `unverified_regression`, `source_note`.
 
 ##### 3.7.6 Hydrograph shape and the fallback
 
@@ -8971,7 +9034,7 @@ delta_h = q_current * dt_s / cell_area
 state.h[j_breach, i_breach] += delta_h
 ```
 
-The comment (`run.py:502-514`) records the bug this replaced and is worth quoting in full because it is the clearest statement of why a velocity source is not a source at all:
+The comment (`jalraksha/run.py:503-515`) records the bug this replaced and is worth quoting in full because it is the clearest statement of why a velocity source is not a source at all:
 
 > This previously imposed a velocity instead (`u = Q / (h * width)`) and never added mass. Against a dry bed that is a no-op — there is no water for the velocity to act on, and the solver zeroes velocities in dry cells anyway — so no water ever entered the domain. It only appeared to work because the old `build_domain` filled `h` with terrain elevation, leaving the whole domain pre-flooded to ~1500 m.
 
@@ -8987,15 +9050,15 @@ Three distinct pieces of code compute a UTM zone:
 
 | Function | File:line | Formula | Clamp |
 |---|---|---|---|
-| `latlon_to_utm_zone` | `dem.py:72-85` | `math.floor((lon+180)/6) + 1` | `max(1, min(60, …))` |
-| `latlon_to_utm` (implicit) | `domain.py:47-52` | `int((lon+180)/6) + 1` | wraps `<1→60`, `>60→1` |
-| `compute_utm_zone` | `domain.py:67-69` | `int((lon+180)/6) + 1` | none |
+| `latlon_to_utm_zone` | `jalraksha/dem.py:72-85` | `math.floor((lon+180)/6) + 1` | `max(1, min(60, …))` |
+| `latlon_to_utm` (implicit) | `jalraksha/terrain/domain.py:47-52` | `int((lon+180)/6) + 1` | wraps `<1→60`, `>60→1` |
+| `compute_utm_zone` | `jalraksha/terrain/domain.py:67-69` | `int((lon+180)/6) + 1` | none |
 
 `int()` truncates toward zero while `math.floor` rounds down, so the three agree for all `lon > −180` and diverge below it. Three implementations of one rule is itself a maintenance hazard.
 
-**The flat-earth bug.** `latlon_to_utm` is a real projection: `pyproj.Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)`, with `epsg = 32600 + zone` north / `32700 + zone` south. The historical error this replaced is documented in `conditioning.py:60-67` — the old `preprocess_dem` "divided a span in *degrees* by a resolution in *metres*… and hardcoded EPSG:32643 regardless of location". That is the flat-earth pattern in two forms at once: treating degrees as if they were a metric length, and pinning a single UTM zone globally. `test_latlon_to_utm_conversion` in `test_terrain.py:141-154` notes it "previously unpacked only two values and so had never run past this line" — the test that should have caught it was itself broken.
+**The flat-earth bug.** `latlon_to_utm` is a real projection: `pyproj.Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)`, with `epsg = 32600 + zone` north / `32700 + zone` south. The historical error this replaced is documented in `jalraksha/terrain/conditioning.py:60-67` — the old `preprocess_dem` "divided a span in *degrees* by a resolution in *metres*… and hardcoded EPSG:32643 regardless of location". That is the flat-earth pattern in two forms at once: treating degrees as if they were a metric length, and pinning a single UTM zone globally. `test_latlon_to_utm_conversion` in `tests/test_terrain.py:141-154` notes it "previously unpacked only two values and so had never run past this line" — the test that should have caught it was itself broken.
 
-**Per-gauge versus per-domain zone.** The domain's zone is chosen once, from the dam, in `load_dem_as_grid`. Gauges must then be projected into *that* zone, not their own. `run.py:311-316`:
+**Per-gauge versus per-domain zone.** The domain's zone is chosen once, from the dam, in `load_dem_as_grid`. Gauges must then be projected into *that* zone, not their own. `jalraksha/run.py:312-317`:
 
 ```python
 domain_zone = int(str(grid.crs).split(":")[-1]) % 100
@@ -9009,7 +9072,7 @@ This is precisely why `latlon_to_utm` takes an optional `utm_zone`: forcing a po
 
 A gauge outside `grid.extent()` is rejected up front with a `None` result and a note, "Gauge lies outside the solver domain; increase domain_radius_km", because "argmin would silently snap it to a boundary cell and report that cell's arrival time".
 
-**The gauge snapping algorithm.** After the nearest-cell `argmin` over the full distance field, `run.py:344-362`:
+**The gauge snapping algorithm.** After the nearest-cell `argmin` over the full distance field, `jalraksha/run.py:345-363`:
 
 ```python
 if bed_elevation is not None and channel_search_m > 0:
@@ -9021,9 +9084,9 @@ if bed_elevation is not None and channel_search_m > 0:
     j_gauge, i_gauge = j0 + dj, i0 + di
 ```
 
-**The exact radius is `channel_search_m = 1200.0` m** (`run.py:282`), converted to cells as `max(1, round(1200 / min(dx, dy)))` — 6 cells at 200 m, 3 cells at 400 m, giving a square (Chebyshev, not Euclidean) window of side `2r+1`. The rule is "within `channel_search_m`, take the **lowest bed cell** rather than the geometrically nearest one", justified by a specific observed failure: "Koteshwar snapped to a cell at 853 m with the valley floor at 752 m only three cells away, and so reported 'no arrival' while the flood ran 70 m deep past it — while Devprayag, 15 km further downstream, happened to land on the channel and did report an arrival. Reporting the far gauge wet and the near one dry is the giveaway that this is a sampling artifact, not physics."
+**The exact radius is `channel_search_m = 1200.0` m** (`jalraksha/run.py:283`), converted to cells as `max(1, round(1200 / min(dx, dy)))` — 6 cells at 200 m, 3 cells at 400 m, giving a square (Chebyshev, not Euclidean) window of side `2r+1`. The rule is "within `channel_search_m`, take the **lowest bed cell** rather than the geometrically nearest one", justified by a specific observed failure: "Koteshwar snapped to a cell at 853 m with the valley floor at 752 m only three cells away, and so reported 'no arrival' while the flood ran 70 m deep past it — while Devprayag, 15 km further downstream, happened to land on the channel and did report an arrival. Reporting the far gauge wet and the near one dry is the giveaway that this is a sampling artifact, not physics."
 
-A second, larger radius appears in `_no_arrival_reason` (`run.py:433`): **3000 m**, used to find the local thalweg so a no-arrival result can be explained. If the gauge cell sits **≥ 15.0 m** above that thalweg the message says the point "is a town centre, not a riverside gauge" and that a channel-confined flood does not reach it; below 15 m it advises extending the simulated duration.
+A second, larger radius appears in `_no_arrival_reason` (`jalraksha/run.py:434`): **3000 m**, used to find the local thalweg so a no-arrival result can be explained. If the gauge cell sits **≥ 15.0 m** above that thalweg the message says the point "is a town centre, not a riverside gauge" and that a channel-confined flood does not reach it; below 15 m it advises extending the simulated duration.
 
 The risk in the snapping rule is that "lowest bed within 1200 m" has no notion of *which* river. At a confluence or where a tributary runs parallel, the minimum can land in the wrong channel, and nothing checks connectivity or downstream distance. A flow-accumulation or channel-mask constraint would make it robust; none exists.
 
@@ -9175,7 +9238,7 @@ if not re.search(r"32[67]\d{2}", crs_str) and "UTM" not in crs_str.upper():
 
 **F-15 — MEDIUM — `jalraksha/cache.py:262-273`.** The proximity branch of `get_cached_dem` is dead: nothing writes `lat`/`lon` into a cache entry. Fix: add `"lat": dam_lat, "lon": dam_lon` to the `store_cache` metadata in `fetch_dem` (both the tile and the product registration).
 
-**F-16 — MEDIUM — `jalraksha/terrain/domain.py:216-221`.** `compute_breach_location` returns the geometric centre cell with no terrain search, despite its name and its tests' docstring; `dam_lat`, `dam_lon` and `utm_zone` are unused. At 200 m in a gorge the centre cell can sit tens of metres above the channel. Fix — reuse the gauge snapping rule:
+**F-16 — MEDIUM — `jalraksha/terrain/domain.py:219-224`.** `compute_breach_location` returns the geometric centre cell with no terrain search, despite its name and its tests' docstring; `dam_lat`, `dam_lon` and `utm_zone` are unused. At 200 m in a gorge the centre cell can sit tens of metres above the channel. Fix — reuse the gauge snapping rule:
 
 ```python
 radius = max(1, int(round(600.0 / min(grid.dx, grid.dy))))  # ~600 m dam footprint
@@ -9187,7 +9250,7 @@ j_breach, i_breach = j0 + dj, i0 + di
 ```
 with the search radius exposed as a parameter and recorded in the result metadata.
 
-**F-17 — MEDIUM — `jalraksha/run.py:316`.** `int(str(grid.crs).split(":")[-1]) % 100` raises `ValueError` for a WKT-valued `grid.crs`, which `_grid_from_projected_dem` can produce and the test fixtures do produce. Fix: `from pyproj import CRS; domain_zone = CRS.from_user_input(grid.crs).to_epsg() % 100`, with an explicit error if `to_epsg()` returns `None`.
+**F-17 — MEDIUM — `jalraksha/run.py:317`.** `int(str(grid.crs).split(":")[-1]) % 100` raises `ValueError` for a WKT-valued `grid.crs`, which `_grid_from_projected_dem` can produce and the test fixtures do produce. Fix: `from pyproj import CRS; domain_zone = CRS.from_user_input(grid.crs).to_epsg() % 100`, with an explicit error if `to_epsg()` returns `None`.
 
 **F-18 — MEDIUM — `jalraksha/terrain/conditioning.py:170-235,387-409`.** `manning_table` is accepted by `preprocess_dem` and `build_domain_state` and never used — a silent no-op. Fix: either wire it through to `assign_manning_from_worldcover` or raise `NotImplementedError` when a caller passes a non-`None` table.
 
@@ -9205,7 +9268,7 @@ except ImportError:
 
 **F-21 — MEDIUM — `jalraksha/terrain/breach.py:751`.** SCS's uncertainty band is keyed on `"xu_zhang_2009"`, so editing a quarantined family's band silently moves a cross-check's band. Fix: add an explicit `"scs_1981": 0.50` key with its own `TODO: UNVETTED` note.
 
-**F-22 — MEDIUM — `jalraksha/run.py:515-518`.** The breach source is a single cell with no momentum; at Tehri's peak this adds ~11 m of depth per second to one 200 m cell. Fix: distribute over a breach-width footprint,
+**F-22 — MEDIUM — `jalraksha/run.py:516-519`.** The breach source is a single cell with no momentum; at Tehri's peak this adds ~11 m of depth per second to one 200 m cell. Fix: distribute over a breach-width footprint,
 
 ```python
 n_cells_wide = max(1, int(round(breach_width_m / grid.dx)))
@@ -9231,11 +9294,11 @@ with `breach_width_m` taken from the VTG geometry already computed in the ensemb
 
 **F-30 — LOW — `jalraksha/terrain/domain.py:67-69` vs `jalraksha/dem.py:84`.** Three implementations of the UTM zone formula, two of them unclamped and truncating rather than flooring. Fix: keep `dem.latlon_to_utm_zone` and have the other two call it.
 
-**F-31 — LOW — `jalraksha/run.py:466-479`.** `inject_breach_hydrograph`'s docstring claims it modifies `state.u`, `state.v` and `state.h`; it modifies only `h`. Fix: update the docstring.
+**F-31 — LOW — `jalraksha/run.py:467-480`.** `inject_breach_hydrograph`'s docstring claims it modifies `state.u`, `state.v` and `state.h`; it modifies only `h`. Fix: update the docstring.
 
 **F-32 — LOW — `jalraksha/terrain/conditioning.py:366-384`.** `apply_edge_detection` has no consumer, and its 5.0 m threshold is per-cell so its physical meaning changes with `target_resolution`. Fix: express the threshold as a slope (`m/m`) by dividing the gradient by `dx`, and either wire it into `load_dem_as_grid` or delete it.
 
-**Unvetted coefficients, consolidated.** Every one of the following is marked `TODO: UNVETTED` in the source and must not be quoted as a sourced value: `UNCERTAINTY_LOG_CYCLES` all four entries (`breach.py:62-65`); Costa's band reuse (`breach.py:717-718`); SCS's band reuse (`breach.py:750-751`); `CRITICAL_FAILURE_FRAC = 0.15` (`breach.py:76`); `MANNINGS_N_STD = 0.005` (`breach.py:80`); all six `_XU_ZHANG_B3_DAM_TYPE` entries (`breach.py:884-891`); all three `_XU_ZHANG_B4_FAILURE_MODE` entries (`breach.py:892-896`); all three `_XU_ZHANG_B5_ERODIBILITY` entries (`breach.py:897-901`); the hardcoded `"high"` erodibility assumption (`breach.py:958-961`); the uniform Manning 0.03 in `conditioning.py:281-284` and `domain.py:147-153`; and the entire `roughness.py` table, whose `source_citation()` itself ends in a `TODO`. Additionally unsourced but *not* marked: the per-member peak noise `rng.lognormal(0, 0.15)` (`breach.py:312`) and the formation-time spread `rng.lognormal(0, 0.2)` (`breach.py:171`).
+**Unvetted coefficients, consolidated.** Every one of the following is marked `TODO: UNVETTED` in the source and must not be quoted as a sourced value: `UNCERTAINTY_LOG_CYCLES` all four entries (`breach.py:62-65`); Costa's band reuse (`breach.py:717-718`); SCS's band reuse (`breach.py:750-751`); `CRITICAL_FAILURE_FRAC = 0.15` (`breach.py:76`); `MANNINGS_N_STD = 0.005` (`breach.py:80`); all six `_XU_ZHANG_B3_DAM_TYPE` entries (`breach.py:884-891`); all three `_XU_ZHANG_B4_FAILURE_MODE` entries (`breach.py:892-896`); all three `_XU_ZHANG_B5_ERODIBILITY` entries (`breach.py:897-901`); the hardcoded `"high"` erodibility assumption (`jalraksha/terrain/breach.py:958-961`); the uniform Manning 0.03 in `conditioning.py:281-284` and `jalraksha/terrain/domain.py:147-153`; and the entire `roughness.py` table, whose `source_citation()` itself ends in a `TODO`. Additionally unsourced but *not* marked: the per-member peak noise `rng.lognormal(0, 0.15)` (`breach.py:312`) and the formation-time spread `rng.lognormal(0, 0.2)` (`breach.py:171`).
 
 
 ---
@@ -9354,7 +9417,7 @@ The gates live in `tests/test_solver.py` (886 lines) and `tests/test_parallel.py
 ##### 4a.1.1 Governing equations as implemented
 
 The solver integrates the conservative, non-viscous, non-rotating 2D Saint-Venant
-system on a uniform Cartesian grid. In vector form (`core.py:1-50`, `flux.py:1-67`):
+system on a uniform Cartesian grid. In vector form (`jalraksha/solver/core.py:1-50`, `flux.py:1-67`):
 
 ```
     ∂U/∂t + ∂F(U)/∂x + ∂G(U)/∂y = S(U, b)
@@ -9381,12 +9444,12 @@ and the **y-flux vector**
     G(U) = ( h v ,  h u v ,  h v² + ½ g h² )ᵀ
 ```
 
-with `g = G = 9.81 m/s²` (`flux.py:73`). Both flux vectors are evaluated by the *same*
+with `g = G = 9.81 m/s²` (`jalraksha/solver/flux.py:75`). Both flux vectors are evaluated by the *same*
 routine, `hllc()`, by passing normal/tangential components in swapped order — see
-§4a.3.2. This is visible directly in the code: `flux.py:372` calls
-`hllc(h_star_l, u_l, v_l, h_star_r, u_r, v_r, h_dry)` for an x-face and `flux.py:467`
+§4a.3.2. This is visible directly in the code: `jalraksha/solver/flux.py:399` calls
+`hllc(h_star_l, u_l, v_l, h_star_r, u_r, v_r, h_dry)` for an x-face and `jalraksha/solver/flux.py:494`
 calls `hllc(h_star_l, v_l, u_l, h_star_r, v_r, u_r, h_dry)` for a y-face, with the
-returned normal/tangential momentum fluxes re-labelled at `flux.py:470-471`.
+returned normal/tangential momentum fluxes re-labelled at `jalraksha/solver/flux.py:497-498`.
 
 The **source vector** is
 
@@ -9403,12 +9466,12 @@ Two closures deserve emphasis, because both are absent:
   (tens of km, minutes to hours) this is correct.
 * **No turbulent / eddy viscosity, no rainfall, no infiltration, no sediment.**
   The only momentum sink is bed friction. This is a screening-level formulation and
-  `core.py:24-30` says so explicitly: *"This is a Delft3D-CLASS solver; it is not the
+  `jalraksha/solver/core.py:24-30` says so explicitly: *"This is a Delft3D-CLASS solver; it is not the
   Deltares kernel."*
 
 ##### 4a.1.2 Bed-slope treatment and the Audusse reconstruction
 
-The bed-slope source term is *not* discretised naively. `flux.py:12-35` states the
+The bed-slope source term is *not* discretised naively. `jalraksha/solver/flux.py:12-35` states the
 reason bluntly: *"Naively discretising −g·h·∂b/∂x does not cancel the pressure flux at
 rest; that mismatch is the sole reason a 'still' reservoir develops spurious velocities
 and slowly drains."*
@@ -9431,7 +9494,7 @@ pressure correction
     P_L = h_L² − h*_L²        P_R = h_R² − h*_R²
 ```
 
-`_audusse_face()` (`flux.py:246-288`) is the exact implementation, and it additionally
+`_audusse_face()` (`jalraksha/solver/flux.py:265-307`) is the exact implementation, and it additionally
 applies the **Liang & Marche (2009) wet/dry limiting** of `z_face`:
 
 ```python
@@ -9440,14 +9503,14 @@ applies the **Liang & Marche (2009) wet/dry limiting** of `z_face`:
         bed_face = surface_max
 ```
 
-The comment at `flux.py:270-273` explains the failure mode this prevents: *"if the face
+The comment at `jalraksha/solver/flux.py:294-297` explains the failure mode this prevents: *"if the face
 bed sits above BOTH water surfaces we are looking at a dry step. Leaving z_face high
 would leave a fictitious head difference across the face and drive a spurious jet along
 the shoreline."*
 
 The full x-momentum update for cell `i` is therefore the three-term expression written
-out in the module docstring (`flux.py:25-29`) and implemented verbatim at
-`flux.py:382-391`:
+out in the module docstring (`jalraksha/solver/flux.py:25-29`) and implemented verbatim at
+`jalraksha/solver/flux.py:409-418`:
 
 ```python
     for i in range(2, n_cols - 2):
@@ -9483,7 +9546,7 @@ which, divided through by `h`, gives a linear relaxation on the velocity:
 
 discretised as `u_new = u / (1 + C·dt)`. This is a **linearised (point-)implicit**
 scheme — implicit in the velocity being updated, explicit in the `|V|` that appears
-inside `C`. `flux.py:503-508` gives the exact justification for preferring it over an
+inside `C`. `jalraksha/solver/flux.py:563-568` gives the exact justification for preferring it over an
 explicit update: *"This form is unconditionally stable AND cannot reverse the sign of
 the velocity, which an explicit update can do on a thin fast sheet (h ~ 1 cm, |V| ~ 5
 m/s gives C·dt >> 1). A reversed velocity at a wetting front is the classic source of
@@ -9498,21 +9561,21 @@ The stakes are stated in `tests/test_solver.py:41-46`: *"a scheme that fails it
 manufactures currents out of terrain, which on a 30 m Himalayan DEM means manufacturing
 a flood."*
 
-The proof written into `flux.py:37-46` is exact and can be reconstructed line by line
-from the code. At rest, `s_η = 0` (minmod of two zeros, `flux.py:338`), so both edge
+The proof written into `jalraksha/solver/flux.py:37-46` is exact and can be reconstructed line by line
+from the code. At rest, `s_η = 0` (minmod of two zeros, `jalraksha/solver/flux.py:365`), so both edge
 values of `η` equal `η₀` at every face. Write `a = h_i + ½s_h` (right edge of cell `i`)
 and `c = h_i − ½s_h` (left edge of cell `i`), so `a − c = s_h,i` and `a + c = 2h_i`.
 
 1. **HLLC flux term.** With `η_L = η_R` at a face, `_audusse_face` returns
    `h*_L = h*_R = min(edge depths)`, and with `v_n = 0` on both sides the subsonic HLLC
-   branch (`flux.py:218-227`) reduces algebraically to `flux_mass = 0` and
+   branch (`jalraksha/solver/flux.py:234-243`) reduces algebraically to `flux_mass = 0` and
    `flux_norm = ½ g h*²`. So
    `flux_xmom[i+1] − flux_xmom[i] = ½g[min(a, c_{i+1})² − min(a_{i−1}, c)²]`.
-2. **Audusse correction term** (`flux.py:387`, feeding on `corr_l`/`corr_r` set at
-   `flux.py:377-378` from `_audusse_face`'s return at `flux.py:285-288`) contributes
+2. **Audusse correction term** (`jalraksha/solver/flux.py:414`, feeding on `corr_l`/`corr_r` set at
+   `jalraksha/solver/flux.py:404-405` from `_audusse_face`'s return at `jalraksha/solver/flux.py:309-312`) contributes
    `½g[a² − min(a, c_{i+1})² − c² + min(a_{i−1}, c)²]`.
 3. Terms 1 and 2 sum to exactly `½g(a² − c²) = ½g·s_h·2h_i = g·h_i·s_h`.
-4. **Interior bed-slope term** (`flux.py:388`) is `g·h_i·(0 − s_h) = −g·h_i·s_h`.
+4. **Interior bed-slope term** (`jalraksha/solver/flux.py:415`) is `g·h_i·(0 − s_h) = −g·h_i·s_h`.
 
 Steps 3 and 4 cancel identically. `flux.py:44-46`: *"= 0 exactly, in float64. No
 tolerance, no tuning constant. This is what makes the blocking lake-at-rest gate pass at
@@ -9520,19 +9583,19 @@ machine precision instead of 'screening level'."*
 
 The enforcing lines are therefore, precisely:
 
-* `flux.py:338` and `flux.py:438` — MUSCL slope taken on **η**, never on `h` alone.
-* `flux.py:265-288` — `_audusse_face`, including the Liang & Marche `z_face` limiter.
-* `flux.py:387-388` / `flux.py:479-480` — the paired `audusse_corr` and `bed_slope` terms.
+* `jalraksha/solver/flux.py:365` and `jalraksha/solver/flux.py:465` — MUSCL slope taken on **η**, never on `h` alone.
+* `jalraksha/solver/flux.py:289-312` — `_audusse_face`, including the Liang & Marche `z_face` limiter.
+* `jalraksha/solver/flux.py:414-415` / `jalraksha/solver/flux.py:506-507` — the paired `audusse_corr` and `bed_slope` terms.
 * `flux.py:48-54` — the *absence* of `fastmath` (see §4a.3.6).
 * `types.py:36, 130-133` — float64 throughout.
 
 **One caveat the docstring does not state.** `hllc()` short-circuits to `(0,0,0)` when
-both reconstructed depths are `≤ h_dry` (`flux.py:172-173`), whereas the exact
+both reconstructed depths are `≤ h_dry` (`jalraksha/solver/flux.py:188-189`), whereas the exact
 well-balanced value would be `½g h*²`. The Audusse correction term still carries the
 full `h² − h*²`. The cancellation at such a face is therefore inexact by
 `O(g·h_dry²/dx) ≈ 0.5·9.81·(1e−6)²/30 ≈ 1.6e−13 m/s²` per step — consistent with, and
 plausibly the origin of, the "round-off floor ~1e−13" reported throughout the tuning
-tables in `flux.py:113-120` and `core.py:83-88`.
+tables in `jalraksha/solver/flux.py:115-122` and `jalraksha/solver/core.py:83-88`.
 
 ---
 
@@ -9553,7 +9616,7 @@ The arithmetic is worth restating because it is the load-bearing argument: float
 of η ≈ 1000 m, one float32 ULP is ≈ 6e−5 m — sixty times the 1e−6 m gate tolerance.
 No amount of scheme quality recovers that; the gate is *unrepresentable* in float32.
 The mitigation for storage cost is downcasting at export time only
-(`types.py:21-22`, and `parallel.py:35` `SNAPSHOT_DTYPE = np.float32` for keyframe
+(`types.py:21-22`, and `jalraksha/solver/parallel.py:45` `SNAPSHOT_DTYPE = np.float32` for keyframe
 snapshots, which never re-enter the solver).
 
 `DTYPE = np.float64` is defined once at `types.py:36`.
@@ -9658,14 +9721,14 @@ Factory helpers `create_state()` (`types.py:287-323`) and `create_result()`
 | `PHI_MIN` | 121 | `0.25` | floor on the Audusse wet fraction in the dt estimate |
 | `EPS` | 124 | `1.0e-14` | division guard |
 
-`H_DRY_DEFAULT` carries the sharpest measurement in the file (`flux.py:75-86`): at
+`H_DRY_DEFAULT` carries the sharpest measurement in the file (`jalraksha/solver/flux.py:77-88`): at
 `h_dry = 1e-3 m` — the Liang & Marche laboratory-flume value — *"h_dry = 1e-3 m freezes
 the front at ~79% of the analytical position no matter how fine the grid, and caps the
 L2 convergence with it."* The scale argument is that 1e−3 m is 4e−6 of the head for a
 260 m dam but 1e−3 of the head for a 1 m benchmark, so the benchmark, not the
 application, sets the binding constraint.
 
-##### 4a.3.2 `minmod(a, b) -> float` — `@njit(inline="always", cache=True)`, `flux.py:127-142`
+##### 4a.3.2 `minmod(a, b) -> float` — `@njit(inline="always", cache=True)`, `jalraksha/solver/flux.py:265-280`
 
 ```python
     if a * b <= 0.0:
@@ -9675,13 +9738,13 @@ application, sets the binding constraint.
     return b
 ```
 
-The standard TVD minmod limiter. `flux.py:133-136` states the selection criterion:
+The standard TVD minmod limiter. `jalraksha/solver/flux.py:147-150` states the selection criterion:
 *"the most diffusive of the common TVD limiters and the most robust across a wetting
 front, which is why it is preferred here over van Leer or superbee for dam-break fronts
 on real terrain."* Its zero-at-extremum property is what guarantees `s_η ≡ 0` at rest and
 hence the C-property.
 
-##### 4a.3.3 `hllc(...)` — `@njit(inline="always", cache=True)`, `flux.py:145-243`
+##### 4a.3.3 `hllc(...)` — `@njit(inline="always", cache=True)`, `jalraksha/solver/flux.py:265-363`
 
 ```python
 def hllc(h_left, vn_left, vt_left, h_right, vn_right, vt_right, h_dry=H_DRY_DEFAULT):
@@ -9691,12 +9754,12 @@ def hllc(h_left, vn_left, vt_left, h_right, vn_right, vt_right, h_dry=H_DRY_DEFA
 Arguments are in **normal/tangential** form so one routine serves both sweeps. Step by
 step:
 
-**(a) Dry–dry short circuit** (`flux.py:172-173`). Both depths `≤ h_dry` → return
+**(a) Dry–dry short circuit** (`jalraksha/solver/flux.py:188-189`). Both depths `≤ h_dry` → return
 `(0, 0, 0)`.
 
 **(b) Celerities** (`flux.py:175-176`). `c = sqrt(g·h)` where `h > 0`, else `0`.
 
-**(c) Wave-speed estimates** (`flux.py:178-199`), three branches:
+**(c) Wave-speed estimates** (`jalraksha/solver/flux.py:194-215`), three branches:
 
 * *Dry left* (`h_L ≤ h_dry`): `S_L = v_R − 2c_R`, `S_R = v_R + c_R`. The `−2c` is the
   dry-bed characteristic — the tip of a rarefaction running into dry bed.
@@ -9715,17 +9778,17 @@ step:
         speed_right = max(vn_right + celerity_right, vn_star + celerity_h_star)
 ```
 
-  `flux.py:188-190`: *"Cheap, and never underestimates the wave speeds for dam-break-like
+  `jalraksha/solver/flux.py:204-206`: *"Cheap, and never underestimates the wave speeds for dam-break-like
   data, which is what positivity of the update depends on."* The `min`/`max` against the
   one-sided estimates is the Einfeldt-style safeguard.
 
-**(d) Physical fluxes** (`flux.py:202-205`): `F_mass = h·v_n`,
+**(d) Physical fluxes** (`jalraksha/solver/flux.py:218-221`): `F_mass = h·v_n`,
 `F_norm = h·v_n² + ½g h²` on each side.
 
-**(e) Supersonic upwinding** (`flux.py:208-211`): `S_L ≥ 0` → pure left flux;
+**(e) Supersonic upwinding** (`jalraksha/solver/flux.py:224-227`): `S_L ≥ 0` → pure left flux;
 `S_R ≤ 0` → pure right flux. The tangential flux is `F_mass·v_t` of the same side.
 
-**(f) Subsonic star region** (`flux.py:214-227`): mass and normal momentum use the HLL
+**(f) Subsonic star region** (`jalraksha/solver/flux.py:230-243`): mass and normal momentum use the HLL
 average
 
 ```
@@ -9734,7 +9797,7 @@ average
 
 with a `|S_R − S_L| < EPS` degenerate guard returning zero.
 
-**(g) The contact wave — the "C" in HLLC** (`flux.py:229-243`). The contact speed is the
+**(g) The contact wave — the "C" in HLLC** (`jalraksha/solver/flux.py:245-259`). The contact speed is the
 standard shallow-water estimate
 
 ```python
@@ -9747,19 +9810,19 @@ standard shallow-water estimate
 ```
 
 Transverse momentum is **upwinded on the contact wave**, not HLL-averaged.
-`flux.py:230-231` gives the physical consequence of the alternative: *"Using HLL here
+`jalraksha/solver/flux.py:246-247` gives the physical consequence of the alternative: *"Using HLL here
 instead would diffuse the shear layer across the channel and under-predict velocities on
 the outer bank of a bend."* A degenerate denominator falls back to
-`S* = ½(S_L + S_R)` (`flux.py:237-238`).
+`S* = ½(S_L + S_R)` (`jalraksha/solver/flux.py:253-254`).
 
 Note that the star-region *depths* are never formed explicitly; only `S*` is, and only to
 choose the upwind side for `v_t`. This is the cheap two-wave-plus-contact variant, not a
 full three-state reconstruction.
 
-##### 4a.3.4 `_audusse_face(eta_left, h_left, eta_right, h_right)` — `@njit(inline="always", cache=True)`, `flux.py:246-288`
+##### 4a.3.4 `_audusse_face(eta_left, h_left, eta_right, h_right)` — `@njit(inline="always", cache=True)`, `jalraksha/solver/flux.py:265-307`
 
 Returns `(h*_L, h*_R, P_L, P_R)` where `P = h_edge² − h*²`. Covered in §4a.1.2. The
-back-derivation of the bed elevations from `η − h` (`flux.py:265-266`) rather than
+back-derivation of the bed elevations from `η − h` (`jalraksha/solver/flux.py:289-290`) rather than
 carrying `b` separately is what makes the routine usable identically from both sweeps and
 from the deprecated shims.
 
@@ -9778,7 +9841,7 @@ single dimensionally-unsplit update rather than a Strang-split one.
 `tendencies_x` parallelises with `for row in prange(2, n_rows - 2)` — rows are fully
 independent in an x-sweep. `tendencies_y` parallelises over `prange(2, n_cols - 2)`.
 Each `prange` iteration allocates **nine** thread-private 1D scratch arrays
-(`flux.py:322-330`): `slope_eta`, `slope_h`, `slope_u`, `slope_v`, `flux_mass`,
+(`jalraksha/solver/flux.py:349-357`): `slope_eta`, `slope_h`, `slope_u`, `slope_v`, `flux_mass`,
 `flux_xmom`, `flux_ymom`, `corr_l`, `corr_r`.
 
 The three inner loops per row are:
@@ -9787,7 +9850,7 @@ The three inner loops per row are:
    Four independent minmod slopes are taken, on `η`, `h`, `u` and `v`. Reconstructing
    both `η` and `h` (rather than `η` and back-deriving `h`) is what makes the
    `(s_η − s_h)` bed-slope term available for free.
-2. **Faces** (`flux.py:344-378`), face `i` separating cell `i−1` from cell `i`.
+2. **Faces** (`jalraksha/solver/flux.py:371-405`), face `i` separating cell `i−1` from cell `i`.
    Left state = right edge of cell `i−1` (`+½·slope`); right state = left edge of cell
    `i` (`−½·slope`). Then three guards, in this order:
 
@@ -9799,11 +9862,11 @@ The three inner loops per row are:
 ```
 
    followed by `_audusse_face` then `hllc`.
-3. **Assembly** (`flux.py:382-391`), quoted in §4a.1.2.
+3. **Assembly** (`jalraksha/solver/flux.py:409-418`), quoted in §4a.1.2.
 
 `tendencies_y` is the exact mirror with `j`/`row` swapped, `dy` for `dx`, and — the one
-substantive difference — the argument swap at `flux.py:467` plus the *re-labelling* of
-the returned components at `flux.py:470-471` (`flux_ymom[j] = f_norm`,
+substantive difference — the argument swap at `jalraksha/solver/flux.py:494` plus the *re-labelling* of
+the returned components at `jalraksha/solver/flux.py:497-498` (`flux_ymom[j] = f_norm`,
 `flux_xmom[j] = f_tang`).
 
 ##### 4a.3.6 The `@njit` decisions, and why `fastmath` is forbidden
@@ -9860,8 +9923,8 @@ activations. Per cell:
 
 Two design notes. First, dry cells are hard-zeroed here as well as in the reconstruction,
 so momentum cannot leak into a sub-threshold film. Second, the velocity cap is a
-*reported* safety net, not silent absorption — `flux.py:94-98` and `flux.py:509-513`:
-*"A physically converged run activates it zero times."* `tests/test_solver.py:868-886`
+*reported* safety net, not silent absorption — `jalraksha/solver/flux.py:96-100` and `flux.py:509-513`:
+*"A physically converged run activates it zero times."* `tests/test_solver.py:887-905`
 turns exactly that into an assertion.
 
 ##### 4a.3.8 `max_wave_speed_inverse_dt(...)` — `flux.py:556-662`
@@ -9874,20 +9937,20 @@ Returns `max over cells of Σ_direction (|v_n| + c_eff)/Δ`, i.e. the reciprocal
 stable timestep at unit Courant number. Two contributions:
 
 1. **Acoustic.** `(|u| + c)/dx` with `c = sqrt(g h)`. The *additive* 2D form is used
-   deliberately (`flux.py:573-575`): *"rather than min(dx/(|u|+c), dy/(|v|+c)) because the
+   deliberately (`jalraksha/solver/flux.py:670-672`): *"rather than min(dx/(|u|+c), dy/(|v|+c)) because the
    latter over-estimates the stable step for a dimensionally unsplit update."*
 2. **Bed step (the Audusse penalty).** For each direction the kernel finds the largest
    *upward* bed step to a neighbour, clips it at the local depth, forms the wet fraction
    `φ = (h − rise)/h`, floors it at `PHI_MIN = 0.25`, and inflates the celerity:
-   `c_eff = c/φ`. `flux.py:582-592` gives the two-part derivation: HLLC dissipation at a
+   `c_eff = c/φ`. `jalraksha/solver/flux.py:679-689` gives the two-part derivation: HLLC dissipation at a
    deeply-cut face scales with `sqrt(g h*)` while the pressure coupling still scales with
    `h`, leaving high-wavenumber modes under-damped in proportion to `h/h*`; and one
    explicit step leaves a velocity residual of order `g·d·dt/dx` from the incomplete
    cancellation between the HLLC flux and the Audusse correction for a *perturbation*
    about rest (the cancellation is exact only *at* rest).
 
-The `PHI_MIN` calibration table (`flux.py:110-120`) and the bed-step growth table
-(`flux.py:604-610`) are reproduced in §4a.7.
+The `PHI_MIN` calibration table (`jalraksha/solver/flux.py:112-122`) and the bed-step growth table
+(`jalraksha/solver/flux.py:701-707`) are reproduced in §4a.7.
 
 ##### 4a.3.9 Deprecated shims (`flux.py:665-722`)
 
@@ -9911,7 +9974,7 @@ introspection. Note the shims call `hllc()` without `h_dry`, so they silently us
 | `CFL_MAX` | 93 | `0.30` | measured ceiling; see §4a.7 |
 | `DT_MAX_DEFAULT` | 97 | `30.0` s | *"Prevents a nearly-dry domain from taking one enormous step that then wets a cell far outside the CFL cone."* |
 
-##### 4a.4.2 Construction — `SWESolver.__init__` (`core.py:112-198`)
+##### 4a.4.2 Construction — `SWESolver.__init__` (`jalraksha/solver/core.py:193-279`)
 
 ```python
 def __init__(self, grid, manning_n=0.03, cfl=0.30, boundary="transmissive",
@@ -9921,19 +9984,19 @@ def __init__(self, grid, manning_n=0.03, cfl=0.30, boundary="transmissive",
 
 Validation and setup, in order: boundary string must be in
 `("transmissive", "reflective", "wall")` with `"wall"` normalised to `"reflective"`
-(`core.py:150-160`); `h_dry > 0` (`core.py:166-167`); the **CFL clamp**
+(`jalraksha/solver/core.py:237-247`); `h_dry > 0` (`jalraksha/solver/core.py:253-254`); the **CFL clamp**
 `self.cfl = min(float(cfl), CFL_MAX)` with the *requested* value retained separately so
-`describe()` can report that it was clamped (`core.py:169-171`); the direction-activity
-flags `active_x = nx > 1`, `active_y = ny > 1` (`core.py:176-177`) — *"A direction one
+`describe()` can report that it was clamped (`jalraksha/solver/core.py:256-258`); the direction-activity
+flags `active_x = nx > 1`, `active_y = ny > 1` (`jalraksha/solver/core.py:263-264`) — *"A direction one
 cell thick has no interior faces, so it must not enter the CFL condition … and its ghost
 cells are always mirrored"*; the Manning field via `_build_manning_field`
-(`core.py:204-218`, scalar broadcast or shape-checked array, rejecting negatives); and
+(`jalraksha/solver/core.py:298-312`, scalar broadcast or shape-checked array, rejecting negatives); and
 seven padded work arrays of shape `(ny+4, nx+4)` allocated once and reused
-(`core.py:181-189`).
+(`jalraksha/solver/core.py:275-283`).
 
 Diagnostics initialised: `n_steps`, `dt_last`, `n_velocity_capped`.
 
-##### 4a.4.3 The CFL condition — `compute_cfl_timestep` (`core.py:224-256`)
+##### 4a.4.3 The CFL condition — `compute_cfl_timestep` (`jalraksha/solver/core.py:318-350`)
 
 ```
     dt = cfl / max[ (|u| + c·(1 + r_x))/dx + (|v| + c·(1 + r_y))/dy ]
@@ -9941,38 +10004,38 @@ Diagnostics initialised: `n_steps`, `dt_last`, `n_velocity_capped`.
 
 Implemented as `min(self.cfl / inverse_dt, self.dt_max)`, delegating the maximisation to
 `max_wave_speed_inverse_dt`. If `inverse_dt <= 0.0` (fully dry domain) it returns
-`dt_max` (`core.py:253-255`). Note the docstring's `(1 + r)` and the kernel's `1/φ` are
+`dt_max` (`jalraksha/solver/core.py:347-349`). Note the docstring's `(1 + r)` and the kernel's `1/φ` are
 the same object written two ways, since `φ = 1 − rise/h`.
 
-##### 4a.4.4 Boundary conditions — `_fill_ghosts` (`core.py:262-326`)
+##### 4a.4.4 Boundary conditions — `_fill_ghosts` (`jalraksha/solver/core.py:262-326`)
 
 Two types are available:
 
 * **`transmissive`** — zero-gradient outflow. Both ghost layers on a side copy the single
   outermost interior cell (`src_left = lo`, `src_right = hi_x - 1`), with `sign = +1.0`.
-  `core.py:266-268`: *"Water leaves the domain and does not return. Correct for a routing
+  `jalraksha/solver/core.py:360-362`: *"Water leaves the domain and does not return. Correct for a routing
   reach; note it means volume is NOT conserved once the front exits."*
 * **`reflective`** (alias `wall`) — solid wall. Ghost layer `offset` mirrors interior
   layer `lo + offset` (and `hi − 1 − offset`), with the **normal** velocity negated
   (`sign = -1.0`) and the tangential velocity copied. `h` and `b` are always mirrored.
-  `core.py:269-271`: *"Gives identically zero mass flux through the wall, which is what
+  `jalraksha/solver/core.py:363-365`: *"Gives identically zero mass flux through the wall, which is what
   makes the mass-conservation gate exact rather than approximate."*
 
 A one-cell-thick direction is **always** mirrored irrespective of the requested boundary
-(`core.py:279-280`: `reflect_x = self.boundary == "reflective" or not self.active_x`), so
+(`jalraksha/solver/core.py:279-280`: `reflect_x = self.boundary == "reflective" or not self.active_x`), so
 a nominally-1D run cannot leak sideways and `v` stays exactly zero.
 
-The `min`/`max` clamps at `core.py:287-288` and `core.py:311-312` keep the mirror source
+The `min`/`max` clamps at `jalraksha/solver/core.py:287-288` and `jalraksha/solver/core.py:311-312` keep the mirror source
 index inside the interior when the domain is thinner than `PAD`.
 
-##### 4a.4.5 Spatial operator — `_tendencies` (`core.py:332-380`)
+##### 4a.4.5 Spatial operator — `_tendencies` (`jalraksha/solver/core.py:332-380`)
 
 Copies the four interior arrays into the padded buffers, fills ghosts, zeroes the three
 tendency buffers with `.fill(0.0)`, then calls `tendencies_x` (only if `active_x`) and
 `tendencies_y` (only if `active_y`), returning interior *views* of the tendency arrays.
 Because the kernels accumulate, calling both produces the unsplit 2D operator.
 
-##### 4a.4.6 Primitive recovery — `_to_primitive` (`core.py:382-410`)
+##### 4a.4.6 Primitive recovery — `_to_primitive` (`jalraksha/solver/core.py:382-410`)
 
 **Kurganov & Petrova (2007) desingularisation**:
 
@@ -9987,10 +10050,10 @@ Because the kernels accumulate, calling both produces the unsplit 2D operator.
 ```
 
 For `h >> h_dry` this is `hu/h` to machine precision; as `h → 0` it tends smoothly to
-zero. `core.py:394-396`: *"A naive hu/h on a 1e-6 m film routinely yields velocities of
+zero. `jalraksha/solver/core.py:394-396`: *"A naive hu/h on a 1e-6 m film routinely yields velocities of
 1e3 m/s, which then collapses the timestep to nothing and stalls the run."*
 
-##### 4a.4.7 One step — `_advance` (`core.py:416-469`)
+##### 4a.4.7 One step — `_advance` (`jalraksha/solver/core.py:457-510`)
 
 **Two-stage SSP-RK2 (Heun)**:
 
@@ -10001,26 +10064,26 @@ zero. `core.py:394-396`: *"A naive hu/h on a 1e-6 m film routinely yields veloci
 
 Chosen because it is strong-stability-preserving: *"the positivity that the first-order
 Audusse/HLLC update guarantees under CFL <= 1/2 survives the second-order extension"*
-(`core.py:13-15`).
+(`jalraksha/solver/core.py:13-15`).
 
-Each stage clips `h` non-negative (`core.py:443`, `core.py:452`) with the justification
+Each stage clips `h` non-negative (`jalraksha/solver/core.py:443`, `jalraksha/solver/core.py:496`) with the justification
 that a MUSCL overshoot at a front dips below zero by *"~1e-16 relative, far under the
 0.1% mass gate"*, then recovers primitives. Friction is applied **once, after the full
-RK2 update** (`core.py:455-464`), accumulating `n_velocity_capped`. Finally `n_steps` and
+RK2 update** (`jalraksha/solver/core.py:499-508`), accumulating `n_velocity_capped`. Finally `n_steps` and
 `dt_last` are updated and a fresh `State` is returned.
 
 This is Lie (first-order) operator splitting of friction against a second-order
 hydrodynamic update — a real, if minor, order reduction whenever `manning_n > 0`. See
 finding F16.
 
-##### 4a.4.8 The driver — `run` (`core.py:491-576`)
+##### 4a.4.8 The driver — `run` (`jalraksha/solver/core.py:491-576`)
 
 ```python
 def run(self, state, t_end, snapshot_interval=None, on_snapshot=None,
         max_steps=2_000_000, verbose=False) -> Result
 ```
 
-Note `t_end` is **absolute**, not a duration from `state.t` (`core.py:507`).
+Note `t_end` is **absolute**, not a duration from `state.t` (`jalraksha/solver/core.py:507`).
 
 Sequence:
 
@@ -10029,13 +10092,13 @@ Sequence:
 2. `volume_initial = state.volume * cell_area` [m³].
 3. `next_snapshot = state.t + snapshot_interval` or `np.inf`. If both
    `on_snapshot` and `snapshot_interval` are given, an immediate `t=0` snapshot is emitted
-   (`core.py:528-529`).
+   (`jalraksha/solver/core.py:528-529`).
 4. Loop while `state.t < t_end - 1e-12`:
    * `max_steps` guard → `RuntimeError` naming the suspected cause
      (*"The timestep has probably collapsed — check for a spurious thin-film velocity or a
      DEM spike"*).
    * `dt = compute_cfl_timestep(state)`, then clamped so as not to overshoot `t_end`
-     (`core.py:542`) nor `next_snapshot` (`core.py:543-544`). Requesting fine snapshots
+     (`jalraksha/solver/core.py:586`) nor `next_snapshot` (`jalraksha/solver/core.py:543-544`). Requesting fine snapshots
      therefore *changes the timestep sequence*, and with it the round-off history.
    * `if dt <= 0.0: break` — a silent exit path (finding F8).
    * `state = self._advance(state, dt)`.
@@ -10045,19 +10108,19 @@ Sequence:
      `next_snapshot += snapshot_interval`.
    * `verbose` diagnostics every 200 steps.
 5. `mass_error = |V_final − V_initial| / V_initial`, **only if `volume_initial > 0`**
-   (`core.py:571-572`).
+   (`jalraksha/solver/core.py:618-619`).
 6. Populate `result.n_steps`, `result.state`, `result.t`; return.
 
 **Termination conditions, exhaustively:** (i) `state.t >= t_end - 1e-12` — normal;
 (ii) `steps >= max_steps` — `RuntimeError`; (iii) non-finite state — `RuntimeError`,
 unreachable in practice; (iv) `dt <= 0.0` — silent `break`.
 
-##### 4a.4.9 Provenance — `describe` (`core.py:582-603`)
+##### 4a.4.9 Provenance — `describe` (`jalraksha/solver/core.py:629-650`)
 
 Returns a dict recording scheme, reconstruction, time integration, friction, wet/dry
 treatment and `h_dry`, precision, `velocity_max`, `velocity_cap_activations`, `cfl`,
 `cfl_requested`, `cfl_clamped`, boundary, grid geometry string, CRS, and the Manning
-range. `tests/test_solver.py:847-866` asserts on this dict directly, which is the right
+range. `tests/test_solver.py:866-885` asserts on this dict directly, which is the right
 pattern: the solver must report *what it did*, not what it aspires to.
 
 ---
@@ -10074,10 +10137,10 @@ pattern: the solver must report *what it did*, not what it aspires to.
 > own simplified breach injection, which meant parallel runs silently produced different
 > physics from sequential ones.
 
-`tests/test_parallel.py:104-118` is the regression test for exactly that — though see
+`tests/test_parallel.py:106-120` is the regression test for exactly that — though see
 finding F5, which shows the test does not actually reach the pool.
 
-##### 4a.5.2 `run_ensemble_member` (`parallel.py:74-208`)
+##### 4a.5.2 `run_ensemble_member` (`jalraksha/solver/parallel.py:189-323`)
 
 ```python
 def run_ensemble_member(sample_id, hydrograph, grid, state_init, manning_field,
@@ -10086,16 +10149,16 @@ def run_ensemble_member(sample_id, hydrograph, grid, state_init, manning_field,
 ```
 
 `SWESolver` and `inject_breach_hydrograph` are imported *inside* the function
-(`parallel.py:105-108`) so pool workers resolve them on their own side of the
+(`jalraksha/solver/parallel.py:220-223`) so pool workers resolve them on their own side of the
 fork/spawn boundary. The whole body is wrapped in `try/except Exception`, returning
 `{"sample_id", "error", "success": False}` on failure — *"failures are reported, never
 silently dropped."*
 
-The loop (`parallel.py:150-188`) per iteration:
+The loop (`jalraksha/solver/parallel.py:264-302`) per iteration:
 
 1. `inject_breach_hydrograph(state, grid, i_breach, j_breach, t_sim, dt_adaptive, q_hydro, t_hydro)`
    — a **mass** source, adding `Q·dt/(dx·dy)` metres of depth to the breach cell
-   (`run.py:515-518`).
+   (`jalraksha/run.py:516-519`).
 2. `state = solver.step(state)` — which recomputes its own `dt` internally.
 3. `t_sim += dt_adaptive`; `dt_adaptive = solver.compute_cfl_timestep(state)`.
 4. `t_arrival[newly_wet] = t_sim` where `newly_wet = (state.h >= 0.1) & (t_arrival == inf)`.
@@ -10105,8 +10168,8 @@ The loop (`parallel.py:150-188`) per iteration:
 The returned dict carries `sample_id, t_arrival, h_max, v_max, metadata, depth_series,
 n_steps, success`.
 
-`_snapshot` (`parallel.py:56-71`) stores `time_s`, `depth`, `velocity_x`, `velocity_y`,
-all cast to `SNAPSHOT_DTYPE = np.float32`. `parallel.py:60-64` explains that `u`/`v` were
+`_snapshot` (`jalraksha/solver/parallel.py:171-186`) stores `time_s`, `depth`, `velocity_x`, `velocity_y`,
+all cast to `SNAPSHOT_DTYPE = np.float32`. `jalraksha/solver/parallel.py:175-179` explains that `u`/`v` were
 previously not captured at all, so the MATLAB viewer's velocity vectors could not be
 drawn, and that storing them costs 3× a depth-only snapshot versus re-running the solver.
 
@@ -10117,7 +10180,7 @@ stamps them all with the same `t_sim`, producing `0, 30, 60, 90, 90, 120, …`, 
 increasing frame times."* The fix records **one** frame and then advances
 `next_snapshot_idx` past every crossed time.
 
-##### 4a.5.3 Cost model, worker init, and the two dispatch paths (`parallel.py:265-414`)
+##### 4a.5.3 Cost model, worker init, and the two dispatch paths (`jalraksha/solver/parallel.py:392-541`)
 
 `run_ensemble()` resolves `n_workers` (`None → os.cpu_count()`, clamped to
 `[1, len(hydrographs)]`), builds the task tuples — attaching `snapshot_times` only to the
@@ -10127,7 +10190,7 @@ member equal to `snapshot_sample_id` — and then chooses a path.
 comprehension over `_member_task`, routed through `_tick` for progress.
 
 **Probe-and-decide.** Otherwise the *first* member runs in-process and is **timed**
-(`parallel.py:356-358`), and — importantly — kept, not thrown away. Then:
+(`jalraksha/solver/parallel.py:577-579`), and — importantly — kept, not thrown away. Then:
 
 ```python
         pool_size = _worker_memory_cap(min(n_workers, len(remaining)))
@@ -10143,11 +10206,11 @@ comprehension over `_member_task`, routed through `_tick` for progress.
 The model's logic is that the probe runs with *all* numba threads while pool workers are
 pinned to one, so a pooled member costs `probe_seconds × INTRA_MEMBER_THREAD_SPEEDUP`.
 Whether the pool wins therefore depends on **ensemble size**, not on any per-member
-threshold — `parallel.py:322-327` is explicit about this.
+threshold — `jalraksha/solver/parallel.py:543-548` is explicit about this.
 
 **Thread pinning.** Two mechanisms, both needed:
 
-* `_SINGLE_THREAD_ENV` (`parallel.py:223-229`) sets `OMP_NUM_THREADS`,
+* `_SINGLE_THREAD_ENV` (`jalraksha/solver/parallel.py:345-351`) sets `OMP_NUM_THREADS`,
   `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`, `NUMEXPR_NUM_THREADS` and
   `NUMBA_NUM_THREADS` to `"1"` **in the parent** before the pool starts, because
   *"Spawned children inherit os.environ … an initializer runs too late, after the child
@@ -10156,34 +10219,34 @@ threshold — `parallel.py:322-327` is explicit about this.
   after 10 retries"*, killing the pool. The environment is saved and restored in a
   `finally` block (`parallel.py:398-406`) so the library does not permanently
   reconfigure the host process.
-* `_init_worker` (`parallel.py:243-262`) calls `numba.set_num_threads(1)` in each child,
-  wrapped in a bare `except Exception: pass`. `parallel.py:246-256` states the argument
+* `_init_worker` (`jalraksha/solver/parallel.py:370-389`) calls `numba.set_num_threads(1)` in each child,
+  wrapped in a bare `except Exception: pass`. `jalraksha/solver/parallel.py:373-383` states the argument
   for choosing the ensemble axis: the flux kernels are `parallel=True` and fan out over
   `prange`, so N workers × N threads on N cores thrashes; *"Parallelism belongs on
   exactly one axis. Across members is the better one: they are fully independent, so it
   needs no synchronisation and scales linearly, whereas the in-kernel prange has to
   synchronise every timestep."*
 
-**Memory cap.** `_worker_memory_cap` (`parallel.py:232-240`) queries
+**Memory cap.** `_worker_memory_cap` (`jalraksha/solver/parallel.py:359-367`) queries
 `psutil.virtual_memory().available` and returns `max(1, min(pool_size, available_MB // 400))`,
 i.e. ~400 MB of interpreter per worker; without `psutil` it falls back to
 `min(pool_size, 8)`.
 
-**Windows spawn caveat.** `parallel.py:281-290` requires callers on Windows to guard
+**Windows spawn caveat.** `jalraksha/solver/parallel.py:408-417` requires callers on Windows to guard
 their entry point with `if __name__ == "__main__":`, because *"Spawned children re-import
 the parent's `__main__` module, so without the guard each worker re-executes the whole
 script and multiprocessing raises."* The function **degrades to sequential rather than
 failing** — the `except Exception` at `parallel.py:392-397` warns and re-runs the
 remaining tasks in-process, so an unguarded script still produces correct results, just
-slowly. `WORKER_STARTUP_SECONDS = 15.0` (`parallel.py:39-41`) is the modelled cost of
+slowly. `WORKER_STARTUP_SECONDS = 15.0` (`jalraksha/solver/parallel.py:49-51`) is the modelled cost of
 that spawn: re-importing numpy/rasterio/numba and reloading the JIT cache.
 
 **Progress.** All four completion paths (probe, sequential branch, pool, pool-failure
-fallback) route through the single `_tick` closure (`parallel.py:331-350`), whose
+fallback) route through the single `_tick` closure (`jalraksha/solver/parallel.py:552-571`), whose
 exceptions are swallowed because *"a broken status write must not lose the run."*
 `executor.map` is consumed lazily so progress is real rather than a 0→100 jump.
 
-**Determinism.** `_finish` (`parallel.py:411-414`) sorts by `sample_id`.
+**Determinism.** `_finish` (`jalraksha/solver/parallel.py:632-635`) sorts by `sample_id`.
 
 ---
 
@@ -10309,7 +10372,7 @@ spawn path, the `_worker_memory_cap` branch, or the pool-failure fallback.
 All figures below are quoted from the source with their stated conditions. Where the
 source does not state a machine, that is noted.
 
-**CFL ceiling calibration** (`core.py:78-92`). Conditions: 60×60 lake at rest over
+**CFL ceiling calibration** (`jalraksha/solver/core.py:79-93`). Conditions: 60×60 lake at rest over
 white-noise bathymetry of 20–40 m amplitude on a 30 m grid, 3000 steps, with the
 wet-fraction term of `max_wave_speed_inverse_dt` active. Metric: worst at-rest `|V|`.
 
@@ -10323,7 +10386,7 @@ wet-fraction term of `max_wave_speed_inverse_dt` active. Metric: worst at-rest `
 `CFL_MAX = 0.30` rather than 0.35 *"buys ~17% runtime as margin."* Realistic terrain
 (1-in-10 valley; gorge with 60 m parabolic walls) is recorded as stable even at 0.45.
 
-**`PHI_MIN` calibration** (`flux.py:110-120`). Conditions: 60×60 lake at rest, CFL 0.30,
+**`PHI_MIN` calibration** (`jalraksha/solver/flux.py:112-122`). Conditions: 60×60 lake at rest, CFL 0.30,
 3000 steps, worst `|V|`, over white-noise bathymetry on a 30 m grid; last column is the
 timestep the choice costs a *"realistic 1-in-10 valley."*
 
@@ -10337,7 +10400,7 @@ timestep the choice costs a *"realistic 1-in-10 valley."*
 *"0.25 is the first value that reaches the round-off floor (~1e-13) on every bed. 0.125
 buys nothing measurable and costs real terrain 1.8x in dt."*
 
-**Bed-step growth factor** (`flux.py:604-610`). Conditions: 60×60 lake at rest, CFL 0.45,
+**Bed-step growth factor** (`jalraksha/solver/flux.py:701-707`). Conditions: 60×60 lake at rest, CFL 0.45,
 **no bed-step term at all**. Metric: growth per step of the at-rest residual.
 
 | bed step / depth | growth per step |
@@ -10351,29 +10414,29 @@ Conclusion recorded: *"A 1-in-10 valley and a gorge with 60 m parabolic walls bo
 the floor, so realistic terrain never needed the correction; white noise bathymetry at
 30 m does."*
 
-**Intra-member thread scaling** (`parallel.py:43-53`). Conditions: this codebase, 400 m
+**Intra-member thread scaling** (`jalraksha/solver/parallel.py:53-63`). Conditions: this codebase, 400 m
 resolution, 600×600 grid, 16 logical cores. **12.8 s with 16 numba threads vs 30.3 s with
 1 thread = 2.37×** (rounded to `INTRA_MEMBER_THREAD_SPEEDUP = 2.4`), described as *"poor
 scaling, as expected for a memory-bound stencil that synchronises every timestep."*
 Derived throughput: 16 single-threaded members give `16/30.3 = 0.53` members/s against
 `1/12.8 = 0.078` members/s for one all-threads member — **nearly 7× the throughput**.
 
-**Worker startup** (`parallel.py:39-41`): `WORKER_STARTUP_SECONDS = 15.0` on Windows
+**Worker startup** (`jalraksha/solver/parallel.py:49-51`): `WORKER_STARTUP_SECONDS = 15.0` on Windows
 spawn, covering re-import of numpy/rasterio/numba and JIT-cache reload.
 
-**Worker memory** (`parallel.py:232-240`): ~400 MB of interpreter per worker; the
+**Worker memory** (`jalraksha/solver/parallel.py:359-367`): ~400 MB of interpreter per worker; the
 no-`psutil` fallback caps at 8 workers.
 
 **`fastmath` cost** (`flux.py:54`): *"Measured cost of omitting it is a few percent."*
 No absolute number or machine is given.
 
-**`h_dry` cost** (`flux.py:82-84`): at `h_dry = 1e-3` m the Ritter front freezes at
+**`h_dry` cost** (`jalraksha/solver/flux.py:84-86`): at `h_dry = 1e-3` m the Ritter front freezes at
 *"~79% of the analytical position no matter how fine the grid."*
 
-**Reference velocities** (`flux.py:93-95`, `core.py:142-144`): Malpasset 1959 peak
+**Reference velocities** (`jalraksha/solver/flux.py:95-97`, `jalraksha/solver/core.py:224-226`): Malpasset 1959 peak
 ~30 m/s; Chamoli 2021 reconstructions ~25 m/s. `VELOCITY_MAX_DEFAULT = 60.0` is ~2× these.
 
-**Whole-build gate values** (`CLAUDE.md:279-281`, outside this subsystem but reporting on
+**Whole-build gate values** (`CLAUDE.md:280-282`, outside this subsystem but reporting on
 it): *"lake-at-rest 5.98e-14 m/s, mass conservation 0.000000%, Ritter RMSE 0.0317 m
 (JalRaksha) vs 0.0349 m (Delft3D FM)."*
 
@@ -10387,9 +10450,9 @@ lines. All of these are superseded — see F19.
 
 **F1 — CRITICAL. The non-finite guard is dead code; a divergent run returns zeros.**
 `types.py:137-140` runs `np.nan_to_num(...)` on `h, u, v, b` inside `State.__post_init__`,
-which `core.py:469` invokes on **every timestep**. Consequently `State.is_finite()`
-(`types.py:188-194`) can never return `False`, the `RuntimeError` at `core.py:551-555` can
-never fire, and the assertion at `tests/test_solver.py:232` is vacuous. A blown-up run
+which `jalraksha/solver/core.py:513` invokes on **every timestep**. Consequently `State.is_finite()`
+(`types.py:188-194`) can never return `False`, the `RuntimeError` at `jalraksha/solver/core.py:551-555` can
+never fire, and the assertion at `tests/test_solver.py:251` is vacuous. A blown-up run
 silently becomes a domain of zeros — a plausible-looking "no flood", which is precisely
 the outcome CLAUDE.md's no-silent-fallback rule exists to prevent.
 *Fix:* sanitise on ingest only, and make the scrub opt-in.
@@ -10409,48 +10472,74 @@ class State:
         np.clip(self.h, 0.0, None, out=self.h)
 ```
 
-and construct the per-step state in `core.py:469` with `State(..., _sanitise=False)`.
+and construct the per-step state in `jalraksha/solver/core.py:513` with `State(..., _sanitise=False)`.
 
-**F2 — HIGH. The ensemble path throws away the spatially varying Manning field.**
-`parallel.py:118`:
+**F2 — FIXED (`af996b7`, 2026-09-12). The ensemble path threw away the spatially varying Manning field.**
+As audited, `parallel.py` built every member with
 
 ```python
 solver = SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)
 ```
 
-`manning_field` is a per-cell `(ny, nx)` array derived from land cover, and `SWESolver`
-accepts exactly that shape (`core.py:204-218`). Collapsing it to its mean erases the
-distinction between a concrete channel (n≈0.015) and a built-up floodplain (n≈0.15) in the
-**entire production ensemble path** (`run.py:683`). `run_smoke.py:22` and `run_demo.py:40`
-repeat the same mistake.
-*Fix:* `solver = SWESolver(grid, manning_n=manning_field, cfl=0.3)`.
+`manning_field` is a per-cell `(ny, nx)` array derived from land cover and `SWESolver`
+accepts exactly that shape, so collapsing it to its mean erased the distinction
+between a concrete channel (n≈0.015) and a built-up floodplain (n≈0.15) in the
+entire production ensemble path. Measured on a WorldCover-style valley: the
+channel came out three times too rough and the flood reached 170 cells instead of
+308.
 
-**F3 — HIGH. Ensemble time bookkeeping drifts from the physical clock.**
-`parallel.py:150-157`: `dt_adaptive` is computed *before* `inject_breach_hydrograph`
-adds depth to the breach cell, but `solver.step(state)` (with `dt=None`) recomputes its
-own timestep from the **injected** state at `core.py:483-485`. The loop then advances
-`t_sim += dt_adaptive`. The two differ whenever injection changes the local celerity, so
-`t_sim` diverges from `state.t`, and the injected mass `Q·dt_adaptive` corresponds to a
-different physical interval than the one the solver actually integrated. `t_arrival` is
-stamped from the drifting `t_sim`. The loop also has no clamp against overshooting
-`solver_duration_s`.
-*Fix:*
+`jalraksha/solver/parallel.py:236` now passes the field. The GPU ensemble had to
+be corrected in the same commit — it carries its own copy of the member loop
+(`solver/ensemble_cuda.py`), and `tests/test_parallel.py::TestGpuEnsemble` binds
+the two so a future divergence fails a test rather than producing two different
+floods. Current pipeline runs are unchanged, because `build_domain` still supplies
+a uniform field (dam_config `manning_n`, default 0.03); that is exactly why the
+defect survived undetected, so `run_summary.json` now carries a `roughness` block
+reporting `is_uniform` and `fraction_at_default` rather than leaving a uniform
+field to pass as a land-cover-derived one.
+
+**F3 — FIXED (`5fa86b8`, 2026-09-12). Ensemble time bookkeeping drifted from the physical clock.**
+As audited, `dt_adaptive` was computed *before* `inject_breach_hydrograph` added depth to
+the breach cell, but `solver.step(state)` (with `dt=None`) recomputed its own timestep from
+the **injected** state, and the loop then advanced `t_sim += dt_adaptive`. The two differ
+whenever injection changes the local celerity, so `t_sim` diverged from `state.t` and the
+injected mass `Q·dt_adaptive` corresponded to a different physical interval than the one
+integrated. `t_arrival` was stamped from the drifting `t_sim`. Measured on a dry synthetic
+valley: the clock ran up to **2.6%** ahead and the breach over-injected by up to **1.2%**.
+
+The shipped fix is one timestep per member step, and it is stricter than the obvious
+single-pass version. Writing simply
 
 ```python
-        while t_sim < solver_duration_s and step_count < max_steps:
-            dt = min(solver.compute_cfl_timestep(state), solver_duration_s - t_sim)
-            if dt <= 0.0:
-                break
-            inject_breach_hydrograph(state, grid, i_breach, j_breach,
-                                     t_sim, dt, q_hydro, t_hydro)
-            state = solver.step(state, dt=dt)      # same dt injected and integrated
-            t_sim += dt
+            dt = solver.compute_cfl_timestep(state)          # pre-injection
+            inject_breach_hydrograph(state, grid, i, j, t_sim, dt, q_hydro, t_hydro)
+            state = solver.step(state, dt=dt)                # may now violate CFL
 ```
+
+is not sufficient, because injection does not only lower the limiting wave speed: the
+Audusse wet-fraction term in `max_wave_speed_inverse_dt` makes a thin film over a bed step
+**faster** than a deeper one, so added depth can raise the limit and invalidate a step sized
+before the injection. `inject_with_one_timestep` (`jalraksha/solver/parallel.py:107`)
+therefore injects, re-checks against the post-injection limit, and shrinks and re-injects
+until the step is valid to within `INJECTION_CFL_RTOL = 1e-6` — looping rather than assuming
+one pass converges. `dt` only ever shrinks and the no-injection case is the pre-injection
+limit, so it terminates; `MAX_INJECTION_PASSES = 8` bounds it and reports `overran=True`
+rather than a false success. The injection, the step and the clock then share that one `dt`,
+so `t_sim` is the solver's own time by construction.
+
+`choose_injection_step` in `solver/ensemble_cuda.py` mirrors this for the GPU ensemble, and
+`TestMemberTimestep` in `tests/test_parallel.py` pins clock = physics time and CFL validity
+on both backends. On Khadakwasla the shrink fires about once in 75,000 steps, so no
+published Khadakwasla figure moved.
+
+**Not fixed:** the loop still has no clamp against overshooting `solver_duration_s`, and the
+same drift survives independently in `validation/delft3d_benchmark.py`, which does not share
+the member loop.
 
 **F4 — HIGH. Two different arrival thresholds produce two incomparable rasters.**
 `types.py:276` stamps `t_arrival` where `state.h > 0.05`, while `parallel.py:37` uses
 `ARRIVAL_THRESHOLD_M = 0.1` and cites *"CLAUDE.md / Spec §4.3"* (confirmed at
-`docs/dashboard_integration.md:435`). `Result.wet_mask` (`types.py:259`) uses 0.05 again.
+`docs/dashboard_integration.md:466`). `Result.wet_mask` (`types.py:259`) uses 0.05 again.
 The core `run()` path and the ensemble path therefore publish different arrival fields for
 the same physics.
 *Fix:* define the threshold once and import it in both places.
@@ -10464,7 +10553,7 @@ newly_wet = (state.h > ARRIVAL_THRESHOLD_M) & ~np.isfinite(self.t_arrival)
 and in `parallel.py`, `from jalraksha.solver.types import ARRIVAL_THRESHOLD_M`.
 
 **F5 — HIGH. `test_parallel_matches_sequential` never exercises the process pool.**
-`tests/test_parallel.py:104-118` uses 2 hydrographs and `n_workers=2`. In `run_ensemble`,
+`tests/test_parallel.py:106-120` uses 2 hydrographs and `n_workers=2`. In `run_ensemble`,
 member 0 becomes the probe, leaving **one** remaining task, so `pool_size = 1`,
 `waves = 1`, `sequential_estimate = probe`, and
 `parallel_estimate = probe × 2.4 + 15.0`, which is unconditionally larger. The cost model
@@ -10502,8 +10591,8 @@ return max(min(self.cfl / inverse_dt, self.dt_max), self.dt_min)
 ```
 
 **F7 — MEDIUM. `Result.hazard_max` is never populated by the core path.**
-`Result.update` accepts a `hazard` argument (`types.py:261`) but `core.py:522` and
-`core.py:557` both call `result.update(state)` with no hazard, so the documented FD2320
+`Result.update` accepts a `hazard` argument (`types.py:261`) but `jalraksha/solver/core.py:522` and
+`jalraksha/solver/core.py:557` both call `result.update(state)` with no hazard, so the documented FD2320
 `d·(v+0.5)` raster is always `None` from `SWESolver.run()`.
 *Fix:* compute it in the loop.
 
@@ -10513,8 +10602,8 @@ return max(min(self.cfl / inverse_dt, self.dt_max), self.dt_min)
 ```
 
 **F8 — MEDIUM. `cfl` is clamped from above but never validated positive, and `dt <= 0`
-exits silently.** `core.py:170-171` applies only `min(cfl, CFL_MAX)`. With `cfl <= 0`,
-`compute_cfl_timestep` returns `<= 0`, and `core.py:545-546` does `break`, so `run()`
+exits silently.** `jalraksha/solver/core.py:257-258` applies only `min(cfl, CFL_MAX)`. With `cfl <= 0`,
+`compute_cfl_timestep` returns `<= 0`, and `jalraksha/solver/core.py:589-590` does `break`, so `run()`
 returns a `Result` at `t = 0` with `n_steps = 0` and no error.
 *Fix:*
 
@@ -10552,30 +10641,30 @@ def max_wave_speed_inverse_dt(...):
 ```
 
 **F10 — MEDIUM. Nine scratch arrays are heap-allocated per `prange` iteration.**
-`flux.py:322-330` and `flux.py:423-431` allocate `np.zeros(n_cols)` nine times inside each
+`jalraksha/solver/flux.py:349-357` and `jalraksha/solver/flux.py:450-458` allocate `np.zeros(n_cols)` nine times inside each
 row/column iteration. That is `9 × (ny + nx)` NRT allocations per sweep pair, ×2 RK
 stages, i.e. `~36 × (ny+nx)` allocations per timestep.
 *Fix:* hoist to caller-owned 2D scratch buffers indexed by the `prange` variable, e.g.
 `scratch_slope_eta[row, :]`, allocated once in `SWESolver.__init__` with shape
 `(max(ny,nx)+4, n_scratch)` and passed in.
 
-**F11 — MEDIUM. `_to_primitive` is un-jitted NumPy.** `core.py:382-410` allocates five
+**F11 — MEDIUM. `_to_primitive` is un-jitted NumPy.** `jalraksha/solver/core.py:382-410` allocates five
 full-domain temporaries (`h_floor`, `denom`, `u`, `v`, `dry`) and is called twice per step.
 *Fix:* move it into `flux.py` as `@njit(parallel=True, cache=True)` writing into
 pre-allocated output arrays. Note it must **not** take `fastmath`, for the same reason as
 the flux kernels.
 
 **F12 — MEDIUM. Cost-model constants are single-machine measurements with no override.**
-`WORKER_STARTUP_SECONDS = 15.0` (`parallel.py:41`),
-`INTRA_MEMBER_THREAD_SPEEDUP = 2.4` (`parallel.py:53`), the 400 MB/worker divisor and the
-`min(pool_size, 8)` fallback (`parallel.py:239-240`) are all hardcoded from one 16-core
+`WORKER_STARTUP_SECONDS = 15.0` (`jalraksha/solver/parallel.py:51`),
+`INTRA_MEMBER_THREAD_SPEEDUP = 2.4` (`jalraksha/solver/parallel.py:63`), the 400 MB/worker divisor and the
+`min(pool_size, 8)` fallback (`jalraksha/solver/parallel.py:366-367`) are all hardcoded from one 16-core
 Windows box. On a 128-core Linux node the model will systematically under-use the pool.
 *Fix:* read them from the environment with the current values as defaults, e.g.
 `WORKER_STARTUP_SECONDS = float(os.environ.get("JALRAKSHA_WORKER_STARTUP_S", 15.0))`, and
 on POSIX (where `multiprocessing` forks) default it to ~1.0 s.
 
 **F13 — MEDIUM. The cost probe absorbs numba JIT compilation on a cold cache.**
-`parallel.py:356-358` times the first member. With `cache=True` this is usually a cache
+`jalraksha/solver/parallel.py:577-579` times the first member. With `cache=True` this is usually a cache
 *load*, but on a first run, a changed numba version, or a read-only cache directory it is
 a full compile of six kernels — tens of seconds. `probe_seconds` is then inflated, the
 sequential estimate scales with it linearly while the parallel estimate scales by 2.4, and
@@ -10583,7 +10672,7 @@ the model is pushed toward *sequential* for a large ensemble that should have be
 *Fix:* warm the kernels on a 4×4 dummy state before starting the timer.
 
 **F14 — MEDIUM. `mass_error` silently reports 0.0 when the domain starts dry.**
-`core.py:571-572` only computes `mass_error` `if volume_initial > 0.0`. The standard
+`jalraksha/solver/core.py:618-619` only computes `mass_error` `if volume_initial > 0.0`. The standard
 breach-into-dry-terrain configuration starts with `h = 0` everywhere, so `mass_error`
 stays at its `0.0` default — indistinguishable from perfect conservation.
 *Fix:* set `result.mass_error = float("nan")` when it cannot be measured, and have the
@@ -10605,10 +10694,10 @@ export layer render NaN as "not measurable" rather than 0%.
 ```
 
 **F16 — MEDIUM. Friction splitting reduces the scheme to first order in time.**
-`core.py:455-464` applies friction once after the complete SSP-RK2 update — Lie splitting,
+`jalraksha/solver/core.py:499-508` applies friction once after the complete SSP-RK2 update — Lie splitting,
 `O(dt)`. The hydrodynamics are `O(dt²)`, so with `manning_n > 0` the overall temporal
 order is 1. The Thacker period test does not catch this because it runs frictionless
-(`tests/test_solver.py:725`).
+(`tests/test_solver.py:744`).
 *Fix:* Strang splitting — half-step friction, full RK2, half-step friction:
 
 ```python
@@ -10635,7 +10724,7 @@ should.
 **F19 — MEDIUM. `PHASE1_STATUS.md` is materially wrong and unmarked as superseded.**
 Dated 2026-08-24, it states the lake-at-rest gate is FAILING at 1.66 m/s
 (`PHASE1_STATUS.md:45, 105-106`), that `flux.py` uses a *"Van Leer limiter"*
-(`PHASE1_STATUS.md:19`) — the code uses minmod (`flux.py:127`) — and that the *"Numba JIT:
+(`PHASE1_STATUS.md:19`) — the code uses minmod (`jalraksha/solver/flux.py:265`) — and that the *"Numba JIT:
 Flux kernel ready for `@njit` decorator (not yet applied)"* (`PHASE1_STATUS.md:121`), when
 every kernel is decorated. It also recommends Option D: *"Lower lake-at-rest tolerance to
 1e-4 … Accept ~1% mass conservation error"* — advice that, if followed today, would undo a
@@ -10649,9 +10738,9 @@ every substantive point.
 > all kernels are @njit. Retained for history only — do not act on its recommendations.
 ```
 
-**F20 — LOW. The C-property is not exact at sub-`h_dry` faces.** `flux.py:172-173` returns
+**F20 — LOW. The C-property is not exact at sub-`h_dry` faces.** `jalraksha/solver/flux.py:188-189` returns
 a zero flux where the exact well-balanced value is `½g h*²`, while the Audusse correction
-at `flux.py:387` still carries `h² − h*²`. The residual is `O(g·h_dry²/dx) ≈ 1.6e−13 m/s²`
+at `jalraksha/solver/flux.py:414` still carries `h² − h*²`. The residual is `O(g·h_dry²/dx) ≈ 1.6e−13 m/s²`
 per step at `h_dry = 1e-6` and `dx = 30 m`. Harmless at the current threshold; it grows as
 `h_dry²`, so raising `h_dry` to `1e-3` would inflate it by `10⁶` to `~1.6e-7 m/s²` and
 could threaten the `1e-8 m/s` gate.
@@ -10659,19 +10748,19 @@ could threaten the `1e-8 m/s` gate.
 `return 0.0, 0.5 * G * max(h_left, h_right) ** 2, 0.0`.
 
 **F21 — LOW. `n_velocity_capped` counts cell-steps, not cells.** `flux.py:551` increments
-per cell per call and `core.py:456` accumulates across the run; `describe()` labels the
-total `"velocity_cap_activations"` (`core.py:592`). A single persistently-capped cell over
+per cell per call and `jalraksha/solver/core.py:500` accumulates across the run; `describe()` labels the
+total `"velocity_cap_activations"` (`jalraksha/solver/core.py:592`). A single persistently-capped cell over
 10,000 steps reports as 10,000 activations.
 *Fix:* rename the key to `velocity_cap_cell_steps` and additionally track
 `n_steps_with_capping`.
 
 **F22 — LOW. The boundary `ValueError` message omits an accepted value.**
-`core.py:150-153` accepts `"wall"` but the message lists only `'transmissive'` and
+`jalraksha/solver/core.py:237-240` accepts `"wall"` but the message lists only `'transmissive'` and
 `'reflective'`.
 *Fix:* `f"boundary must be one of 'transmissive', 'reflective', 'wall' (got {boundary!r})"`.
 
-**F23 — LOW. `g = 9.81` is defined three times.** `flux.py:73` (`G`), `types.py:184`
-(inside `State.froude`), and `tests/test_solver.py:32`, the last with a comment
+**F23 — LOW. `g = 9.81` is defined three times.** `jalraksha/solver/flux.py:75` (`G`), `types.py:184`
+(inside `State.froude`), and `tests/test_solver.py:33`, the last with a comment
 acknowledging the duplication.
 *Fix:* import `G` from `flux` in `types.py` and in the test module.
 
@@ -10683,7 +10772,7 @@ unbounded.
 *Fix:* materialise pool results into a dict keyed by `sample_id` and re-run only the
 missing ids.
 
-**F25 — LOW. Requesting fine snapshots changes the numerics.** `core.py:543-544` clamps
+**F25 — LOW. Requesting fine snapshots changes the numerics.** `jalraksha/solver/core.py:543-544` clamps
 `dt` to land exactly on each snapshot time. A caller asking for 1 s snapshots on a run
 whose CFL `dt` is 0.2 s changes the timestep sequence and therefore the round-off history
 relative to the same run without snapshots. Not incorrect, but it means snapshot cadence
@@ -10691,15 +10780,15 @@ is not a purely diagnostic setting.
 *Fix:* document it in the `run()` docstring, or interpolate snapshots between steps
 instead of clamping `dt`.
 
-**F26 — LOW. Transmissive ghost cells flat-extrapolate the bed.** `core.py:295-303` and
-`core.py:318-326` copy `b` outward, creating an artificial flat shelf at the domain edge.
+**F26 — LOW. Transmissive ghost cells flat-extrapolate the bed.** `jalraksha/solver/core.py:295-303` and
+`jalraksha/solver/core.py:318-326` copy `b` outward, creating an artificial flat shelf at the domain edge.
 On a domain truncated mid-slope this can pond water against the boundary.
 *Fix:* linearly extrapolate `b` into the ghost ring while keeping `η` zero-gradient.
 
 **Physics gaps (not defects, but must be stated in any report):** no Coriolis; no
 turbulent or eddy viscosity; no rainfall, infiltration or evaporation; no sediment
 transport or morphodynamics; fixed bed; no wind stress; no subgrid structures (bridges,
-culverts, embankments); single-layer, hydrostatic, depth-averaged. `core.py:24-30` is the
+culverts, embankments); single-layer, hydrostatic, depth-averaged. `jalraksha/solver/core.py:24-30` is the
 right disclaimer and should be reproduced verbatim wherever solver output is published.
 
 ---
@@ -10708,7 +10797,7 @@ right disclaimer and should be reproduced verbatim wherever solver output is pub
 
 The scheme itself is well constructed and, unusually for a hackathon codebase, its central
 claim is *provable from the source*: the C-property cancellation in §4a.1.4 can be checked
-by hand against `flux.py:382-391`, and the decision to forbid `fastmath` for the sake of
+by hand against `jalraksha/solver/flux.py:409-418`, and the decision to forbid `fastmath` for the sake of
 that cancellation (`flux.py:48-54`) is the correct engineering call, made explicitly and
 against the project's own style guide. The calibration tables for `CFL_MAX`, `PHI_MIN` and
 the bed-step correction are measured rather than inherited, and the test suite gates on
@@ -10716,10 +10805,24 @@ three analytical solutions with defensible, individually-justified tolerances.
 
 The risk in this subsystem is not in the numerics. It is at the boundary between the
 solver and everything around it: a per-step NaN scrub that has silently disabled the
-divergence guard (F1), an ensemble path that discards the land-cover roughness field (F2)
-and drifts its own clock (F3), two incompatible arrival thresholds (F4), and a
-parallel-equivalence test that never reaches the parallel path (F5). Those five should be
-fixed before any result from this solver is quoted.
+divergence guard (F1), an ensemble path that discarded the land-cover roughness field (F2)
+and drifted its own clock (F3), two incompatible arrival thresholds (F4), and a
+parallel-equivalence test that never reaches the parallel path (F5).
+
+**F2 and F3 were fixed on 2026-09-12** (`af996b7` and `5fa86b8`); F1, F4 and F5 stand as
+written, and those three should be fixed before any result from this solver is quoted.
+
+Both fixes came out of the GPU port rather than out of this audit, and the mechanism is
+worth naming because it generalises. `solver/ensemble_cuda.py` is a **second implementation
+of the member loop**, and writing it forced every implicit rule of the first one to be
+stated: which `dt` the clock advances by, and whether a member sees a field or a scalar.
+Two defects that had survived review as a CPU-only path became differences between two
+implementations, which is a far easier thing to notice.
+
+That second implementation is now itself a maintenance obligation, held in place by
+`tests/test_parallel.py::TestGpuEnsemble`, which binds the batched GPU ensemble to
+`run_ensemble_member`. Change one without the other and it fails — which is its whole
+purpose. The mirrored pieces are enumerated in §4a.1 and in `docs/DECISIONS.md` §14.
 
 <a id="4-2-consequence-modelling-earth-engine-integration"></a>
 
@@ -10777,7 +10880,8 @@ such rather than reconstructed.
 
 #### 4B.1 Package layout and import graph
 
-> **SUPERSEDED (2026-09-11).** `jalraksha/impact/__init__.py` now exports `HazardClassifier`, `HazardLevel`, `compute_par`, `compute_population_exposure` and the `damage` names. `PopulationEstimator` no longer exists. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** `jalraksha/impact/__init__.py` now exports `HazardClassifier`, `HazardLevel`, `compute_par`, `compute_population_exposure` and the `damage` names. `PopulationEstimator` no longer exists.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 ```
 jalraksha/impact/__init__.py      19 lines   exports 3 classes
@@ -10859,7 +10963,8 @@ imports patched in, which is noted where relevant.
 
 #### 4B.2 Hazard classification — `jalraksha/impact/hazard.py`
 
-> **SUPERSEDED (2026-09-11).** This module was rewritten. The continuous rating HR = d(|V| + 0.5) + DF, classed at 0.75 / 1.25 / 2.5, is now the only definition. The box-classifier threshold table described below is deleted, `SEVERE` is retired, `classify(depth, velocity_x, velocity_y)` refuses a single component, `classify_from_speed` takes a magnitude, and DF is a named parameter. The velocity-demotes-to-DRY defect (C-06) cannot occur. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** This module was rewritten. The continuous rating HR = d(|V| + 0.5) + DF, classed at 0.75 / 1.25 / 2.5, is now the only definition. The box-classifier threshold table described below is deleted, `SEVERE` is retired, `classify(depth, velocity_x, velocity_y)` refuses a single component, `classify_from_speed` takes a magnitude, and DF is a named parameter. The velocity-demotes-to-DRY defect (C-06) cannot occur.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 ##### 4B.2.1 The two parallel classification schemes
 
@@ -11436,7 +11541,8 @@ elsewhere in the same file, but the parameter is at least exposed.
 
 #### 4B.5 Population at risk — `jalraksha/impact/population.py`
 
-> **SUPERSEDED (2026-09-11).** `PopulationEstimator` and `DemographicGroup` were deleted rather than repaired (C-04). Only `compute_population_exposure` and `compute_par` remain, and `compute_par` now counts cells wet at exactly t = 0 (`>= 0`, previously `> 0`). See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** `PopulationEstimator` and `DemographicGroup` were deleted rather than repaired (C-04). Only `compute_population_exposure` and `compute_par` remain, and `compute_par` now counts cells wet at exactly t = 0 (`>= 0`, previously `> 0`).
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 ##### 4B.5.1 The two routes, and which one the application uses
 
@@ -11710,7 +11816,7 @@ edge case.
 
 `_generate_synthetic_settlements` uses bare `np.random.random()` with **no seed
 and no `default_rng`**, so successive calls with identical inputs produce
-different populations. `gee/population.py:309` gets this right
+different populations. `jalraksha/gee/population.py@16a8575:309` gets this right
 (`np.random.default_rng(0)`); this one does not.
 
 ---
@@ -11754,7 +11860,7 @@ set JALRAKSHA_GEE_PROJECT=<your-gcp-project>  # with the EE API enabled
 
 The comment at lines 38–40 explains why there is no default project: "Earth
 Engine has required a Cloud project since the 2023 access change, so there is no
-sensible default to fall back on." `CLAUDE.md:268` records the project actually
+sensible default to fall back on." `CLAUDE.md:269` records the project actually
 used in the demo — `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
 `scripts/run_api.py` because `.claude/launch.json` has no env field.
 
@@ -11959,7 +12065,7 @@ The cache directory is chosen by the caller. `tasks.py:205–207` uses
 `settings.DATA_DIR / "gee" / "ghsl" / f"epsg{crs_epsg}_{int(x0)}_{int(y0)}_{nx}x{ny}"`
 — keyed by CRS, origin and shape, so two runs with different domains cannot share
 a cache entry. `sar.py`'s caller uses `settings.DATA_DIR / "gee" / "sar" / reach.lower()`
-(`main.py:764`).
+(`services/api/jalraksha_service/main.py:853`).
 
 Manifest handling:
 
@@ -12346,7 +12452,7 @@ longer accurate and the comment should be updated.
 
 ##### 4B.8.6 `GeoSarResponse` and the "no fourth state" rule
 
-The response model lives at `services/api/jalraksha_service/schemas.py:394`:
+The response model lives at `services/api/jalraksha_service/schemas.py:423`:
 
 ```python
 class GeoSarResponse(BaseModel):
@@ -12386,10 +12492,10 @@ three `return` statements:
 
 1. `main.py:755` — unknown reach. `source="unavailable"`, `reason` lists the known
    reaches. No SAR call is made.
-2. `main.py:767` — `latest_observed_extent` raised `SarUnavailableError`.
+2. `services/api/jalraksha_service/main.py:856` — `latest_observed_extent` raised `SarUnavailableError`.
    `source="unavailable"`, `reason=str(exc)`, `bbox` echoed. This is the branch a
    refused Khadakwasla or Tehri scene takes.
-3. `main.py:770` — success. `source=observed["source"]`, which
+3. `services/api/jalraksha_service/main.py:859` — success. `source=observed["source"]`, which
    `latest_observed_extent` can only set to `"sentinel1_grd"` (live, line 520) or
    `"cached"` (line 603).
 
@@ -12763,7 +12869,7 @@ not imported. Raises `NameError` at class-body execution, which propagates throu
 unimportable, taking `tests/test_impact.py` with it. Fix: `from typing import
 Dict, Any, Optional, List` at line 21.
 
-**C2 — `jalraksha/impact/population.py:184` — CRITICAL.** `shape: Tuple[int, int]`
+**C2 — `jalraksha/impact/population.py@16a8575:184` — CRITICAL.** `shape: Tuple[int, int]`
 with `Tuple` not imported. Same failure mode. Fix: add `Tuple` to line 13. Adding
 `from __future__ import annotations` to both files would prevent recurrence and
 is the better structural fix.
@@ -12775,12 +12881,12 @@ base_value * (a + b·h)^b` multiplies the *whole asset class's* value into *ever
 cell*, and dry cells get `V·a^b > 0`. Measured: a 240×240 fully dry grid reports
 ₹44,216 crore of damage and `damage_percentage = 35,373 %`. Fix in §4B.4.4.
 
-**C4 — `jalraksha/impact/population.py:227` — CRITICAL.** Integer settlement codes
+**C4 — `jalraksha/impact/population.py@16a8575:227` — CRITICAL.** Integer settlement codes
 tested against string dictionary keys; the branch is never taken and every
 population density is 0.0. Measured: `total_population: 0` for every input. Fix in
 §4B.5.5(a).
 
-**C5 — `jalraksha/impact/population.py:261-267` — CRITICAL.** Nested depth
+**C5 — `jalraksha/impact/population.py@16a8575:261-267` — CRITICAL.** Nested depth
 thresholds accumulate, counting deep cells up to four times. Measured 6,912
 against a true 1,728, giving `par = 1.0` for a quarter-domain flood. Fix: make the
 bands disjoint (`(depth >= t_i) & (depth < t_{i+1})`) and report them separately
@@ -12803,12 +12909,12 @@ members and is always `False` for the fourth; the Wang/Jiang sensitivity curves
 are unreachable. Fix:
 `elif curve_version in self.alternative_curves.get(damage_type, {}): curve = self.alternative_curves[damage_type][curve_version]`.
 
-**H3 — `jalraksha/impact/population.py:275` — HIGH.** `cell_area_km2 = 200.0**2/1e6`
+**H3 — `jalraksha/impact/population.py@16a8575:275` — HIGH.** `cell_area_km2 = 200.0**2/1e6`
 re-hardcoded inside the function whose caller passes the correct value, so the PAR
 denominator is wrong for any grid that is not 200 m. Fix: delete line 275; the
 argument is already in scope.
 
-**H4 — `jalraksha/impact/population.py:319` — HIGH.** `demographics["total"]` sums
+**H4 — `jalraksha/impact/population.py@16a8575:319` — HIGH.** `demographics["total"]` sums
 overlapping groups (women ∩ children ≠ ∅). Measured 9,694 for a 6,912 population.
 Fix: report the groups without a `total`, or set `total` to the input
 `total_affected_population`.
@@ -12829,9 +12935,9 @@ the shape and fails above ~262 k pixels with an untranslated EE error. Fix: rout
 through `getDownloadURL` with explicit `dimensions`, or document and enforce a
 pixel budget.
 
-**M4 — `jalraksha/impact/population.py:202` — MEDIUM.** `np.random.random()` with
+**M4 — `jalraksha/impact/population.py@16a8575:202` — MEDIUM.** `np.random.random()` with
 no seed makes the synthetic settlement layout irreproducible run to run. Fix:
-`rng = np.random.default_rng(0)` as `gee/population.py:309` already does.
+`rng = np.random.default_rng(0)` as `jalraksha/gee/population.py@16a8575:309` already does.
 
 **M5 — `jalraksha/gee/sar.py:587-589` — MEDIUM.** A quality-gate refusal re-raises
 without consulting the cache, so a previously verified scene is shadowed by
@@ -12847,7 +12953,7 @@ sampling error in the gate metric is not academic. Fix: recompute precision from
 the delivered raster against a JRC raster downloaded on the same grid, or set
 `bestEffort=False` with an explicit `maxPixels` for the agreement reduction.
 
-**M7 — `jalraksha/impact/population.py:390` — MEDIUM.** `compute_par` does not
+**M7 — `jalraksha/impact/population.py@16a8575:390` — MEDIUM.** `compute_par` does not
 assert that `population_grid` and `arrival_time_grid` have the same shape; a
 broadcastable mismatch produces a wrong number silently. Fix in §4B.5.4.
 
@@ -12936,21 +13042,21 @@ determines an output value, with whether it carries a primary-literature citatio
 | 9 | Jonkman severe-zone rate | `impact/fatality.py:144` | `min(0.9, 0.5·(1−exp(−0.4·dv))·W)` | **No** — not the log-normal the docstring states | #8 |
 | 10 | Jonkman non-severe rate | `impact/fatality.py:147` | `min(0.05, 0.02·h·W)` | **No** | #8 |
 | 11 | DeKay–McClelland model | — | **absent** | Cited but not implemented | #9 |
-| 12 | "Graham (2009)" power-law a, b, r² | `impact/damage.py:42-58` | 0.0025/0.85/0.82; 0.0018/0.78/0.79; 0.0012/0.72/0.75 | **No** — `# TODO: UNVETTED` at line 39; no Graham 2009 in any reference list in the repo | #10 |
+| 12 | "Graham (2009)" power-law a, b, r² | `jalraksha/impact/damage.py:42-58` | 0.0025/0.85/0.82; 0.0018/0.78/0.79; 0.0012/0.72/0.75 | **No** — `# TODO: UNVETTED` at line 39; no Graham 2009 in any reference list in the repo | #10 |
 | 13 | Wang (2016), Jiang (2019) curves | `impact/damage.py:62-65` | 0.0032/0.88; 0.0028/0.82 | **No**; also unreachable (H2) | #10 |
 | 14 | Asset-value baselines | `impact/damage.py:69-73` | 125 / 85 / 45 crore INR | **No**; no price year, no inflation basis | #10 |
 | 15 | Uncertainty band | `impact/damage.py:76` | ± 20 % on `a` and `b` together | **No** | #10 |
-| 16 | `_SECTOR_RATE` exponential constants | `impact/damage.py:245-250` | 0.8 / 0.7 / 0.6 / 0.8 m⁻¹ | **No** — `# TODO: UNVETTED` at line 243, no named source | #10 |
+| 16 | `_SECTOR_RATE` exponential constants | `jalraksha/impact/damage.py:245-250` | 0.8 / 0.7 / 0.6 / 0.8 m⁻¹ | **No** — `# TODO: UNVETTED` at line 243, no named source | #10 |
 | 17 | Default population density | `impact/damage.py:209` | 450 persons/km² | **No** — "Census 2011" named, no table | — |
-| 18 | Exposure depth threshold | `impact/damage.py:213`, `impact/population.py:364` | 0.1 m | **No** — "Graham (2009)" named at damage.py:212 only | #10 |
+| 18 | Exposure depth threshold | `impact/damage.py:213`, `jalraksha/impact/population.py@16a8575:364` | 0.1 m | **No** — "Graham (2009)" named at damage.py:212 only | #10 |
 | 19 | Settlement-type densities | `impact/population.py:41-60` | 400 / 1200 / 4000 persons/km² | **No** — `# TODO: UNVETTED` at line 38 | — |
 | 20 | Vulnerability multipliers | `impact/population.py:44,50,56` | 1.2 / 1.0 / 0.8 | **No** | — |
 | 21 | Per-settlement elderly/children shares | `impact/population.py:45-58` | 12/18, 10/15, 9/12 % | **No** | — |
 | 22 | Land-use density adjustment | `impact/population.py:232,234` | × 1.1 urban, × 0.9 agricultural | **No** | — |
 | 23 | Exposure thresholds | `impact/population.py:63-68` | 0.1 / 0.5 / 1.0 / 2.0 m | **No** | — |
-| 24 | National demographic shares | `impact/population.py:307-310` | 18 / 11 / 48 / 62 % | **Partly** — "Census 2011, Sample Registration System" named, no table | — |
-| 25 | Demographic vulnerability multipliers | `impact/population.py:314-317` | 1.1 / 1.3 / 1.05 / 0.9 | **No** | — |
-| 26 | Vulnerability-index weights | `impact/population.py:346-352` | 1.2 / 1.5 / 1.1, ÷3, then 0.7/0.3 | **No** | — |
+| 24 | National demographic shares | `jalraksha/impact/population.py@16a8575:307-310` | 18 / 11 / 48 / 62 % | **Partly** — "Census 2011, Sample Registration System" named, no table | — |
+| 25 | Demographic vulnerability multipliers | `jalraksha/impact/population.py@16a8575:314-317` | 1.1 / 1.3 / 1.05 / 0.9 | **No** | — |
+| 26 | Vulnerability-index weights | `jalraksha/impact/population.py@16a8575:346-352` | 1.2 / 1.5 / 1.1, ÷3, then 0.7/0.3 | **No** | — |
 | 27 | `WARNING_LEAD_TIME_S` | `services/…/tasks.py:167` | 1800 s (30 min), global, no per-dam override | **No** | — |
 | 28 | `MIN_TILE_SEPARABILITY` | `gee/sar.py:198` | 0.7 | **Flagged** — `TODO: UNVETTED`, Martinis 2009 / Chini 2017 cited as method refs, value explicitly stated as "a working value, not a published one" | §17 |
 | 29 | `MIN_JRC_PRECISION` | `gee/sar.py:233` | 0.5 | **Flagged** — `TODO: UNVETTED`, with the measurements that motivated it and the Small (2011) fix that is not implemented | §17 |
@@ -12971,7 +13077,7 @@ verification queue — and the ones that are not flagged (rows 31–35) at least
 carry reasoned comments. In `impact/`, twenty-six coefficients determine the
 headline consequence numbers and **not one carries a primary-literature citation
 that a reader could follow to a page**. Three module-level `# TODO: UNVETTED`
-markers (`damage.py:39`, `damage.py:243`, `population.py:38`) cover them
+markers (`damage.py:39`, `damage.py:243`, `jalraksha/impact/population.py:38`) cover them
 collectively by gesturing at a `literature.md` that this chapter's file set does
 not contain, and the `source_note` strings returned in the result dicts do the
 same. `hazard.py` and `fatality.py` carry **no `TODO: UNVETTED` marker at all**,
@@ -13156,14 +13262,14 @@ the approximation: "A rectangle in UTM is NOT a rectangle in WGS84… Over a
 inside the 30 m DEM's own Tier-1 tolerance."
 
 Note the extent arithmetic here uses `x0, x0 + nx*dx` with **no** half-cell
-adjustment, consistent with the corner convention (`georef.py:181-184`).
+adjustment, consistent with the corner convention (`jalraksha/export/georef.py:181-184`).
 
 ### 4C.1.7 `epsg_from_crs(crs) -> int`
 
 `georef.py:193`. Accepts an `int` or a string of the form `"EPSG:32644"`,
 splits on the last `:`, and `int()`s the remainder. Raises `GeoreferenceError`
 on failure — "Guessing a default here would place every export in the wrong
-hemisphere without complaint." Called from `jalraksha/run.py:134` and
+hemisphere without complaint." Called from `jalraksha/run.py:135` and
 `services/api/jalraksha_service/tasks.py:203,1157`.
 
 ### 4C.1.8 `zip_shapefile(shp_path, output_path=None) -> str`
@@ -13185,7 +13291,7 @@ The `grid` dict that crosses every export boundary is
 `PROGRESS_SUMMARY.md:49` records that `run_dam_break_ensemble`'s returned `grid`
 dict "now carries `x0, y0, crs`, so keyframes geo-register correctly" — before
 that change the keyframe bounds were meaningless. Note that
-`jalraksha/run.py:135-138` builds the `grid_dict` for the GIS export path
+`jalraksha/run.py:136-139` builds the `grid_dict` for the GIS export path
 **without** `"crs"` and passes `crs_epsg` as a separate argument; the keyframe
 path (`tasks.py`) passes the full result dict including `grid["crs"]`. Two
 conventions for the same object, which is a latent trap for any new writer.
@@ -13450,7 +13556,7 @@ reason. **No explicit widths are set**; GeoPandas/Fiona infers them, so the
 widths above are the defaults, not a contract this code enforces.
 
 Crucially, `area_m2` is computed from the geometry (`float(geometry.area)`), not
-from a wet-cell count — the comment at `shapefile.py:239-241` says this is
+from a wet-cell count — the comment at `jalraksha/export/shapefile.py:239-241` says this is
 deliberate, "so the attribute and the shape can never disagree — the failure the
 legacy ribbon polygon had."
 
@@ -13464,7 +13570,8 @@ created them.
 
 ### 4C.3.4 `export_hazard_classification_polygons(...)`
 
-> **SUPERSEDED (2026-09-11).** The inline class table below is deleted. The exporter now calls `HazardClassifier.classify_from_speed`, and the classes are low / moderate / significant / extreme, so the export keys are `shp_hazard_moderate_zip` / `shp_hazard_significant_zip` (formerly `medium` / `high`). See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** The inline class table below is deleted. The exporter now calls `HazardClassifier.classify_from_speed`, and the classes are low / moderate / significant / extreme, so the export keys are `shp_hazard_moderate_zip` / `shp_hazard_significant_zip` (formerly `medium` / `high`).
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 `shapefile.py:255`:
 
@@ -13740,7 +13847,7 @@ def export_kmz(
 
 A `ZIP_DEFLATED` archive with the `.kml` at the **archive root** and every asset
 beside it, all with `arcname=os.path.basename(...)`. The comment at
-`kml.py:385-388` explains the flat layout: "the `<href>` written by
+`jalraksha/export/kml.py:385-388` explains the flat layout: "the `<href>` written by
 `export_depth_ground_overlay` is a bare filename — a `files/` prefix here would
 break the reference and the overlay would render as an empty box." Failures are
 caught into a warning and return `None`.
@@ -13781,7 +13888,7 @@ class Keyframe:
     bounds: List[float]          # [west, south, east, north] in WGS84 degrees
     hazard_summary: Dict[str, Any] = field(default_factory=dict)
 ```
-(`keyframes.py:34-40`)
+(`jalraksha/export/keyframes.py:34-40`)
 
 ```python
 @dataclass
@@ -13860,7 +13967,8 @@ For each selected key time:
 
 ### 4C.5.4 Colour ramp and hazard palette
 
-> **SUPERSEDED (2026-09-11).** Five colours now: the SEVERE class and its red (255, 0, 0) are gone, and the second, shapefile-only scheme this section criticises no longer exists. See `docs/validation_findings.md` §10 and the current source.
+**Current state (2026-09-11).** Five colours now: the SEVERE class and its red (255, 0, 0) are gone, and the second, shapefile-only scheme this section criticises no longer exists.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 There is no ramp — the palette is a six-entry lookup owned by
 `HazardClassifier` (`jalraksha/impact/hazard.py:55-61`):
@@ -13881,7 +13989,8 @@ a second four-class FD2320 scheme (§4C.3.4) and `kml.py` a third (a single red)
 
 ### 4C.5.5 Alpha / transparency handling
 
-> **SUPERSEDED (2026-09-11).** `DRY_DEPTH_M` is now an alias of `jalraksha.impact.hazard.WET_THRESHOLD_M` = 0.05 m, not a literal 0.1 m, so the transparent area is exactly the area the classifier calls DRY.
+**Current state (2026-09-11).** `DRY_DEPTH_M` is now an alias of `jalraksha.impact.hazard.WET_THRESHOLD_M` = 0.05 m, not a literal 0.1 m, so the transparent area is exactly the area the classifier calls DRY.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 ```python
 DRY_DEPTH_M = 0.1
@@ -13904,7 +14013,7 @@ system carries two different wet/dry cutoffs, an order of magnitude apart, for
 two different products.
 
 The historical bug is documented at length in `_render_png`'s docstring
-(`keyframes.py:189-197`): the PNGs were 3-channel RGB, dry cells were painted
+(`jalraksha/export/keyframes.py:189-197`): the PNGs were 3-channel RGB, dry cells were painted
 opaque `[128,128,128]`, "Every keyframe was a solid grey rectangle the size of
 the whole domain, with a thin coloured flood line on it… Both panels set a layer
 opacity (0.7 / 0.75), which made the grey translucent rather than absent — the
@@ -14019,15 +14128,15 @@ Two changes made it live:
   *representative member* — `snapshot_sample_id = argmin(|q_peak - q_target|)`,
   i.e. the member whose peak outflow is closest to the ensemble median
   (`run.py:674-675`) — and computes `snapshot_times = np.linspace(0,
-  solver_duration_s, n_snapshots)` (`run.py:676`). Those two values are handed to
+  solver_duration_s, n_snapshots)` (`jalraksha/run.py:665`). Those two values are handed to
   `run_ensemble(...)` and consumed by `solver/parallel.py::_snapshot`. At
-  `run.py:831-832` the collected series is attached as `result["depth_series"]`.
+  `jalraksha/run.py:845-846` the collected series is attached as `result["depth_series"]`.
   Recording *every* member's depth history is explicitly rejected as
   "memory-prohibitive for ensembles of 100-10,000."
 * **`grid` gained `x0, y0, crs`**, without which `_reproject_bounds_utm_to_wgs84`
   had nothing meaningful to reproject.
 
-The API call site is `tasks.py:1343-1354`: report 96% progress, import
+The API call site is `services/api/jalraksha_service/tasks.py:1343-1354`: report 96% progress, import
 `export_keyframes`, write into `settings.DATA_DIR / "keyframes" / run_id`,
 register the manifest as an export of kind `keyframe_manifest`, and take
 `manifest.keyframes[-1].hazard_summary` as the run's headline hazard summary.
@@ -14118,7 +14227,7 @@ must contain `"EPSG"` (else `XdmfExportError`); axes must be strictly increasing
 frame times must be strictly increasing; each frame field must match `(ny, nx)`.
 
 **Terrain-only mode.** `frames=None` or `[]` prints a loud notice
-(`xdmf_export.py:187-190`) and substitutes a single zero-water frame at `t=0`.
+(`jalraksha/export/xdmf_export.py:187-190`) and substitutes a single zero-water frame at `t=0`.
 This is legitimate for the terrain-rendering phase and is "announced rather than
 silently producing an empty water array."
 
@@ -14173,7 +14282,7 @@ invent a vertical component that was never solved." `velocity_magnitude` is
 </Xdmf>
 ```
 
-Two measured decisions are pinned here and in `ARCHITECTURE.md:51-64`:
+Two measured decisions are pinned here and in `paraview/ARCHITECTURE.md:51-64`:
 
 * **`3DCoRectMesh` with a singleton Z, not `2DCoRectMesh`.** With 2D, "the XDMF2
   reader mapped easting/northing onto VTK's Y/Z axes and left X degenerate
@@ -14355,7 +14464,7 @@ floats through hills or clips underground at the seams, which reads as fake
 immediately. Tiling the same Copernicus GLO-30 DEM … makes them match by
 construction."
 
-The format decision (`build_terrain_tiles.py:11-16`), which is the documented
+The format decision (`tools/cesium/build_terrain_tiles.py:11-16`), which is the documented
 reason it is **not** quantized-mesh:
 
 > `cesium-terrain-builder` is a C++ build we do not have, and the Python
@@ -14519,7 +14628,7 @@ verification script itself is not in the repository**; only its recorded result
 is. That result cannot be independently reproduced from what is checked in.
 
 The tiles are served by the API at `/tiles`, CORS-enabled
-(`services/api/jalraksha_service/main.py:90`), with an nginx `tiles` service in
+(`services/api/jalraksha_service/main.py:92`), with an nginx `tiles` service in
 Docker Compose.
 
 ### 4C.8.8 `upload_terrain_to_ion.py` — explicitly UNVERIFIED
@@ -14539,7 +14648,7 @@ poll `GET /v1/assets/{id}` up to 120 times at 5 s intervals until
 `status == "COMPLETE"`. It raises `RuntimeError` on `"ERROR"` and `TimeoutError`
 after ~10 minutes.
 
-`PROGRESS_SUMMARY.md:155-157` confirms it "remains as an **unverified**
+`docs/archive/PROGRESS_SUMMARY.md:155-157` confirms it "remains as an **unverified**
 alternative for anyone who prefers Cesium ion" — the self-hosted tiler is the
 supported path.
 
@@ -14649,12 +14758,12 @@ Finally it prints the exact matching render command (`:338-351`), substituting
 | Solver modes | **unavailable** (no vetted height/storage/type) | available |
 
 `paraview/README.md:29` lists Khadakwasla's domain radius as **30 km**, and the
-`fetch_dem` example at `README.md:70` uses `domain_radius_km=30.0`, but
+`fetch_dem` example at `paraview/README.md:70` uses `domain_radius_km=30.0`, but
 `presets.py:320` says **27.0**. Since `dem_filename()` (`presets.py:182-184`)
 keys only on lat/lon and not on radius, the mismatch will not produce a missing
 file — it will produce a DEM clipped to a radius the preset does not expect.
 
-**The hardcoded 1.5 / 25.0 bug.** `CLAUDE.md:307-311` states it plainly:
+**The hardcoded 1.5 / 25.0 bug.** `CLAUDE.md:308-312` states it plainly:
 
 > **ParaView uses each dam's own preset** (`vertical_exaggeration`,
 > `nominal_depth_m`). These were hardcoded to 1.5 / 25.0 for every dam, which
@@ -14662,18 +14771,18 @@ file — it will produce a DEM clipped to a radius the preset does not expect.
 > `main.py` is in the `.pvsm` staleness check, so changing those arguments
 > invalidates cached states.
 
-The API-side comment (`services/api/jalraksha_service/main.py:903-916`) adds the
+The API-side comment (`services/api/jalraksha_service/main.py:997-1010`) adds the
 measurement: "confirmed in the generated `.pvsm` files, where both dams'
 `WarpByScalar.ScaleFactor` read 1.5… Its terrain has 1,170 m of relief across
 54 km (Tehri: 6,495 m across 120 km), so at 1.5x it renders as a near-flat plate
 — its preset asks for 2.0. And a colour ramp scaled to 25 m leaves a 13.4 m flood
 at 53% saturation, washing the water out to pale blue; its preset asks for 18.5 m."
 
-The fix is `_run_preset(run)` (`main.py:386-405`), which reads
+The fix is `_run_preset(run)` (`services/api/jalraksha_service/main.py:471-490`), which reads
 `settings.DEMO_DAMS` (not `jalraksha.presets`, because the service registry
 covers dams like bhakra/idukki/hirakud that have no `DamPreset`) and falls back
 to `_PARAVIEW_FALLBACK = {"vertical_exaggeration": 1.5, "nominal_depth_m": 25.0}`
-(`main.py:383`). **The 1.5/25.0 literals therefore still exist**, both as that
+(`services/api/jalraksha_service/main.py:468`). **The 1.5/25.0 literals therefore still exist**, both as that
 fallback and as `render_static.py`'s own argparse defaults (`:219`, `:238`) —
 they are simply no longer applied to the two dams that have presets.
 
@@ -14692,12 +14801,12 @@ Sequence, not Snap To TimeSteps, because "Solver timesteps are unevenly spaced
 (adaptive CFL), so Sequence is what gives a fixed frame rate and a fixed-length
 animation; ParaView does the interpolation itself, so no custom interpolation
 code." A serialisation trap is recorded in both `render_static.py:540-543` and
-`IMPLEMENTATION_PLAN.md:102-107`: ParaView 6.2.0 serialises `Sequence` as `0` and
+`paraview/IMPLEMENTATION_PLAN.md:102-107`: ParaView 6.2.0 serialises `Sequence` as `0` and
 `Snap To TimeSteps` as `2`, so a `PlayMode` of `0` in the XML is *correct* and is
 not the older three-value enum.
 
 The API rebuilds a state when it is missing, older than the dataset, **or older
-than any of its generators** (`main.py:880-895`):
+than any of its generators** (`services/api/jalraksha_service/main.py:974-989`):
 
 ```python
 generators = [render_script, render_script.parent / "camera_presets.py",
@@ -14720,7 +14829,7 @@ Editing a preset's `vertical_exaggeration` without touching `main.py` leaves eve
 cached state stale-but-considered-fresh — the exact class of bug the check was
 added to close.
 
-The launch command built for a run (`main.py:906-919`):
+The launch command built for a run (`services/api/jalraksha_service/main.py:1000-1013`):
 
 ```
 {PVPYTHON_EXE} {render_script}
@@ -14736,7 +14845,7 @@ then `subprocess.Popen([paraview_exe, f"--state={state_path}"])`.
 
 ### 4C.9.5 Executable discovery and the `paraview_not_found` response
 
-`config.py:194-196`:
+`services/api/jalraksha_service/config.py:194-196`:
 
 ```python
 PARAVIEW_EXE = _env("JALRAKSHA_PARAVIEW_EXE", "C:/Program Files/ParaView 6.2.0/bin/paraview.exe")
@@ -14747,7 +14856,7 @@ PVPYTHON_EXE = _env("JALRAKSHA_PVPYTHON_EXE", "C:/Program Files/ParaView 6.2.0/b
 Windows default and skips the whole module when it is absent.
 
 The endpoint returns a **structured result rather than raising**, with five
-documented reasons (`main.py:803-809`): `launched`, `not_done`, `no_dataset`,
+documented reasons (`services/api/jalraksha_service/main.py:896-902`): `launched`, `not_done`, `no_dataset`,
 `paraview_not_found`, `state_build_failed`. The `paraview_not_found` payload
 (`main.py:843-853`):
 
@@ -14861,7 +14970,7 @@ Functions:
   GLO-30 caveat.
 
 The per-dam search radius is the documented Khadakwasla finding
-(`reservoir.py:130-145`): "radius (5, 12) gave a spurious bearing of 11 deg (N)
+(`tools/paraview/reservoir.py:130-145`): "radius (5, 12) gave a spurious bearing of 11 deg (N)
 that put the seed on a 580 m rise; radius (20, 40) and beyond stably agreed on
 53 deg (NE)… and placed the seed directly on a genuine, 2.8 km-wide, dead-flat
 580.0 m plateau."
@@ -14937,7 +15046,7 @@ is 0 there for every dataset, so every glyph request would silently self-skip."
 Returns `None` with a printed reason when there are no wet cells or when
 `max |v| == 0` (a static reservoir). Auto-derives
 `stride = max(1, n_wet // 400)` and `scale = 0.025 * domain_diagonal / max_speed`.
-`IMPLEMENTATION_PLAN.md:118-123` records the measurements: synthetic → stride 45
+`paraview/IMPLEMENTATION_PLAN.md:118-123` records the measurements: synthetic → stride 45
 (407 arrows), Tehri → stride 1 (273).
 
 **`_dataset_path(value)`** (`:187`) — argparse coercion to an absolute resolved
@@ -15016,7 +15125,7 @@ the proxy's stored CameraPosition back over it." And `RenderAllViews()` is calle
 
 ### 4C.9.10 Reconciling the two phase-numbering schemes
 
-There are two schemes, and `CLAUDE.md:320-326` says so explicitly:
+There are two schemes, and `CLAUDE.md:321-327` says so explicitly:
 
 * **Scheme A — spec Section 17**, used by `paraview/IMPLEMENTATION_PLAN.md`,
   `paraview/README.md` and `paraview/ARCHITECTURE.md`. Phases 1–9: DEM→terrain,
@@ -15055,14 +15164,14 @@ Reading the two together, the state of the sub-project is:
 **Not built:**
 
 * **Phase 8 — video export.** `render_animation.py` and the FFmpeg encode are
-  both unchecked in `IMPLEMENTATION_PLAN.md:182-184`; `README.md:14` lists "video
+  both unchecked in `IMPLEMENTATION_PLAN.md:182-184`; `paraview/README.md:14` lists "video
   export, optimization" as *not built (spec Phases 8/9)*.
 * **Phase 9 — optimization.** Unchecked; "Only once Phases 1–8 have artifacts.
   Section 0 forbids tuning earlier."
 
-**The contradiction to note.** `CLAUDE.md:376-380` says "Phases 6, 8, and 9
+**The contradiction to note.** `CLAUDE.md:377-381` says "Phases 6, 8, and 9
 remain unbuilt", but `IMPLEMENTATION_PLAN.md`'s Phase 6 section is fully checked
-off with verified measurements, and `README.md:13` lists "overlays, terrain
+off with verified measurements, and `paraview/README.md:13` lists "overlays, terrain
 block, cameras, saved state" as **working** for "spec Phases 2/5/6/7". Reading
 `CLAUDE.md`'s claim through its own `Maps to` column resolves it: its table's
 label "Phase 6" maps to Section 17 Phase 7 — but Phase 7 is *also* done. The most
@@ -15076,7 +15185,7 @@ inconsistency rather than resolving it silently.
 layer — `build_pipeline.py`, `camera_presets.py`, `render_static.py`,
 `render_animation.py`, `.pvsm` state — waits until ParaView is installed", and its
 section 1 table lists ParaView as "not installed yet". Both statements are now
-false (`IMPLEMENTATION_PLAN.md:11-13`: "ParaView 6.2.0 and FFmpeg are now
+false (`paraview/IMPLEMENTATION_PLAN.md:11-13`: "ParaView 6.2.0 and FFmpeg are now
 installed on this machine"). `ARCHITECTURE.md`'s **format and CRS decisions
 remain current**; its **status claims do not**.
 
@@ -15151,7 +15260,7 @@ carrying no warning at all."
 **In the dataset: no.** `is_synthetic` is written into the HDF5 root attributes
 and into every timestep of the XDMF, and `test_xdmf_export.py` proves it survives
 the reader family ParaView uses. The provenance string additionally names the
-producer. A `.h5` can be interrogated in one line, and `README.md:226` gives that
+producer. A `.h5` can be interrogated in one line, and `paraview/README.md:226` gives that
 line.
 
 **In a rendered PNG: probably, but with one unresolved risk.**
@@ -15174,7 +15283,7 @@ highest-severity item in this chapter and needs a one-line manual render of
 `synthetic.xdmf` to settle.
 
 **A second, narrower gap.** Only `--synthetic` sets the flag. A `--reservoir`
-dataset is also not a hydrodynamic result — `README.md:219-223` says so and
+dataset is also not a hydrodynamic result — `paraview/README.md:219-223` says so and
 `make_dataset.py:329-331` stores a disclaimer in provenance — but it carries
 `is_synthetic=0`, so **no banner appears on a rendered reservoir image**. The
 disclaimer lives only in `provenance_solver`, which nothing renders. A viewer
@@ -15637,7 +15746,7 @@ the two must be reconciled deliberately, not by coincidence.
 ---
 
 **16. `1.5` / `25.0` still live as fallbacks for un-presetted dams. (MEDIUM)** —
-`services/api/jalraksha_service/main.py:383`, `paraview/render_static.py:219,238`.
+`services/api/jalraksha_service/main.py:468`, `paraview/render_static.py:219,238`.
 
 Bhakra, Idukki and Hirakud still render at the values that flattened
 Khadakwasla. Derive them from the data instead of a literal:
@@ -15747,7 +15856,7 @@ cache filename.
 
 **24. `ARCHITECTURE.md` status claims are stale, and `CLAUDE.md`'s "Phases 6, 8,
 9 unbuilt" contradicts `IMPLEMENTATION_PLAN.md`. (LOW)** —
-`paraview/ARCHITECTURE.md:14,124,130,147-151`; `CLAUDE.md:376-380`.
+`paraview/ARCHITECTURE.md:14,124,130,147-151`; `CLAUDE.md:377-381`.
 
 ARCHITECTURE.md's format/CRS decisions are current; its "not installed yet" /
 "deferred" / "not built yet" status lines are not. Add a header:
@@ -15874,27 +15983,27 @@ The project is scrupulous about the limits of what this buys it. `pysph_runner.p
     it does not resolve channel-scale features.
 ```
 
-That is an important honesty: with a derived particle spacing that can fall to 1 m (the clamp at `pysph_runner.py:290`), the particle resolution is thirty times finer than the terrain it is running over. The SPH run is therefore resolving the *fluid* far more finely than the *boundary*, which limits what can be claimed about the resulting depth field. The engine is defensible as a demonstration that the breach jet is being treated with the right class of physics; it is not defensible as a metre-accurate prediction of near-field depth, and the code does not claim it is.
+That is an important honesty: with a derived particle spacing that can fall to 1 m (the clamp at `jalraksha/sph/pysph_runner.py:435`), the particle resolution is thirty times finer than the terrain it is running over. The SPH run is therefore resolving the *fluid* far more finely than the *boundary*, which limits what can be claimed about the resulting depth field. The engine is defensible as a demonstration that the breach jet is being treated with the right class of physics; it is not defensible as a metre-accurate prediction of near-field depth, and the code does not claim it is.
 
 ### A2. The WCSPH formulation as implemented
 
 The near-field engine is Weakly Compressible SPH (WCSPH) executed through PySPH's `WCSPHScheme`. JalRaksha does not implement the SPH discretisation itself — a deliberate decision recorded at length in `jalraksha/sph/core.py`, discussed in A3 below. What JalRaksha *does* own is the choice of every scheme parameter, and those choices are all in `pysph_runner.py`'s module-level constants and in `_NearFieldDamBreak.create_scheme`.
 
-**Reference density and gravity** (`pysph_runner.py:50-51`):
+**Reference density and gravity** (`jalraksha/sph/pysph_runner.py:51-52`):
 
 ```python
 GRAVITY = 9.81          # m/s2
 RHO_WATER = 1000.0      # kg/m3, freshwater reference density
 ```
 
-**Tait equation of state.** The exponent is set at `pysph_runner.py:54-55`:
+**Tait equation of state.** The exponent is set at `jalraksha/sph/pysph_runner.py:55-56`:
 
 ```python
 # Tait exponent for water. Monaghan (1994) eq. 6.
 TAIT_GAMMA = 7.0
 ```
 
-and passed to the scheme as `gamma=TAIT_GAMMA` (`pysph_runner.py:444`). The equation of state as written out in `hydrostatic_density`'s docstring (`pysph_runner.py:113-119`) is:
+and passed to the scheme as `gamma=TAIT_GAMMA` (`pysph_runner.py:444`). The equation of state as written out in `hydrostatic_density`'s docstring (`jalraksha/sph/pysph_runner.py:255-261`) is:
 
 ```
     p = B * ((rho/rho0)^gamma - 1),   B = rho0 * c0^2 / gamma
@@ -15906,7 +16015,7 @@ with γ = 7, ρ₀ = 1000 kg/m³. Inverted for the hydrostatic pressure `p = ρ�
     rho = rho0 * (1 + rho0*g*(surface - z) / B)^(1/gamma)
 ```
 
-implemented verbatim at `pysph_runner.py:128-130`:
+implemented verbatim at `jalraksha/sph/pysph_runner.py:270-272`:
 
 ```python
     B = RHO_WATER * c0 ** 2 / TAIT_GAMMA
@@ -15914,9 +16023,9 @@ implemented verbatim at `pysph_runner.py:128-130`:
     return RHO_WATER * (1.0 + pressure / B) ** (1.0 / TAIT_GAMMA)
 ```
 
-The rationale for initialising density hydrostatically rather than at uniform ρ₀ is given in the same docstring (`pysph_runner.py:120-126`) and is measured, not asserted: uniform ρ₀ "left the measured dp/d(depth) 29% below rho*g, and put visible spurious motion into water that should be at rest." `docs/validation_findings.md:88-93` gives the measured progression: 28.9% error with uniform density, 8.8% with hydrostatic density, 3.2% with hydrostatic density plus `n_damp=50` at t = 4 s. The tests confirm the round trip: `tests/test_sph.py:167-175` (`test_inverts_the_tait_equation`) reconstructs `p` from the returned ρ via Tait and asserts it equals `ρg(surface − z)` to `rtol=1e-6`.
+The rationale for initialising density hydrostatically rather than at uniform ρ₀ is given in the same docstring (`pysph_runner.py:120-126`) and is measured, not asserted: uniform ρ₀ "left the measured dp/d(depth) 29% below rho*g, and put visible spurious motion into water that should be at rest." `docs/validation_findings.md:88-93` gives the measured progression: 28.9% error with uniform density, 8.8% with hydrostatic density, 3.2% with hydrostatic density plus `n_damp=50` at t = 4 s. The tests confirm the round trip: `tests/test_sph.py:227-235` (`test_inverts_the_tait_equation`) reconstructs `p` from the returned ρ via Tait and asserts it equals `ρg(surface − z)` to `rtol=1e-6`.
 
-**Speed of sound.** Not a constant — derived per run at `pysph_runner.py:406-409`:
+**Speed of sound.** Not a constant — derived per run at `jalraksha/sph/pysph_runner.py:551-554`:
 
 ```python
     # Speed of sound: 10x the maximum expected flow speed keeps density
@@ -15927,15 +16036,15 @@ The rationale for initialising density hydrostatically rather than at uniform ρ
 
 This is the classical WCSPH criterion: with `c0 ≥ 10 U_max`, the Mach number stays below 0.1 and the Tait relation keeps `Δρ/ρ₀ ≲ 1%`, which is what makes "weakly compressible" a usable approximation to incompressible flow. The maximum expected speed is bounded below by the free-fall speed for the reservoir head, `√(2gH)`, so a deep reservoir automatically gets a stiffer equation of state.
 
-**Kernel and smoothing length.** The kernel is Wendland quintic in three dimensions (`pysph_runner.py:260` imports `WendlandQuintic`; `pysph_runner.py:455` passes `kernel=WendlandQuintic(dim=3)`). The smoothing length ratio is at `pysph_runner.py:52`:
+**Kernel and smoothing length.** The kernel is Wendland quintic in three dimensions (`jalraksha/sph/pysph_runner.py:405` imports `WendlandQuintic`; `jalraksha/sph/pysph_runner.py:600` passes `kernel=WendlandQuintic(dim=3)`). The smoothing length ratio is at `jalraksha/sph/pysph_runner.py:53`:
 
 ```python
 HDX = 1.3               # smoothing length / particle spacing (Monaghan 1994)
 ```
 
-and the smoothing length itself at `pysph_runner.py:404`: `h0 = HDX * spacing`. Every particle — fluid and boundary — is created with `h=np.full_like(..., h0)` (`pysph_runner.py:425`, `434`), so the field is uniform-h; there is no adaptive smoothing length. The Wendland quintic is C² continuous and positive-definite, which is the standard modern choice over the cubic spline for free-surface WCSPH because it suppresses the pairing instability. The citation is at `pysph_runner.py:37-38` (Wendland 1995).
+and the smoothing length itself at `jalraksha/sph/pysph_runner.py:549`: `h0 = HDX * spacing`. Every particle — fluid and boundary — is created with `h=np.full_like(..., h0)` (`jalraksha/sph/pysph_runner.py:570`, `434`), so the field is uniform-h; there is no adaptive smoothing length. The Wendland quintic is C² continuous and positive-definite, which is the standard modern choice over the cubic spline for free-surface WCSPH because it suppresses the pairing instability. The citation is at `pysph_runner.py:37-38` (Wendland 1995).
 
-**Artificial viscosity.** Monaghan's α–β artificial viscosity, configured at `pysph_runner.py:57-64`:
+**Artificial viscosity.** Monaghan's α–β artificial viscosity, configured at `jalraksha/sph/pysph_runner.py:58-65`:
 
 ```python
 # Monaghan artificial viscosity. 0.25 is the value PySPH's own validated
@@ -15950,7 +16059,7 @@ BETA_VISCOSITY = 0.0
 
 This is the most important caveat in the whole SPH subsystem and the code states it rather than hiding it. α is the *only* dissipation mechanism in the model — there is no turbulence closure, no δ-SPH density diffusion, no laminar viscous term. At the scale of a laboratory dam break (the PySPH example this value is borrowed from), α = 0.25 is a reasonable numerical-stabilisation choice. At a 260 m Tehri head it is doing the job of a sub-grid eddy viscosity with no calibration behind it, and the reported near-field depths and speeds are correspondingly sensitive to a number nobody has fitted. `docs/validation_findings.md:148-149` repeats the admission in the "Not verified" section: "**The SPH near-field is not validated against a published experiment.** `ALPHA_VISCOSITY = 0.25` carries a `TODO: UNVETTED`."
 
-**Time integrator and timestep.** The integrator is whatever `WCSPHScheme` configures by default (PySPH's WCSPH predictor–corrector); JalRaksha sets the timestep policy, at `pysph_runner.py:447-458`:
+**Time integrator and timestep.** The integrator is whatever `WCSPHScheme` configures by default (PySPH's WCSPH predictor–corrector); JalRaksha sets the timestep policy, at `jalraksha/sph/pysph_runner.py:592-603`:
 
 ```python
             # Initial CFL on the acoustic speed (Monaghan 1994 eq. 3.19)...
@@ -15969,7 +16078,7 @@ This is the most important caveat in the whole SPH subsystem and the code states
 
 `dt = 0.25 h₀ / (1.1 c₀)` is the acoustic CFL condition. Adaptive timestepping then tightens it against the force and viscous limits during the collapse. `pfreq=10**9` disables intermediate dumps entirely — a deliberate choice with a consequence documented downstream (`services/api/jalraksha_service/tasks.py:1043-1045`): there is no per-timestep particle cloud, only the final state, so the SPH panel shows one snapshot rather than an animation, and says so.
 
-**Damping ramp.** `pysph_runner.py:66-71`:
+**Damping ramp.** `jalraksha/sph/pysph_runner.py:67-72`:
 
 ```python
 # Iterations over which PySPH ramps the timestep in from zero. WCSPH starts
@@ -15980,7 +16089,7 @@ This is the most important caveat in the whole SPH subsystem and the code states
 N_DAMP_STEPS = 50
 ```
 
-**Particle spacing.** Not fixed. It is solved for from a particle budget, so runs stay bounded whatever the dam size (`pysph_runner.py:74-76`, `282-290`):
+**Particle spacing.** Not fixed. It is solved for from a particle budget, so runs stay bounded whatever the dam size (`jalraksha/sph/pysph_runner.py:75-77`, `282-290`):
 
 ```python
 TARGET_FLUID_PARTICLES = 9000
@@ -15993,11 +16102,11 @@ TARGET_FLUID_PARTICLES = 9000
     spacing = float(np.clip(spacing, 1.0, max(2.0, reservoir_depth_m / 4.0)))
 ```
 
-The spacing is the cube root of the per-particle volume implied by filling the reservoir block with `target_particles` particles, then clamped to `[1 m, max(2 m, H/4)]`. The lower clamp of 1 m is arbitrary but conservative; the upper clamp guarantees at least four particle layers through the reservoir depth. Particle mass and volume follow directly (`pysph_runner.py:402-403`): `particle_volume = spacing**3`, `particle_mass = RHO_WATER * particle_volume`. This derived volume is the value that `delft3d/comparison.py` requires in order to rasterise the particle cloud into a depth field (see B5), and its provenance is the whole reason that requirement exists.
+The spacing is the cube root of the per-particle volume implied by filling the reservoir block with `target_particles` particles, then clamped to `[1 m, max(2 m, H/4)]`. The lower clamp of 1 m is arbitrary but conservative; the upper clamp guarantees at least four particle layers through the reservoir depth. Particle mass and volume follow directly (`jalraksha/sph/pysph_runner.py:547-548`): `particle_volume = spacing**3`, `particle_mass = RHO_WATER * particle_volume`. This derived volume is the value that `delft3d/comparison.py` requires in order to rasterise the particle cloud into a depth field (see B5), and its provenance is the whole reason that requirement exists.
 
 **Boundary particle treatment.** Dynamic boundary particles — the boundary is a second `get_particle_array_wcsph` array registered with the scheme as a solid (`pysph_runner.py:441`: `WCSPHScheme(["fluid"], ["boundary"], ...)`), created with the same mass and smoothing length as the fluid but at uniform ρ₀ (`pysph_runner.py:430-436`). `hg_correction=True` (`pysph_runner.py:445`) enables PySPH's Hughes–Graham boundary correction, which prevents the artificially low densities that otherwise develop in fluid particles near a solid wall.
 
-The geometry of the boundary set is the part JalRaksha owns, and it is unusually well justified (`pysph_runner.py:329-338`):
+The geometry of the boundary set is the part JalRaksha owns, and it is unusually well justified (`jalraksha/sph/pysph_runner.py:474-483`):
 
 ```
     # ---- Boundary. The bed, plus walls closing the domain on three sides.
@@ -16015,16 +16124,16 @@ The geometry of the boundary set is the part JalRaksha owns, and it is unusually
 Three structural elements are laid down:
 
 1. **Bed**, two layers deep, one particle set per DEM cell at the resampled spacing, at `bed[j,i] − (layer+0.5)*spacing` (`pysph_runner.py:341-346`).
-2. **Upstream wall** at `y < 0`, spanning the full width, two layers thick, `n_wall_layers = int(wall_height/spacing) + 1` tall where `wall_height = reservoir_depth_m + 2*spacing` (`pysph_runner.py:348-357`).
-3. **Lateral walls** at `x < 0` and `x > width`, running the full domain length, also two layers thick (`pysph_runner.py:359-371`).
+2. **Upstream wall** at `y < 0`, spanning the full width, two layers thick, `n_wall_layers = int(wall_height/spacing) + 1` tall where `wall_height = reservoir_depth_m + 2*spacing` (`jalraksha/sph/pysph_runner.py:493-502`).
+3. **Lateral walls** at `x < 0` and `x > width`, running the full domain length, also two layers thick (`jalraksha/sph/pysph_runner.py:504-516`).
 
 The downstream face is deliberately open. Two layers is the correct minimum for a dynamic-boundary treatment with a Wendland quintic at `hdx = 1.3` — the kernel support radius is `2h = 2.6 dx`, so two layers plus the bed's own particles keeps the support of a near-wall fluid particle from being truncated.
 
-**Terrain orientation.** Before any of this geometry is built, the DEM window is rotated so that increasing `+y` points downslope (`orient_downhill`, `pysph_runner.py:133-170`). The justification (`pysph_runner.py:143-148`) is that DEM row order is a compass direction, not a hydraulic one, and that "a dam on a river flowing south would have its reservoir released UPHILL, and the surge would stall against the valley wall while the numbers still looked superficially reasonable." Only the four lattice-preserving `np.rot90` rotations are considered, on the explicit grounds (`pysph_runner.py:151-153`) that an arbitrary-angle rotation "would need interpolation, which invents elevations the 30 m source does not contain." The rotation is chosen by scoring the mean bed drop from the first row to the last across all four candidates and taking the maximum (`pysph_runner.py:163-170`). `tests/test_sph.py:139-150` parametrises all four input orientations and asserts the drop is positive after orientation, plus asserts the sorted elevation multiset is unchanged — i.e. it is a rotation, not a resample.
+**Terrain orientation.** Before any of this geometry is built, the DEM window is rotated so that increasing `+y` points downslope (`orient_downhill`, `jalraksha/sph/pysph_runner.py:275-312`). The justification (`jalraksha/sph/pysph_runner.py:285-290`) is that DEM row order is a compass direction, not a hydraulic one, and that "a dam on a river flowing south would have its reservoir released UPHILL, and the surge would stall against the valley wall while the numbers still looked superficially reasonable." Only the four lattice-preserving `np.rot90` rotations are considered, on the explicit grounds (`jalraksha/sph/pysph_runner.py:293-295`) that an arbitrary-angle rotation "would need interpolation, which invents elevations the 30 m source does not contain." The rotation is chosen by scoring the mean bed drop from the first row to the last across all four candidates and taking the maximum (`jalraksha/sph/pysph_runner.py:305-312`). `tests/test_sph.py:199-210` parametrises all four input orientations and asserts the drop is positive after orientation, plus asserts the sorted elevation multiset is unchanged — i.e. it is a rotation, not a resample.
 
-**Reservoir free surface.** A subtlety that would be easy to get wrong and is not (`pysph_runner.py:301-307`): the reservoir surface is *level*, taken as `bed[0,:].min() + reservoir_depth_m`, so the water depth above the bed varies with the terrain beneath it. Stacking a fixed depth on every cell would tilt the water surface to follow the valley floor and start the run with a slope-driven flow unrelated to the breach.
+**Reservoir free surface.** A subtlety that would be easy to get wrong and is not (`jalraksha/sph/pysph_runner.py:446-452`): the reservoir surface is *level*, taken as `bed[0,:].min() + reservoir_depth_m`, so the water depth above the bed varies with the terrain beneath it. Stacking a fixed depth on every cell would tilt the water surface to follow the valley floor and start the run with a slope-driven flow unrelated to the breach.
 
-**Divergence guard.** `_assert_did_not_diverge` (`pysph_runner.py:731-777`) refuses to publish a blown-up run. Its docstring makes an argument worth quoting because it is the reason the guard is not simply an `isfinite` check (`pysph_runner.py:735-740`):
+**Divergence guard.** `_assert_did_not_diverge` (`jalraksha/sph/pysph_runner.py:888-934`) refuses to publish a blown-up run. Its docstring makes an argument worth quoting because it is the reason the guard is not simply an `isfinite` check (`jalraksha/sph/pysph_runner.py:892-897`):
 
 ```
     An `isfinite` check is not enough on its own: 1e268 is a perfectly finite
@@ -16035,13 +16144,13 @@ The downstream face is deliberately open. Two layers is the correct minimum for 
 
 The guard therefore bounds positions physically: any particle further than 100× the domain scale from the terrain in x, y, or z-relative-to-mean-bed raises `SPHUnavailableError` rather than returning numbers.
 
-**Energy bound.** The run reports `available_head_m` and `energy_bound_m_s = √(2 g H_available)` (`pysph_runner.py:525-526`), described as "An honest upper bound on speed for this configuration: a particle can convert at most the full available head into kinetic energy. Exceeding it means energy is coming from somewhere it should not." `tests/test_sph.py:194-206` asserts `max_speed_m_s <= energy_bound_m_s`, and the docstring there records that this gate caught two real defects — the unwalled reservoir, and statistics computed over escaped particles.
+**Energy bound.** The run reports `available_head_m` and `energy_bound_m_s = √(2 g H_available)` (`jalraksha/sph/pysph_runner.py:673-674`), described as "An honest upper bound on speed for this configuration: a particle can convert at most the full available head into kinetic energy. Exceeding it means energy is coming from somewhere it should not." `tests/test_sph.py:254-266` asserts `max_speed_m_s <= energy_bound_m_s`, and the docstring there records that this gate caught two real defects — the unwalled reservoir, and statistics computed over escaped particles.
 
-**Escaped-particle handling.** The downstream boundary is open, so particles leave; past the last DEM row there is no bed and they free-fall. The `post_step` callback (`pysph_runner.py:461-479`) and the final statistics (`pysph_runner.py:510-520`) both filter to particles still inside the terrain footprint. The docstring records the measured consequence of not doing so (`pysph_runner.py:469-472`): "Including those made the front advance to 1165 m in a 600 m domain and pushed the reported maximum speed to 113 m/s against an available-head limit of 82 m/s."
+**Escaped-particle handling.** The downstream boundary is open, so particles leave; past the last DEM row there is no bed and they free-fall. The `post_step` callback (`jalraksha/sph/pysph_runner.py:606-624`) and the final statistics (`jalraksha/sph/pysph_runner.py:658-668`) both filter to particles still inside the terrain footprint. The docstring records the measured consequence of not doing so (`jalraksha/sph/pysph_runner.py:614-617`): "Including those made the front advance to 1165 m in a 600 m domain and pushed the reported maximum speed to 113 m/s against an available-head limit of 82 m/s."
 
-**Surge front definition.** The front is the 99th percentile of in-domain particle `y`, recorded every step, guarded by a minimum in-domain count (`pysph_runner.py:80`: `FRONT_MIN_PARTICLES = 8`; `pysph_runner.py:476-479`). Using a percentile rather than the maximum stops a handful of spray particles from defining the front.
+**Surge front definition.** The front is the 99th percentile of in-domain particle `y`, recorded every step, guarded by a minimum in-domain count (`jalraksha/sph/pysph_runner.py:81`: `FRONT_MIN_PARTICLES = 8`; `jalraksha/sph/pysph_runner.py:622-625`). Using a percentile rather than the maximum stops a handful of spray particles from defining the front.
 
-**Buffer-aliasing defence.** Worth documenting because it is a subtle correctness issue that would look like a physics bug (`pysph_runner.py:490-501`):
+**Buffer-aliasing defence.** Worth documenting because it is a subtle correctness issue that would look like a physics bug (`jalraksha/sph/pysph_runner.py:637-648`):
 
 ```
     # COPY, not view. PySPH's particle arrays are views into buffers the
@@ -16060,11 +16169,11 @@ The module is 797 lines and contains eight top-level callables plus one exceptio
 
 **`SPHUnavailableError`** (`:83-89`). A `RuntimeError` subclass, raised when PySPH cannot be imported or its generated C cannot be compiled. The docstring states the design rule: "Raised rather than degraded. The alternative — returning something plausible — is exactly the failure this module was written to remove."
 
-**`is_pysph_available() -> tuple`** (`:92-105`). Attempts `import pysph`; returns `(True, f"PySPH {version}")` or `(False, f"{ExcType}: {exc}")`. Used both as a precondition in the two run functions and as a pytest skip predicate (`tests/test_sph.py:42-44`).
+**`is_pysph_available() -> tuple`** (`:92-105`). Attempts `import pysph`; returns `(True, f"PySPH {version}")` or `(False, f"{ExcType}: {exc}")`. Used both as a precondition in the two run functions and as a pytest skip predicate (`tests/test_sph.py:45-47`).
 
 **`hydrostatic_density(z, surface_z, c0)`** (`:108-130`). The inverted Tait relation, documented in A2.
 
-**`orient_downhill(bed_elevation) -> (oriented, rotations)`** (`:133-170`). The DEM rotation, documented in A2. Returns the rotation count so callers can map back — used by `validation/delft3d_benchmark.py:404-428` to recover an upstream mask in the original orientation without rotating the whole model.
+**`orient_downhill(bed_elevation) -> (oriented, rotations)`** (`:133-170`). The DEM rotation, documented in A2. Returns the rotation count so callers can map back — used by `jalraksha/validation/delft3d_benchmark.py:404-428` to recover an upstream mask in the original orientation without rotating the whole model.
 
 **`_downsample_bed(bed_elevation, cell_size_m, spacing_m)`** (`:173-192`). Resamples the DEM patch onto the SPH particle spacing by nearest-neighbour index lookup, explicitly not by interpolation: "the DEM is already the coarser of the two grids, so interpolating would invent structure the 30 m source does not contain" (`:188-189`). Returns `(bed_on_spacing, nx, ny)`.
 
@@ -16111,7 +16220,7 @@ The returned dict (`:528-568`) carries, in addition to the six particle arrays: 
         "coupling": "one-way SWE -> SPH handoff (no feedback)",
 ```
 
-Note what is *absent*: there is no `gauge_arrivals` key. `tests/test_sph.py:220-227` asserts that absence explicitly.
+Note what is *absent*: there is no `gauge_arrivals` key. `tests/test_sph.py:280-287` asserts that absence explicitly.
 
 **`run_still_water_validation(...)`** (`:571-728`). The hydrostatic gate. Builds an `nx × nx × nz` fluid block in a fully closed tank (six walls, two layers each, `:623-642`), runs it with `adaptive_timestep=False` and otherwise the identical scheme configuration — same kernel, same γ, same α/β, same `c0 = 10√(2gH)` rule — so passing it says something about the production setup rather than about a separate toy (`:582-584`).
 
@@ -16131,7 +16240,7 @@ Two things are checked. First, no spurious motion: the returned `max_speed_m_s`,
         )
 ```
 
-The reason (`:690-695`) is that at low resolution the interior band collapses to about one particle layer and "fitting a gradient through it returned errors of 27% and 123% for the same physics at two run lengths." The test honours this: `tests/test_sph.py:305-317` skips rather than fails when `slope_error_pct is None`, and applies a deliberately loose 40% bound when it is measurable, with the docstring noting that standard WCSPH without a density filter carries well-known pressure noise and that the production-resolution figure is about 3%.
+The reason (`:690-695`) is that at low resolution the interior band collapses to about one particle layer and "fitting a gradient through it returned errors of 27% and 123% for the same physics at two run lengths." The test honours this: `tests/test_sph.py:365-377` skips rather than fails when `slope_error_pct is None`, and applies a deliberately loose 40% bound when it is measurable, with the docstring noting that standard WCSPH without a density filter carries well-known pressure noise and that the production-resolution figure is about 3%.
 
 **`_assert_did_not_diverge(...)`** (`:731-777`), **`_sample_bed(...)`** (`:780-786`), **`_scratch_dir(...)`** (`:789-797`) — documented above.
 
@@ -16143,7 +16252,7 @@ SPH_WINDOW_RESOLUTION_M = 30.0   # native Copernicus GLO-30 posting
 SPH_DURATION_S = 15.0
 ```
 
-A 0.6 km radius is a ~1.2 km window; the DEM loader is called with `domain_radius_km=SPH_WINDOW_RADIUS_KM` (`tasks.py:120`), and the module docstring at `pysph_runner.py:24-26` describes the scope as "a few hundred metres and the run is tens of seconds." `CLAUDE.md:314-316` states it as "~600 m over 15 s". The two figures are consistent if the radius is read as a half-width and the effective usable extent as ~600 m; the code does not state which, and this chapter does not resolve it — what matters is that both are two to three orders of magnitude short of the nearest downstream gauge at 13 km.
+A 0.6 km radius is a ~1.2 km window; the DEM loader is called with `domain_radius_km=SPH_WINDOW_RADIUS_KM` (`tasks.py:120`), and the module docstring at `pysph_runner.py:24-26` describes the scope as "a few hundred metres and the run is tens of seconds." `CLAUDE.md:315-317` states it as "~600 m over 15 s". The two figures are consistent if the radius is read as a half-width and the effective usable extent as ~600 m; the code does not state which, and this chapter does not resolve it — what matters is that both are two to three orders of magnitude short of the nearest downstream gauge at 13 km.
 
 ### A4. The coupling — one-way, with no feedback path
 
@@ -16161,7 +16270,7 @@ This is the section that most needs to be right, because "two-way SPH↔SWE coup
 
 Plus `bed_elevation`, a DEM window loaded through the same `terrain/conditioning.load_dem_as_grid` path the SWE solver uses (`tasks.py:117-121`).
 
-**How the SPH domain is seeded from that state.** The reservoir column is placed upstream of `dam_row = max(1, int(ny * dam_row_fraction))` (`pysph_runner.py:293`) with a level free surface at `bed[0,:].min() + reservoir_depth_m`. The discharge is converted to an inflow velocity at `pysph_runner.py:377-400`:
+**How the SPH domain is seeded from that state.** The reservoir column is placed upstream of `dam_row = max(1, int(ny * dam_row_fraction))` (`jalraksha/sph/pysph_runner.py:438`) with a level free surface at `bed[0,:].min() + reservoir_depth_m`. The discharge is converted to an inflow velocity at `jalraksha/sph/pysph_runner.py:522-545`:
 
 ```python
     # ---- One-way SWE -> SPH handoff. The released column starts with the
@@ -16187,9 +16296,9 @@ Two design decisions are recorded here. The clamp to `√(2gH)` prevents the reg
 
 **Proof from the code that no feedback path exists.** This can be established structurally, not just by reading docstrings:
 
-- `run_near_field_sph` takes no solver object, no `State`, no callback, and no mutable argument other than `bed_elevation`, which it immediately replaces with `np.asarray(..., dtype=np.float64)` and then with the rotated copy from `orient_downhill` (`pysph_runner.py:267`, `274`). Nothing the function receives can be written back through.
+- `run_near_field_sph` takes no solver object, no `State`, no callback, and no mutable argument other than `bed_elevation`, which it immediately replaces with `np.asarray(..., dtype=np.float64)` and then with the rotated copy from `orient_downhill` (`jalraksha/sph/pysph_runner.py:412`, `274`). Nothing the function receives can be written back through.
 - The function returns a plain `Dict[str, Any]` of NumPy arrays and Python scalars. It has no side effects on any solver state.
-- In the service layer, `_run_near_field_sph` (`tasks.py:87-157`) is called at exactly two sites: `tasks.py:808` inside `_run_comparison`, and `tasks.py:1284` in the `solver == "sph"` branch. In both cases the returned dict is serialised to JSON or handed to `compare_sph_vs_delft3d`. It is never fed back into `SWESolver`, `run_dam_break_ensemble`, or the breach ensemble.
+- In the service layer, `_run_near_field_sph` (`services/api/jalraksha_service/tasks.py:87-157`) is called at exactly two sites: `tasks.py:808` inside `_run_comparison`, and `tasks.py:1284` in the `solver == "sph"` branch. In both cases the returned dict is serialised to JSON or handed to `compare_sph_vs_delft3d`. It is never fed back into `SWESolver`, `run_dam_break_ensemble`, or the breach ensemble.
 - The SWE solve is complete *before* SPH runs. In the `solver == "sph"` branch the SPH call is at progress 95% (`tasks.py:1278`), after the full ensemble, the gauge table, the exports, and the population-at-risk computation. In the `solver == "both"` branch it is at 88% (`tasks.py:1299`), likewise after the SWE run. There is no iteration, no outer loop, no convergence criterion between the two engines. A two-way coupling would require at minimum a loop; there is none.
 - Grep confirms it: the only importers of `jalraksha.sph.*` outside `tests/` are `tasks.py:107` (`run_near_field_sph`, `SPHUnavailableError`), `validation/delft3d_benchmark.py:404` (`orient_downhill`, used purely as a terrain utility), and the package's own `__init__.py`. No solver module imports anything from `jalraksha.sph`.
 
@@ -16202,13 +16311,13 @@ Two design decisions are recorded here. The clamp to `√(2gH)` prevents the reg
     those gauges is not coming from here.
 ```
 
-The payload carries `"reaches_downstream_gauges": False` as a hardcoded literal (`:566`), the test asserts both that flag and the absence of any `gauge_arrivals` key (`tests/test_sph.py:220-227`), the service layer repeats the rule in `_run_comparison`'s docstring (`tasks.py:764-768`), `comparison.py:380-382` documents that the arrival-time column is not an SPH deliverable, and `frontend/src/panels/ComparisonPanel.jsx:132-140` renders a standing warning that "The **SPH arrival column is empty by construction**, not by omission." This is as thoroughly defended as a negative claim can reasonably be made in a codebase.
+The payload carries `"reaches_downstream_gauges": False` as a hardcoded literal (`:566`), the test asserts both that flag and the absence of any `gauge_arrivals` key (`tests/test_sph.py:280-287`), the service layer repeats the rule in `_run_comparison`'s docstring (`tasks.py:764-768`), `jalraksha/delft3d/comparison.py:380-382` documents that the arrival-time column is not an SPH deliverable, and `frontend/src/panels/ComparisonPanel.jsx:132-140` renders a standing warning that "The **SPH arrival column is empty by construction**, not by omission." This is as thoroughly defended as a negative claim can reasonably be made in a codebase.
 
-**A caveat on `coupling.py` and `domain.py`.** Both modules exist, both are exported from `jalraksha/sph/__init__.py:15-33`, and both are documented as the coupling interface — but neither is on the production path. `handoff_swe_to_sph` (`coupling.py:19-53`) and `extract_sph_free_surface` (`coupling.py:56-94`) are called only from `tests/test_sph.py:105-125`. `NearFieldDomain` and `generate_near_field_particles` (`domain.py:24-163`) likewise. `pysph_runner.py:377-400` re-implements the `u = Q/(h·w)` relation and the breach mask inline rather than calling `coupling.handoff_swe_to_sph`, and its comments reference the coupling module as *documentation* ("the same relation sph/coupling.py::handoff_swe_to_sph documents", "exactly as coupling.handoff_swe_to_sph masks by |x - centre| < w/2") rather than as a dependency. The two implementations agree today; nothing enforces that they continue to. A reviewer reading `jalraksha/sph/__init__.py` would reasonably conclude that `handoff_swe_to_sph` is the handoff; it is not, and there is no comment in `__init__.py` saying so.
+**A caveat on `coupling.py` and `domain.py`.** Both modules exist, both are exported from `jalraksha/sph/__init__.py:15-33`, and both are documented as the coupling interface — but neither is on the production path. `handoff_swe_to_sph` (`coupling.py:19-53`) and `extract_sph_free_surface` (`coupling.py:56-94`) are called only from `tests/test_sph.py:165-185`. `NearFieldDomain` and `generate_near_field_particles` (`jalraksha/sph/domain.py:24-163`) likewise. `jalraksha/sph/pysph_runner.py:522-545` re-implements the `u = Q/(h·w)` relation and the breach mask inline rather than calling `coupling.handoff_swe_to_sph`, and its comments reference the coupling module as *documentation* ("the same relation sph/coupling.py::handoff_swe_to_sph documents", "exactly as coupling.handoff_swe_to_sph masks by |x - centre| < w/2") rather than as a dependency. The two implementations agree today; nothing enforces that they continue to. A reviewer reading `jalraksha/sph/__init__.py` would reasonably conclude that `handoff_swe_to_sph` is the handoff; it is not, and there is no comment in `__init__.py` saying so.
 
 ### A5. Where SPH actually runs in the pipeline
 
-`CLAUDE.md:305-306` states the current behaviour:
+`CLAUDE.md:306-307` states the current behaviour:
 
 ```
 - **SPH runs only for `solver="both"`.** It used to run for `delft3d` too, via
@@ -16218,7 +16327,7 @@ The payload carries `"reaches_downstream_gauges": False` as a hardcoded literal 
 
 This is verified in code. The dispatch is in `tasks.py`:
 
-- **`solver == "sph"`** (`tasks.py:1277-1291`): runs the full SWE pipeline *and then* `_run_near_field_sph(dam_config)` directly, serialising the result to `sph_near_field.json`. It does not run Delft3D and does not build a comparison. `CLAUDE.md:314-316` describes this correctly: "`solver="sph"` runs the full SWE pipeline AND the near-field handoff. It is not an alternative solver."
+- **`solver == "sph"`** (`services/api/jalraksha_service/tasks.py:1277-1291`): runs the full SWE pipeline *and then* `_run_near_field_sph(dam_config)` directly, serialising the result to `sph_near_field.json`. It does not run Delft3D and does not build a comparison. `CLAUDE.md:315-317` describes this correctly: "`solver="sph"` runs the full SWE pipeline AND the near-field handoff. It is not an alternative solver."
 - **`solver == "both"`** (`tasks.py:1293-1303`): calls `_run_comparison(run_id, dict(dam_config), with_sph=True)`.
 - **`solver == "delft3d"`** (`tasks.py:1335-1339`): calls `_run_comparison(run_id, cfg, with_sph=False)`.
 
@@ -16239,9 +16348,9 @@ Inside `_run_comparison`, the gate is at `tasks.py:802-813`:
             )
 ```
 
-When `sph_res` is `None`, `_run_comparison` falls through to `_delft3d_only_comparison` (`tasks.py:246-280`), which produces a payload shaped like the full comparison but with the SPH-derived fields *absent rather than zeroed* — with an explicit rationale (`tasks.py:252-253`): "an RMSE of 0 against a missing model reads as perfect agreement." The frontend distinguishes the two states: `ComparisonPanel.jsx:43-48` shows "No comparison data for this run" only when there is neither metrics nor an `sph_error`, and otherwise renders the Delft3D engine banner plus the SPH banner explaining why the SPH half is missing.
+When `sph_res` is `None`, `_run_comparison` falls through to `_delft3d_only_comparison` (`services/api/jalraksha_service/tasks.py:246-280`), which produces a payload shaped like the full comparison but with the SPH-derived fields *absent rather than zeroed* — with an explicit rationale (`tasks.py:252-253`): "an RMSE of 0 against a missing model reads as perfect agreement." The frontend distinguishes the two states: `frontend/src/panels/ComparisonPanel.jsx:43-48` shows "No comparison data for this run" only when there is neither metrics nor an `sph_error`, and otherwise renders the Delft3D engine banner plus the SPH banner explaining why the SPH half is missing.
 
-The 47-second and 20-minute figures come from `docs/dashboard_integration.md:304-313` and `docs/progress.md:110`, which record them as measured on the project's own machine on a Pune (Khadakwasla) case. This chapter cannot independently verify wall-clock numbers, and notes that they are single-machine, single-case measurements, not a benchmark.
+The 47-second and 20-minute figures come from `docs/dashboard_integration.md:304-313` and `docs/progress.md:114`, which record them as measured on the project's own machine on a Pune (Khadakwasla) case. This chapter cannot independently verify wall-clock numbers, and notes that they are single-machine, single-case measurements, not a benchmark.
 
 ### A6. Honesty check — which code path is synthetic, and which is real
 
@@ -16252,7 +16361,7 @@ The task brief cites `PROGRESS_SUMMARY.md:87-91`:
 **Verified against the code: this claim is STALE.** As shipped:
 
 - `jalraksha/delft3d/comparison.py` contains no `np.random` anywhere. Grep across the whole repository for `np.random` in the delft3d package returns nothing.
-- `rasterize_sph_particles` (`comparison.py:23-81`) consumes real particle positions from the `sph_result` dict and *refuses* to proceed without the run-derived per-particle volume (`comparison.py:63-70`):
+- `rasterize_sph_particles` (`jalraksha/delft3d/comparison.py:23-81`) consumes real particle positions from the `sph_result` dict and *refuses* to proceed without the run-derived per-particle volume (`comparison.py:63-70`):
 
 ```python
     particle_volume = sph_result.get("particle_volume_m3")
@@ -16265,10 +16374,10 @@ The task brief cites `PROGRESS_SUMMARY.md:87-91`:
         )
 ```
 
-  The comment above it (`comparison.py:57-62`) records that this used to be a literal `particle_volume = 1.0  # m³ (approximate)`.
+  The comment above it (`jalraksha/delft3d/comparison.py:57-62`) records that this used to be a literal `particle_volume = 1.0  # m³ (approximate)`.
 - `compare_sph_vs_delft3d` names the SPH engine from the run rather than from a literal (`comparison.py:376-378`): "Named from the run, not hardcoded. The bare literal `"SPH_WCSPH"` that used to sit here described a result that was np.random output."
 - `_run_comparison`'s own docstring (`tasks.py:757-762`) states the fix: "The SPH side is a REAL PySPH WCSPH run over the dam's own terrain (jalraksha.sph.pysph_runner). It used to be fabricated: particle positions drawn from np.random.uniform, and 'gauge arrivals' from a wave-celerity formula plus np.random.normal noise."
-- `tests/test_sph.py:232-242` (`test_is_deterministic`) runs the same configuration twice and asserts bit-identical particle arrays, which an `np.random` implementation could not pass.
+- `tests/test_sph.py:292-302` (`test_is_deterministic`) runs the same configuration twice and asserts bit-identical particle arrays, which an `np.random` implementation could not pass.
 
 **So what remains synthetic?** Three things, and they should be named precisely because two of them are surfaced in the UI.
 
@@ -16284,7 +16393,7 @@ The task brief cites `PROGRESS_SUMMARY.md:87-91`:
 
   The axis is labelled "Discharge (norm.)" and the figure is rendered in the UI under the heading "⏱️ Downstream Hydrograph Overlays" (`ComparisonPanel.jsx:100-106`) with **no caveat attached**. The code comment does say "Synthetic hydrograph shape (triangular pulse)" at `comparison.py:290`, but that comment does not reach the browser. This is the one place in the comparison path where a plausible-looking curve is presented to a viewer with no on-screen statement that it is a shape function rather than a model output. It is the strongest surviving overclaiming risk in this subsystem.
 
-2. **The Delft3D-side gauge arrivals in Tier B are a closed-form formula, not a simulation reading.** `_ritter_gauge_arrivals` (`runner.py:181-220`) computes `t = distance / c` with `c = 0.5√(gH)`. The function is unusually candid about it (`runner.py:183-198`):
+2. **The Delft3D-side gauge arrivals in Tier B are a closed-form formula, not a simulation reading.** `_ritter_gauge_arrivals` (`jalraksha/delft3d/runner.py:181-220`) computes `t = distance / c` with `c = 0.5√(gH)`. The function is unusually candid about it (`jalraksha/delft3d/runner.py:183-198`):
 
 ```
     Arrival times from Ritter wave celerity — a FORMULA, not a simulation result.
@@ -16295,11 +16404,11 @@ The task brief cites `PROGRESS_SUMMARY.md:87-91`:
     describe
 ```
 
-  The tag does propagate: `comparison.py:406-410` extracts it as `gauge_arrival_method`, `tasks.py:846` writes it to the artifact, `main.py:363` serves it, and `ComparisonPanel.jsx:141-149` renders a dedicated orange caveat when it equals `"ritter_celerity_estimate"`. This one is handled correctly. The residual issue is that the `±20%` spread (`runner.py:211`: `spread = 0.2 * t_s`) is rendered into `p05_min`/`p95_min` — the same field names used elsewhere for genuine ensemble percentiles — and carries its own `TODO: UNVETTED` (`runner.py:200-202`).
+  The tag does propagate: `comparison.py:406-410` extracts it as `gauge_arrival_method`, `tasks.py:846` writes it to the artifact, `main.py:363` serves it, and `frontend/src/panels/ComparisonPanel.jsx:141-149` renders a dedicated orange caveat when it equals `"ritter_celerity_estimate"`. This one is handled correctly. The residual issue is that the `±20%` spread (`runner.py:211`: `spread = 0.2 * t_s`) is rendered into `p05_min`/`p95_min` — the same field names used elsewhere for genuine ensemble percentiles — and carries its own `TODO: UNVETTED` (`runner.py:200-202`).
 
 3. **`_analytic_fallback`** (`runner.py:223-270`) fabricates entire 2D depth/velocity/arrival fields from a decay function when the grid is too small for the SWE solver (`nx < 5 or ny < 5`) or when the SWE solver raises. It is labelled unmistakably — `"engine_label": "Ritter analytic estimate - NOT a solver run"` (`runner.py:256`) — and the exception path prints a traceback and names the fallback (`runner.py:364-373`). This is correctly handled, but it is worth recording that a numerical blow-up in the built-in solver still results in `success: True` and a full-looking field set.
 
-**Where each is surfaced in the UI.** The real PySPH result reaches the browser through two routes: `sph_near_field.json` → the SPH tab (`SphPanel.jsx`), which renders the surge-front history and a decimated particle scatter and explicitly states that there is one snapshot rather than an animation; and `comparison_metrics.json["sph_near_field"]` → the Comparison tab's "Near-Field SPH — what the particle run actually measured" card row (`ComparisonPanel.jsx:72-92`). Both panels carry banners that state, when there is no SPH result, that nothing has been substituted (`SphPanel.jsx:41-48`, `ComparisonPanel.jsx:164-206`). The synthetic hydrograph reaches the browser through `comparison_hydrograph.png` with no such banner.
+**Where each is surfaced in the UI.** The real PySPH result reaches the browser through two routes: `sph_near_field.json` → the SPH tab (`SphPanel.jsx`), which renders the surge-front history and a decimated particle scatter and explicitly states that there is one snapshot rather than an animation; and `comparison_metrics.json["sph_near_field"]` → the Comparison tab's "Near-Field SPH — what the particle run actually measured" card row (`frontend/src/panels/ComparisonPanel.jsx:72-92`). Both panels carry banners that state, when there is no SPH result, that nothing has been substituted (`SphPanel.jsx:41-48`, `ComparisonPanel.jsx:164-206`). The synthetic hydrograph reaches the browser through `comparison_hydrograph.png` with no such banner.
 
 ---
 
@@ -16347,16 +16456,16 @@ The Tier B `engine_label` is set inside `_run_builtin_swe_fallback` (`runner.py:
 1. `runner.run_delft3d_simulation` → `d3d_res["delft3d_binary_used"]`.
 2. `comparison.compare_sph_vs_delft3d:400-405` copies it into the comparison payload, with a comment that says why it is carried rather than inferred: "Carried explicitly rather than inferred from the label string, so the dashboard can render an unambiguous banner instead of asking a reader to notice the wording."
 3. `tasks._run_comparison:844` writes it into `comparison_metrics.json`. The failure path (`tasks.py:882-898`) is where this gets subtle and where the code is careful: on any exception *after* the Delft3D call, the boolean is recovered from `d3d_res` rather than hardcoded to `False`, with a long comment (`tasks.py:872-881`) recording that the previous behaviour "was reading false for runs where dflowfm-cli had genuinely run and left 31 timesteps of output on disk" and that "silently UNDER-claiming a real result is the same error pointed the other way, and it is just as wrong to publish."
-4. `main.py:361` serves it on `GET /runs/{id}/comparison`.
-5. `ComparisonPanel.jsx:56-60` passes it to `EngineBanner`, which renders one of two mutually exclusive states (`ComparisonPanel.jsx:234-248`), plus the fallback reason and the raw engine label.
+4. `services/api/jalraksha_service/main.py:446` serves it on `GET /runs/{id}/comparison`.
+5. `ComparisonPanel.jsx:56-60` passes it to `EngineBanner`, which renders one of two mutually exclusive states (`frontend/src/panels/ComparisonPanel.jsx:234-248`), plus the fallback reason and the raw engine label.
 
 The `_delft3d_only_comparison` path does the same (`tasks.py:276`), so a `solver="delft3d"` run with no SPH half still gets a correct engine banner.
 
-**Deviation from the rule.** The label produced on the Tier A path is `"Delft3D FM (official dflowfm binary)"` (`runner.py:481`), and the banner heading is `"✅ Engine: Delft3D FM (official dflowfm binary)"` (`ComparisonPanel.jsx:236`). Neither names the build. `CLAUDE.md:17` requires "Delft3D FM (dflowfm-cli, dimrset 2026.01)". Nothing anywhere in the runtime path reads a version from the kernel — the resolved executable path is stored in `dflowfm_path` (`runner.py:484`) but never parsed, and the kernel's stdout banner (which does carry the version) is captured (`runner.py:163`) and discarded. The build number "1.2.184" appears only in prose in `CLAUDE.md`, `README.md:151-152`, `docs/validation_findings.md:7-8` and `validation/delft3d_benchmark.py:15`. This is under-claiming rather than over-claiming, and therefore the safer of the two failure modes, but it is a departure from the project's own stated hard constraint and should be closed by capturing the version from the kernel rather than by editing a string.
+**Deviation from the rule.** The label produced on the Tier A path is `"Delft3D FM (official dflowfm binary)"` (`runner.py:481`), and the banner heading is `"✅ Engine: Delft3D FM (official dflowfm binary)"` (`ComparisonPanel.jsx:236`). Neither names the build. `CLAUDE.md:17` requires "Delft3D FM (dflowfm-cli, dimrset 2026.01)". Nothing anywhere in the runtime path reads a version from the kernel — the resolved executable path is stored in `dflowfm_path` (`runner.py:484`) but never parsed, and the kernel's stdout banner (which does carry the version) is captured (`runner.py:163`) and discarded. The build number "1.2.184" appears only in prose in `CLAUDE.md`, `README.md:329-330`, `docs/validation_findings.md:7-8` and `validation/delft3d_benchmark.py:15`. This is under-claiming rather than over-claiming, and therefore the safer of the two failure modes, but it is a departure from the project's own stated hard constraint and should be closed by capturing the version from the kernel rather than by editing a string.
 
 ### B2. Kernel discovery
 
-`resolve_dflowfm(custom_path)` (`runner.py:26-65`) returns the path that will be *executed*, not a boolean. The docstring explains why that distinction matters (`runner.py:29-35`):
+`resolve_dflowfm(custom_path)` (`jalraksha/delft3d/runner.py:26-65`) returns the path that will be *executed*, not a boolean. The docstring explains why that distinction matters (`jalraksha/delft3d/runner.py:29-35`):
 
 ```
     Returning the path rather than a bare bool is the point. The previous
@@ -16370,7 +16479,7 @@ The `_delft3d_only_comparison` path does the same (`tasks.py:276`), so a `solver
 
 The resolution order is:
 
-1. **`custom_path`** — from `JALRAKSHA_DFLOWFM_EXE` via `settings.DFLOWFM_EXE` (`tasks.py:799`). If it is a file, its absolute path is returned. If it is set but not a file, the function prints a diagnostic and returns `None` — it deliberately does **not** fall through to PATH (`runner.py:45-55`): "An explicitly configured path that is wrong is a configuration error, not a reason to quietly search PATH instead and run something else." `tests/test_delft3d_model.py:267-272` asserts this.
+1. **`custom_path`** — from `JALRAKSHA_DFLOWFM_EXE` via `settings.DFLOWFM_EXE` (`tasks.py:799`). If it is a file, its absolute path is returned. If it is set but not a file, the function prints a diagnostic and returns `None` — it deliberately does **not** fall through to PATH (`jalraksha/delft3d/runner.py:45-55`): "An explicitly configured path that is wrong is a configuration error, not a reason to quietly search PATH instead and run something else." `tests/test_delft3d_model.py:267-272` asserts this.
 2. **PATH lookup, in order `dflowfm-cli` then `dflowfm`** (`runner.py:57-63`). The comment records the defect this fixed: "The FM Suite ships the executable as dflowfm-cli.exe, not 'dflowfm'. Looking only for the latter is why a perfectly good local install went undetected."
 3. **`_discover_installed_kernel()`** (`runner.py:89-101`) — globs the standard Deltares install locations from `_KERNEL_GLOBS` (`runner.py:76-86`), sorts matches lexically, and takes the last (newest suite version, since install directory names carry `year.version`).
 
@@ -16383,7 +16492,7 @@ The four glob patterns are:
     r"C:\Program Files\Deltares\*\bin\dflowfm-cli.exe",
 ```
 
-**The "Open" edition problem** is documented at `runner.py:73-75` and again at `README.md:164-170`:
+**The "Open" edition problem** is documented at `runner.py:73-75` and again at `README.md:342-348`:
 
 ```
 #: Note that not every edition ships kernels at all: the "Open" editions
@@ -16409,7 +16518,7 @@ GridType = rectangular
 NX = ...
 ```
 
-D-Flow FM cannot read that. It has no structured-grid input path; the `.grd` files of Delft3D-4 belong to a different program. `ugrid.py:9-19` records the discovery:
+D-Flow FM cannot read that. It has no structured-grid input path; the `.grd` files of Delft3D-4 belong to a different program. `jalraksha/delft3d/ugrid.py:9-19` records the discovery:
 
 ```
 WHY THIS MODULE EXISTS. `setup.py` previously wrote an INI stub for the mesh:
@@ -16420,11 +16529,11 @@ never noticed because the kernel had never actually been run — the code path
 that would have hit it was disabled by a hardcoded `force_fallback=True`.
 ```
 
-`tasks.py:355-366` and `CLAUDE.md:283-287` repeat it. The current production path calls `build_dfm_model` (`tasks.py:436`), not `setup_delft3d_model`.
+`tasks.py:355-366` and `CLAUDE.md:284-288` repeat it. The current production path calls `build_dfm_model` (`tasks.py:436`), not `setup_delft3d_model`.
 
 **`setup.py` is still shipped, still exported, and still the model builder the test suite uses.** `jalraksha/delft3d/__init__.py:5` still lists it in the package docstring, and the entirety of `tests/test_delft3d.py::TestDelft3DSetup`, `TestDelft3DRunner`, and `TestDelft3DIntegration` builds models with it. Because those tests all pass `force_fallback=True`, the unreadable NetFile is never exercised and the tests pass. A reader who follows the package docstring to `setup.py` will find a module that produces an input deck the kernel cannot read, with no in-file warning. Beyond the NetFile, `setup.py`'s MDU contains an invented `[Dambreak]` section (`setup.py:258-265`) with keys — `DamName`, `DamHeight_m`, `BreachRow`, `BreachWidth_m`, `FailureTime_s` — that are not D-Flow FM MDU keys, and `[Geometry] BathymetryFile` / `WaterLevIniFile` pointing at an `.xyz` and a hand-rolled `.ini` in a format FM does not consume. It looks like a Delft3D input deck and is not one. The module also defines `_check_hydrolib_available` (`setup.py:30-36`) which is never called anywhere.
 
-**`dfm_model.py` — the real writer.** `build_dfm_model` (`dfm_model.py:47-162`) produces the complete input set the kernel needs, enumerated in the module docstring (`dfm_model.py:6-11`):
+**`dfm_model.py` — the real writer.** `build_dfm_model` (`jalraksha/delft3d/dfm_model.py:47-162`) produces the complete input set the kernel needs, enumerated in the module docstring (`dfm_model.py:6-11`):
 
 ```
     <name>_net.nc      UGRID mesh with bed level on nodes (jalraksha.delft3d.ugrid)
@@ -16445,20 +16554,20 @@ Shape validation is strict and refuses rather than broadcasts (`dfm_model.py:93-
 
 The MDU (`_render_mdu`, `dfm_model.py:165-204`) writes, in full: `[General]` fileVersion 1.09 / fileType modelDef / Program D-Flow FM; `[geometry]` NetFile, BedlevType (3, with the abort message in a comment), IniFieldFile, WaterLevIni = 0.0; `[numerics]` CFLMax; `[physics]` UnifFrictCoef, UnifFrictType = 1 (Manning); `[time]` RefDate 20260101, Tunit S, DtUser = `max(map_interval/5, 1.0)`, DtMax = `max(map_interval/10, 0.5)`, TStart 0, TStop; `[output]` MapInterval, HisInterval, and ObsFile when observation points were given. `map_interval_s` defaults to `max(duration_s/30, 1.0)` — about 30 frames (`dfm_model.py:139-140`).
 
-`_render_dimr` (`dfm_model.py:207-233`) emits a DIMR 1.3 config with a single `dflowfm` component. The docstring is candid that it is not required — `dflowfm-cli --autostartstop` runs the model directly and is what the adapter uses — but "DIMR is the documented Deltares entry point and costs almost nothing to emit."
+`_render_dimr` (`jalraksha/delft3d/dfm_model.py:207-233`) emits a DIMR 1.3 config with a single `dflowfm` component. The docstring is candid that it is not required — `dflowfm-cli --autostartstop` runs the model directly and is what the adapter uses — but "DIMR is the documented Deltares entry point and costs almost nothing to emit."
 
-`dam_break_fields` (`dfm_model.py:236-264`) builds the initial water-surface field: reservoir level upstream of `dam_index` along the chosen axis, bed level (i.e. zero depth) downstream, then `np.maximum(level, bed)` so no cell starts with water below its bed. The docstring notes that downstream cells get "a genuinely dry bed rather than a thin film, which is what the Ritter solution assumes."
+`dam_break_fields` (`jalraksha/delft3d/dfm_model.py:236-264`) builds the initial water-surface field: reservoir level upstream of `dam_index` along the chosen axis, bed level (i.e. zero depth) downstream, then `np.maximum(level, bed)` so no cell starts with water below its bed. The docstring notes that downstream cells get "a genuinely dry bed rather than a thin film, which is what the Ritter solution assumes."
 
 **`ugrid.py` — the mesh writer in full.**
 
 `quad_mesh_topology(nx, ny)` (`ugrid.py:53-94`) returns 0-based `(edge_nodes, face_nodes)`. Node indexing is `node(i,j) = j*(nx+1) + i`. Faces are listed counter-clockwise — `(i,j), (i+1,j), (i+1,j+1), (i,j+1)` — "as UGRID requires for a right-handed 2D mesh" (`ugrid.py:75`). Edges are constructed explicitly rather than derived from faces: every horizontal segment on each of the `ny+1` node rows, then every vertical segment on each of the `nx+1` node columns, which "keeps interior edges unduplicated" (`ugrid.py:82-84`). Counts are therefore `nx·ny` faces and `nx(ny+1) + (nx+1)ny` edges, asserted at `tests/test_delft3d_model.py:49-54`, with `test_no_duplicate_edges` (`:67-71`) checking the uniqueness claim directly.
 
-`write_ugrid_net(path, grid_dict, bed_elevation, crs_epsg, mesh_name="mesh2d")` (`ugrid.py:97-257`) writes a NETCDF4 file with:
+`write_ugrid_net(path, grid_dict, bed_elevation, crs_epsg, mesh_name="mesh2d")` (`jalraksha/delft3d/ugrid.py:97-257`) writes a NETCDF4 file with:
 
 - **Global attributes**: `Conventions = "CF-1.8 UGRID-1.0"`, `title`, `source`, `institution`, and `crs = "EPSG:<n>"` when supplied (`ugrid.py:149-154`).
 - **Dimensions**: `nmesh2d_node`, `nmesh2d_edge`, `nmesh2d_face`, `max_nmesh2d_face_nodes` (= 4), `Two` (`ugrid.py:156-160`).
 - **Topology dummy variable** `mesh2d` (`ugrid.py:164-175`), an `i4` scalar holding no data — "its ATTRIBUTES are the mesh definition, and D-Flow FM navigates the file through them." Attributes: `cf_role = "mesh_topology"`, `long_name`, `topology_dimension = 2`, `node_coordinates`, `face_coordinates`, `node_dimension`, `edge_node_connectivity`, `edge_dimension`, `face_node_connectivity`, `face_dimension`, `max_face_nodes_dimension`.
-- **Node coordinates** `mesh2d_node_x` / `_y` (`ugrid.py:177-191`), f8, with `standard_name = projection_x_coordinate` / `projection_y_coordinate`, `units = "m"`, `mesh`, `location = "node"`. Node `(i,j)` sits at `(x0 + i·dx, y0 + j·dy)` for `i ∈ 0..nx`, `j ∈ 0..ny`, with `x0/y0` the domain's lower-left **corner** — a convention stated in the module docstring (`ugrid.py:25-27`) and asserted at `tests/test_delft3d_model.py:106-120`.
+- **Node coordinates** `mesh2d_node_x` / `_y` (`ugrid.py:177-191`), f8, with `standard_name = projection_x_coordinate` / `projection_y_coordinate`, `units = "m"`, `mesh`, `location = "node"`. Node `(i,j)` sits at `(x0 + i·dx, y0 + j·dy)` for `i ∈ 0..nx`, `j ∈ 0..ny`, with `x0/y0` the domain's lower-left **corner** — a convention stated in the module docstring (`jalraksha/delft3d/ugrid.py:25-27`) and asserted at `tests/test_delft3d_model.py:106-120`.
 - **Node bed level** `mesh2d_node_z` (`ugrid.py:193-202`), f8 with `_FillValue = -999.0`, `standard_name = "altitude"`, `units = "m"`, `location = "node"`, `grid_mapping = "projected_coordinate_system"`. Written only when `bed_elevation` is supplied.
 - **Face centres** `mesh2d_face_x` / `_y` (`ugrid.py:204-224`), computed as the mean of each face's four node coordinates. The comment records why they are written even though FM can derive them (`ugrid.py:204-206`).
 - **Edge connectivity** `mesh2d_edge_nodes` (`ugrid.py:226-231`), i4 `[n_edge, 2]`, `cf_role = "edge_node_connectivity"`, `start_index = 1`, values written as `edge_nodes + 1`.
@@ -16469,7 +16578,7 @@ The file is closed in a `finally` (`ugrid.py:254-255`), so a partially-written m
 
 `_cell_values_to_nodes` (`ugrid.py:260-285`) averages a per-cell field onto nodes: pad the `(ny, nx)` array by one with edge replication, then take the mean of the four padded cells touching each node, giving `(ny+1, nx+1)` values, raveled to match node ordering. Shape mismatch raises `UgridError` rather than broadcasting. `tests/test_delft3d_model.py:140-152` asserts node z brackets the cell values.
 
-**One documentation defect worth flagging.** `_cell_values_to_nodes`'s own docstring (`ugrid.py:264`) says "D-Flow FM's `BedlevType=1` reads bed level at nodes", which directly contradicts the module docstring (`ugrid.py:110-117`), `dfm_model.BEDLEVTYPE_NODES = 3` (`dfm_model.py:44`), and the MDU comment (`dfm_model.py:180-181`). This is the single setting the kernel aborts on, so a stale comment on it is a real hazard for a future maintainer.
+**One documentation defect worth flagging.** `_cell_values_to_nodes`'s own docstring (`ugrid.py:264`) says "D-Flow FM's `BedlevType=1` reads bed level at nodes", which directly contradicts the module docstring (`jalraksha/delft3d/ugrid.py:110-117`), `dfm_model.BEDLEVTYPE_NODES = 3` (`dfm_model.py:44`), and the MDU comment (`dfm_model.py:180-181`). This is the single setting the kernel aborts on, so a stale comment on it is a real hazard for a future maintainer.
 
 ### B4. `runner.py` — subprocess invocation, output parsing, `_his.nc`
 
@@ -16496,13 +16605,13 @@ Working directory is the MDU's own directory and the MDU is passed by *name*, no
 
 The return dict on success carries `success` (`returncode == 0`), `stdout`, `stderr`, `returncode`, `output_dir` (from `_resolve_output_dir`), and `engine`. Three exception classes are handled distinctly (`runner.py:169-178`): `FileNotFoundError` ("could not be executed"), `OSError` (e.g. wrong-platform binary), and `subprocess.TimeoutExpired` ("Timeout after {timeout_s}s"). All three return `success: False` with `engine: "none"` rather than raising.
 
-**Timeout handling.** The default is 3600 s. `compare_ritter` passes 1800 (`delft3d_benchmark.py:149`), `compare_tehri` passes 7200 (`delft3d_benchmark.py:520`), and the smoke test passes 900 (`tests/test_delft3d_model.py:311-312`). The *production* path — `run_delft3d_simulation:462-464` — passes no timeout at all, so a real kernel run on a 400×400 grid over a duration of `max(hydrograph_duration_s, 10800)` (up to 24 h of simulated time per `tasks.py:305-317`) gets exactly one hour of wall clock and is then reported as a fallback. Every other caller chooses a timeout; the one that most needs to does not.
+**Timeout handling.** The default is 3600 s. `compare_ritter` passes 1800 (`delft3d_benchmark.py:149`), `compare_tehri` passes 7200 (`delft3d_benchmark.py:520`), and the smoke test passes 900 (`tests/test_delft3d_model.py:311-312`). The *production* path — `run_delft3d_simulation:462-464` — passes no timeout at all, so a real kernel run on a 400×400 grid over a duration of `max(hydrograph_duration_s, 10800)` (up to 24 h of simulated time per `services/api/jalraksha_service/tasks.py:305-317`) gets exactly one hour of wall clock and is then reported as a fallback. Every other caller chooses a timeout; the one that most needs to does not.
 
 **`_resolve_output_dir(work_dir)`** (`runner.py:514-534`). Globs `DFM_OUTPUT_*` under the model directory and returns the first directory found, falling back to `work_dir`. The docstring records the bug it fixes (`runner.py:518-523`): the kernel writes `*_map.nc`, `*_his.nc` and the `.dia` log into a `DFM_OUTPUT_<model name>/` subdirectory, and returning the model directory instead meant "a run that had genuinely SUCCEEDED — kernel found, exit code 0, both NetCDF files on disk — was reported as 'output could not be parsed' and silently downgraded to the built-in solver."
 
-**`_faces_to_grid(values, face_x, face_y)`** (`runner.py:537-592`). This is one of the most consequential functions in the adapter and its docstring is worth reading in full. D-Flow FM stores `mesh2d_waterdepth` as `(time, mesh2d_nFaces)` — one value per face, not a raster. Every downstream consumer treats `max_depth` as 2D. The unconverted array reached `imshow`, which raised `Invalid shape (160000,) for image data`; that `TypeError` was caught by the comparison's outer handler and written to the artifact as `delft3d_binary_used: false`. The docstring states the stake (`runner.py:550-552`): "Under CLAUDE.md that boolean is what decides whether the kernel may be named, and it was reading false for a successful run."
+**`_faces_to_grid(values, face_x, face_y)`** (`jalraksha/delft3d/runner.py:537-592`). This is one of the most consequential functions in the adapter and its docstring is worth reading in full. D-Flow FM stores `mesh2d_waterdepth` as `(time, mesh2d_nFaces)` — one value per face, not a raster. Every downstream consumer treats `max_depth` as 2D. The unconverted array reached `imshow`, which raised `Invalid shape (160000,) for image data`; that `TypeError` was caught by the comparison's outer handler and written to the artifact as `delft3d_binary_used: false`. The docstring states the stake (`runner.py:550-552`): "Under CLAUDE.md that boolean is what decides whether the kernel may be named, and it was reading false for a successful run."
 
-A reshape is not sufficient, and the docstring gives the measured evidence (`runner.py:554-559`): FM numbers faces in its own internal order, and the first five face centres of the Khadakwasla mesh are `x = [343030, 343030, 343165, 343030, 343165]` against `y = [2012774, 2012909, 2012774, 2013044, 2012909]` — a diagonal sweep. "Reshaping that produces a picture that looks like a flood field and is a scrambled one, which is worse than the crash it replaces."
+A reshape is not sufficient, and the docstring gives the measured evidence (`jalraksha/delft3d/runner.py:554-559`): FM numbers faces in its own internal order, and the first five face centres of the Khadakwasla mesh are `x = [343030, 343030, 343165, 343030, 343165]` against `y = [2012774, 2012909, 2012774, 2013044, 2012909]` — a diagonal sweep. "Reshaping that produces a picture that looks like a flood field and is a scrambled one, which is worse than the crash it replaces."
 
 The implementation scatters each value by its own face centre: round coordinates to 3 decimals (to prevent a 1e-9 wobble splitting a column), unique them, check `xs.size * ys.size == values.size`, then `searchsorted` to get indices and place. If the exact-grid test fails the input is returned unchanged, because "an unstructured mesh is a legitimate thing for FM to produce and is not this function's to invent a raster from" (`runner.py:572-573`). Non-1D input is returned untouched (`:576-577`), so the built-in solver's already-2D fields pass through. `tests/test_delft3d.py::TestUgridFacesToGrid` covers all four behaviours, including `test_a_naive_reshape_would_have_been_wrong` (`:395-408`), which exists specifically to fail if a future maintainer "simplifies" the scatter into a reshape.
 
@@ -16519,11 +16628,11 @@ Two design decisions here are worth calling out. First, the docstring's core ins
 
 A station that never wets is recorded with `median_s: None` and an explanatory note rather than omitted. The function returns `{}` — "never a fabricated arrival" — when it cannot read (`runner.py:614-616`).
 
-**`_parse_delft3d_output(...)`** (`runner.py:706-813`). Finds `*_map.nc`; raises `FileNotFoundError` if absent. Extracts depth from `mesh2d_waterdepth` (or `s1` as a fallback key), computes `max_depth = nanmax(depth, axis=0)`. Velocity magnitude from `mesh2d_ucx`/`ucy` when present. Arrival time by iterating timesteps and recording the first index where depth ≥ 0.1 m. Reads `mesh2d_face_x`/`_y` *inside* the try block (with a comment noting the dataset is closed in the `finally`) and passes all three fields through `_faces_to_grid`. Returns the standardised dict including `grid_nx/ny/dx/dy` carried through from `model_setup`, `num_steps` from the time axis length, and `gauge_arrivals` from `_parse_his_gauge_arrivals`.
+**`_parse_delft3d_output(...)`** (`jalraksha/delft3d/runner.py:706-813`). Finds `*_map.nc`; raises `FileNotFoundError` if absent. Extracts depth from `mesh2d_waterdepth` (or `s1` as a fallback key), computes `max_depth = nanmax(depth, axis=0)`. Velocity magnitude from `mesh2d_ucx`/`ucy` when present. Arrival time by iterating timesteps and recording the first index where depth ≥ 0.1 m. Reads `mesh2d_face_x`/`_y` *inside* the try block (with a comment noting the dataset is closed in the `finally`) and passes all three fields through `_faces_to_grid`. Returns the standardised dict including `grid_nx/ny/dx/dy` carried through from `model_setup`, `num_steps` from the time axis length, and `gauge_arrivals` from `_parse_his_gauge_arrivals`.
 
-The grid metadata carry-through has its own recorded history (`runner.py:722-727`): downstream, `compare_sph_vs_delft3d` reads those keys with `.get()` defaults of 100×200 at 30 m, "so omitting them, as this function used to, meant a SUCCESSFUL real Delft3D run was rasterised and compared on a grid of entirely the wrong size."
+The grid metadata carry-through has its own recorded history (`jalraksha/delft3d/runner.py:722-727`): downstream, `compare_sph_vs_delft3d` reads those keys with `.get()` defaults of 100×200 at 30 m, "so omitting them, as this function used to, meant a SUCCESSFUL real Delft3D run was rasterised and compared on a grid of entirely the wrong size."
 
-**`_run_builtin_swe_fallback(...)`** (`runner.py:274-405`). Tier B. Builds a `jalraksha.solver` `Grid` and `State` from the model setup's grid, bathymetry and initial water level (depth = `max(0, wl − bed)`), guards `nx < 5 or ny < 5` by returning `_analytic_fallback`, then time-steps with `SWESolver(swe_grid, manning_n=manning_n, cfl=0.5)` accumulating `max_depth`, `max_velocity` and a first-wet `arrival_time` at a 0.1 m threshold, capped at 500,000 steps, with a NaN guard. On any exception it prints a traceback and drops to `_analytic_fallback` — with a comment (`runner.py:365-367`) that "Dropping to a closed-form estimate without naming it turns 'the solver diverged' into a plausible-looking table of arrival times."
+**`_run_builtin_swe_fallback(...)`** (`jalraksha/delft3d/runner.py:274-405`). Tier B. Builds a `jalraksha.solver` `Grid` and `State` from the model setup's grid, bathymetry and initial water level (depth = `max(0, wl − bed)`), guards `nx < 5 or ny < 5` by returning `_analytic_fallback`, then time-steps with `SWESolver(swe_grid, manning_n=manning_n, cfl=0.5)` accumulating `max_depth`, `max_velocity` and a first-wet `arrival_time` at a 0.1 m threshold, capped at 500,000 steps, with a NaN guard. On any exception it prints a traceback and drops to `_analytic_fallback` — with a comment (`runner.py:365-367`) that "Dropping to a closed-form estimate without naming it turns 'the solver diverged' into a plausible-looking table of arrival times."
 
 A latent defect: `"total_time_s": t` at `runner.py:392` reads a variable bound only inside the `while` loop. If `total_time_s <= 0`, the loop never executes and this raises `UnboundLocalError` after an otherwise-successful setup.
 
@@ -16535,7 +16644,7 @@ A latent defect: `"total_time_s": t` at `runner.py:392` reads a variable bound o
 
 **How the two engines' grids are aligned.** This is the weakest part of the subsystem and it should be documented precisely rather than paraphrased.
 
-`compare_sph_vs_delft3d` (`comparison.py:323-411`) reads the grid definition from the *Delft3D* result:
+`compare_sph_vs_delft3d` (`jalraksha/delft3d/comparison.py:323-411`) reads the grid definition from the *Delft3D* result:
 
 ```python
     grid_nx = delft3d_result.get("grid_nx", 100)
@@ -16559,7 +16668,7 @@ and `rasterize_sph_particles` bins particles as (`comparison.py:72-79`):
     depth_grid = (counts * float(particle_volume) / cell_area).astype(np.float32)
 ```
 
-**There is no georeferencing step.** The SPH result's `x` and `y` are in a *local* frame — `run_near_field_sph`'s docstring says so explicitly (`pysph_runner.py:237-238`): "particle arrays in a LOCAL frame (origin at the domain's upstream-left corner, metres)". Particle coordinates therefore run 0 to a few hundred metres. The Delft3D comparison grid, built by `_build_delft3d_model` (`tasks.py:386-391`), has its origin at `x_dam − half_m` where `half_m` is 15–70 km, in UTM eastings/northings, with cells of `2·radius_km·1000/400` metres (75–350 m).
+**There is no georeferencing step.** The SPH result's `x` and `y` are in a *local* frame — `run_near_field_sph`'s docstring says so explicitly (`jalraksha/sph/pysph_runner.py:382-383`): "particle arrays in a LOCAL frame (origin at the domain's upstream-left corner, metres)". Particle coordinates therefore run 0 to a few hundred metres. The Delft3D comparison grid, built by `_build_delft3d_model` (`tasks.py:386-391`), has its origin at `x_dam − half_m` where `half_m` is 15–70 km, in UTM eastings/northings, with cells of `2·radius_km·1000/400` metres (75–350 m).
 
 The consequence is that the entire SPH depth patch is binned into the first few cells of the comparison grid — the far corner of a domain whose origin is tens of kilometres from the dam — while the Delft3D field occupies the whole grid centred on the dam. The two fields do not describe the same ground. Every number on the Comparison tab's headline metric row (`ComparisonPanel.jsx:64-70`: "Depth Field RMSE", "Mass Balance Bias", "Critical Success Index (CSI)", "Inundation Grid Overlap") is computed between a near-field patch in the wrong place and a far-field flood field. The RMSE is dominated by the Delft3D field's own magnitude, the bias by the same, and the CSI is essentially the fraction of Delft3D wet cells that happen to coincide with the mis-placed patch.
 
@@ -16569,7 +16678,7 @@ A second, smaller alignment issue: `compute_comparison_metrics:107-110` flattens
 
 **Figures produced.** Two.
 
-`plot_comparison_depth_maps` (`comparison.py:205-256`) draws three panels: model A, model B, and their difference, on a shared `vmax`, with `Blues` for the fields and `RdBu_r` centred on zero for the difference. It aligns the two arrays for differencing by cropping to the common `min_y × min_x` (`comparison.py:245-247`) — again a crop, not a registration.
+`plot_comparison_depth_maps` (`jalraksha/delft3d/comparison.py:205-256`) draws three panels: model A, model B, and their difference, on a shared `vmax`, with `Blues` for the fields and `RdBu_r` centred on zero for the difference. It aligns the two arrays for differencing by cropping to the common `min_y × min_x` (`comparison.py:245-247`) — again a crop, not a registration.
 
 `plot_comparison_hydrographs` (`comparison.py:259-320`) draws one panel per gauge with the synthetic triangular pulses discussed in A6, an arrival-time vline, and a shaded p05–p95 band (falling back to `median × 0.8` and `× 1.2` when absent, `comparison.py:299-300`). When there are no gauges it produces a single "No gauge data available" panel.
 
@@ -16637,7 +16746,7 @@ Four functions, all in `jalraksha/validation/metrics.py`.
 NameError: name 'Optional' is not defined
 ```
 
-This was verified by execution: importing `jalraksha.validation.metrics`, `jalraksha.validation`, or `jalraksha.validation.benchmarks` all fail with that error. Consequently `tests/test_validation.py` cannot even be collected, and the entire Phase-8 validation package — CSI, F1, RMSE, NSE, Malpasset, Chamoli — is unreachable from anywhere in the running system. This is a one-line fix (`from typing import Dict, Optional, Union`) and it is CRITICAL, because the project's documentation (`docs/progress.md:75`) reports "435 passed, 4 skipped", which cannot be true of a tree in this state. Either the defect was introduced after that test run, or the reported count is stale. Note also that no production code imports `validation/metrics.py` — `delft3d/comparison.py` re-implements RMSE/bias/CSI/F1 inline — so the failure is currently invisible outside the test suite.
+This was verified by execution: importing `jalraksha.validation.metrics`, `jalraksha.validation`, or `jalraksha.validation.benchmarks` all fail with that error. Consequently `tests/test_validation.py` cannot even be collected, and the entire Phase-8 validation package — CSI, F1, RMSE, NSE, Malpasset, Chamoli — is unreachable from anywhere in the running system. This is a one-line fix (`from typing import Dict, Optional, Union`) and it is CRITICAL, because the project's documentation (`docs/progress.md:79`) reports "435 passed, 4 skipped", which cannot be true of a tree in this state. Either the defect was introduced after that test run, or the reported count is stale. Note also that no production code imports `validation/metrics.py` — `delft3d/comparison.py` re-implements RMSE/bias/CSI/F1 inline — so the failure is currently invisible outside the test suite.
 
 ### C3. `delft3d_benchmark.py` and `scripts/validate_against_delft3d.py` — the cross-check
 
@@ -16654,7 +16763,7 @@ than merely reassuring. The Tehri case has no ground truth and is reported
 honestly as engine-vs-engine agreement only.
 ```
 
-**Case setup.** `compare_ritter` (`delft3d_benchmark.py:210-280`) defaults: `h_left = 10.0 m`, `t_end = 40.0 s`, `domain_m = 4000.0 m`, `dx = 10.0 m`, `boundary_margin_cells = 3`. So `nx = 400` cells, with the dam at `x = 0` and the domain centred on it: `x_centres = (arange(nx) + 0.5)·dx − domain_m/2`.
+**Case setup.** `compare_ritter` (`jalraksha/validation/delft3d_benchmark.py:210-280`) defaults: `h_left = 10.0 m`, `t_end = 40.0 s`, `domain_m = 4000.0 m`, `dx = 10.0 m`, `boundary_margin_cells = 3`. So `nx = 400` cells, with the dam at `x = 0` and the domain centred on it: `x_centres = (arange(nx) + 0.5)·dx − domain_m/2`.
 
 Both engines run the same case:
 
@@ -16683,7 +16792,7 @@ The three criteria applied — does the artifact grow as the domain shortens, do
 
 `score(predicted)` (`:251-257`) returns `rmse_m` and `max_abs_error_m` over the interior, plus `depth_at_dam_m` read at `argmin(|x_centres|)` — note that `depth_at_dam_m` is *not* interior-masked, which is correct since the dam is mid-domain.
 
-**Published results.** `delft3d_benchmark.py:15-23`, reproduced identically in `README.md:151-160`, `docs/validation_findings.md:23-30` and `docs/progress.md:53-62`:
+**Published results.** `delft3d_benchmark.py:15-23`, reproduced identically in `README.md:329-338`, `docs/validation_findings.md:23-30` and `docs/progress.md:57-66`:
 
 ```
 MEASURED, on this machine, with dimrset 2026.01 (dflowfm-cli 1.2.184), on a
@@ -16710,7 +16819,7 @@ The `--case tehri` path additionally writes `tehri_validation.png` via `plot_teh
 
 **Exit behaviour.** `BenchmarkUnavailableError` is caught in `main` (`:156-159`) and reported as a message on stderr with exit code 2 — "Not a traceback: this is an expected, actionable state." The module docstring states the rule (`:16-17`): "If none is installed the script says so and exits non-zero rather than fabricating a comparison."
 
-**The Tehri case, and why it refuses.** `compare_tehri` (`delft3d_benchmark.py:349-566`) is implemented in full — DEM load, terrain-derived upstream mask via `orient_downhill`, thalweg-based reservoir surface, connected-component impoundment fill with the dam row punched out as a barrier, gauge projection into the *domain's* UTM zone, both engines run, `_his.nc` read — and then refuses (`:474-482`) when no connected volume is found:
+**The Tehri case, and why it refuses.** `compare_tehri` (`jalraksha/validation/delft3d_benchmark.py:349-566`) is implemented in full — DEM load, terrain-derived upstream mask via `orient_downhill`, thalweg-based reservoir surface, connected-component impoundment fill with the dam row punched out as a barrier, gauge projection into the *domain's* UTM zone, both engines run, `_his.nc` read — and then refuses (`:474-482`) when no connected volume is found:
 
 ```python
     if impounded_km2 <= 0.0:
@@ -16722,7 +16831,7 @@ The `--case tehri` path additionally writes `tehri_validation.png` via `plot_teh
 
 The KNOWN LIMITATION note above it (`:467-473`) states that the axis-aligned dam row "is a poor stand-in for a dam wall", that locating the barrier along the real impoundment is the correct fix, that it is not implemented, and that "this case is expected to refuse on steep sinuous terrain such as Tehri." Three separate bugs found on the way there are recorded with their symptoms: splitting the domain by array index put Koteshwar (13 km *downstream*, but south of the dam) inside the reservoir so both engines reported arrival at 0.0 min (`:395-403`); taking the median of the dam row for the reservoir surface averaged the thalweg with the ridges and put the surface near 1760 m instead of ~830 m, so "Delft3D duly reported water levels rising to 1533 m at Koteshwar — the model was not wrong, the initial condition was" (`:409-415`); and the axis-aligned fill leaking into the downstream valley (`:430-439`). Refusing to publish a comparison of two models of still water is exactly the right call, and documenting the three near-misses is what makes the Ritter result credible.
 
-One defect in this path: the JalRaksha time loop (`:500-508`) accumulates `t_sim += dt` using a `dt` computed from the *previous* state, while `solver.step(state)` recomputes its own CFL timestep internally from the current state (`solver/core.py:471-485`). The two clocks can drift, and `t_sim` — not `state.t` — is what is written into `t_arrival` and compared against Delft3D. On a case that currently refuses to run this is latent, but it would silently bias the arrival-time comparison once the impoundment fix lands.
+One defect in this path: the JalRaksha time loop (`:500-508`) accumulates `t_sim += dt` using a `dt` computed from the *previous* state, while `solver.step(state)` recomputes its own CFL timestep internally from the current state (`jalraksha/solver/core.py:515-529`). The two clocks can drift, and `t_sim` — not `state.t` — is what is written into `t_arrival` and compared against Delft3D. On a case that currently refuses to run this is latent, but it would silently bias the arrival-time comparison once the impoundment fix lands.
 
 A smaller one: `run_ritter_delft3d` reads the map file from a hardcoded `Path(model["output_dir"]) / f"DFM_OUTPUT_ritter" / "ritter_map.nc"` (`:158-159`) — an f-string with no placeholders — rather than through `runner._resolve_output_dir`, which exists precisely to handle kernel editions that write elsewhere.
 
@@ -16730,15 +16839,15 @@ A smaller one: `run_ritter_delft3d` reads the map file from a hardcoded `Path(mo
 
 Three gates, run identically from CI and from the dashboard's Validation tab.
 
-**Lake at rest.** `services/api/jalraksha_service/main.py:529-580`. Seeded RNG (`default_rng(42)`), 50×50 grid at 50 m, 5 m of uniform random bed relief, water surface flat at η = 10 m, `SWESolver(grid, manning_n=0.03, cfl=0.9)`, 1000 steps. Gates: `max|V| < 1e-8 m/s` and `max|Δη| < 1e-6 m`. The docstring names the property (`main.py:532-534`): "The C-property (Bermudez & Vazquez 1994), and the single most diagnostic test of a shallow-water code: a scheme that fails it manufactures currents out of terrain, which on a 30 m Himalayan DEM means manufacturing a flood." **Measured: 5.98e-14 m/s** (`docs/dashboard_integration.md:110`, `CLAUDE.md:279`, `docs/progress.md:91`) — six orders of magnitude inside the gate, i.e. machine precision.
+**Lake at rest.** `services/api/jalraksha_service/main.py:615-666`. Seeded RNG (`default_rng(42)`), 50×50 grid at 50 m, 5 m of uniform random bed relief, water surface flat at η = 10 m, `SWESolver(grid, manning_n=0.03, cfl=0.9)`, 1000 steps. Gates: `max|V| < 1e-8 m/s` and `max|Δη| < 1e-6 m`. The docstring names the property (`services/api/jalraksha_service/main.py:618-620`): "The C-property (Bermudez & Vazquez 1994), and the single most diagnostic test of a shallow-water code: a scheme that fails it manufactures currents out of terrain, which on a 30 m Himalayan DEM means manufacturing a flood." **Measured: 5.98e-14 m/s** (`docs/dashboard_integration.md:110`, `CLAUDE.md:280`, `docs/progress.md:95`) — six orders of magnitude inside the gate, i.e. machine precision.
 
-**Mass conservation.** `main.py:583-637`. 200×1 grid at 0.5 m with `x0 = −50.0`, `h = 1.0` for `x < 0` and 0 otherwise, `manning_n=0.0`, `cfl=0.9`, `boundary="reflective"`, 1000 steps. Gate: relative volume drift < 1e-3. Two reasons are recorded: reflective walls are essential because "with transmissive boundaries the front leaves the domain and volume SHOULD drop, so a transmissive run tells you nothing about the discretisation" (`main.py:586-589`); and the negative `x0` is essential because "with the default x0=0 every cell centre is positive, the `x < 0` initial condition is empty, and the check would divide by a zero initial volume and pass vacuously" (`main.py:592-595`) — and the function explicitly guards that case at `:610-614`. **Measured: 0.000000% drift**.
+**Mass conservation.** `services/api/jalraksha_service/main.py:669-723`. 200×1 grid at 0.5 m with `x0 = −50.0`, `h = 1.0` for `x < 0` and 0 otherwise, `manning_n=0.0`, `cfl=0.9`, `boundary="reflective"`, 1000 steps. Gate: relative volume drift < 1e-3. Two reasons are recorded: reflective walls are essential because "with transmissive boundaries the front leaves the domain and volume SHOULD drop, so a transmissive run tells you nothing about the discretisation" (`services/api/jalraksha_service/main.py:672-675`); and the negative `x0` is essential because "with the default x0=0 every cell centre is positive, the `x < 0` initial condition is empty, and the check would divide by a zero initial volume and pass vacuously" (`services/api/jalraksha_service/main.py:678-681`) — and the function explicitly guards that case at `:610-614`. **Measured: 0.000000% drift**.
 
-**Ritter.** `main.py:639-691`. Calls `compare_ritter(tmp)` in a temporary directory, gates on `jalraksha_rmse_m < 0.10 m`, and returns the three curves as `series` for the panel to plot. When no kernel is present the JalRaksha-vs-analytical half still returns and the UI draws two curves instead of three (`main.py:643-646`). **Measured: JalRaksha 0.0317 m, Delft3D FM 0.0349 m.**
+**Ritter.** `main.py:639-691`. Calls `compare_ritter(tmp)` in a temporary directory, gates on `jalraksha_rmse_m < 0.10 m`, and returns the three curves as `series` for the panel to plot. When no kernel is present the JalRaksha-vs-analytical half still returns and the UI draws two curves instead of three (`services/api/jalraksha_service/main.py:729-732`). **Measured: JalRaksha 0.0317 m, Delft3D FM 0.0349 m.**
 
-**How they are run from both CI and the dashboard.** The gates mirror the pytest tests exactly. `_check_lake_at_rest`'s docstring (`main.py:536-540`) states the invariant: "Mirrors tests/test_solver.py::TestLakeAtRest::test_lake_at_rest_random_bathymetry exactly - same seed, same grid, same 1000 steps, same thresholds - so the badge on the dashboard and the blocking CI gate can never disagree about whether the solver is sound." `_check_mass_conservation` says the same for `test_mass_conservation_dam_break_walls`.
+**How they are run from both CI and the dashboard.** The gates mirror the pytest tests exactly. `_check_lake_at_rest`'s docstring (`services/api/jalraksha_service/main.py:622-626`) states the invariant: "Mirrors tests/test_solver.py::TestLakeAtRest::test_lake_at_rest_random_bathymetry exactly - same seed, same grid, same 1000 steps, same thresholds - so the badge on the dashboard and the blocking CI gate can never disagree about whether the solver is sound." `_check_mass_conservation` says the same for `test_mass_conservation_dam_break_walls`.
 
-The endpoint is `GET /validation` (`main.py:493-527`). It never runs the gates inside the request — `_run_validation_checks` (`main.py:474-490`) executes on a background daemon thread, guarded by `_VALIDATION_LOCK` and an `active` flag, and the endpoint returns `status: "running"` immediately. The reason is recorded (`main.py:515-518`): the gates perform two 1000-step solves plus `compare_ritter`, "which starts the Delft3D kernel — and holding a connection open for that returned nothing after 120 seconds when a simulation was already competing for the machine." Results are cached to disk and returned with `cached: True` on subsequent calls; `refresh=true` re-runs. `ValidationPanel.jsx:35-56` polls every 2 s with a 15-minute ceiling, and deliberately does not auto-run on mount because "The Ritter cross-check launches the Delft3D kernel, so a tab that auto-ran it would fire a solver on every page load."
+The endpoint is `GET /validation` (`main.py:493-527`). It never runs the gates inside the request — `_run_validation_checks` (`services/api/jalraksha_service/main.py:560-576`) executes on a background daemon thread, guarded by `_VALIDATION_LOCK` and an `active` flag, and the endpoint returns `status: "running"` immediately. The reason is recorded (`services/api/jalraksha_service/main.py:601-604`): the gates perform two 1000-step solves plus `compare_ritter`, "which starts the Delft3D kernel — and holding a connection open for that returned nothing after 120 seconds when a simulation was already competing for the machine." Results are cached to disk and returned with `cached: True` on subsequent calls; `refresh=true` re-runs. `ValidationPanel.jsx:35-56` polls every 2 s with a 15-minute ceiling, and deliberately does not auto-run on mount because "The Ritter cross-check launches the Delft3D kernel, so a tab that auto-ran it would fire a solver on every page load."
 
 Every check is wrapped so that an exception becomes `ValidationCheck(name=..., error=...)` rather than a 500, so a missing kernel degrades one card rather than the tab.
 
@@ -16813,9 +16922,9 @@ Each item gives file:line, the defect, and a concrete fix. Severity is CRITICAL 
 
 **9. MEDIUM — `jalraksha/delft3d/runner.py:211`.** `spread = 0.2 * t_s` is rendered into `p05_min` / `p95_min` — the same field names used elsewhere for genuine ensemble percentiles — and carries its own `TODO: UNVETTED` (`:200-202`). The UI does caveat the method, but the field names imply an uncertainty quantification. **Fix:** rename to `nominal_low_min` / `nominal_high_min` on estimate-method entries so the shape of the data cannot be mistaken for an ensemble band.
 
-**10. MEDIUM — `jalraksha/sph/pysph_runner.py:63`.** `ALPHA_VISCOSITY = 0.25`, `TODO: UNVETTED`, is the only dissipation in the near-field model and acts as an uncalibrated eddy-viscosity surrogate at real-field heads. No published-experiment validation exists. **Fix:** run an α sweep (0.05 / 0.1 / 0.25 / 0.5) on the still-water gate and on one near-field case, publish the sensitivity of `max_speed_m_s` and `front_speed_m_s`, and state the resulting band alongside every reported SPH number. Validating against a published laboratory dam break (Koshizuka & Oka, or the SPHERIC test cases) would be the stronger fix.
+**10. MEDIUM — `jalraksha/sph/pysph_runner.py:64`.** `ALPHA_VISCOSITY = 0.25`, `TODO: UNVETTED`, is the only dissipation in the near-field model and acts as an uncalibrated eddy-viscosity surrogate at real-field heads. No published-experiment validation exists. **Fix:** run an α sweep (0.05 / 0.1 / 0.25 / 0.5) on the still-water gate and on one near-field case, publish the sensitivity of `max_speed_m_s` and `front_speed_m_s`, and state the resulting band alongside every reported SPH number. Validating against a published laboratory dam break (Koshizuka & Oka, or the SPHERIC test cases) would be the stronger fix.
 
-**11. MEDIUM — `jalraksha/sph/coupling.py` and `jalraksha/sph/domain.py` (whole modules), exported at `jalraksha/sph/__init__.py:15-33`.** Neither is called from production; `pysph_runner.py:377-400` re-implements the handoff inline. The public API advertises a coupling interface the pipeline does not use, and nothing keeps the two implementations in step. **Fix:** either have `run_near_field_sph` call `coupling.handoff_swe_to_sph`, or add a module-level note to both files stating they are reference/test-only and are not the production handoff.
+**11. MEDIUM — `jalraksha/sph/coupling.py` and `jalraksha/sph/domain.py` (whole modules), exported at `jalraksha/sph/__init__.py:15-33`.** Neither is called from production; `jalraksha/sph/pysph_runner.py:522-545` re-implements the handoff inline. The public API advertises a coupling interface the pipeline does not use, and nothing keeps the two implementations in step. **Fix:** either have `run_near_field_sph` call `coupling.handoff_swe_to_sph`, or add a module-level note to both files stating they are reference/test-only and are not the production handoff.
 
 **12. MEDIUM — `jalraksha/delft3d/setup.py:223` (with `:312-325`).** `NetFile` points at an INI stub D-Flow FM cannot read; a model built by `setup_delft3d_model` fails at mesh load. The module is still exported (`delft3d/__init__.py:5`) and is still the model builder for all of `tests/test_delft3d.py`, which never notices because every test passes `force_fallback=True`. **Fix:** make `setup_delft3d_model` delegate its mesh writing to `ugrid.write_ugrid_net`, or delete the module and port the tests to `dfm_model.build_dfm_model`. At minimum, add a module-level warning naming the defect.
 
@@ -16843,7 +16952,7 @@ Each item gives file:line, the defect, and a concrete fix. Severity is CRITICAL 
 
 **24. LOW — `jalraksha/delft3d/comparison.py:129`, `:132-133`; `jalraksha/validation/metrics.py:45-47`, `:76-77`, `:109-110`.** Empty-denominator conventions disagree between modules (CSI → 1.0, precision/recall → 1.0 in one file and 0.0 in the other), and `compute_rmse` returns 0.0 when nothing is comparable, so "no data" is indistinguishable from "perfect". **Fix:** return `None` for undefined metrics and render an em-dash in the UI.
 
-**25. LOW — `jalraksha/sph/pysph_runner.py:538-541`.** `front_speed_m_s` is a two-point secant over the whole record, including the `n_damp` ramp, and is displayed in the UI as "Surge front speed" (`ComparisonPanel.jsx:77`) without that caveat. **Fix:** fit the slope over the post-damping portion, and report both the fitted speed and its R².
+**25. LOW — `jalraksha/sph/pysph_runner.py:686-689`.** `front_speed_m_s` is a two-point secant over the whole record, including the `n_damp` ramp, and is displayed in the UI as "Surge front speed" (`ComparisonPanel.jsx:77`) without that caveat. **Fix:** fit the slope over the post-damping portion, and report both the fitted speed and its R².
 
 **26. LOW — `jalraksha/delft3d/runner.py:76-86`.** `_KERNEL_GLOBS` are Windows-only absolute paths; on Linux and in the project's own Docker image discovery reduces to two PATH lookups, so any containerised deployment is permanently Tier B. Not documented. **Fix:** add Linux glob patterns and a note in the module docstring and README.
 
@@ -16853,7 +16962,7 @@ Each item gives file:line, the defect, and a concrete fix. Severity is CRITICAL 
 
 **29. LOW — `jalraksha/sph/domain.py:86-96` and `jalraksha/sph/coupling.py:87-92`.** Triple-nested Python loops for particle generation and an O(nx·ny·N) per-cell mask for free-surface extraction. Both are unused in production but shipped as public API. **Fix:** vectorise, or mark as reference implementations per item 11.
 
-**30. LOW — documentation drift across `CLAUDE.md:16`, `README.md:151`, `docs/validation_findings.md:7-8`.** The kernel build is described as "dimrset 2026.01" in two places and "dimrset build 2025-10-20" in a third, and `README.md:171` contains a corrupted install path (`...\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe`) that does not match any entry in `_KERNEL_GLOBS`. **Fix:** derive the build string from the kernel at runtime (item 5) and generate the README table from `validation_metrics.json` rather than maintaining it by hand.
+**30. LOW — documentation drift across `CLAUDE.md:16`, `README.md:329`, `docs/validation_findings.md:7-8`.** The kernel build is described as "dimrset 2026.01" in two places and "dimrset build 2025-10-20" in a third, and `README.md:349` contains a corrupted install path (`...\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe`) that does not match any entry in `_KERNEL_GLOBS`. **Fix:** derive the build string from the kernel at runtime (item 5) and generate the README table from `validation_metrics.json` rather than maintaining it by hand.
 
 ### C8. Overall assessment
 
@@ -17015,9 +17124,9 @@ Distribution of the 22 CRITICAL findings by failure mode:
 
 | Failure mode | Count | Examples |
 |---|---:|---|
-| Import-blocking (`NameError` at import) | 3 | `impact/hazard.py:143`, `impact/population.py:184`, `validation/metrics.py:88` |
-| Silently wrong numbers reaching a user | 5 | `impact/damage.py:134`, `impact/population.py:227`, `:261-267`, `solver/types.py:137-140`, `export/keyframes.py:117-130` |
-| Unenforced safety or security control | 3 | `hardening.py:258-282`, `service/main.py:114-936`, `service/db.py:37` |
+| Import-blocking (`NameError` at import) | 3 | `impact/hazard.py:143`, `jalraksha/impact/population.py@16a8575:184`, `validation/metrics.py:88` |
+| Silently wrong numbers reaching a user | 5 | `impact/damage.py:134`, `jalraksha/impact/population.py@16a8575:227`, `:261-267`, `solver/types.py:137-140`, `export/keyframes.py:117-130` |
+| Unenforced safety or security control | 3 | `hardening.py:255-279`, `services/api/jalraksha_service/main.py:116-938`, `services/api/jalraksha_service/db.py:37` |
 | Deliverable claimed but absent | 4 | river-blockage (D1/R2), packaging omissions, verification-queue status, `BUILD_STATUS.md` self-contradiction |
 | Demo-fatal fragility | 2 | `frontend/src/main.jsx:11-15`, `paraview/render_static.py:474-477` |
 | Physics defect in a shipped product | 3 | `terrain/breach.py:389-405`, `impact/hazard.py:105`, scope/documentation contradiction in `DECISIONS.md` §8 |
@@ -17065,7 +17174,7 @@ Python version, unconditionally. There is no configuration under which this work
 
 ##### C-02 — `jalraksha.impact.population` is unimportable: missing `Tuple`
 
-**Location:** `jalraksha/impact/population.py:184` (annotation `shape: Tuple[int, int]`), `jalraksha/impact/population.py:13` (import line).
+**Location:** `jalraksha/impact/population.py@16a8575:184` (annotation `shape: Tuple[int, int]`), `jalraksha/impact/population.py:13` (import line).
 
 **Defect.** Identical shape to C-01. Line 13 imports `Dict, Any, Optional, List`
 and omits `Tuple`; `_generate_synthetic_settlements` at line 184 annotates its
@@ -17132,16 +17241,17 @@ figure in the wrong direction.
 
 ##### C-04 — `PopulationEstimator` returns zero population for every input
 
-> **RESOLVED (2026-09-11, `dd1e766`).** `PopulationEstimator` was deleted; see §4B.5.
+**Current state (2026-09-11, `dd1e766`).** `PopulationEstimator` was deleted; see §4B.5.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
-**Location:** `jalraksha/impact/population.py:227` (`if settlement_type in self.settlement_data:`).
+**Location:** `jalraksha/impact/population.py@16a8575:227` (`if settlement_type in self.settlement_data:`).
 
 **Defect.** `_get_population_density` reads `settlement_type = settlement_grid[i, j]`,
 which is an integer (0 = village, 1 = town, 2 = city, per the documented
-convention at `population.py:91` and produced as such by
+convention at `jalraksha/impact/population.py:91` and produced as such by
 `_generate_synthetic_settlements` at `:203-208`). It then tests membership
 against `self.settlement_data`, whose keys are the **strings** `"village"`,
-`"town"` and `"city"` (`population.py:41-59`).
+`"town"` and `"city"` (`jalraksha/impact/population.py:41-59`).
 
 **Failure mechanism.** `0 in {"village": ..., "town": ..., "city": ...}` is
 `False` for every integer. The branch is never taken. `population_density`
@@ -17155,7 +17265,7 @@ out zero.
 over a dense settlement grid. Because the failure is total and silent, it is not
 distinguishable from "this flood reaches nobody", which is itself a legitimate
 and important result the code explicitly documents support for
-(`population.py:333-338`). Worse, two tests currently pass *because* of this
+(`jalraksha/gee/population.py` (line not locatable — see Revision history)). Worse, two tests currently pass *because* of this
 defect: `tests/test_gee.py:321-343`'s
 `test_estimator_labels_an_explicitly_synthetic_layout` and
 `test_zero_affected_population_is_not_an_error` both assert only structural
@@ -17176,7 +17286,7 @@ assert r["total_population"] > 0   # fails: it is 0
 
 ##### C-05 — Nested depth thresholds accumulate, counting deep cells up to four times
 
-**Location:** `jalraksha/impact/population.py:261-267` (the `for threshold_name, threshold in self.exposure_thresholds.items():` loop).
+**Location:** `jalraksha/impact/population.py@16a8575:261-267` (the `for threshold_name, threshold in self.exposure_thresholds.items():` loop).
 
 **Defect.** `_analyze_depth_impact` iterates the four exposure thresholds
 (`minimal` 0.1 m, `moderate` 0.5 m, `severe` 1.0 m, `catastrophic` 2.0 m) and for
@@ -17209,7 +17319,8 @@ over a uniform settlement grid and compare `population_affected` against
 
 ##### C-06 — FD2320 hazard classification has a velocity ceiling with no catch-all: a 3 m / 10 m/s cell classifies as DRY
 
-> **RESOLVED (2026-09-11, `dd1e766`).** The box classifier was replaced by the HR index, where velocity can only raise hazard. `tests/test_impact.py::test_a_fast_deep_flow_is_not_classified_dry` pins it.
+**Current state (2026-09-11, `dd1e766`).** The box classifier was replaced by the HR index, where velocity can only raise hazard. `tests/test_impact.py::test_a_fast_deep_flow_is_not_classified_dry` pins it.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **Location:** `jalraksha/impact/hazard.py:105` (`velocity_ok = velocity_grid <= thresholds["max_velocity"]`).
 
@@ -17248,9 +17359,9 @@ assert out[0,0] is not HazardLevel.DRY   # fails
 
 ##### C-07 — `State.__post_init__` sanitises NaN on every step, making divergence detection dead code
 
-**Location:** `jalraksha/solver/types.py:137-140` (`np.nan_to_num(...)` × 4), called from `jalraksha/solver/core.py:469`.
+**Location:** `jalraksha/solver/types.py:137-140` (`np.nan_to_num(...)` × 4), called from `jalraksha/solver/core.py:513`.
 
-**Defect.** `State.__post_init__` runs `np.nan_to_num(..., copy=False, nan=0.0, posinf=0.0, neginf=0.0)` over `h`, `u`, `v` and `b`. Because `core.py:469` constructs a new `State` on every timestep, this runs every step, not just on construction from a DEM.
+**Defect.** `State.__post_init__` runs `np.nan_to_num(..., copy=False, nan=0.0, posinf=0.0, neginf=0.0)` over `h`, `u`, `v` and `b`. Because `jalraksha/solver/core.py:513` constructs a new `State` on every timestep, this runs every step, not just on construction from a DEM.
 
 **Failure mechanism.** The sanitiser was added for a legitimate reason — Copernicus
 DEM voids over water bodies are NaN and would poison the domain on step 1. But it
@@ -17258,7 +17369,7 @@ is applied unconditionally on every step, so any NaN or Inf *produced by the
 solver itself* is silently replaced with zero before anything can observe it.
 Consequently `State.is_finite()` at `types.py:188` is a tautology: it can only
 ever return `True`, because non-finite values are erased before it is called. The
-guard at `core.py:551-555` that raises `RuntimeError` on a non-finite state is
+guard at `jalraksha/solver/core.py:551-555` that raises `RuntimeError` on a non-finite state is
 therefore unreachable dead code.
 
 **Blast radius.** A numerically divergent run — the exact failure the guard exists
@@ -17270,13 +17381,13 @@ exported to COGs, rendered to PNGs, summarised into hazard classes and fed into
 the impact chain. This is the single most consequential silent-fallback in the
 codebase, because it converts "the solver blew up" — a loud, honest outcome —
 into "the flood mysteriously stopped", which is indistinguishable from a real
-result to every consumer. `tests/test_solver.py:232`, which asserts on
+result to every consumer. `tests/test_solver.py:251`, which asserts on
 `is_finite()`, is vacuous for the same reason.
 
 **Trigger conditions.** Any numerical instability: a CFL violation, a
 badly-conditioned bed, a division by a near-zero depth, or the uncapped breach
-injection of MED-`run.py:515-518` driving 75 m of depth into one cell in a single
-step. The `parallel.py:190-195` "timestep has probably collapsed" warning is the
+injection of MED-`jalraksha/run.py:516-519` driving 75 m of depth into one cell in a single
+step. The `jalraksha/solver/parallel.py:312-317` "timestep has probably collapsed" warning is the
 only surviving symptom, and it is a warning, not an error.
 
 **Reproduction.** Inject a NaN into a state mid-run and observe that
@@ -17463,7 +17574,7 @@ HIGH/MEDIUM findings in the frontend audit and each is a live trigger.
 
 ##### C-12 — The Mullaperiyar prohibition is never enforced in code
 
-**Location:** `jalraksha/hardening.py:258-282` (`check_forbidden_sources`); zero production call sites.
+**Location:** `jalraksha/hardening.py:255-279` (`check_forbidden_sources`); zero production call sites.
 
 **Defect.** `check_forbidden_sources` scans a string for a forbidden list
 including `"mullaperiyar"` and returns a `list` of matches. It does not raise.
@@ -17501,7 +17612,7 @@ matches "meritorious" and "merit review" and `"bhuvan"` would match a place name
 
 ##### C-13 — No authentication or authorisation on any service endpoint
 
-**Location:** `services/api/jalraksha_service/main.py:114-936` (every route).
+**Location:** `services/api/jalraksha_service/main.py:116-938` (every route).
 
 **Defect.** Not one route carries a dependency, a middleware check, an API key,
 a token or any other access control. `/docs` and `/openapi.json` are served,
@@ -17510,25 +17621,25 @@ advertising the complete surface.
 **Failure mechanism.** Anonymous callers can reach every capability the service
 has. Three routes are individually dangerous:
 
-- `POST /runs` (`main.py:154-157`) — unbounded compute. In eager mode every
+- `POST /runs` (`services/api/jalraksha_service/main.py:238-241`) — unbounded compute. In eager mode every
   request spawns a CPU-saturating OS process with no ceiling; in broker mode the
   queue is unbounded. There is no rate limit and no concurrency cap.
-- `POST /runs/{id}/open-paraview` (`main.py:842`, `:910`) — spawns a **GUI
+- `POST /runs/{id}/open-paraview` (`services/api/jalraksha_service/main.py:936`, `:910`) — spawns a **GUI
   process on the API host**. An unauthenticated remote caller can start desktop
   applications on the demo machine.
-- `GET /validation?refresh=true` (`main.py:487-490`) — starts a Delft3D kernel
+- `GET /validation?refresh=true` (`services/api/jalraksha_service/main.py:573-576`) — starts a Delft3D kernel
   and two 1000-step solves per call.
 
 **Blast radius.** Complete. Any party that can route to the host can exhaust its
 CPU, exhaust its memory (via C-14's unbounded `target_resolution`), spawn
-processes on it, and read everything the `/files` mount exposes (H-`main.py:83`:
+processes on it, and read everything the `/files` mount exposes (H-`services/api/jalraksha_service/main.py:85`:
 the entire `DATA_DIR` tree, including the SQLite metadata store at
 `/files/jalraksha.db`, `validation_cache.json`, the GEE caches, the Delft3D model
 directories and transient run payloads). Wildcard CORS
-(`main.py:46-48`, `allow_origins=["*"]` with wildcard methods and headers) means
+(`services/api/jalraksha_service/main.py:48-50`, `allow_origins=["*"]` with wildcard methods and headers) means
 any web page in a victim's browser can drive the whole API; this is mitigated
 only by `allow_credentials` defaulting to `False`, and the static-asset
-middleware at `main.py:74-76` hardcodes `Access-Control-Allow-Origin: *`
+middleware at `services/api/jalraksha_service/main.py:76-78` hardcodes `Access-Control-Allow-Origin: *`
 unconditionally so it survives any tightening of the main policy.
 
 Under `docker-compose.yml` the exposure widens further: Redis is published on
@@ -17555,7 +17666,7 @@ The requirements file installs `psycopg2-binary`, which provides the module
 **Failure mechanism.** `import psycopg` raises `ImportError`, which the
 `except ImportError` at `:36` converts to
 `RuntimeError("Postgres DATABASE_URL set but psycopg not installed")`. Because
-`main.py:40` calls `db.init_db()` at **import time**, this raises during module
+`services/api/jalraksha_service/main.py:42` calls `db.init_db()` at **import time**, this raises during module
 import, so the API container fails to start at all.
 
 **Blast radius.** The entire compose stack is non-functional against Postgres.
@@ -17585,7 +17696,7 @@ exactly what `docker-compose.yml` configures.
 
 ##### C-15 — Packaging omits four real subpackages: `pip install .` ships neither Delft3D, impact, GEE nor validation
 
-**Location:** `pyproject.toml:86` — `packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]`.
+**Location:** `pyproject.toml:95` — `packages = ["jalraksha", "jalraksha.solver", "jalraksha.terrain", "jalraksha.export", "jalraksha.sph"]`.
 
 **Defect.** Four subpackages with real `__init__.py` files — `jalraksha.delft3d`,
 `jalraksha.gee`, `jalraksha.impact`, `jalraksha.validation` — are absent from the
@@ -17625,7 +17736,7 @@ evaluated at `def` time during import → `NameError: name 'Optional' is not def
 `jalraksha/validation/sensitivity.py` and `tests/test_validation.py`. The entire
 Phase-8 validation package is unreachable and its test file cannot be collected.
 This has a direct consequence for the project's own status reporting: the
-`docs/progress.md:75` figure of "435 passed, 4 skipped" **cannot be true of the
+`docs/progress.md:79` figure of "435 passed, 4 skipped" **cannot be true of the
 tree as shipped**, because `tests/test_validation.py` cannot be collected at all.
 Either the defect was introduced after that run or the count is stale; either way
 one of the three competing test counts (235/239, 344, 435) is demonstrably wrong,
@@ -17720,10 +17831,10 @@ the Teton bracketing gate depends), all twelve Xu & Zhang B3/B4/B5 coefficients
 (`breach.py:884-901`), the Graham fatality-rate table
 (`impact/fatality.py:59-79`), every Jonkman coefficient
 (`impact/fatality.py:135,139,144,147`), the "Graham (2009)" depth-damage a/b/r²
-triples (`impact/damage.py:42-58`), `_SECTOR_RATE` (`damage.py:245-250`), the
+triples (`jalraksha/impact/damage.py:42-58`), `_SECTOR_RATE` (`jalraksha/impact/damage.py:245-250`), the
 asset baselines (`damage.py:69-73`), the FD2320 debris factor and HR class
 boundaries (`impact/hazard.py:225,247-249`), and `WARNING_LEAD_TIME_S`
-(`service/tasks.py:167`).
+(`services/api/jalraksha_service/tasks.py:167`).
 
 **Trigger conditions.** N/A — a standing condition of the tree.
 
@@ -17779,7 +17890,7 @@ demonstration is most likely to actually experience.
 **Defect.** Six API functions never check `r.ok`. FastAPI error bodies are valid
 JSON, so an HTTP 422 or 500 propagates into the UI **as data**. `submitRun`
 resolves to `{detail: [...]}`, whose `.run_id` is `undefined`, so
-`ControlPanel.jsx:126` throws a `TypeError` that the user sees rendered *as the
+`frontend/src/panels/ControlPanel.jsx:132` throws a `TypeError` that the user sees rendered *as the
 run status string*. Separately, `App.jsx:49` only reaches `setManifest` inside
 the `if (runResult.keyframe_manifest_url)` branch, so loading a run without a
 manifest leaves the **previous run's keyframes on screen and animating**; and
@@ -17793,7 +17904,7 @@ previous dam's flood animation over the current dam's map, or display nothing at
 all, or display a JavaScript `TypeError` where the run status should be — and in
 none of those three cases does anything tell the operator or the audience that
 what is on screen is not the result of the run just submitted. Add
-`ControlPanel.jsx:118`, where the "Custom" dam option posts **Tehri's hardcoded
+`frontend/src/panels/ControlPanel.jsx:124`, where the "Custom" dam option posts **Tehri's hardcoded
 coordinates** because there is no latitude/longitude input in the UI at all, and
 the system can present a "custom dam" result that is silently Tehri's location
 with the user's height and storage sliders applied.
@@ -17829,7 +17940,7 @@ three of the four enum members, and for `RESIDENTIAL` it evaluates
 Wang 2016 and Jiang 2019 can never be selected; every request for a sensitivity
 curve silently falls through to the Graham default at `:117`.
 
-**`impact/population.py:275` — `cell_area_km2` is re-hardcoded, shadowing the argument.**
+**`jalraksha/impact/population.py@16a8575:275` — `cell_area_km2` is re-hardcoded, shadowing the argument.**
 `_analyze_depth_impact` receives a correctly-computed `cell_area_km2` parameter
 and then, at line 275, overwrites it with `200.0 ** 2 / 1e6` before computing
 `total_population`. The PAR denominator is therefore wrong on any grid that is
@@ -17837,7 +17948,7 @@ not exactly 200 m — by a factor of `(cell_size/200)²`. This is the exact defe
 that the `cell_size_m` parameter was added to `estimate_population` to fix; the
 fix was applied to the numerator and not the denominator.
 
-**`impact/population.py:319` — the demographic total sums overlapping groups.**
+**`jalraksha/impact/population.py@16a8575:319` — the demographic total sums overlapping groups.**
 `demographics["total"] = sum(demographics.values())` adds children, elderly, women
 and working-age. Women intersect all three other categories; children and
 working-age are complementary but the multipliers break the closure. Measured:
@@ -17862,7 +17973,7 @@ which is worse than not reporting it — it implies a control that does not exis
 **`impact/hazard.py:11-17` vs `:46-52` — docstring class table offset by one band from the code.**
 Unresolvable from the file alone: one of the two is wrong and there is no third
 source in the repository to adjudicate. The frontend
-(`GaugesPanel.jsx:112-120`) carries a *third* client-side copy of the thresholds
+(`frontend/src/panels/GaugesPanel.jsx:112-120`) carries a *third* client-side copy of the thresholds
 whose own docstring notes that the backend module's docstring and implementation
 disagree.
 
@@ -17890,14 +18001,14 @@ The eight values (1.5 m²/s, 2.1 m, 0.03, 0.5, 0.4, 0.9, 0.02, 0.05) carry no
 reference. Only the 2.1 m matches a published Jonkman criterion; the 1.5 m²/s
 matches nothing identifiable in the literature. Queue item #8.
 
-**`impact/damage.py:42-58` — "Graham (2009)" a/b/r² triples reference a work that is not in the repository.**
+**`jalraksha/impact/damage.py:42-58` — "Graham (2009)" a/b/r² triples reference a work that is not in the repository.**
 Marked `# TODO: UNVETTED` at `:39`, but there is no Graham 2009 reference anywhere
 — not in `literature.md`, not in `RESEARCH-FINDINGS.md`, not in any docstring.
 The `r2` values (0.82/0.79/0.75) are the most dangerous part: a goodness-of-fit
 statistic attached to a curve whose fit was never performed is a fabricated
 credential. Queue item #10.
 
-**`impact/damage.py:245-250` — `_SECTOR_RATE` is the curve the tests actually exercise and has no named source at all.**
+**`jalraksha/impact/damage.py:245-250` — `_SECTOR_RATE` is the curve the tests actually exercise and has no named source at all.**
 Values 0.8/0.7/0.6/0.8 m⁻¹, `# TODO: UNVETTED` at `:243`. The class-based
 `DepthDamageAnalyzer` is what the docstrings describe; the functional wrapper
 `compute_depth_damage` is what every caller and test uses.
@@ -17924,7 +18035,7 @@ unauditable as it stands.
 
 **`tests/test_gee.py:321-343` — two tests pass while `PopulationEstimator` returns zero for every input.**
 Neither asserts a non-zero population, so the CRITICAL defects at
-`population.py:227`, `:261-267` and `:275` are invisible to the suite.
+`jalraksha/gee/population.py:227`, `:261-267` and `:275` are invisible to the suite.
 
 **No tests at all for `DepthDamageAnalyzer` or `HazardClassifier`,** and
 `test_jonkman_loss_of_life` asserts only `total_fatalities > 0`. Every coefficient
@@ -17932,23 +18043,23 @@ in both classes could change by an order of magnitude without a test failing.
 
 ##### 5.3.2 Service layer (13 HIGH)
 
-**`main.py:83` — the `/files` mount exposes the entire `DATA_DIR` tree read-only over HTTP,**
-including the SQLite metadata store itself (`config.py:85` defaults
+**`services/api/jalraksha_service/main.py:85` — the `/files` mount exposes the entire `DATA_DIR` tree read-only over HTTP,**
+including the SQLite metadata store itself (`jalraksha/config.py:85` defaults
 `DATABASE_URL` *inside* `DATA_DIR`, so `/files/jalraksha.db` is downloadable),
 `validation_cache.json`, the GEE caches, the Delft3D model directories, and
 transient run payloads written to `DATA_DIR/runs/<run_id>_*.json`
-(`main.py:199-205`) which are reachable at `/files/runs/...` until
+(`services/api/jalraksha_service/main.py:284-290`) which are reachable at `/files/runs/...` until
 `run_worker.py:112` unlinks them, and never cleaned if the child never starts.
 
-**`main.py:46-48` — wildcard CORS in every deployment mode.**
+**`services/api/jalraksha_service/main.py:48-50` — wildcard CORS in every deployment mode.**
 `allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]`, unconditional,
 with no environment switch. Mitigated only by `allow_credentials` defaulting to
 `False`.
 
-**`main.py:154-157` — `POST /runs` has no rate limit and no concurrency cap.**
+**`services/api/jalraksha_service/main.py:238-241` — `POST /runs` has no rate limit and no concurrency cap.**
 Eager mode spawns an unbounded number of CPU-saturating OS processes; broker mode
 has an unbounded queue. Combined with the frontend's 10,000-member ensemble
-slider (`ControlPanel.jsx:213`), a single accidental drag is a denial of service
+slider (`frontend/src/panels/ControlPanel.jsx:220`), a single accidental drag is a denial of service
 on the demo machine.
 
 **`schemas.py:27` — `target_resolution: float = Field(200.0, gt=0)` has no lower bound.**
@@ -17973,7 +18084,7 @@ handler, which marks a **successful** run as failed. This is the single-writer
 concurrency theme in its most damaging form: the failure lands on the last write
 of a run that has already done all its work.
 
-**`main.py:487-490` — `GET /validation` writes no cache on failure.**
+**`services/api/jalraksha_service/main.py:573-576` — `GET /validation` writes no cache on failure.**
 The in-flight flag is cleared in `finally`, but the cache is written only on the
 success path. The frontend polls every 2000 ms. Therefore one reproducible gate
 failure causes a *new background thread running two 1000-step solves plus a
@@ -18006,7 +18117,7 @@ silently disabled in every containerised deployment.
 
 ##### 5.3.3 Frontend (11 HIGH)
 
-**`api.js:79` — `pollUntilDone`'s default timeout is 600,000 ms.**
+**`frontend/src/api.js:88` — `pollUntilDone`'s default timeout is 600,000 ms.**
 Large-ensemble SWE or Delft3D runs exceed ten minutes. The frontend then shows
 `failed: Run timed out` while the backend completes normally; the run must be
 reloaded manually by pasting its id.
@@ -18023,7 +18134,7 @@ Khadakwasla's, the selector still says Tehri, and the map draws Tehri's gauges.
 
 **`api.js:13,18,27,38,43,74` — six API functions never check `r.ok`.** See C-22.
 
-**`ControlPanel.jsx:118` — "Custom" posts Tehri's hardcoded coordinates.** See C-22.
+**`frontend/src/panels/ControlPanel.jsx:124` — "Custom" posts Tehri's hardcoded coordinates.** See C-22.
 
 **`Map2D.jsx:49` — the Leaflet basemap is a hardcoded public internet URL**
 (`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`) with no offline basemap
@@ -18057,7 +18168,7 @@ on invented topography. The `warnings.warn` at `:442` says "results from this ru
 are NOT real terrain", which is honest — but `warnings.warn` is not surfaced to
 the API, the dashboard, the exports or the keyframes.
 
-**`cache.py:41-116` + `dem.py:466` — synthetic tiles are cached with `"synthetic": True` but `check_cache` never reads the flag.**
+**`jalraksha/cache.py:41-116` + `dem.py:466` — synthetic tiles are cached with `"synthetic": True` but `check_cache` never reads the flag.**
 Later runs — including explicitly `--offline-mode` runs, which are supposed to be
 the trustworthy path — hit fabricated terrain as a cache **hit**, with no
 warning at all, because the warning is only emitted on the fetch path. The
@@ -18099,34 +18210,68 @@ and the Teton bracketing gate — the project's only check that the breach
 regressions produce a defensible spread — depends on them. A gate calibrated
 against placeholder bands does not test anything.
 
-**`dem.py:50-51` vs `__init__.py:85-86` — `dem.py` pops the `PROJ_LIB`/`PROJ_DATA` the package init deliberately set.**
+**`dem.py:50-51` vs `jalraksha/__init__.py:85-86` — `dem.py` pops the `PROJ_LIB`/`PROJ_DATA` the package init deliberately set.**
 `jalraksha/__init__.py:_repair_proj_data_path` sets these to repair a broken
 inherited PROJ database; `dem.py` unsets them at module scope. Which wins depends
 on import order, so the same code either works or raises `CRSError` depending on
 whether `jalraksha.dem` was imported before or after the repair ran. See X-06.
 
-##### 5.3.5 Solver core (4 HIGH)
+##### 5.3.5 Solver core (2 HIGH; two more were fixed on 2026-09-12)
 
-**`solver/parallel.py:118` — the per-cell roughness field is collapsed to a scalar in the entire production path.**
-`SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)`. Whatever
-land-cover-derived spatial roughness the terrain pipeline produced is averaged
-away before the solver sees it. `run.py:683` is the production ensemble path;
-`run_smoke.py:22` and `run_demo.py:40` repeat the same collapse. In practice this
-is currently harmless *only because* `assign_manning_from_worldcover`
-(`roughness.py:59-63`) ignores its raster path and returns a uniform 0.03 anyway —
-two defects cancelling, which is not a defence.
+**FIXED — the per-cell roughness field was collapsed to a scalar in the entire
+production path.** As audited, `solver/parallel.py` built every ensemble member
+as `SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)`, so
+whatever land-cover-derived spatial roughness the terrain pipeline produced was
+averaged away before the solver saw it, on both the CPU and (later) the GPU path.
+Commit `af996b7` passes the field itself; `jalraksha/solver/parallel.py:236` is
+the current call. Measured on a WorldCover-style valley, the collapse made a
+smooth channel three times too rough and stopped the flood at 170 cells instead
+of 308.
 
-**`solver/parallel.py:150-157` — the member clock drifts from physical time.**
-`t_sim += dt_adaptive` uses the **pre-injection** CFL timestep, while
-`solver.step(state)` recomputes its own `dt` from the **post-injection** state
-(`core.py:483-485`). The two differ whenever injection changes the maximum wave
-speed — which is exactly when it matters. Consequences: the injected mass
-`Q × dt_adaptive` spans a different interval than the one actually integrated, so
-mass is not conserved across the injection; and arrival times stamped against
-`t_sim` are stamped against a clock that is not the solver's. There is also no
-clamp against overshooting `solver_duration_s`. The identical defect appears
-independently at `validation/delft3d_benchmark.py:502-508`, where `t_sim` (not
-`state.t`) is what is written into `t_arrival` and compared against Delft3D.
+The audit's remark that the defect was "currently harmless because
+`assign_manning_from_worldcover` ignores its raster path and returns a uniform
+0.03 anyway — two defects cancelling, which is not a defence" was correct on both
+counts and both halves are now closed. `jalraksha/terrain/roughness.py` performs a
+real nearest-neighbour reprojection of the ESA legend (nearest always: these are
+class codes, and interpolating cropland 40 against built-up 50 gives 45, which is
+not a land cover), and a `manning_table` passed without a `worldcover_path` now
+raises instead of being silently ignored. What keeps the pair from re-forming is
+`manning_field_summary`, which reports `is_uniform` and `fraction_at_default` into
+`run_summary.json`'s `roughness` block — a uniform field wearing a
+land-cover-derived name is the exact failure this module shipped with, so it is
+now stated rather than inferred. The default pipeline still supplies a uniform
+field (dam_config `manning_n`, default 0.03), which is why the collapse survived
+undetected for so long.
+
+**FIXED — the member clock drifted from physical time.** As audited,
+`t_sim += dt_adaptive` used the **pre-injection** CFL timestep while
+`solver.step(state)` recomputed its own `dt` from the **post-injection** state,
+and the two differ whenever injection changes the maximum wave speed — which is
+exactly when it matters. Measured consequence on a dry synthetic valley: the
+member clock ran up to **2.6% ahead** of the integrated physics and the breach
+over-injected by up to **1.2%**, because `Q × dt_adaptive` spanned a different
+interval than the one actually integrated. Arrival times stamped against `t_sim`
+were stamped against a clock that was not the solver's.
+
+Commit `5fa86b8` reduced it to one timestep per member step.
+`inject_with_one_timestep` (`jalraksha/solver/parallel.py:107`) takes the CFL
+limit of the pre-injection state, injects, and re-checks against the CFL limit of
+the post-injection state, shrinking and re-injecting until the step is valid to
+within `INJECTION_CFL_RTOL = 1e-6`; the injection, the step and the clock then all
+use that one dt. The loop re-checks rather than assuming convergence in one pass,
+because the Audusse wet-fraction term makes a thin film over a bed step faster
+than a deeper one. `MAX_INJECTION_PASSES = 8` caps it and the function returns
+`overran=True` rather than pretending when the cap is hit. The GPU ensemble
+mirrors this exactly in `ensemble_cuda.choose_injection_step`, and
+`TestMemberTimestep` in `tests/test_parallel.py` pins clock = physics time and CFL
+validity on both backends. On Khadakwasla the shrink fires about once in 75,000
+steps, so the correction changed no published result there.
+
+**STILL OPEN — the same defect at `validation/delft3d_benchmark.py`**, where
+`t_sim` rather than `state.t` is written into `t_arrival` and compared against
+Delft3D. The benchmark did not share the member loop and was not touched by
+`5fa86b8`. There is also still no clamp against overshooting
+`solver_duration_s`.
 
 **`solver/types.py:276` vs `solver/parallel.py:37` — two different arrival thresholds.**
 The core path stamps arrival at `h > 0.05 m`; the ensemble path uses
@@ -18137,9 +18282,9 @@ the single most-quoted output of the whole system — the "17.8 min to Deccan
 Gymkhana" class of claim — a factor-of-two threshold ambiguity in the definition
 is material.
 
-**`tests/test_parallel.py:104-118` — the parallel-vs-sequential test never touches the process pool.**
+**`tests/test_parallel.py:106-120` — the parallel-vs-sequential test never touches the process pool.**
 `test_parallel_matches_sequential` uses 2 members with `n_workers=2`. Member 0 is
-always run serially as the cost probe (`parallel.py:356-358`), leaving 1 task, so
+always run serially as the cost probe (`jalraksha/solver/parallel.py:577-579`), leaving 1 task, so
 the cost model at `:363-368` always chooses the sequential path. The "blocking
 property" test therefore compares sequential against sequential. The process-pool
 code path — the one carrying the spawn semantics, the worker initialisation, the
@@ -18170,7 +18315,7 @@ of which contains the substring `"velocity"`. So the depth rasters and the
 velocity rasters are both labelled as seconds in their GeoTIFF metadata. A GIS
 user opening the depth COG reads its unit tag as seconds.
 
-**`export/shapefile.py:266-317` — a second, incompatible "FD2320" scheme.**
+**`jalraksha/export/shapefile.py:266-317` — a second, incompatible "FD2320" scheme.**
 The hazard shapefile writer invents a four-class scheme with depth breaks at
 0.1/0.5/1.2/2.0 m plus velocity terms. `impact/hazard.py:47-51` — declared the
 single source of truth — uses a six-level scheme with breaks at
@@ -18178,7 +18323,7 @@ single source of truth — uses a six-level scheme with breaks at
 cell and a keyframe SEVERE cell are not the same cell, and **both products claim
 FD2320**. A reviewer who overlays the two in QGIS sees them disagree.
 
-**`service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters actually come from.**
+**`services/api/jalraksha_service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters actually come from.**
 It covers `render_static.py`, `camera_presets.py` and `main.py`, and omits
 `jalraksha/presets.py` and `jalraksha_service/config.py` — which is where
 `--exaggeration` and `--depth-max` originate. Editing a preset therefore leaves
@@ -18222,14 +18367,14 @@ claim, not a runtime fact — see §5.6.1.
 
 ##### 5.3.8 Orchestration, CLI and the stdlib API (6 HIGH)
 
-**`cli.py:116-125` — a failed run is reported as a success.**
+**`jalraksha/cli.py:123-132` — a failed run is reported as a success.**
 `cmd_run` never inspects the returned dict for `"error"`. `run_dam_break_ensemble`
-returns `{"error": ...}` on three separate paths (`run.py:625-627` and two
+returns `{"error": ...}` on three separate paths (`jalraksha/run.py:626-628` and two
 others), and the CLI unconditionally prints
 `[SUCCESS] Simulation completed successfully!` and exits 0. A CI pipeline or a
 demo script that checks the exit code sees success on every failure.
 
-**`cli.py:106-114` — the hand-built `dam_config` omits three keys the pipeline needs.**
+**`jalraksha/cli.py:113-121` — the hand-built `dam_config` omits three keys the pipeline needs.**
 `dam_id`, `domain_radius_km` and `surface_area_km2` are absent. Consequences:
 `define_downstream_gauges` receives `None` for `dam_id` and returns `[]` for any
 dam outside the Tehri bounding box, so a CLI run of Khadakwasla reports no gauges
@@ -18333,7 +18478,7 @@ are consolidated into one row that names all their sites.
 | Location | Description | Consequence |
 |---|---|---|
 | `hardening.py:156-186` | `validate_dem_path` never imports rasterio and never opens the file | 16 null bytes named `.tif` passes validation; a truncated raster fails much later, inside `build_domain`, with a confusing error |
-| `run.py:280` | `threshold_h` in `compute_arrival_times_at_gauges` is documented as the arrival threshold and never referenced | Passing a different threshold silently does nothing; the real value is `parallel.py:37::ARRIVAL_THRESHOLD_M` |
+| `jalraksha/run.py:281` | `threshold_h` in `compute_arrival_times_at_gauges` is documented as the arrival threshold and never referenced | Passing a different threshold silently does nothing; the real value is `parallel.py:37::ARRIVAL_THRESHOLD_M` |
 | `run_demo.py:36-38` | Unconditional grid re-anchoring clobbers `load_dem_as_grid`'s georeferencing, setting `grid.y0 = north + ny*dy/2.0` | The documented lower-left origin lands at the top edge; every exported keyframe bound is one domain-height too far north |
 | `run_smoke.py:19-20` | `i, b, jb = compute_breach_location(...)` unpacks `(i_breach, j_breach, b_breach)` into the wrong names | The printed "breach cell: i jb" is a column index and a bed elevation in metres, labelled as a cell |
 | `run_demo.py:25`, `run_smoke.py:14` | Both hardcode `data/dem/mosaic_30.38_78.48.tif`, which mismatches `TEHRI.dem_filename()` (`dem_30.38_78.48_clipped.tif`) and does not exist | Both scripts fail immediately out of the box |
@@ -18341,36 +18486,36 @@ are consolidated into one row that names all their sites.
 | `api.py:30` | A third independent dam registry (tehri, bhakra) alongside `presets.py:369` and `service/config.py::DEMO_DAMS` | Tehri's height and storage are retyped a third time, cross-checked by nothing, and the default preset is omitted |
 | `api.py:323-325` | `stop_api_server` calls `shutdown()` but never `server_close()` | The listening socket leaks; a subsequent bind to the same port fails with `Address already in use` |
 | `api.py:143` | A second, uncited copy of the Froehlich 1995 regression duplicating `terrain/breach.py::froehlich_1995_peak_outflow` | The two will silently diverge when the vetted one is corrected |
-| `run.py:316`, `service/tasks.py:1015` | `int(str(grid.crs).split(":")[-1]) % 100` duplicated in two files | A WKT or PROJ-string CRS raises `ValueError`; `EPSG:4326` silently yields "zone 26" |
-| `run.py:515-518` | `delta_h = q_current * dt_s / cell_area` is uncapped | At Tehri peak outflow (~10⁵ m³/s), `dt_s = 30 s`, 200 m cells: ~75 m of depth added to one cell in one step — the likeliest cause of the `parallel.py:190-195` timestep-collapse warning |
+| `jalraksha/run.py:317`, `services/api/jalraksha_service/tasks.py:1015` | `int(str(grid.crs).split(":")[-1]) % 100` duplicated in two files | A WKT or PROJ-string CRS raises `ValueError`; `EPSG:4326` silently yields "zone 26" |
+| `jalraksha/run.py:516-519` | `delta_h = q_current * dt_s / cell_area` is uncapped | At Tehri peak outflow (~10⁵ m³/s), `dt_s = 30 s`, 200 m cells: ~75 m of depth added to one cell in one step — the likeliest cause of the `jalraksha/solver/parallel.py:312-317` timestep-collapse warning |
 | `scripts/run_api.py:53` | A personal GCP project id baked in via `os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")` | Any other user silently inherits a project they cannot access; Earth Engine fails with a permissions error instead of the clean "not set" path |
-| `cli.py:121-122` | `solver_duration_s=1800.0` and `target_resolution=200.0` hardcoded with no flags; `domain_radius_km` falls to 60.0 | A 30-minute simulation cannot reach Haridwar at 58.4 km, and there is no way to ask for more |
+| `jalraksha/cli.py:128-129` | `solver_duration_s=1800.0` and `target_resolution=200.0` hardcoded with no flags; `domain_radius_km` falls to 60.0 | A 30-minute simulation cannot reach Haridwar at 58.4 km, and there is no way to ask for more |
 
 ##### 5.4.2 MEDIUM — Service layer
 
 | Location | Description | Consequence |
 |---|---|---|
-| `main.py:74-76` | Static-asset middleware hardcodes `Access-Control-Allow-Origin: *` unconditionally | Survives any tightening of the main CORS policy; a CORS fix that does not touch this is ineffective |
+| `services/api/jalraksha_service/main.py:76-78` | Static-asset middleware hardcodes `Access-Control-Allow-Origin: *` unconditionally | Survives any tightening of the main CORS policy; a CORS fix that does not touch this is ineffective |
 | `schemas.py:21-26` | `solver_duration_s: Field(1800.0, gt=0)` has no upper bound | `1e12` is accepted; the run never terminates |
-| `schemas.py:28-35` | `breach_formation_time_s` has no upper bound | Arbitrarily large formation times accepted (though silently re-clamped by `breach.py:177`) |
+| `services/api/jalraksha_service/schemas.py:37-44` | `breach_formation_time_s` has no upper bound | Arbitrarily large formation times accepted (though silently re-clamped by `breach.py:177`) |
 | `schemas.py:12-13` | `lat`/`lon` are unbounded `Optional[float]` | `lat: 900` yields a confusing `FileNotFoundError` from `_resolve_dem` rather than a 422 |
 | `db.py:136-151` | `update_run_status` is an unsynchronised read-modify-write across two statements | Two concurrent writers lose one another's `phase`/`progress_pct` |
 | `db.py:176`, `:171-172` | `list_runs` fetches every row and slices in Python, with two unindexed correlated subqueries | Cost grows with total history rather than with `limit` |
-| `main.py:408` | `GET /runs?limit=` unvalidated beyond `int` | Negative values hit Python's negative-slice semantics (`rows[:-5]` returns all but the last five); huge values accepted |
+| `services/api/jalraksha_service/main.py:493` | `GET /runs?limit=` unvalidated beyond `int` | Negative values hit Python's negative-slice semantics (`rows[:-5]` returns all but the last five); huge values accepted |
 | `main.py:910` | `PVPYTHON_EXE` passed to `subprocess.run` with no existence check (unlike `PARAVIEW_EXE` at `:842`) | `FileNotFoundError` and `TimeoutExpired` escape as unhandled HTTP 500s, defeating the endpoint's structured-result design |
 | `main.py:520-523` | `_run_validation_checks` runs the `@njit` solver on a `threading.Thread` inside uvicorn | Reintroduces exactly the GIL starvation `run_worker.py` was written to eliminate |
-| `main.py:453-454` | `_VALIDATION_LOCK` and `_VALIDATION_RUNNING` are process-local | With `uvicorn --workers N`, N concurrent Delft3D kernels against the same scratch directory — the condition the guard exists to prevent |
-| `main.py:214-221` | The spawned run process is fire-and-forget: `Popen` discarded, no PID, no `wait()`, no timeout, no kill path | POSIX zombies accumulate until the API exits; a hung run cannot be stopped |
-| `main.py:98-99` | `_to_file_url` returns a path outside `DATA_DIR` verbatim into the JSON response | Discloses the server's absolute filesystem layout and yields a URL the browser cannot fetch |
-| `main.py:257` | Recorded export paths are relative and resolved against the process CWD | `Path(p).exists()` depends on where the API was launched; `scripts/run_api.py:14-17` exists partly to `os.chdir(REPO_ROOT)` and compensate |
+| `services/api/jalraksha_service/main.py:539-540` | `_VALIDATION_LOCK` and `_VALIDATION_RUNNING` are process-local | With `uvicorn --workers N`, N concurrent Delft3D kernels against the same scratch directory — the condition the guard exists to prevent |
+| `services/api/jalraksha_service/main.py:299-306` | The spawned run process is fire-and-forget: `Popen` discarded, no PID, no `wait()`, no timeout, no kill path | POSIX zombies accumulate until the API exits; a hung run cannot be stopped |
+| `services/api/jalraksha_service/main.py:100-101` | `_to_file_url` returns a path outside `DATA_DIR` verbatim into the JSON response | Discloses the server's absolute filesystem layout and yields a URL the browser cannot fetch |
+| `services/api/jalraksha_service/main.py:342` | Recorded export paths are relative and resolved against the process CWD | `Path(p).exists()` depends on where the API was launched; `scripts/run_api.py:14-17` exists partly to `os.chdir(REPO_ROOT)` and compensate |
 | `services/api/Dockerfile:14` | Source lands at `/app/services/api/jalraksha_service`, CWD is `/app`, nothing sets `PYTHONPATH` | `uvicorn jalraksha_service.main:app` has no obvious import root |
-| `pyproject.toml:86` | Four real subpackages omitted from `packages` | See C-15 |
+| `pyproject.toml:95` | Four real subpackages omitted from `packages` | See C-15 |
 | `docker-compose.yml:40-42` | No `condition: service_healthy`, no `healthcheck` on any service | API container crashes on boot if Postgres is not yet accepting connections |
 | `docker-compose.yml:63-68` | The nginx `tiles` service serves the default config with no `Access-Control-Allow-Origin` | Cesium fetching `http://localhost:8080/layer.json` from `http://localhost:3000` is blocked |
 | `services/api/Dockerfile`, root `Dockerfile` | No `USER` directive | Containers run as root and write host files as root through the `./data:/data` bind mount |
-| `main.py:369-370`, `:257-262` | `GET /runs/{id}/comparison` and the `hazard_summary` read swallow failures with `except Exception: pass` | A corrupt `comparison_metrics.json` is indistinguishable from an absent one — the exact failure `_read_export_json` (`main.py:318-319`) was written to eliminate |
+| `main.py:369-370`, `:257-262` | `GET /runs/{id}/comparison` and the `hazard_summary` read swallow failures with `except Exception: pass` | A corrupt `comparison_metrics.json` is indistinguishable from an absent one — the exact failure `_read_export_json` (`services/api/jalraksha_service/main.py:403-404`) was written to eliminate |
 | `tasks.py:160-167` | `WARNING_LEAD_TIME_S = 1800.0` carries `TODO: UNVETTED` | A 30-minute placeholder with no CWC citation shifts population between urgency buckets in every `population_at_risk.json` |
-| `config.py:89-113` | Tehri's registry entry is hand-written rather than built from its preset; `surface_area_km2` is absent | Tehri routes through `breach.py`'s cone-reservoir fallback while Khadakwasla gets a real storage curve — the same dam yields different reservoirs depending on which registry a caller reads |
+| `services/api/jalraksha_service/config.py:89-113` | Tehri's registry entry is hand-written rather than built from its preset; `surface_area_km2` is absent | Tehri routes through `breach.py`'s cone-reservoir fallback while Khadakwasla gets a real storage curve — the same dam yields different reservoirs depending on which registry a caller reads |
 | `tasks.py:1429-1439` | No server-side task timeout anywhere: no Celery `time_limit`/`soft_time_limit`, no watchdog, no cancel endpoint | A hung run stays `running` until the API is restarted |
 
 ##### 5.4.3 MEDIUM — Frontend
@@ -18380,28 +18525,28 @@ are consolidated into one row that names all their sites.
 | `api.js:2`, `vite.config.js:41`, `Scene3D.jsx:7` | Divergent hardcoded fallback URLs (`:8000/tiles` vs `:8080`), both unreachable because `define` always substitutes | Dead code that misleads the next reader about the real default |
 | `App.jsx:51-61` | The keyframe manifest fetch has no race guard | Two rapid run loads resolve out of order; the older manifest wins |
 | `App.jsx:57` | `new URL(kf.png_url, manifestUrl)` is unguarded and the blanket `.catch` at `:61` swallows | One malformed `png_url` silently discards the entire manifest |
-| `api.js:83-85` | `pollUntilDone` never terminates early on a 404 | `s.status` is `undefined` on the error body; the loop polls uselessly for the full ten minutes |
-| `api.js:82` | No `AbortController`, no cancellation channel | If the starting component unmounts, the loop runs to completion calling `setStatus` on an unmounted component |
+| `frontend/src/api.js:92-94` | `pollUntilDone` never terminates early on a 404 | `s.status` is `undefined` on the error body; the loop polls uselessly for the full ten minutes |
+| `frontend/src/api.js:91` | No `AbortController`, no cancellation channel | If the starting component unmounts, the loop runs to completion calling `setStatus` on an unmounted component |
 | `App.jsx:39-40` | `selectedDam === null` conflates "Custom" with "`/dams` has not resolved yet" | Selecting Custom falls back to Tehri's marker and Tehri's four gauges |
 | `App.jsx:72` | Loading a run without SPH while the SPH tab is active hides the button but leaves `tab === "sph"` | Every `Pane` evaluates `active={false}`; the content area goes blank, which looks like a crash |
 | `SimulationClock.jsx:22`, `App.jsx:22` | `speed`/`setSpeed` are exposed and never read; `PlaybackDriver` hardcodes 500 ms | Playback rate is dead state; the clock's own speed field is ignored |
 | `App.jsx:22` | Playback never stops at the last frame | The interval keeps firing against a no-op, `playing` stays `true`, the button stays labelled "Pause" |
-| `ControlPanel.jsx:49` | Default dam is `list[0]` | Implicit assumption that `/dams` returns the default preset first, with nothing publishing an `is_default` flag |
+| `frontend/src/panels/ControlPanel.jsx:54` | Default dam is `list[0]` | Implicit assumption that `/dams` returns the default preset first, with nothing publishing an `is_default` flag |
 | `ControlPanel.jsx:198,202` | Slider bounds 10–400 m and 10–20000 MCM hardcoded rather than derived from the presets | A larger dam renders clamped while state holds the true value |
-| `ControlPanel.jsx:213` | 10,000-member ensemble selectable in one drag, with no warning and no runtime estimate | Denial of service on the demo machine |
+| `frontend/src/panels/ControlPanel.jsx:220` | 10,000-member ensemble selectable in one drag, with no warning and no runtime estimate | Denial of service on the demo machine |
 | `Scene3D.jsx:144` | `kf.bounds[0..3]` unguarded in the layer build loop | A short or missing `bounds` throws with the same blast radius as an image failure (C-11) |
 | `Scene3D.jsx:158-162` | The visibility effect depends on `[index, keyframes]` and does not re-run when the async build finishes | Scrubbing to a not-yet-built frame leaves the view blank until the slider moves again |
-| `GaugesPanel.jsx:112-120` | FD2320 thresholds duplicated client-side; the docstring itself notes backend docstring/implementation disagree | A third copy of a scientific constant table in the presentation layer, guaranteed to drift |
+| `frontend/src/panels/GaugesPanel.jsx:112-120` | FD2320 thresholds duplicated client-side; the docstring itself notes backend docstring/implementation disagree | A third copy of a scientific constant table in the presentation layer, guaranteed to drift |
 | `EnsemblePanel.jsx:32` | With no run loaded, `result` is null and `isSwe` is false | The empty state tells the user to change their solver before they have chosen one |
 | `main.jsx:12` | `React.StrictMode` double-invokes the Cesium keyframe build at `Scene3D.jsx:122` | Every keyframe PNG is fetched and decoded twice in development — real cost on a large manifest |
-| `ImpactPanel.jsx:103-108` | The Graham (USBR DSO-99-06) fatality table hardcoded in JSX | A published scientific constant table living only in the presentation layer |
-| `DownloadsPanel.jsx:143-147` | The HTML `download` attribute is ignored cross-origin | On any deployment where the API is not same-origin, clicking a download navigates the tab away from the app |
+| `frontend/src/panels/ImpactPanel.jsx:103-108` | The Graham (USBR DSO-99-06) fatality table hardcoded in JSX | A published scientific constant table living only in the presentation layer |
+| `frontend/src/panels/DownloadsPanel.jsx:143-147` | The HTML `download` attribute is ignored cross-origin | On any deployment where the API is not same-origin, clicking a download navigates the tab away from the app |
 | `ValidationPanel.jsx:43-49` | The validation poll loop is not cancellable and `run()` is not re-entrancy-guarded beyond `disabled={busy}` | Compounds the service-side `GET /validation` amplifier |
 | `Scene3D.jsx:10` | `EPOCH = "2026-01-01T00:00:00Z"` hardcoded | The Cesium timeline widget displays meaningless January 2026 dates unrelated to the run |
 | `DownloadsPanel.jsx:109,137` | The `claimed` set and the React key are both `e.kind` | Two exports sharing a kind silently drop one |
 | `Scene3D.jsx:165-172` | Clock sync is one-directional | Dragging the Cesium timeline does not move the shared clock; the widget and the sidebar slider disagree while both remain draggable |
 | `Map2D.jsx:96` | The hazard legend mixes per-keyframe and run-level hazard (`current?.hazard_summary \|\| result?.hazard_summary`) | An instant and an envelope are two different quantities, shown under one legend without saying which |
-| `package.json:6-10` | No lint, test, typecheck or format script and no ESLint config, yet four files carry `eslint-disable-next-line` directives | Those directives are inert; there is no automated frontend quality gate at all |
+| `frontend/package.json:6-10` | No lint, test, typecheck or format script and no ESLint config, yet four files carry `eslint-disable-next-line` directives | Those directives are inert; there is no automated frontend quality gate at all |
 | `api.js` | No request timeout on any fetch except the two poll loops | A hung API leaves the UI on "loading…" indefinitely |
 | `vite.config.js:34-45` | `define` performs literal text substitution of API URL, tiles URL and Cesium token | `dist/` is environment-frozen; one artefact cannot serve two environments |
 
@@ -18409,19 +18554,19 @@ are consolidated into one row that names all their sites.
 
 | Location | Description | Consequence |
 |---|---|---|
-| `config.py:110` | Forbidden-source list contains the typo `"cartoudem"` | A config naming CartoDEM passes validation |
-| `config.py:93` | CRS whitelist requires substring `"32643"` or `"UTM"` | Rejects `EPSG:32644` — the correct zone for the Tehri demo dam |
+| `jalraksha/config.py:110` | Forbidden-source list contains the typo `"cartoudem"` | A config naming CartoDEM passes validation |
+| `jalraksha/config.py:93` | CRS whitelist requires substring `"32643"` or `"UTM"` | Rejects `EPSG:32644` — the correct zone for the Tehri demo dam |
 | `dem.py:371` vs `:372-374` | The clipped filename omits `domain_radius_km` while the product key includes it | Two radii at one dam collide on disk and thrash the MD5 check |
 | `dem.py:486-495` | `merge()` adopts `mosaics[0]`'s resolution | A mixed synthetic (1/1200°) and real (1/3600°) tile set silently resamples the whole mosaic to the coarser grid |
-| `cache.py:94-105` | `check_cache` MD5s the entire cached file on every call with no size/mtime fast path | Hundreds of MB hashed per warm run |
+| `jalraksha/cache.py:94-105` | `check_cache` MD5s the entire cached file on every call with no size/mtime fast path | Hundreds of MB hashed per warm run |
 | `cache.py:262-273` | The lat/lon proximity branch of `get_cached_dem` is dead code | Nothing ever writes `lat`/`lon` into a cache entry |
-| `terrain/domain.py:216-221` | `compute_breach_location` returns the geometric centre cell with no terrain search; `dam_lat`/`dam_lon`/`utm_zone` unused | The breach can land on a canyon wall above the thalweg — releasing the reservoir onto a hillside |
+| `jalraksha/terrain/domain.py:219-224` | `compute_breach_location` returns the geometric centre cell with no terrain search; `dam_lat`/`dam_lon`/`utm_zone` unused | The breach can land on a canyon wall above the thalweg — releasing the reservoir onto a hillside |
 | `terrain/conditioning.py:170-235,387-409` | `manning_table` is accepted by `preprocess_dem`/`build_domain_state` and silently ignored | An API that advertises a roughness table and discards it |
-| `terrain/roughness.py:59-63` | `assign_manning_from_worldcover` ignores its raster path and returns a uniform float32 0.03 | No provenance signal to the caller that the land-cover input was not used |
+| `jalraksha/terrain/roughness.py:59-63` | `assign_manning_from_worldcover` ignores its raster path and returns a uniform float32 0.03 | No provenance signal to the caller that the land-cover input was not used |
 | `terrain/breach.py:29` | Hard `from numba import njit` | Contradicts the module docstring's "runs from a bare NumPy install (offline-first constraint)" |
 | `terrain/breach.py:751` | SCS (1981) reuses the `"xu_zhang_2009"` uncertainty key | Couples a cross-check's uncertainty band to a quarantined family's |
-| `run.py:515-518` | Breach injection is a single-cell mass source with no momentum | ~11 m of depth per second into one 200 m cell at Tehri's peak; the shock drives the timestep collapse |
-| `terrain/conditioning.py:322-363` | `interpolate_dem_to_grid` returns float32 (against the float64 solver policy) and converts any exception into a flat plane at the DEM mean | A DEM read failure silently produces a featureless plain that the solver will happily flood |
+| `jalraksha/run.py:516-519` | Breach injection is a single-cell mass source with no momentum | ~11 m of depth per second into one 200 m cell at Tehri's peak; the shock drives the timestep collapse |
+| `jalraksha/terrain/conditioning.py:322-363` | `interpolate_dem_to_grid` returns float32 (against the float64 solver policy) and converts any exception into a flat plane at the DEM mean | A DEM read failure silently produces a featureless plain that the solver will happily flood |
 
 ##### 5.4.5 MEDIUM — Solver core
 
@@ -18432,15 +18577,15 @@ are consolidated into one row that names all their sites.
 | `core.py:170-171,545-546` | `cfl` is clamped from above but never validated `> 0` | A non-positive cfl yields `dt <= 0`; `run()` silently `break`s and returns a `t=0`, `n_steps=0` result with no error |
 | `flux.py:486,556` | `apply_friction` and `max_wave_speed_inverse_dt` are serial `@njit(cache=True)` full-domain loops (1× and 2× per step) while the flux kernels are `parallel=True` | Pure Amdahl serial fraction on large grids |
 | `flux.py:322-330,423-431` | Nine `np.zeros(n_cols)` scratch arrays heap-allocated inside every `prange` iteration | ~36·(ny+nx) NRT allocations per timestep |
-| `core.py:382-410` | `_to_primitive` is un-jitted NumPy allocating five full-domain temporaries, called twice per step | Allocation churn proportional to domain size on every step |
+| `jalraksha/solver/core.py:382-410` | `_to_primitive` is un-jitted NumPy allocating five full-domain temporaries, called twice per step | Allocation churn proportional to domain size on every step |
 | `parallel.py:41,53,239-240` | `WORKER_STARTUP_SECONDS=15.0`, `INTRA_MEMBER_THREAD_SPEEDUP=2.4`, the 400 MB/worker divisor and the `min(pool_size, 8)` psutil fallback | Hardcoded single-machine (16-core Windows) measurements with no environment override; the cost model mis-predicts on any other box |
-| `parallel.py:356-358` | The cost probe times the first member and absorbs numba JIT compilation on a cold cache | `probe_seconds` inflated, biasing the model toward sequential for ensembles that should be pooled |
-| `core.py:571-572` | `mass_error` is computed only `if volume_initial > 0.0` | A breach-into-dry-terrain run — the standard case — reports the default `0.0`, indistinguishable from perfect conservation |
+| `jalraksha/solver/parallel.py:577-579` | The cost probe times the first member and absorbs numba JIT compilation on a cold cache | `probe_seconds` inflated, biasing the model toward sequential for ensembles that should be pooled |
+| `jalraksha/solver/core.py:618-619` | `mass_error` is computed only `if volume_initial > 0.0` | A breach-into-dry-terrain run — the standard case — reports the default `0.0`, indistinguishable from perfect conservation |
 | `types.py:63-67` | `Grid` validates only `dx, dy > 0` | A geographic CRS with degree-valued spacing is accepted and silently mis-integrated, exactly as the docstring at `:50-53` warns |
-| `core.py:455-464` | Manning friction is Lie-split once after the full SSP-RK2 update | The scheme is first order in time whenever `manning_n > 0`; the Thacker period gate cannot catch it because it runs frictionless (`tests/test_solver.py:725`) |
+| `jalraksha/solver/core.py:499-508` | Manning friction is Lie-split once after the full SSP-RK2 update | The scheme is first order in time whenever `manning_n > 0`; the Thacker period gate cannot catch it because it runs frictionless (`tests/test_solver.py:744`) |
 | `types.py:269-272` vs `parallel.py:132,163` | `Result.u_max` holds speed \|V\| and `Result.v_max` holds \|v\|, but the ensemble path names the speed field `v_max` | Two fields called `v_max` carry different quantities |
 | `tests/test_solver.py`, `tests/test_parallel.py` | No coverage of `use_muscl=False`, transmissive-outflow correctness, `h_dry` sensitivity, `dt_max` clamping, a firing `velocity_max`, `_worker_memory_cap`'s psutil-absent branch, or the pool-failure fallback | Eight distinct behaviours with no test |
-| `solver/PHASE1_STATUS.md:19,45,105-106,121` | Stale handoff note claims the lake-at-rest gate FAILS at 1.66 m/s, that the limiter is van Leer (code uses minmod, `flux.py:127`), and that `@njit` is "not yet applied"; its Option D recommends relaxing the gate to 1e-4 and accepting ~1 % mass error | Unmarked as superseded; a reader could act on a recommendation to relax a blocking correctness gate |
+| `solver/PHASE1_STATUS.md:19,45,105-106,121` | Stale handoff note claims the lake-at-rest gate FAILS at 1.66 m/s, that the limiter is van Leer (code uses minmod, `jalraksha/solver/flux.py:265`), and that `@njit` is "not yet applied"; its Option D recommends relaxing the gate to 1e-4 and accepting ~1 % mass error | Unmarked as superseded; a reader could act on a recommendation to relax a blocking correctness gate |
 
 ##### 5.4.6 MEDIUM — Impact and GEE
 
@@ -18449,14 +18594,14 @@ are consolidated into one row that names all their sites.
 | `impact/damage.py:148,219` | Cell area hardcoded at 200 m in two places with no parameter | 4× error on a 400 m grid |
 | `impact/damage.py:209` | `calculate_par` silently substitutes 450 persons/km² when no population grid is given | The exact substitution the GEE package exists to prevent; it should raise |
 | `gee/population.py:267,291` | `grid_shape` documented as the output shape but ignored on the live path | `sampleRectangle` sets the shape and fails above ~262k pixels with an untranslated EE error |
-| `impact/population.py:202` | `np.random.random()` unseeded | The synthetic settlement layout is irreproducible (`gee/population.py:309` seeds correctly, so the two paths differ) |
+| `jalraksha/impact/population.py@16a8575:202` | `np.random.random()` unseeded | The synthetic settlement layout is irreproducible (`jalraksha/gee/population.py@16a8575:309` seeds correctly, so the two paths differ) |
 | `gee/sar.py:587-589` | A quality-gate `SarUnavailableError` re-raises without consulting the cache | Today's refusal shadows a previously verified cached scene; asymmetric with the non-`SarUnavailableError` branch and undocumented |
 | `gee/sar.py:468` | `precision_vs_jrc` — the number the gate fires on — still uses `bestEffort=True` | The code's own comment at `:500-504` records `bestEffort` disagreeing 2× over Hirakud; `water_fraction` was fixed at `:510` and precision was not. Khadakwasla fails by 2.8 %, so sampling error is material to the gate outcome |
-| `impact/population.py:390` | `compute_par` has no shape assertion between `population_grid` and `arrival_time_grid` | A broadcastable mismatch produces a wrong number silently |
+| `jalraksha/impact/population.py@16a8575:390` | `compute_par` has no shape assertion between `population_grid` and `arrival_time_grid` | A broadcastable mismatch produces a wrong number silently |
 | `impact/fatality.py:73` | An unrecognised `flood_severity` falls through the bare `else` to the LOW row | Up to a 75× understatement of the fatality rate; it should raise |
 | `gee/sar.py:336-341` | No CSI/threat score computed — only precision and recall | `validation/metrics.py:25` has CSI and is never called; one-line fix `csi = I / (m + r - I)` |
 | `gee/sar.py:230-231` | Terrain-corrected local-incidence-angle masking (Small 2011) named as the documented fix for steep terrain and not implemented | SAR is effectively plains-only; self-declared in the module |
-| `service/main.py:770-783` | `GeoSarResponse` drops 11 of the 21 keys `latest_observed_extent` returns | `precision_vs_jrc`, `recall_vs_jrc`, `threshold_separability` and the tile counts — the metrics that justify publishing the mask — never reach the viewer |
+| `services/api/jalraksha_service/main.py:859-872` | `GeoSarResponse` drops 11 of the 21 keys `latest_observed_extent` returns | `precision_vs_jrc`, `recall_vs_jrc`, `threshold_separability` and the tile counts — the metrics that justify publishing the mask — never reach the viewer |
 | `impact/fatality.py:138` | Comment names coefficient 0.12; the code uses 0.5 at `:144` | Describes a fourth, unimplemented parameterisation |
 | `gee/sar.py:202,208,214,260` | `MIN_TILE_CLASS_FRACTION=0.05`, `MAX_PLAUSIBLE_WATER_FRACTION=0.80`, `JRC_PERMANENT_OCCURRENCE_PCT=80`, tile guards `size<8`/`sum()<100` | All affect whether a mask is published; none carries a `TODO: UNVETTED` marker (queue #15) |
 | `tests/test_impact.py:61-77` | Depth-damage tests assert only shape, monotonicity and positivity | The rate constants could change by 10× without failing |
@@ -18475,7 +18620,7 @@ are consolidated into one row that names all their sites.
 | `tools/cesium/build_terrain_tiles.py:183-185` | Cesium indexes `layer.json`'s `available[i]` as level `i`, but the list is appended from `min_level` | Any `min_level > 0` — an exposed parameter of `build_tileset` — shifts every entry |
 | `export/matlab_export.py:113` | `export_simulation_mat` is unreferenced dead code with no call site, no `.m` file, not in `__all__`, no test | A shipped export format nothing produces |
 | `tools/paraview/base_block.py:87` | The base block places points at cell corners while the XDMF geometry origin is the first cell centre (`xdmf_export.py:276`) | The pedestal is offset from the terrain it skirts by half a cell — 200 m at 400 m resolution |
-| `service/main.py:383`, `paraview/render_static.py:219,238` | The `1.5` exaggeration / `25.0` depth-max literals that rendered Khadakwasla as a near-flat plate survive as `_PARAVIEW_FALLBACK` and as argparse defaults | Applied to Bhakra, Idukki and Hirakud, which have no `DamPreset`; any direct invocation without explicit flags reproduces the flattened rendering |
+| `services/api/jalraksha_service/main.py:468`, `paraview/render_static.py:219,238` | The `1.5` exaggeration / `25.0` depth-max literals that rendered Khadakwasla as a near-flat plate survive as `_PARAVIEW_FALLBACK` and as argparse defaults | Applied to Bhakra, Idukki and Hirakud, which have no `DamPreset`; any direct invocation without explicit flags reproduces the flattened rendering |
 | `tools/cesium/upload_terrain_to_ion.py:124` | `main()` prints the Cesium ion token to stdout on success | A CI log or a shared terminal transcript captures the secret |
 | `tests/test_export.py` | No georeferencing regression test exists anywhere | Nothing reads a written transform back to check that a known cell lands at a known coordinate, and nothing checks the north-up flip — precisely the class of bug `georef.py` was created to fix |
 | `validation/benchmarks.py:22,28-35` | Malpasset docstring claims 17 survey points; seven gauges are coded; elevations and arrival times are hardcoded with no per-value citation and, uniquely, no `TODO: UNVETTED` tag | An unrun benchmark presented with unsourced "observed" data |
@@ -18483,14 +18628,14 @@ are consolidated into one row that names all their sites.
 | `validation/benchmarks.py:92` | `evaluate_benchmark` substitutes the observed value whenever a simulated one is missing (`sim_t = simulated_gauges[i].get("arrival_time_s", obs_t)`, and `obs_t` again on index overrun at `:94`) | **A run that produced nothing scores RMSE 0.0, NSE 1.0 and 0.0 % mean travel error — a perfect benchmark score for having no output** |
 | `tests/test_validation.py:89-97` | `test_evaluate_benchmark_matching` exercises exactly the identity case and asserts those perfect values | Entrenches the substitution defect rather than catching it |
 | `delft3d/runner.py:211` | `spread = 0.2 * t_s` rendered into `p05_min`/`p95_min` with its own `TODO: UNVETTED` at `:200-202` | A deterministic formula's fabricated band is indistinguishable from ensemble percentiles |
-| `sph/pysph_runner.py:63` | `ALPHA_VISCOSITY = 0.25` (`TODO: UNVETTED`) is the only dissipation mechanism — no turbulence closure, no δ-SPH density diffusion, no laminar viscous term | An uncalibrated eddy-viscosity surrogate at real-field heads, with no published-experiment validation |
-| `sph/coupling.py`, `sph/domain.py` | `handoff_swe_to_sph`, `extract_sph_free_surface`, `NearFieldDomain` and `generate_near_field_particles` are exported as the coupling/public API but are called only from tests; `pysph_runner.py:377-400` re-implements `u = Q/(h·w)` and the breach mask inline | A reviewer reading `__init__.py` would reasonably conclude these are the handoff when they are not, with no comment saying otherwise, and nothing keeps the two implementations in step |
+| `jalraksha/sph/pysph_runner.py:64` | `ALPHA_VISCOSITY = 0.25` (`TODO: UNVETTED`) is the only dissipation mechanism — no turbulence closure, no δ-SPH density diffusion, no laminar viscous term | An uncalibrated eddy-viscosity surrogate at real-field heads, with no published-experiment validation |
+| `sph/coupling.py`, `sph/domain.py` | `handoff_swe_to_sph`, `extract_sph_free_surface`, `NearFieldDomain` and `generate_near_field_particles` are exported as the coupling/public API but are called only from tests; `jalraksha/sph/pysph_runner.py:522-545` re-implements `u = Q/(h·w)` and the breach mask inline | A reviewer reading `__init__.py` would reasonably conclude these are the handoff when they are not, with no comment saying otherwise, and nothing keeps the two implementations in step |
 | `delft3d/setup.py:223,258-265` | The MDU's `NetFile` points at an INI stub `_write_grid_file` writes that D-Flow FM cannot read; the MDU contains an invented `[Dambreak]` section whose five keys are not FM MDU keys, and `[Geometry] BathymetryFile`/`WaterLevIniFile` point at formats FM does not consume | Any model built by `setup_delft3d_model` dies at mesh load. The module is still exported at `delft3d/__init__.py:5` and is still the model builder for all of `tests/test_delft3d.py`, which never notices because every test passes `force_fallback=True`. **It looks like a Delft3D input deck and is not one** |
 | `delft3d/runner.py:392` | `"total_time_s": t` reads a variable bound only inside the `while` loop | `UnboundLocalError` after an otherwise-successful setup whenever `total_time_s <= 0` |
 | `delft3d/comparison.py:348-351` | `.get("grid_nx", 100)`, `.get("grid_ny", 200)` and 30.0 m defaults | Silently rasterises onto a fabricated grid whenever the Delft3D result's grid keys are absent — a silent-wrong-answer path, unlike the explicit `particle_volume_m3` refusal three lines earlier |
-| `service/tasks.py:462-464` | The production Delft3D invocation passes no timeout and defaults to 3600 s, while every other caller chooses one (1800/7200/900) | A 400×400 grid over up to 24 h of simulated time is killed at one hour and reported as a fallback |
+| `services/api/jalraksha_service/tasks.py:462-464` | The production Delft3D invocation passes no timeout and defaults to 3600 s, while every other caller chooses one (1800/7200/900) | A 400×400 grid over up to 24 h of simulated time is killed at one hour and reported as a fallback |
 | `validation/delft3d_benchmark.py:502-508` | The Tehri loop accumulates `t_sim += dt` from a stale `dt` while `solver.step` recomputes its own; `t_sim` — not `state.t` — is written into `t_arrival` | The two clocks drift and would silently bias the arrival comparison once the impoundment fix lands |
-| `PROGRESS_SUMMARY.md:87-91` | The claim that the SPH side of the comparison is `np.random`-synthesised is stale — no `np.random` exists in `delft3d/comparison.py`, the real PySPH path is wired, and `tests/test_sph.py:232-242` enforces bit-identical determinism | A stale self-accusation in the top-level status document misdirects a reviewer away from the defects that *are* live (C-21, the synthetic hydrograph overlay) |
+| `PROGRESS_SUMMARY.md:87-91` | The claim that the SPH side of the comparison is `np.random`-synthesised is stale — no `np.random` exists in `delft3d/comparison.py`, the real PySPH path is wired, and `tests/test_sph.py:292-302` enforces bit-identical determinism | A stale self-accusation in the top-level status document misdirects a reviewer away from the defects that *are* live (C-21, the synthetic hydrograph overlay) |
 
 ##### 5.4.8 LOW — consolidated by theme
 
@@ -18503,11 +18648,11 @@ site, so the register remains auditable without 186 separate rows.
 | Unused imports and dead locals | `run.py:25-26,21` (`create_state`, `SWESolver`, `Tuple`), `shapefile.py:26,288,319-324`, `render_static.py:44,51,52`, `gee/population.py:112`, `gee/sar.py:297`, `keyframes.py:262-264`, `hazard.py:163-165`, `build_terrain_tiles.py:145-146` | Dead code that invites a reader to believe a capability exists |
 | Vacuous or tautological tests | `tests/test_integration.py:79`, `tests/test_phase4.py:207`, `tests/test_dem.py:86-87,104-105`, `tests/test_terrain.py:130-139`, `tests/test_export.py::test_phase4_export_integration` (bare `pass`) | Six tests that cannot fail, inflating the pass count |
 | Non-unique React keys | `Map2D.jsx:84`, `ControlPanel.jsx:408`, `GaugesPanel.jsx:60`, `ComparisonPanel.jsx:120`, `ValidationPanel.jsx:99`, `Scene3D.jsx:270` | Duplicate gauge or check names collide and one is dropped |
-| Hardcoded magic numbers with no named constant or configuration path | `service/main.py:383,706`; `tasks.py:82-84,293-302,584,688,1226,1349`; `schemas.py:100-101`; `entities.js:41,46,56`; `Map2D.jsx:45`; `kml.py:642`; `Scene3D.jsx:10`; `dem.py:152,218,223-228,285-288,390-391,518`; `breach.py:72,126,325,1016,1063,1096-1099,1163,1193-1198,1372-1385`; `run.py:282,433,442`; `domain.py:186-188`; `conditioning.py:366` | Roughly 45 operational constants with no override; changing behaviour requires editing source |
-| Documentation contradicting adjacent code | `ugrid.py:264` (BedlevType, the one setting the kernel aborts on), `run.py:466-479`, `shapefile.py:100`, `base_block.py:192-193`, `paraview/ARCHITECTURE.md:14,124,130,147-151`, `CLAUDE.md:376-380`, `CLAUDE.md:16` vs `validation_findings.md:7-8`, `App.jsx:33`, `Map2D.jsx:174` vs `dashboard_integration.md:371`, `core.py:150-153`, `cli.py:1311`, `__init__.py:48-54`, `sar.py:76-78,228-232`, `test_impact.py:50` | Fourteen places where the comment or doc asserts something the code beside it contradicts |
+| Hardcoded magic numbers with no named constant or configuration path | `service/main.py:383,706`; `tasks.py:82-84,293-302,584,688,1226,1349`; `schemas.py:100-101`; `entities.js:41,46,56`; `Map2D.jsx:45`; `kml.py` (line not locatable — see Revision history); `Scene3D.jsx:10`; `dem.py:152,218,223-228,285-288,390-391,518`; `breach.py:72,126,325,1016,1063,1096-1099,1163,1193-1198,1372-1385`; `run.py:282,433,442`; `jalraksha/terrain/domain.py:186-188`; `conditioning.py:366` | Roughly 45 operational constants with no override; changing behaviour requires editing source |
+| Documentation contradicting adjacent code | `ugrid.py:264` (BedlevType, the one setting the kernel aborts on), `jalraksha/run.py:467-480`, `shapefile.py:100`, `base_block.py:192-193`, `paraview/ARCHITECTURE.md:14,124,130,147-151`, `CLAUDE.md:377-381`, `CLAUDE.md:16` vs `validation_findings.md:7-8`, `App.jsx:33`, `Map2D.jsx:174` vs `dashboard_integration.md:371`, `jalraksha/solver/core.py:237-240`, `jalraksha/cli.py` (line not locatable — see Revision history), `jalraksha/__init__.py:48-54`, `sar.py:76-78,228-232`, `test_impact.py:50` | Fourteen places where the comment or doc asserts something the code beside it contradicts |
 | Silent empty/degenerate-case conventions that read as agreement | `comparison.py:129` (CSI defaults 1.0), `metrics.py:45-47,76-77,109-110` (CSI 1.0, precision/recall 1.0 vs 0.0, RMSE 0.0) | Two entirely dry fields score a perfect CSI, which renders on a dashboard card as agreement; "nothing to compare" is indistinguishable from "perfect agreement" |
-| Error-swallowing and traceback loss | `run.py:625-627` (catches `Exception`, discards type and traceback), `main.py:369-370`, `main.py:257-262` | Only the message survives; the failure class is unrecoverable from the log |
-| Unescaped or malformed output | `kml.py:131,209` (no XML escaping of `dam_name`), `kml.py:37-42` (unused `gx:` namespace), `kml.py:646` (literal `Z` on a naive datetime), `kml.py` (no `<altitudeMode>`/`<tessellate>`), `kml.py:317` (matplotlib `jet` — a third colour scheme), `api.js:7-10` (no path normalisation) | A dam name containing `&` produces malformed KML; long polygon edges cut through terrain |
+| Error-swallowing and traceback loss | `jalraksha/run.py:626-628` (catches `Exception`, discards type and traceback), `main.py:369-370`, `services/api/jalraksha_service/main.py:342-347` | Only the message survives; the failure class is unrecoverable from the log |
+| Unescaped or malformed output | `kml.py:131,209` (no XML escaping of `dam_name`), `kml.py:37-42` (unused `gx:` namespace), `kml.py` (line not locatable — see Revision history) (literal `Z` on a naive datetime), `kml.py` (no `<altitudeMode>`/`<tessellate>`), `kml.py:317` (matplotlib `jet` — a third colour scheme), `api.js:7-10` (no path normalisation) | A dam name containing `&` produces malformed KML; long polygon edges cut through terrain |
 | Resource lifecycle and leaks | `dem.py:486-503` (mosaic handles closed only on the success path), `shapefile.py:412-420` (matplotlib figures leaked in the contour loop), `Scene3D.jsx:198` (fly-to timer never `clearTimeout`ed), `gee/auth.py:102` (`ee.Initialize` under `_LOCK` with no timeout) | Handle and figure leaks under repeated use; a hung EE endpoint blocks every concurrent request |
 | Unvetted or arbitrary coefficients (LOW-rated instances) | `hardening.py:28` (`DAM_HEIGHT_MAX_M=400` contradicting its own comment), `presets.py:213-219,275-282,356-358`, `domain.py:~152` (uniform Manning 0.03), `sensitivity.py:124,150`, `sar.py:630-631`, `gee/population.py:193` | See §5.6.6 for the full queue |
 
@@ -18515,13 +18660,13 @@ Additional LOW findings not covered by the eleven themes, recorded individually
 because each names a distinct behaviour: `parallel.py` member 0 always runs
 serially as the cost probe (Amdahl bound on achievable ensemble speedup);
 `parallel.py:392-397` the pool-failure fallback re-runs already-counted tasks so
-`progress_cb` can exceed 100 %; `core.py:543-544` clamping `dt` onto snapshot
+`progress_cb` can exceed 100 %; `jalraksha/solver/core.py:543-544` clamping `dt` onto snapshot
 times makes snapshot cadence change the timestep sequence, so snapshotting is not
 purely diagnostic; `core.py:295-303,318-326` transmissive ghost cells
 flat-extrapolate the bed, creating an artificial shelf that ponds water at a
 domain edge truncated mid-slope; `flux.py:688-689,704-705` the deprecated
 `surface_gradient_flux_x/_y` shims call `hllc()` without `h_dry`, silently using
-`H_DRY_DEFAULT`; `flux.py:172-173` the C-property is inexact by
+`H_DRY_DEFAULT`; `jalraksha/solver/flux.py:188-189` the C-property is inexact by
 `O(g·h_dry²/dx)`; `flux.py:547-551` `n_velocity_capped` counts cell-steps but
 `describe()` reports it as `velocity_cap_activations`; `run.py:781`
 `run_dam_break_ensemble` never reports 100 % and the three `{"error": ...}`
@@ -18530,7 +18675,7 @@ paths emit no terminal progress, so a consumer sees a run frozen at 8 %, 18 % or
 outflow nearest the median rather than by median depth or arrival, with
 `np.argmin` breaking ties toward the lowest index; `run.py:673` vs
 `ensemble_statistics` read `q_peak_m3_s` and `q_peak` for the same value;
-`run.py:457-466` `inject_breach_hydrograph` returns `q_current = 0` at `idx == 0`
+`jalraksha/run.py:458-467` `inject_breach_hydrograph` returns `q_current = 0` at `idx == 0`
 so no water is injected on the first step; `run.py` has no per-gauge
 peak-velocity extraction and no time-to-peak extraction at all, since
 `run_ensemble_member` records only running maxima without timestamps;
@@ -18538,7 +18683,7 @@ peak-velocity extraction and no time-to-peak extraction at all, since
 so a parameter-less request returns the Tehri corridor as a general answer;
 `api.py:108-113` generic gauge placeholders hardcode "downstream = due south";
 `hardening.py` `isinstance(x, (int, float))` accepts `bool`, so `{"lat": True}`
-passes as `1.0`; `cli.py:78` `if not all([...])` treats `0.0` as missing so a dam
+passes as `1.0`; `jalraksha/cli.py:85` `if not all([...])` treats `0.0` as missing so a dam
 at latitude 0.0 is rejected; `cli.py` `jalraksha cache` with neither `--list` nor
 `--clear` prints nothing and exits 0, `cmd_validate` assigns an unused `config`
 local, and termination uses the builtin `exit(1)` from `site` rather than
@@ -18546,42 +18691,42 @@ local, and termination uses the builtin `exit(1)` from `site` rather than
 into an f-string ALTER TABLE (module constants today, one refactor from
 reachable); `db.py:136,222,257,287` SQL assembled with the `%` operator;
 `main.py:40,104` `db.init_db()` runs twice and at import time so merely importing
-the module creates directories and a database file; `main.py:102`
+the module creates directories and a database file; `services/api/jalraksha_service/main.py:104`
 `@app.on_event("startup")` is deprecated and removed in newer Starlette;
 `schemas.py:18` `breach_mode` is accepted, documented in OpenAPI and never copied
 into `cfg` by `to_dam_config` — a dead field advertising a knob that does nothing;
-`schemas.py:20` `solver`'s description omits `sph`; `schemas.py:91-96`
+`schemas.py:20` `solver`'s description omits `sph`; `services/api/jalraksha_service/schemas.py:100-105`
 `failure_mode` reaches only `xu_zhang_2009_peak_outflow`, which is not in
 `DEFAULT_REGRESSION_FAMILIES`, so the API advertises a parameter that changes
 nothing in a default ensemble; `tasks.py:1321` `max(10, min(ensemble_size, 200))`
 silently clamps the user's requested ensemble size on the delft3d path with no
 notice in the response; `tasks.py:1419` the completion write passes no `phase`,
 so a finished run reads `{"status": "done", "progress_pct": 100.0, "phase": "Rendering keyframes"}`;
-`main.py:263-264` `POST /runs` returns the literal `"queued"` rather than
+`services/api/jalraksha_service/main.py:348-349` `POST /runs` returns the literal `"queued"` rather than
 re-reading the row; `run_worker.py:90-93` the comment claims `.apply()` swallows
 exceptions but `worker.py:28` sets `task_eager_propagates=True`, so the
 `if result.failed()` branch is dead; `worker.py:27` `CELERY_EAGER` is compared by
 strict equality against `"1"`, so `true`/`yes`/`on` all evaluate false;
-`main.py:154-157` `task_always_eager` is overloaded to select a *subprocess*, the
+`services/api/jalraksha_service/main.py:238-241` `task_always_eager` is overloaded to select a *subprocess*, the
 opposite of what Celery means by the flag; `db.py:54-91` the three tables have no
 indexes, no foreign keys, no NOT NULL, UNIQUE or CHECK constraints, and both
 child tables' `run_id` columns are unindexed; `db.py:129-153` progress is stored
 inside the `params_json` blob so every tick is a two-statement read-modify-write;
-`config.py:220-221` the `GEE_PROJECT` setting is never read by the service;
-`main.py:111` diagnostics use bare `print()` throughout with no levels, no
-structure and no correlation ids; `main.py:4-13` the module docstring lists eight
+`services/api/jalraksha_service/config.py:220-221` the `GEE_PROJECT` setting is never read by the service;
+`services/api/jalraksha_service/main.py:113` diagnostics use bare `print()` throughout with no levels, no
+structure and no correlation ids; `services/api/jalraksha_service/main.py:4-13` the module docstring lists eight
 routes and omits four; `requirements.txt` every pin is a lower bound with nothing
 upper-bounded or hashed; `services/api/Dockerfile` never copies `paraview/`,
 `tools/` or `scripts/`, so `/app/paraview/render_static.py` and
-`/app/tools/paraview` do not exist in the image; `pyproject.toml:105-131` the
+`/app/tools/paraview` do not exist in the image; `pyproject.toml:114-140` the
 ruff config is stale (`select`/`ignore` moved under `[tool.ruff.lint]` in ruff
 0.2+ while the pin is only `>=0.1.0`, and `W503` is a flake8 code with no ruff
-equivalent, so that ignore is inert); `pyproject.toml:92-103` `addopts` requires
+equivalent, so that ignore is inert); `pyproject.toml:101-112` `addopts` requires
 `pytest-cov`, present only in extras neither Dockerfile installs;
 `App.jsx:84-91` the tab bar has no `role="tablist"`/`role="tab"`/`aria-selected`
 and `disabled` on the active button removes it from the keyboard tab order;
 `SimulationClock.jsx:48` the context `useMemo` omits `seekTo`, `next` and `prev`;
-`ControlPanel.jsx:250` the ParaView button guard is a string-equality state
+`frontend/src/panels/ControlPanel.jsx:257` the ParaView button guard is a string-equality state
 machine so a typo silently disables it; `vite.config.js:33` `server: {port: 3000}`
 has no `strictPort: true`, so an occupied port makes Vite increment to 3001 and
 the compose mapping no longer points at the app; `frontend/index.html:3-7` has no
@@ -18589,18 +18734,18 @@ favicon, no `<noscript>` and no meta description; `package.json` has no lockfile
 in the uploaded tree; `package.json` the exact pins on `cesium` (1.144.0) and
 `resium` (1.25.0) are load-bearing because resium's `otherProps` handling of
 `terrainProvider` is version-specific, and nothing in the manifest says so;
-`EnsemblePanel.jsx:165-167` `<Cell>` children carry no `fill`;
+`frontend/src/panels/EnsemblePanel.jsx:174-176` `<Cell>` children carry no `fill`;
 `ComparisonPanel.jsx:67-69` three metric cards render raw floats with no
 rounding; `ValidationPanel.jsx:58` the Ritter check is located by payload shape
 rather than by name; `DownloadsPanel.jsx:119` `result.dam_name` is unguarded,
-rendering "Downloads — undefined"; `api.js:37-40` `getGauges()` is dead code with
+rendering "Downloads — undefined"; `frontend/src/api.js:46-49` `getGauges()` is dead code with
 zero call sites; `sensitivity.py:210` `is_converging` returns `True` for an empty
 ratio list so a two-point sweep always reports convergence; `sensitivity.py:219`
 Richardson extrapolation hardcodes `p = 1.0` rather than estimating the observed
-order; `sensitivity.py` has no production caller at all; `pysph_runner.py:538-541`
+order; `sensitivity.py` has no production caller at all; `jalraksha/sph/pysph_runner.py:686-689`
 `front_speed_m_s` is a two-point secant over the whole record including the
 `n_damp` ramp and is displayed as "Surge front speed" without that caveat;
-`pysph_runner.py:290` the particle-spacing lower clamp of 1 m lets particle
+`jalraksha/sph/pysph_runner.py:435` the particle-spacing lower clamp of 1 m lets particle
 resolution reach thirty times finer than the 30 m terrain it runs over;
 `runner.py:76-86` `_KERNEL_GLOBS` are Windows-only absolute paths, so on Linux
 and in the project's own Docker image discovery reduces to two `shutil.which`
@@ -18650,10 +18795,10 @@ Instantiating findings:
   field of zeros.
 - `export/keyframes.py:117-130` (C-09) — a bounds-reprojection failure returns
   geographically wrong bounds in a structurally perfect manifest.
-- `dem.py:437-450` and `cache.py:41-116` + `dem.py:466` (HIGH ×2) — a 404 becomes
+- `dem.py:437-450` and `jalraksha/cache.py:41-116` + `dem.py:466` (HIGH ×2) — a 404 becomes
   synthetic terrain, and the `"synthetic": True` cache flag is written and never
   read, so the substitution persists silently into every later run.
-- `terrain/conditioning.py:322-363` (MED) — any exception becomes a flat plane at
+- `jalraksha/terrain/conditioning.py:322-363` (MED) — any exception becomes a flat plane at
   the DEM mean.
 - `export/geotiff.py:171-175` (MED) — a failed member's missing field becomes
   zeros (or `inf` for arrival), turning it into a member reporting no flood and
@@ -18667,11 +18812,11 @@ Instantiating findings:
 - `impact/damage.py:209` (MED) — a missing population grid becomes 450 persons/km².
 - `impact/fatality.py:73` (MED) — an unrecognised severity string falls through
   to the LOW row, a 75× understatement.
-- `terrain/roughness.py:59-63` (MED) — the WorldCover raster path is ignored and
+- `jalraksha/terrain/roughness.py:59-63` (MED) — the WorldCover raster path is ignored and
   a uniform 0.03 returned, with no provenance signal.
-- `service/main.py:369-370`, `:257-262` (MED ×2) — `except Exception: pass` makes
+- `services/api/jalraksha_service/main.py:369-370`, `:257-262` (MED ×2) — `except Exception: pass` makes
   a corrupt artifact indistinguishable from an absent one.
-- `run.py:625-627` (LOW) — the failure path discards exception type and traceback.
+- `jalraksha/run.py:626-628` (LOW) — the failure path discards exception type and traceback.
 - `metrics.py:45-47,76-77,109-110` and `comparison.py:129,132-133` (LOW) — empty
   inputs score perfect CSI, precision, recall and RMSE.
 - `frontend/src/App.jsx:57,61` (MED) — a blanket `.catch` discards the whole
@@ -18694,7 +18839,7 @@ densities, the hazard thresholds and the SAR gates carry either a bare
 of them and all 18 are unverified (C-20).
 
 Two sub-patterns matter separately. First, the *marked* ones — `breach.py:61-66`,
-`:76`, `:80`, `:884-901`, `sar.py:198,233,632`, `pysph_runner.py:63`,
+`:76`, `:80`, `:884-901`, `sar.py:198,233,632`, `jalraksha/sph/pysph_runner.py:64`,
 `sensitivity.py:124` — are honestly flagged and the flag is machine-greppable.
 Second, and worse, the *unmarked* ones: `impact/hazard.py` has **no
 `TODO: UNVETTED` marker anywhere in the file** despite holding the debris factor,
@@ -18708,7 +18853,7 @@ is a third unmarked case, uniquely so among the project's unsourced numbers.
 
 Additional unmarked instances: `breach.py:312` (`rng.lognormal(0, 0.15)` per-member
 peak noise), `breach.py:171` (`rng.lognormal(0, 0.2)` formation-time spread),
-`gee/sar.py:202,208,214,260`, `service/tasks.py:167`, `impact/damage.py:69-73`
+`gee/sar.py:202,208,214,260`, `services/api/jalraksha_service/tasks.py:167`, `impact/damage.py:69-73`
 (asset baselines with no price year, no inflation basis, no deflator).
 
 The full queue with acceptance criteria is in §6.6.
@@ -18721,32 +18866,32 @@ side only.
 - `schemas.py:27` — `target_resolution` has `gt=0` and no floor; `0.5` over 60 km
   requests a 240,000² grid (HIGH).
 - `schemas.py:21-26` — `solver_duration_s` has no ceiling; `1e12` accepted (MED).
-- `schemas.py:28-35` — `breach_formation_time_s` has no ceiling (MED).
+- `services/api/jalraksha_service/schemas.py:37-44` — `breach_formation_time_s` has no ceiling (MED).
 - `schemas.py:12-13` — `lat`/`lon` unbounded; `lat: 900` yields a
   `FileNotFoundError` rather than a 422 (MED).
-- `main.py:408` — `limit` unvalidated; negative values hit Python's negative-slice
+- `services/api/jalraksha_service/main.py:493` — `limit` unvalidated; negative values hit Python's negative-slice
   semantics (MED).
 - `api.py:211-219` — `Content-Length` uncapped; a declared multi-gigabyte body
   exhausts memory, and a negative or non-numeric value raises out of the handler (MED).
-- `ControlPanel.jsx:213` — 10,000 ensemble members selectable in one drag (MED).
+- `frontend/src/panels/ControlPanel.jsx:220` — 10,000 ensemble members selectable in one drag (MED).
 - `hardening.py` — `isinstance(x, (int, float))` accepts `bool` (LOW);
   `DAM_HEIGHT_MAX_M = 400.0` contradicts its own comment (LOW).
-- `run.py:515-518` — the breach mass source is uncapped, adding ~75 m of depth to
+- `jalraksha/run.py:516-519` — the breach mass source is uncapped, adding ~75 m of depth to
   one cell in one step (MED).
 - `core.py:170-171,545-546` — `cfl` clamped from above, never validated `> 0`;
   a non-positive value silently returns a `t=0` result (MED).
 
 ##### T-4 — Unauthenticated and unrate-limited API surface
 
-`main.py:114-936` (C-13) has no auth on any route. Three routes are individually
+`services/api/jalraksha_service/main.py:116-938` (C-13) has no auth on any route. Three routes are individually
 dangerous: unbounded compute (`POST /runs`), GUI process spawn on the host
 (`POST /runs/{id}/open-paraview`), and heavyweight kernel launch
-(`GET /validation?refresh=true`). Wildcard CORS (`main.py:46-48`) plus the
+(`GET /validation?refresh=true`). Wildcard CORS (`services/api/jalraksha_service/main.py:48-50`) plus the
 unconditional `Access-Control-Allow-Origin: *` in the static middleware
-(`main.py:74-76`) means any web page can drive it. No rate limit
-(`main.py:154-157`), no concurrency cap, no task timeout (`tasks.py:1429-1439`),
+(`services/api/jalraksha_service/main.py:76-78`) means any web page can drive it. No rate limit
+(`services/api/jalraksha_service/main.py:238-241`), no concurrency cap, no task timeout (`tasks.py:1429-1439`),
 no cancel endpoint, and the spawned process is fire-and-forget with no PID and no
-kill path (`main.py:214-221`). The stdlib API has the same properties:
+kill path (`services/api/jalraksha_service/main.py:299-306`). The stdlib API has the same properties:
 `jalraksha/api.py` has no authentication, no rate limiting, no concurrency cap, no
 request queue limit and no access log (`log_message` is overridden to a no-op).
 Under compose, Redis (`6379`, no `requirepass`) and Postgres (`5432`, default
@@ -18754,16 +18899,16 @@ credentials) are published to the host, and both containers run as root.
 
 ##### T-5 — Path handling in static file serving
 
-`main.py:83` mounts the entire `DATA_DIR` at `/files`. Because `config.py:85`
+`services/api/jalraksha_service/main.py:85` mounts the entire `DATA_DIR` at `/files`. Because `jalraksha/config.py:85`
 defaults `DATABASE_URL` inside `DATA_DIR`, the SQLite metadata store itself is at
 `/files/jalraksha.db` and downloadable. So are `validation_cache.json`, the GEE
 caches, the Delft3D model directories, and the transient run payloads written to
-`DATA_DIR/runs/<run_id>_*.json` (`main.py:199-205`), which remain reachable until
+`DATA_DIR/runs/<run_id>_*.json` (`services/api/jalraksha_service/main.py:284-290`), which remain reachable until
 `run_worker.py:112` unlinks them and are never cleaned if the child never starts.
-`_to_file_url` (`main.py:98-99`) returns a path outside `DATA_DIR` verbatim into
+`_to_file_url` (`services/api/jalraksha_service/main.py:100-101`) returns a path outside `DATA_DIR` verbatim into
 the JSON response, disclosing the server's absolute filesystem layout. Export
 paths are recorded relative and resolved against the process CWD
-(`main.py:257`), so existence checks depend on the launch directory —
+(`services/api/jalraksha_service/main.py:342`), so existence checks depend on the launch directory —
 `scripts/run_api.py:14-17` exists partly to `os.chdir(REPO_ROOT)` and compensate.
 Starlette's `StaticFiles` does normalise `..` traversal, so the exposure here is
 over-broad mounting rather than classical traversal — but the correct fix is the
@@ -18803,7 +18948,7 @@ every leak by eight.
 
 - No error boundary anywhere (C-11): one throw in any of the eight
   permanently-mounted panels blanks the whole app.
-- `pollUntilDone` (`api.js:82`) holds no `AbortController` and no cancellation
+- `pollUntilDone` (`frontend/src/api.js:91`) holds no `AbortController` and no cancellation
   channel; the loop survives unmount and calls `setStatus` on a dead component (MED).
 - `Scene3D.jsx:198` — the fly-to retry timer is never `clearTimeout`ed (LOW,
   benign only because a `cancelled` flag guards the body).
@@ -18847,9 +18992,9 @@ Where it does not:
   a source comment; `ComparisonPanel.jsx:100-106` renders it with none.
 - `delft3d/runner.py:223-270` (LOW) — `_analytic_fallback` fabricates full 2D
   fields and returns `success: True`.
-- `impact/population.py:202` (MED) — `_generate_synthetic_settlements` uses
+- `jalraksha/impact/population.py@16a8575:202` (MED) — `_generate_synthetic_settlements` uses
   unseeded `np.random`, so the fabricated layout is irreproducible; the parallel
-  GEE path at `gee/population.py:309` seeds correctly, so the two disagree.
+  GEE path at `jalraksha/gee/population.py@16a8575:309` seeds correctly, so the two disagree.
 - `api.py:160-179` and `delft3d/runner.py:211` (HIGH ×2, MED) — fabricated
   uncertainty bands emitted under the **same field names** the real ensemble uses.
 
@@ -18863,7 +19008,7 @@ Windows-shaped, and the Docker image is Linux.
   reduces to two `shutil.which` lookups and any containerised deployment is
   **permanently Tier B** — i.e. it can never use the real Delft3D binary, which is
   the condition the entire naming rule keys on. This is undocumented in the module.
-- `parallel.py:41` — `WORKER_STARTUP_SECONDS = 15.0` is a Windows spawn cost;
+- `jalraksha/solver/parallel.py:51` — `WORKER_STARTUP_SECONDS = 15.0` is a Windows spawn cost;
   POSIX fork is roughly an order of magnitude cheaper, so the cost model
   systematically under-uses the pool on Linux (MED).
 - `parallel.py:53,239-240` — `INTRA_MEMBER_THREAD_SPEEDUP = 2.4`, the 400 MB
@@ -18872,10 +19017,10 @@ Windows-shaped, and the Docker image is Linux.
 - The missing `if __name__ == "__main__":` guard in a caller silently degrades
   `run_ensemble` to sequential on Windows spawn (HIGH) — a 2× loss that fails
   quietly rather than loudly.
-- `main.py:214-221` — the fire-and-forget `Popen` accumulates POSIX zombies,
+- `services/api/jalraksha_service/main.py:299-306` — the fire-and-forget `Popen` accumulates POSIX zombies,
   a failure mode that does not exist on Windows and was therefore never
   observed (MED).
-- `_KERNEL_GLOBS` aside, `README.md:171` contains a corrupted install path
+- `_KERNEL_GLOBS` aside, `README.md:349` contains a corrupted install path
   (`...\plugins\DeltaShell.Dimr\kernelsdin\dflowfm-cli.exe`) matching no entry
   in the glob list (LOW).
 
@@ -18889,16 +19034,16 @@ each will diverge on the first correction to one copy.
 |---|---|
 | Dam registry | `presets.py:369` (2 dams), `service/config.py::DEMO_DAMS` (5), `jalraksha/api.py:30` (2), plus "6 dams" in the walkthrough — four registries |
 | Froehlich 1995 regression | `terrain/breach.py::froehlich_1995_peak_outflow`, `jalraksha/api.py:143` |
-| FD2320 thresholds | `impact/hazard.py:46-52` (6 levels), `export/shapefile.py:266-317` (4 levels), `GaugesPanel.jsx:112-120` (client copy) |
+| FD2320 thresholds | `impact/hazard.py:46-52` (6 levels), `jalraksha/export/shapefile.py:266-317` (4 levels), `frontend/src/panels/GaugesPanel.jsx:112-120` (client copy) |
 | Wet/dry cutoff | `keyframes.py:218` (0.1), `xdmf_export.py:56` (0.01), `render_static.py:73` (0.01), `kml.py:311` (0.1), `shapefile.py:201` (0.1) |
 | Arrival threshold | `solver/types.py:276` (0.05 m), `solver/parallel.py:37` (0.1 m) |
-| CRS zone parse | `run.py:316`, `service/tasks.py:1015` |
+| CRS zone parse | `jalraksha/run.py:317`, `services/api/jalraksha_service/tasks.py:1015` |
 | UTM zone formula | `terrain/domain.py:67-69`, `dem.py:84`, and a third site — two unclamped and truncating rather than flooring |
-| Gravitational constant | `flux.py:73`, `types.py:184`, `tests/test_solver.py:32` |
-| SPH coupling relation `u = Q/(h·w)` | `sph/coupling.py`, `pysph_runner.py:377-400` |
-| Graham fatality table | `impact/fatality.py:59-79`, `ImpactPanel.jsx:103-108` |
+| Gravitational constant | `jalraksha/solver/flux.py:75`, `types.py:184`, `tests/test_solver.py:33` |
+| SPH coupling relation `u = Q/(h·w)` | `sph/coupling.py`, `jalraksha/sph/pysph_runner.py:522-545` |
+| Graham fatality table | `impact/fatality.py:59-79`, `frontend/src/panels/ImpactPanel.jsx:103-108` |
 | `q_peak` key | `run.py:673` reads `q_peak_m3_s`, `ensemble_statistics` reads `q_peak` |
-| Von Thun & Gillette breach width | `terrain/breach.py`, `service/tasks.py:688` (inlined literal, no citation) |
+| Von Thun & Gillette breach width | `terrain/breach.py`, `services/api/jalraksha_service/tasks.py:688` (inlined literal, no citation) |
 
 ---
 
@@ -18932,7 +19077,7 @@ when it did not, the output must not be described as Delft3D at all.
    not a runtime fact. If the machine has a different dimrset installed, the
    documents still say 2026.01.
 3. The build identifier itself is contested in the documents: `CLAUDE.md:16` and
-   `README.md:151` say "dimrset 2026.01"; `docs/validation_findings.md:7-8` says
+   `README.md:329` say "dimrset 2026.01"; `docs/validation_findings.md:7-8` says
    "dimrset build 2025-10-20".
 4. `tests/test_delft3d.py` passes `force_fallback=True` in **every** runner test,
    so the Tier A branch — the branch whose `delft3d_binary_used` boolean governs
@@ -18977,7 +19122,7 @@ Three separate defects converge on the Comparison tab.
 There is also a stale self-accusation to correct in the other direction:
 `PROGRESS_SUMMARY.md:87-91` claims the SPH side is `np.random`-synthesised. That
 is **no longer true** — no `np.random` exists in `comparison.py`, the real PySPH
-path is wired, and `tests/test_sph.py:232-242` enforces bit-identical determinism.
+path is wired, and `tests/test_sph.py:292-302` enforces bit-identical determinism.
 The stale accusation is itself a risk, because it misdirects a reviewer away from
 the three defects that are live.
 
@@ -19006,7 +19151,7 @@ Separately, `tools/paraview/make_dataset.py:277` marks `--reservoir` datasets
 "water depth" they display is height above a DEM that already contains the pool —
 i.e. it is not a simulated flood at all. The "NOT a hydrodynamic result"
 disclaimer for those datasets lives only in `provenance_solver`, which nothing
-renders. And `service/main.py:891-895`'s staleness check omits `presets.py` and
+renders. And `services/api/jalraksha_service/main.py:891-895`'s staleness check omits `presets.py` and
 `config.py`, where the exaggeration and depth-max actually come from, so cached
 `.pvsm` states go stale without being detected — meaning a rendered frame may not
 even correspond to the preset it claims.
@@ -19024,7 +19169,7 @@ a hydrodynamic result, and that the absence of a red banner means it is real.
 PS deliverable D4 asks for the two scenarios to be compared. The implemented
 coupling is one-directional and the two engines never cover the same ground.
 
-- SPH covers **~600 m over 15 s** (`service/tasks.py:82-84`:
+- SPH covers **~600 m over 15 s** (`services/api/jalraksha_service/tasks.py:82-84`:
   `SPH_WINDOW_RADIUS_KM = 0.6`, `SPH_DURATION_S = 15.0`) with
   `reaches_downstream_gauges` hardcoded **false**.
 - The depth-averaged engine covers 27–60 km over 30 min to 3 h.
@@ -19032,14 +19177,14 @@ coupling is one-directional and the two engines never cover the same ground.
 - The exported coupling API (`sph/coupling.py::handoff_swe_to_sph`,
   `extract_sph_free_surface`; `sph/domain.py::NearFieldDomain`,
   `generate_near_field_particles`) is called **only from tests**;
-  `pysph_runner.py:377-400` re-implements the `u = Q/(h·w)` relation and the
+  `jalraksha/sph/pysph_runner.py:522-545` re-implements the `u = Q/(h·w)` relation and the
   breach mask inline, and nothing keeps the two implementations in step. A
   reviewer reading `sph/__init__.py:15-33` would reasonably conclude the exported
   functions are the handoff. They are not, and no comment says so.
-- `service/tasks.py:82-84` gives a ~1.2 km window while `CLAUDE.md:314-316`
+- `services/api/jalraksha_service/tasks.py:82-84` gives a ~1.2 km window while `CLAUDE.md:315-317`
   states the scope as "~600 m"; the code does not state whether the radius is a
   half-width, so the two figures are reconcilable but unresolved.
-- `pysph_runner.py:290`'s 1 m particle-spacing floor lets particle resolution
+- `jalraksha/sph/pysph_runner.py:435`'s 1 m particle-spacing floor lets particle resolution
   reach **thirty times finer than the 30 m GLO-30 terrain** it runs over, so the
   fluid is resolved far more finely than the boundary it flows against.
 
@@ -19061,7 +19206,7 @@ at 200 m (default) or 400 m. Several claims sit uneasily on that foundation:
 - A depth quoted at a named town or gauge is a cell average over a 200 m × 200 m
   or 400 m × 400 m cell, on terrain whose native posting is 30 m and whose
   vertical accuracy over Himalayan slopes is metres, not centimetres.
-- `run.py:282` snaps a gauge to the lowest bed within a 1200 m search window
+- `jalraksha/run.py:283` snaps a gauge to the lowest bed within a 1200 m search window
   (`channel_search_m`), and `run.py:433,442` uses a 3000 m thalweg search radius
   and a 15.0 m "town centre" threshold for the no-arrival case. So a "depth at
   Deccan Gymkhana" is a depth at whichever cell within 1.2 km had the lowest bed.
@@ -19098,10 +19243,10 @@ Consolidated inventory. The full remediation queue with acceptance criteria is
 | Xu & Zhang B3 (dam type) | 6 coefficients | `breach.py:884-891` | ✅ |
 | Xu & Zhang B4 (failure mode) | 3 coefficients | `breach.py:892-896` | ✅ |
 | Xu & Zhang B5 (erodibility) | 3 coefficients | `breach.py:897-901` | ✅ |
-| Erodibility class | hardcoded `"high"` because `dam_config` does not carry it | `breach.py:958-961` | ✅ |
+| Erodibility class | hardcoded `"high"` because `dam_config` does not carry it | `jalraksha/terrain/breach.py:958-961` | ✅ |
 | Per-member peak noise | `rng.lognormal(0, 0.15)` | `breach.py:312` | ❌ **unmarked** |
 | Formation-time spread | `rng.lognormal(0, 0.2)` | `breach.py:171` | ❌ **unmarked** |
-| Uniform Manning's n | 0.03 (Chow 1959 Tbl 5-6 cited without a value-level reference) | `conditioning.py:281-284`, `domain.py:147-153` | ✅ tagged |
+| Uniform Manning's n | 0.03 (Chow 1959 Tbl 5-6 cited without a value-level reference) | `conditioning.py:281-284`, `jalraksha/terrain/domain.py:147-153` | ✅ tagged |
 | WorldCover n table | 10 class→n values, apparently shifted by one class | `roughness.py:14-25`, `:86-99` | ⚠️ prose only, ends in a TODO |
 | FD2320 debris factor | literal 0.5, no table, no land-use input | `hazard.py:225` | ❌ **no marker anywhere in the file** |
 | FD2320 HR class boundaries | 0.75 / 1.25 / 2.5 | `hazard.py:247-249` | ❌ |
@@ -19109,24 +19254,24 @@ Consolidated inventory. The full remediation queue with acceptance criteria is
 | Graham fatality rate table | 9 values | `fatality.py:59-79` | ❌ **no marker anywhere in the file** |
 | Understanding-level multipliers | 1.5 / 1.0 / 0.7 | `fatality.py:83-88` | ❌ |
 | Jonkman coefficients | 1.5 m²/s, 2.1 m, 0.03, 0.5, 0.4, 0.9, 0.02, 0.05 | `fatality.py:135,139,144,147` | ❌ |
-| "Graham (2009)" depth-damage a/b/r² | 3 asset classes, r² 0.82/0.79/0.75 | `damage.py:42-58` | ✅ tag, ❌ no such reference in the repo |
-| `_SECTOR_RATE` (the curve tests actually use) | 0.8 / 0.7 / 0.6 / 0.8 m⁻¹ | `damage.py:245-250` | ✅ tag, no named source |
+| "Graham (2009)" depth-damage a/b/r² | 3 asset classes, r² 0.82/0.79/0.75 | `jalraksha/impact/damage.py:42-58` | ✅ tag, ❌ no such reference in the repo |
+| `_SECTOR_RATE` (the curve tests actually use) | 0.8 / 0.7 / 0.6 / 0.8 m⁻¹ | `jalraksha/impact/damage.py:245-250` | ✅ tag, no named source |
 | Asset baselines | 125 / 85 / 45 crore INR, no price year, no deflator | `damage.py:69-73` | ❌ |
 | Wang 2016 / Jiang 2019, ±20 % band, 450 persons/km², 0.1 m threshold | 6 values | `damage.py:62-65,76,209,213` | ❌ |
 | Settlement densities, vulnerability multipliers, demographic shares | ~20 values | `population.py:41-60,63-68,232-234,307-317,346-352` | ✅ one collective tag at `:38` |
-| Warning lead time | `WARNING_LEAD_TIME_S = 1800.0` | `service/tasks.py:167` | ✅ tag, no CWC citation, no per-dam override |
+| Warning lead time | `WARNING_LEAD_TIME_S = 1800.0` | `services/api/jalraksha_service/tasks.py:167` | ✅ tag, no CWC citation, no per-dam override |
 | SAR tile separability | `MIN_TILE_SEPARABILITY = 0.7` | `gee/sar.py:198` | ✅ **exemplary** — method refs + "working value, not a published one" |
 | SAR JRC precision gate | `MIN_JRC_PRECISION = 0.5` | `gee/sar.py:233` | ✅ **exemplary** — measurements + unimplemented remedy named |
 | SAR change threshold | `-3.0 dB` | `gee/sar.py:632` | ✅ **exemplary** — explicitly disclaims Clement (2018) |
 | SAR publication guards | 0.05 / 0.80 / 80 / size<8 / sum<100 | `gee/sar.py:202,208,214,260` | ❌ |
-| SPH artificial viscosity | `ALPHA_VISCOSITY = 0.25` | `pysph_runner.py:63` | ✅ |
+| SPH artificial viscosity | `ALPHA_VISCOSITY = 0.25` | `jalraksha/sph/pysph_runner.py:64` | ✅ |
 | Wahl peak-outflow factor | 1.89, times an unsourced `* 1.06 # Approx 2σ` | `sensitivity.py:124,150` | ✅ on the first, ❌ on the multiplier |
 | Malpasset / Chamoli observed data | gauge elevations, arrival times, travel speeds | `benchmarks.py:28-35,54-59` | ❌ **unmarked, uniquely** |
 | Dam structural figures | Tehri FRL 830.0 / crest 839.5; Khadakwasla 39.6 m / 85.31 MCM / 14.72 km² | `presets.py:213-219,275-282,356-358` | ✅ tagged UNVETTED |
 
 Three specific overclaiming exposures follow from the table:
 
-- The **r² values** at `damage.py:42-58` are a fabricated credential: a
+- The **r² values** at `jalraksha/impact/damage.py:42-58` are a fabricated credential: a
   goodness-of-fit statistic attached to a fit that was never performed, citing a
   work not present in the repository.
 - **Breach width uses Von Thun & Gillette**, an *embankment* fit, applied to
@@ -19150,17 +19295,18 @@ consequence numbers."*
 
 ##### 5.6.7 Additional overclaiming surfaces
 
-- **Economic damage.** ~~`docs/dashboard_integration.md` itself labels the
-  output UNVETTED because "the asset values are fixed constants, not derived
-  from the catchment". C-03 makes the arithmetic wrong on top of that. **No
-  economic figure should be shown at all until both are fixed.**~~
-  **RESOLVED 2026-09-06.** Both were fixed before a figure was shown: the fixed
-  constants are deleted and the asset term is now a fetched per-cell exposure
-  raster (GHS-BUILT-S surface, WorldCover cropland), and the arithmetic defects
-  went with `DepthDamageAnalyzer` — the `TOTAL` KeyError, the unreachable
-  wang/jiang branches and the hardcoded 200 m cell area. What remains labelled
-  UNVETTED is the curve (row 36) and the unit cost per m² (row 35), the latter
-  echoed in the payload so the figure can be rescaled.
+- **Economic damage — fixed before any figure was shown (2026-09-06).** The
+  audit's position was that no economic figure should be displayed at all, on two
+  grounds: `docs/dashboard_integration.md` labelled the output UNVETTED because
+  "the asset values are fixed constants, not derived from the catchment", and
+  C-03 made the arithmetic wrong on top of that. Both were closed before a figure
+  reached a user. The fixed constants are deleted and the asset term is now a
+  fetched per-cell exposure raster (GHS-BUILT-S built-up surface, WorldCover
+  cropland) on the run's own grid; the arithmetic defects went with
+  `DepthDamageAnalyzer` — the `TOTAL` KeyError, the unreachable wang/jiang
+  branches and the hardcoded 200 m cell area. What is still labelled UNVETTED is
+  the curve (queue row 36) and the unit cost per m² (row 35), and the cost is
+  echoed in the payload precisely so a reader can divide it back out.
 - **Benchmark scores.** `validation/benchmarks.py:92` gives a **perfect score
   (RMSE 0.0, NSE 1.0, 0.0 % travel error) for a run that produced no output**, and
   `tests/test_validation.py:89-97` asserts those perfect values. Neither Stoker's
@@ -19220,12 +19366,12 @@ exhaustion, or wrong-but-plausible output. Each row gives the triggering input.
 
 | Trigger | Path | Result |
 |---|---|---|
-| `import jalraksha.impact` (any) | `hazard.py:143`, `population.py:184` | `NameError` — package unimportable (C-01, C-02) |
+| `import jalraksha.impact` (any) | `hazard.py:143`, `jalraksha/gee/population.py:184` | `NameError` — package unimportable (C-01, C-02) |
 | `import jalraksha.validation` (any) | `metrics.py:88` | `NameError` — package unimportable (C-16) |
 | `calculate_damage()` with the documented default | `damage.py:111` | `KeyError: DamageType.TOTAL` |
 | `calculate_damage(..., curve_version="wang_2016", damage_type=INFRASTRUCTURE)` | `damage.py:112` | `KeyError` — `alternative_curves` has only a RESIDENTIAL key |
 | A malformed `dam_config` missing `name` | `run.py:585` | Bare `KeyError`, not the `HardeningError` the hardening module exists to produce |
-| A WKT-valued CRS from `_grid_from_projected_dem` or a test fixture | `run.py:316`, `tasks.py:1015` | `ValueError` in `int(str(grid.crs).split(":")[-1])` |
+| A WKT-valued CRS from `_grid_from_projected_dem` or a test fixture | `jalraksha/run.py:317`, `tasks.py:1015` | `ValueError` in `int(str(grid.crs).split(":")[-1])` |
 | `POST /runs` with `total_time_s <= 0` on the delft3d path | `delft3d/runner.py:392` | `UnboundLocalError` after an otherwise-successful setup |
 | A missing `pvpython` binary, or a render exceeding the timeout | `main.py:910` | `FileNotFoundError` / `TimeoutExpired` escaping as an unhandled HTTP 500 |
 | A non-numeric or negative `Content-Length` header | `api.py:211-219` | `ValueError` out of the request handler |
@@ -19241,15 +19387,15 @@ exhaustion, or wrong-but-plausible output. Each row gives the triggering input.
 |---|---|---|
 | `target_resolution: 0.5` over a 60 km domain | `schemas.py:27` | 240,000 × 240,000 grid; OOM-kill of the worker or the host |
 | `solver_duration_s: 1e12` | `schemas.py:21-26` | A run that never terminates; no task timeout exists (`tasks.py:1429-1439`) |
-| `ensemble_size: 10000` via one slider drag | `ControlPanel.jsx:213` + `main.py:154-157` | CPU saturation with no cap, no rate limit and no cancel endpoint |
-| A single reproducible validation-gate failure with the tab open | `main.py:487-490` | The 2000 ms frontend poll starts a new background thread running two 1000-step solves plus a Delft3D kernel launch **on every tick**, indefinitely |
-| `uvicorn --workers N` with the validation tab open | `main.py:453-454` | N concurrent Delft3D kernels against the same scratch directory |
-| Repeated `POST /runs` on POSIX | `main.py:214-221` | Zombie processes accumulate until the API exits |
+| `ensemble_size: 10000` via one slider drag | `frontend/src/panels/ControlPanel.jsx:220` + `services/api/jalraksha_service/main.py:238-241` | CPU saturation with no cap, no rate limit and no cancel endpoint |
+| A single reproducible validation-gate failure with the tab open | `services/api/jalraksha_service/main.py:573-576` | The 2000 ms frontend poll starts a new background thread running two 1000-step solves plus a Delft3D kernel launch **on every tick**, indefinitely |
+| `uvicorn --workers N` with the validation tab open | `services/api/jalraksha_service/main.py:539-540` | N concurrent Delft3D kernels against the same scratch directory |
+| Repeated `POST /runs` on POSIX | `services/api/jalraksha_service/main.py:299-306` | Zombie processes accumulate until the API exits |
 | A `Content-Length` declaring several GB | `api.py:211-219` | Memory exhaustion of the stdlib API process |
 | A hung Earth Engine endpoint | `gee/auth.py:102` | `ee.Initialize` under `_LOCK` with no timeout blocks every concurrent request |
 | A long `iso_times_s` list on the shapefile contour path | `shapefile.py:412-420` | matplotlib figures leak (`plt.close()` closes only the current one) |
-| A warm run against a large cached DEM | `cache.py:94-105` | Hundreds of MB MD5-hashed on every `check_cache` call, with no size/mtime fast path |
-| A run exceeding ten minutes | `api.js:79` | The frontend reports `failed: Run timed out` while the backend completes normally |
+| A warm run against a large cached DEM | `jalraksha/cache.py:94-105` | Hundreds of MB MD5-hashed on every `check_cache` call, with no size/mtime fast path |
+| A run exceeding ten minutes | `frontend/src/api.js:88` | The frontend reports `failed: Run timed out` while the backend completes normally |
 | A 400×400 Delft3D grid over 24 h of simulated time | `tasks.py:462-464` | Killed at the 3600 s default and reported as a fallback |
 
 ##### 5.7.3 NaNs and numerical failure
@@ -19257,11 +19403,11 @@ exhaustion, or wrong-but-plausible output. Each row gives the triggering input.
 | Trigger | Path | Result |
 |---|---|---|
 | Any solver divergence (CFL violation, near-zero depth division, the 75 m single-step injection shock) | `types.py:137-140` | **Silently zeroed.** `is_finite()` returns `True`, the `RuntimeError` guard is unreachable, and a valid-looking result of zeros is exported (C-07) |
-| Tehri peak outflow (~10⁵ m³/s) with `dt_s = 30 s` on 200 m cells | `run.py:515-518` | ~75 m of depth into one cell in one step; the timestep collapses and `parallel.py:190-195` warns rather than errors |
+| Tehri peak outflow (~10⁵ m³/s) with `dt_s = 30 s` on 200 m cells | `jalraksha/run.py:516-519` | ~75 m of depth into one cell in one step; the timestep collapses and `jalraksha/solver/parallel.py:312-317` warns rather than errors |
 | A non-positive `cfl` | `core.py:170-171,545-546` | `dt <= 0`; `run()` silently `break`s and returns a `t=0`, `n_steps=0` result with no error |
 | A geographic CRS with degree-valued `dx`/`dy` | `types.py:63-67` | Accepted; the whole integration is silently mis-scaled by ~10⁵ |
-| A breach-into-dry-terrain run (the standard case) | `core.py:571-572` | `mass_error` reports the default `0.0`, indistinguishable from perfect conservation |
-| Any run with `manning_n > 0` | `core.py:455-464` | Lie-split friction reduces SSP-RK2 to first order in time; the Thacker gate cannot catch it because it runs frictionless |
+| A breach-into-dry-terrain run (the standard case) | `jalraksha/solver/core.py:618-619` | `mass_error` reports the default `0.0`, indistinguishable from perfect conservation |
+| Any run with `manning_n > 0` | `jalraksha/solver/core.py:499-508` | Lie-split friction reduces SSP-RK2 to first order in time; the Thacker gate cannot catch it because it runs frictionless |
 | Copernicus DEM voids (NaN over water bodies) | `types.py:137-140` | Correctly sanitised — this is the one case the sanitiser is right for, which is why the fix must preserve it |
 
 ##### 5.7.4 Wrong-but-plausible output
@@ -19271,11 +19417,11 @@ This is the most dangerous class and the largest.
 | Trigger | Path | Wrong output produced |
 |---|---|---|
 | Any depth grid, including all-zero | `damage.py:134,152` | ₹44,216 crore and 35,373 % damage on a **dry** domain (C-03) |
-| Any integer-coded settlement grid | `population.py:227` | `total_population: 0` for every input, indistinguishable from "the flood reaches nobody" (C-04) |
-| Any depth grid with cells above 0.5 m | `population.py:261-267` | 4× population overcount → `par = 1.0` for a quarter-domain flood (C-05) |
+| Any integer-coded settlement grid | `jalraksha/gee/population.py:227` | `total_population: 0` for every input, indistinguishable from "the flood reaches nobody" (C-04) |
+| Any depth grid with cells above 0.5 m | `jalraksha/gee/population.py:261-267` | 4× population overcount → `par = 1.0` for a quarter-domain flood (C-05) |
 | A cell at h = 3 m, v = 10 m/s | `hazard.py:105` | Classified **DRY** — the most dangerous cells in the flood (C-06) |
-| Any grid other than exactly 200 m | `population.py:275`, `damage.py:148,219` | PAR denominator and cell area wrong by `(cell_size/200)²` — 4× on a 400 m grid |
-| Any demographic breakdown | `population.py:319` | Total exceeds the population it describes (measured 140 %) |
+| Any grid other than exactly 200 m | `jalraksha/gee/population.py:275`, `damage.py:148,219` | PAR denominator and cell area wrong by `(cell_size/200)²` — 4× on a 400 m grid |
+| Any demographic breakdown | `jalraksha/impact/population.py@16a8575:319` | Total exceeds the population it describes (measured 140 %) |
 | `rasterio.warp` unavailable or raising (e.g. broken PROJ) | `keyframes.py:117-130` | A structurally perfect manifest placing the Tehri flood near 2° E / 60° N (C-09) |
 | Any exception in `_generate_single_hydrograph` | `breach.py:389-405` | A fallback member at 1.7× the requested peak, unbounded by reservoir storage, mixed into the published percentile bands (C-08) |
 | Any ensemble run at all | `run.py:647` | Non-reproducible percentile bands — the same configuration yields different published numbers |
@@ -19287,16 +19433,16 @@ This is the most dangerous class and the largest.
 | A benchmark run that produced no gauges | `benchmarks.py:92` | RMSE 0.0, NSE 1.0, 0.0 % travel error — a perfect score for no output |
 | Two entirely dry fields | `metrics.py:45-47`, `comparison.py:129` | CSI 1.0, rendered on a dashboard card as agreement |
 | Any ensemble COG | `geotiff.py:103-105` | Depth and velocity rasters both tagged `UNIT = "s"` |
-| Any hazard shapefile alongside any keyframe | `shapefile.py:266-317` vs `hazard.py:47-51` | Two incompatible four- and six-class schemes, both labelled FD2320 |
+| Any hazard shapefile alongside any keyframe | `jalraksha/export/shapefile.py:266-317` vs `hazard.py:47-51` | Two incompatible four- and six-class schemes, both labelled FD2320 |
 | Any inundation KML with a masked depth array | `kml.py:321-322` | GroundOverlay shifted and stretched relative to its declared `<LatLonBox>` |
 | Loading a run without a keyframe manifest | `App.jsx:49` | The **previous** run's flood animates over the current run's map |
 | Loading a 9-keyframe run after scrubbing a 30-keyframe run to frame 25 | `SimulationClock.jsx:20` | `current === null`; the 2D overlay vanishes and the 3D shows no flood, silently |
 | Pasting a run id not in the 50 most recent | `ControlPanel.jsx:161-163` | Khadakwasla's data displayed under Tehri's label with Tehri's gauges |
-| Selecting the "Custom" dam | `ControlPanel.jsx:118` | Tehri's coordinates posted with the user's height and storage sliders |
+| Selecting the "Custom" dam | `frontend/src/panels/ControlPanel.jsx:124` | Tehri's coordinates posted with the user's height and storage sliders |
 | Any velocity input that is neither 2-D nor 3-D | `shapefile.py:294-300` | Silently becomes zeros; every cell rendered as depth-only hazard |
 | Any run on the delft3d path with `ensemble_size > 200` | `tasks.py:1321` | Silently clamped, with no notice in the response |
 | A finished run | `tasks.py:1419` | Reads `{"status": "done", "progress_pct": 100.0, "phase": "Rendering keyframes"}` |
-| Any `failure_mode` on a default ensemble | `schemas.py:91-96` | Accepted, documented in OpenAPI, and changes nothing |
+| Any `failure_mode` on a default ensemble | `services/api/jalraksha_service/schemas.py:100-105` | Accepted, documented in OpenAPI, and changes nothing |
 | Any `breach_mode` | `schemas.py:18` | Accepted, documented, never copied into `cfg` — a dead knob |
 
 ---
@@ -19318,7 +19464,7 @@ capability the system silently does not have on its own build box.
 Second-order consequences of 3.14 already visible in the audit:
 `datetime.utcnow()` is deprecated (seven call sites: `geotiff.py:101,197`,
 `shapefile.py:149,244`, `kml.py:138`, `keyframes.py:56`, `cache.py:167`); and
-`@app.on_event("startup")` (`main.py:102`) is deprecated and removed in newer
+`@app.on_event("startup")` (`services/api/jalraksha_service/main.py:104`) is deprecated and removed in newer
 Starlette/FastAPI, which a 3.14-era dependency resolution is more likely to pull.
 
 **Risk.** A judge or evaluator installing on 3.11 or 3.12 — the declared, tested
@@ -19337,7 +19483,7 @@ taken on, and neither environment has been validated against the other.
   (1.144.0) and `resium` (1.25.0) are **load-bearing**: resium's `otherProps`
   handling of `terrainProvider` is version-specific, so an `npm update` will
   quietly break the globe — and nothing in the manifest says so.
-- `pyproject.toml:105-131` — the ruff config is stale for the pinned ruff range:
+- `pyproject.toml:114-140` — the ruff config is stale for the pinned ruff range:
   `select`/`ignore` moved under `[tool.ruff.lint]` (and `[tool.ruff.isort]` to
   `[tool.ruff.lint.isort]`) in ruff 0.2+, while the pin is only `ruff>=0.1.0`. And
   `W503` is a flake8 code with no ruff equivalent, so that ignore is inert.
@@ -19346,7 +19492,7 @@ taken on, and neither environment has been validated against the other.
   core dependencies — it is in the `viz` extra, which neither Dockerfile installs.
 - `jalraksha/config.py:31` carries `import yaml  # To be added to pyproject.toml`:
   an undeclared dependency at module scope.
-- `pyproject.toml:92-103` — `addopts` hardcodes `--cov=jalraksha`, so the suite
+- `pyproject.toml:101-112` — `addopts` hardcodes `--cov=jalraksha`, so the suite
   cannot run without `pytest-cov`, which is only in the `dev`/`test` extras that
   neither Dockerfile installs.
 
@@ -19383,7 +19529,7 @@ machine produces not an error but a flood drawn in the North Sea.**
   `fastmath` because the well-balanced C-property depends on strict IEEE ordering.
   This is correct and must not be relaxed.
 - Numba JIT compilation on a **cold or invalidated cache** is absorbed into the
-  cost probe (`parallel.py:356-358`), inflating `probe_seconds` and biasing the
+  cost probe (`jalraksha/solver/parallel.py:577-579`), inflating `probe_seconds` and biasing the
   cost model toward the sequential path for ensembles that should be pooled. The
   first run after any code change to a jitted module therefore under-parallelises.
 - `terrain/breach.py:29` has a hard `from numba import njit`, contradicting the
@@ -19402,7 +19548,7 @@ machine produces not an error but a flood drawn in the North Sea.**
 | Executable | Used by | Behaviour when absent |
 |---|---|---|
 | `dflowfm` / `dflowfm-cli` | `delft3d/runner.py` Tier A | Falls to Tier B. `_KERNEL_GLOBS` (`:76-86`) are **Windows-only absolute paths**, so on Linux and in the project's own Docker image discovery reduces to two `shutil.which` lookups — meaning containerised deployment is **permanently Tier B** and can never legitimately use the Delft3D name. Undocumented in the module. |
-| ParaView (`PARAVIEW_EXE`) | `main.py:842` | Existence-checked; degrades to a structured refusal. Correct. |
+| ParaView (`PARAVIEW_EXE`) | `services/api/jalraksha_service/main.py:936` | Existence-checked; degrades to a structured refusal. Correct. |
 | `pvpython` (`PVPYTHON_EXE`) | `main.py:910` | **Not** existence-checked, unlike ParaView. `FileNotFoundError` escapes as an unhandled HTTP 500. |
 | ParaView Python modules | `paraview/render_static.py` | `services/api/Dockerfile` never copies `paraview/`, `tools/` or `scripts/` into the image, so `/app/paraview/render_static.py` and `/app/tools/paraview` do not exist there. Both degrade gracefully but the capability is silently absent. |
 | Blender | M8 cinematic render | Never attempted — no binary available — and absent from every later document, so its status is unrestated rather than confirmed. |
@@ -19449,7 +19595,7 @@ least eight defects that would surface in sequence on the first attempt:
 5. `services/api/Dockerfile:14` — nothing sets `PYTHONPATH`, so
    `uvicorn jalraksha_service.main:app` has no obvious import root.
 6. `docker-compose.yml:40-42` — no healthchecks and no `condition: service_healthy`,
-   while `main.py:40` calls `db.init_db()` at import time.
+   while `services/api/jalraksha_service/main.py:42` calls `db.init_db()` at import time.
 7. `matplotlib` absent from the image — every delft3d/both run writes a
    permanently `unavailable` comparison artifact.
 8. `docker-compose.yml:63-68` — the nginx `tiles` service has no CORS header, so
@@ -19495,7 +19641,7 @@ Six tests are vacuous by construction and inflate the pass count:
   `PopulationEstimator` returns zero for **every** input. Neither asserts a
   non-zero population, so C-04, C-05 and the `cell_area_km2` shadowing are all
   invisible.
-- `tests/test_solver.py:232` — asserts on `is_finite()`, which C-07 makes a
+- `tests/test_solver.py:251` — asserts on `is_finite()`, which C-07 makes a
   tautology.
 - `tests/test_validation.py:89-97` — `test_evaluate_benchmark_matching` exercises
   exactly the identity case and asserts the perfect values that
@@ -19511,7 +19657,7 @@ Six tests are vacuous by construction and inflate the pass count:
 `write_export_products`, `inject_breach_hydrograph` and the entire `progress_cb`
 contract are untested. The project's central function has no test.
 
-**Parallelism.** `tests/test_parallel.py:104-118` never reaches the process pool
+**Parallelism.** `tests/test_parallel.py:106-120` never reaches the process pool
 (2 members minus the serial probe leaves 1 task, so the cost model always chooses
 sequential). Untested: the pool path itself, worker initialisation, the memory
 cap (`_worker_memory_cap`'s psutil-absent branch), and the pool-failure fallback.
@@ -19557,10 +19703,10 @@ actually appearing, camera reproducibility, or the `.pvsm` staleness logic in
 `reservoir.py`, `synthetic_flood.py`, `matlab_export.py`, `backfill_xdmf.py` and
 `make_keyframes_transparent.py` have **no dedicated tests at all**.
 
-**Frontend.** There is no test infrastructure whatsoever: `package.json:6-10` has
+**Frontend.** There is no test infrastructure whatsoever: `frontend/package.json:6-10` has
 no lint, test, typecheck or format script and there is no ESLint configuration
 anywhere, yet four source files carry `eslint-disable-next-line` directives
-(`api.js:81`, `ControlPanel.jsx:54`, `Scene3D.jsx:90`) that are therefore inert.
+(`api.js:81`, `frontend/src/panels/ControlPanel.jsx:59`, `Scene3D.jsx:90`) that are therefore inert.
 Zero of the 60 frontend findings could have been caught by an automated gate,
 because no gate exists.
 
@@ -19694,7 +19840,7 @@ wrong run with no indication. This captures C-11 (no React error boundary — on
 throw blanks the dashboard), C-22 (the previous run's flood animating over the
 current run's map), C-09 (the Tehri flood rendered over the North Sea), C-03 (a
 damage figure of 35,373 %), the `/validation` compute amplifier
-(`main.py:487-490` — one reproducible gate failure spawns a new Delft3D kernel
+(`services/api/jalraksha_service/main.py:573-576` — one reproducible gate failure spawns a new Delft3D kernel
 every 2 seconds, indefinitely), and the unbounded `target_resolution`
 (`schemas.py:27` — one typo OOM-kills the demo machine).
 
@@ -20055,9 +20201,10 @@ by 100.
 
 ##### P0-03 — `PopulationEstimator` returns zero for every input (C-04)
 
-> **RESOLVED (2026-09-11, `dd1e766`).** Not applied as written: the class was deleted instead of patched, so the `SETTLEMENT_CODES` patch below is moot.
+**Current state (2026-09-11, `dd1e766`).** Not applied as written: the class was deleted instead of patched, so the `SETTLEMENT_CODES` patch below is moot.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
-**Location.** `jalraksha/impact/population.py:227`
+**Location.** `jalraksha/impact/population.py@16a8575:227`
 (`if settlement_type in self.settlement_data:` inside `_get_population_density`).
 
 **Root cause.** `settlement_grid` is documented and produced as integer codes
@@ -20188,9 +20335,9 @@ multiplier without updating the citation queue.
 
 ---
 
-##### P0-04 — Nested depth thresholds, the shadowed cell area, and the demographic overcount (C-05, plus HIGH `population.py:275` and HIGH `population.py:319`)
+##### P0-04 — Nested depth thresholds, the shadowed cell area, and the demographic overcount (C-05, plus HIGH `jalraksha/gee/population.py:275` and HIGH `jalraksha/impact/population.py@16a8575:319`)
 
-**Location.** `jalraksha/impact/population.py:255-285` (`_analyze_depth_impact`)
+**Location.** `jalraksha/impact/population.py@16a8575:255-285` (`_analyze_depth_impact`)
 and `:290-321` (`_estimate_demographics`).
 
 **Root cause, three parts.**
@@ -20339,7 +20486,8 @@ the denominator.
 
 ##### P0-05 — FD2320 hazard classification: velocity ceilings with no catch-all classify deep fast water as DRY (C-06)
 
-> **RESOLVED (2026-09-11, `dd1e766`).** Not applied as written: the classifier was replaced by the published HR index rather than given a catch-all, and SEVERE was retired rather than re-banded.
+**Current state (2026-09-11, `dd1e766`).** Not applied as written: the classifier was replaced by the published HR index rather than given a catch-all, and SEVERE was retired rather than re-banded.
+*The rest of this entry is the 2026-09-03 audit's reading, kept because the defect it describes is the reason for the change above.*
 
 **Location.** `jalraksha/impact/hazard.py:88-120` (`HazardClassifier.classify`),
 thresholds at `:46-52`, docstring at `:11-17`.
@@ -20367,7 +20515,7 @@ classified as dry.
 
 This is not resolvable from the repository — §5.3.1 records that there is no
 third source to adjudicate, and the frontend carries a *fourth* copy at
-`GaugesPanel.jsx:112-120`. **This is a maintainer decision.** The options:
+`frontend/src/panels/GaugesPanel.jsx:112-120`. **This is a maintainer decision.** The options:
 
 - **Option A — the docstring is correct.** Adopt the docstring bands. This makes
   EXTREME reachable at h > 5 m, which for a dam-break means most of the near
@@ -20547,14 +20695,14 @@ part of P0-21.
 ##### P0-06 — `State.__post_init__` sanitises NaN on every step, making divergence detection dead code (C-07)
 
 **Location.** `jalraksha/solver/types.py:134-141`, constructed every step from
-`jalraksha/solver/core.py:469` and checked at `core.py:551-555`.
+`jalraksha/solver/core.py:513` and checked at `jalraksha/solver/core.py:551-555`.
 
 **Root cause.** The `np.nan_to_num` calls were added for a legitimate reason:
 Copernicus DEM voids over water bodies are NaN and would poison the domain on
-step 1. But `core.py:469` builds a fresh `State` on every timestep, so the
+step 1. But `jalraksha/solver/core.py:513` builds a fresh `State` on every timestep, so the
 sanitiser runs every step and erases any non-finite value the *solver itself*
 produced before anything can observe it. `State.is_finite()` (`types.py:188`) is
-consequently a tautology, and the `RuntimeError` guard at `core.py:551-555` is
+consequently a tautology, and the `RuntimeError` guard at `jalraksha/solver/core.py:551-555` is
 unreachable. A divergent run returns a structurally valid depth field, arrival
 raster and keyframe set that are physically meaningless, and they flow into the
 COG export, the PNG renderer, the hazard classification and the impact chain.
@@ -20663,7 +20811,7 @@ with `sanitize=sanitize` forwarded into the `State(...)` construction, and the
 single call site in the terrain pipeline updated to `create_state(..., sanitize=True)`.
 
 **Secondary consequence, which is the point.** With this patch,
-`core.py:551-555` becomes live. A run that diverges now raises
+`jalraksha/solver/core.py:551-555` becomes live. A run that diverges now raises
 
 ```
 RuntimeError: Solution went non-finite at t=…s (step …). dt=…s, max depth=…m.
@@ -20675,7 +20823,7 @@ which propagates out of `SWESolver.run()`. `run_ensemble_member`
 explicitly ("failures are reported, never silently dropped") — so a single
 diverging member fails honestly and the ensemble continues. That is the intended
 behaviour and requires no further change. What it *will* do is surface the
-uncapped breach injection (`run.py:515-518`, ~75 m of depth into one cell in one
+uncapped breach injection (`jalraksha/run.py:516-519`, ~75 m of depth into one cell in one
 step) as a real, loud failure on Tehri-scale runs. That is a true finding, and it
 is P1-14.
 
@@ -21099,7 +21247,7 @@ remounts):
 ```
 
 (If `Pane` in the current tree does not take `id`/`label`, add them at the eight
-call sites — they are already distinguished by the `tabs` array at `App.jsx:64-78`,
+call sites — they are already distinguished by the `tabs` array at `frontend/src/App.jsx:64-78`,
 so the labels are available.)
 
 **Verification.** Manual, and it must actually be performed:
@@ -21122,12 +21270,12 @@ so the labels are available.)
 **Location.** `frontend/src/api.js:13,18,27,38,43,74` (six functions that never
 check `r.ok`); `frontend/src/App.jsx:49` (`setManifest` unreachable outside the
 manifest branch); `frontend/src/state/SimulationClock.jsx:20` (`index` never reset
-when `manifest` changes); `frontend/src/panels/ControlPanel.jsx:118` ("Custom"
+when `manifest` changes); `frontend/src/panels/ControlPanel.jsx:124` ("Custom"
 posts Tehri's coordinates).
 
 **Root cause.** FastAPI error bodies are valid JSON, so an HTTP 422 or 500
 propagates into the UI *as data*. `submitRun` resolves to `{detail: [...]}`,
-whose `.run_id` is `undefined`, and `ControlPanel.jsx:126` throws a `TypeError`
+whose `.run_id` is `undefined`, and `frontend/src/panels/ControlPanel.jsx:132` throws a `TypeError`
 that the user sees rendered as the run status string. Separately, `App.jsx:49`
 only reaches `setManifest` inside `if (runResult.keyframe_manifest_url)`, so
 loading a run without a manifest leaves the previous run's keyframes on screen
@@ -21219,7 +21367,7 @@ flood, silently.
 
 `pollUntilDone` gains an early exit on a run that has gone missing, plus the
 timeout raise made non-fatal for a run the backend is still working on
-(HIGH `api.js:79`):
+(HIGH `frontend/src/api.js:88`):
 
 ```diff
 --- a/frontend/src/api.js
@@ -21388,7 +21536,7 @@ hooks in `App`.
 finding at `SimulationClock.jsx:48`.)
 
 **Patch, part 4 — "Custom" must not post Tehri's coordinates.** The register is
-blunt: `ControlPanel.jsx:118` posts `lat: DAM.lat, lon: DAM.lon` for a custom
+blunt: `frontend/src/panels/ControlPanel.jsx:124` posts `lat: DAM.lat, lon: DAM.lon` for a custom
 dam because there is no latitude/longitude input in the UI at all, so the system
 presents a "custom dam" result that is silently Tehri's location. Two options:
 
@@ -21448,7 +21596,7 @@ plus removing the `custom` `<option>` from the picker.
 
 ##### P0-11 — The Mullaperiyar prohibition and the forbidden-source list are never enforced (C-12)
 
-**Location.** `jalraksha/hardening.py:258-282` (`check_forbidden_sources`, zero
+**Location.** `jalraksha/hardening.py:255-279` (`check_forbidden_sources`, zero
 production call sites); `jalraksha/hardening.py:43` (`validate_dam_config`, the
 only hardening function wired into the service, at `jalraksha/api.py:273`);
 `jalraksha/cli.py` (no check at all).
@@ -21587,7 +21735,7 @@ Wiring — one line, at the top of the function every entry point already calls:
 ```
 
 and the CLI, which currently accepts arbitrary `--lat/--lon` with no check at all
-(`cli.py:106-114` builds `dam_config` by hand and never validates it):
+(`jalraksha/cli.py:113-121` builds `dam_config` by hand and never validates it):
 
 ```diff
 --- a/jalraksha/cli.py
@@ -21613,7 +21761,7 @@ and the CLI, which currently accepts arbitrary `--lat/--lon` with no check at al
 +        validate_dam_config(dam_config)
 ```
 
-(The three extra keys close the HIGH finding at `cli.py:106-114` — `dam_id`,
+(The three extra keys close the HIGH finding at `jalraksha/cli.py:113-121` — `dam_id`,
 `domain_radius_km` and `surface_area_km2` are absent, so `define_downstream_gauges`
 gets `None` and returns `[]` for any dam outside the Tehri bounding box, and
 `domain_radius_km` falls back to 60.0 km against a DEM that supports 27.9 km.)
@@ -21662,8 +21810,8 @@ actually a change and not just a rewrite.
 
 ##### P0-12 — Demo-day access control on the three dangerous routes (C-13, partial)
 
-**Location.** `services/api/jalraksha_service/main.py:114-936` (every route),
-`main.py:46-48` (wildcard CORS), `main.py:74-76` (unconditional
+**Location.** `services/api/jalraksha_service/main.py:116-938` (every route),
+`services/api/jalraksha_service/main.py:48-50` (wildcard CORS), `services/api/jalraksha_service/main.py:76-78` (unconditional
 `Access-Control-Allow-Origin: *` in the static middleware).
 
 **Root cause.** No route carries a dependency, a middleware check, an API key or
@@ -21867,7 +22015,7 @@ in `api.js` from `import.meta.env.VITE_API_TOKEN`.
 **Root cause.** `_connect()` takes the Postgres branch for any non-`sqlite`
 `DATABASE_URL` and imports `psycopg` — the psycopg **3** package name. The
 requirements file installs `psycopg2-binary`, which provides `psycopg2`. Because
-`main.py:40` calls `db.init_db()` at *import* time, the resulting `RuntimeError`
+`services/api/jalraksha_service/main.py:42` calls `db.init_db()` at *import* time, the resulting `RuntimeError`
 raises during module import and the API container never starts.
 
 **The decision.** Align on psycopg 3 (change the requirement) or psycopg 2
@@ -21999,7 +22147,7 @@ at least eight defects are stacked. That 3 h is booked separately as P1-33.
 
 ##### P0-14 — `pip install .` ships neither Delft3D, impact, GEE nor validation (C-15)
 
-**Location.** `pyproject.toml:86`.
+**Location.** `pyproject.toml:95`.
 
 **Root cause.** With an explicit `[tool.setuptools] packages` list, setuptools
 ships exactly what is listed. Four subpackages with real `__init__.py` files —
@@ -22411,9 +22559,9 @@ The same seed must reach the service so a run row records it. `RunRequest`
 
 and `tasks.py` passes `req.random_seed` into `run_dam_break_ensemble`.
 
-The synthetic-settlement generator has the same defect at `population.py:202`
+The synthetic-settlement generator has the same defect at `jalraksha/gee/population.py:202`
 (`np.random.random()`, unseeded, while the parallel GEE path at
-`gee/population.py:309` seeds correctly). Fix it in the same commit:
+`jalraksha/gee/population.py@16a8575:309` seeds correctly). Fix it in the same commit:
 
 ```diff
 --- a/jalraksha/impact/population.py
@@ -22460,10 +22608,10 @@ python -m pytest tests/test_breach.py -q
 
 ---
 
-##### P0-18 — Unbounded numeric inputs: one typo OOM-kills the demo machine (HIGH `schemas.py:27`, MEDIUM `:21-26`, `:28-35`, `:12-13`, `main.py:408`)
+##### P0-18 — Unbounded numeric inputs: one typo OOM-kills the demo machine (HIGH `schemas.py:27`, MEDIUM `:21-26`, `:28-35`, `:12-13`, `services/api/jalraksha_service/main.py:493`)
 
 **Location.** `services/api/jalraksha_service/schemas.py:12-35`;
-`services/api/jalraksha_service/main.py:408`.
+`services/api/jalraksha_service/main.py:493`.
 
 **Root cause.** Every numeric field that reaches compute is unbounded or bounded
 on one side only. `target_resolution: float = Field(200.0, gt=0)` accepts `0.5`,
@@ -22558,7 +22706,7 @@ and the list endpoint:
 
 with `from fastapi import Query` added to the imports.
 
-The frontend's 10,000-member ensemble slider (`ControlPanel.jsx:213`) is the
+The frontend's 10,000-member ensemble slider (`frontend/src/panels/ControlPanel.jsx:220`) is the
 matching client-side hazard — one accidental drag is a denial of service on the
 demo machine. Cap the slider at 200 and add a runtime estimate beside it:
 
@@ -22593,9 +22741,9 @@ All four must be 422.
 
 ---
 
-##### P0-19 — `GET /validation` turns one gate failure into an unbounded compute amplifier (HIGH `main.py:487-490`)
+##### P0-19 — `GET /validation` turns one gate failure into an unbounded compute amplifier (HIGH `services/api/jalraksha_service/main.py:573-576`)
 
-**Location.** `services/api/jalraksha_service/main.py:487-490`; the client poll
+**Location.** `services/api/jalraksha_service/main.py:573-576`; the client poll
 loop at `frontend/src/panels/ValidationPanel.jsx:43-49`.
 
 **Root cause.** The in-flight flag is cleared in `finally`, but the cache is
@@ -22652,7 +22800,7 @@ Two related items on the same endpoint, both cheap and both in scope here:
 `main.py:520-523` runs the `@njit` solver on a `threading.Thread` inside uvicorn,
 reintroducing exactly the GIL starvation `run_worker.py` was written to
 eliminate — it should use the same subprocess mechanism as `_spawn_run_subprocess`;
-and `main.py:453-454`'s `_VALIDATION_LOCK`/`_VALIDATION_RUNNING` are
+and `services/api/jalraksha_service/main.py:539-540`'s `_VALIDATION_LOCK`/`_VALIDATION_RUNNING` are
 process-local, so with `uvicorn --workers N` there are N concurrent Delft3D
 kernels against one scratch directory. Both are P1-24; the caching fix alone
 removes the demo-day amplification.
@@ -22763,8 +22911,8 @@ python -m pytest tests/test_validation.py -q
 ##### P0-21 — Reconcile the status documents (C-17, C-18, C-19, C-20, and the 14 HIGH governance findings)
 
 **Location.** `BUILD_STATUS.md` (summary vs Phase 4 section), `docs/DECISIONS.md`
-§8 and §10, `docs/progress.md:75`, `PROGRESS_SUMMARY.md` M6,
-`docs/VERIFICATION_LOG.md`, `CLAUDE.md:16-17`, `README.md:151`,
+§8 and §10, `docs/progress.md:79`, `PROGRESS_SUMMARY.md` M6,
+`docs/VERIFICATION_LOG.md`, `CLAUDE.md:16-17`, `README.md:329`,
 `docs/validation_findings.md:7-8`.
 
 **Root cause.** None of these is a code defect and all of them are what a
@@ -22953,7 +23101,7 @@ The bare `else` falls through to the lowest fatality rates, a **75× understatem
 **Verification:** `pytest tests/test_impact.py -q -k fatality`, plus an explicit
 `pytest.raises` on `flood_severity="extreme"`. **Effort:** 0.5 h.
 
-##### P1-05 — `impact/population.py:390` — `compute_par` has no shape assertion
+##### P1-05 — `jalraksha/impact/population.py@16a8575:390` — `compute_par` has no shape assertion
 
 A broadcastable mismatch between `population_grid` and `arrival_time_grid`
 produces a wrong number silently.
@@ -23061,7 +23209,7 @@ metrics["csi_vs_jrc"] = compute_csi(jrc_mask, sar_mask, threshold=0.5)
 
 **Effort:** 0.5 h.
 
-##### P1-10 — `service/main.py:770-783` — `GeoSarResponse` drops 11 of the 21 keys
+##### P1-10 — `services/api/jalraksha_service/main.py:859-872` — `GeoSarResponse` drops 11 of the 21 keys
 
 `precision_vs_jrc`, `recall_vs_jrc`, `threshold_separability` and the tile counts
 — the metrics that justify publishing the mask at all — never reach the viewer.
@@ -23122,11 +23270,11 @@ returning a uniform field. **This is two fixes and they must land together**, or
 correcting the table alone changes nothing while correcting the reader alone
 applies a wrong table. **Effort:** 2.5 h.
 
-##### P1-14 — `run.py:515-518` — the breach mass source is uncapped
+##### P1-14 — `jalraksha/run.py:516-519` — the breach mass source is uncapped
 
 `delta_h = q_current * dt_s / cell_area` with no cap. At Tehri peak outflow
 (~10⁵ m³/s), `dt_s = 30 s` and 200 m cells that is ~75 m of depth added to one
-cell in one step — the likeliest cause of the `parallel.py:190-195`
+cell in one step — the likeliest cause of the `jalraksha/solver/parallel.py:312-317`
 timestep-collapse warning, and, after P0-06 makes divergence detection live, the
 likeliest cause of a run that now raises rather than silently zeroing.
 
@@ -23162,60 +23310,70 @@ breach of 100–300 m width on a 200 m grid physically is:
 **Verification:** run a Tehri ensemble member end to end and confirm no
 timestep-collapse warning and no `RuntimeError`. **Effort:** 2.5 h.
 
-##### P1-15 — `solver/parallel.py:118` — the per-cell roughness field is collapsed to a scalar
+##### P1-15 — DONE (`af996b7`, 2026-09-12) — the per-cell roughness field reaches the members
 
-`SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)` averages away
-whatever spatial roughness the terrain pipeline produced, in the entire production
-path (`run.py:683`, `run_smoke.py:22`, `run_demo.py:40`). `SWESolver` already
-holds a `self.manning_field` (it is passed to `apply_friction` at `core.py:455`),
-so the fix is to pass the field:
+Shipped essentially as proposed: `jalraksha/solver/parallel.py:236` passes the
+field rather than `float(np.mean(manning_field))`, and the GPU ensemble does the
+same. The prerequisite ordering held — the ESA legend fix (P1-13) landed first,
+so this did not propagate a shifted table.
 
-```diff
--        solver = SWESolver(grid, manning_n=float(np.mean(manning_field)), cfl=0.3)
-+        # Pass the FIELD, not its mean. Collapsing a land-cover-derived spatial
-+        # roughness to a scalar discarded the whole point of computing it, in
-+        # every production path. Currently masked by roughness.py:59-63
-+        # returning a uniform 0.03 — two defects cancelling.
-+        solver = SWESolver(grid, manning_field=manning_field, cfl=0.3)
-```
+Two things the proposal did not anticipate. The GPU backend arrived in the same
+window and carried its own copy of the member loop, so the collapse had to be
+fixed in `solver/ensemble_cuda.py` as well; `tests/test_parallel.py::TestGpuEnsemble`
+binds the two implementations together precisely so a future divergence fails
+rather than silently producing two different floods. And the fix needed a way to
+stay fixed: `manning_field_summary` now reports `is_uniform` and
+`fraction_at_default` into `run_summary.json`'s `roughness` block, because the
+pipeline's default field is still uniform (dam_config `manning_n`, default 0.03)
+and a uniform field is indistinguishable from a collapsed one unless something
+says which it is.
 
-which requires `SWESolver.__init__` to accept `manning_field` alongside
-`manning_n` (it already stores one internally; the constructor signature is the
-only change). Must land *after* P1-13, or it propagates a shifted table.
-**Effort:** 1.5 h.
+Measured: on a WorldCover-style valley the collapse made a smooth channel three
+times too rough and the flood reached 170 cells instead of 308. Current pipeline
+runs were unaffected, for the reason above.
 
-##### P1-16 — `solver/parallel.py:150-157` — the member clock drifts from physical time
+##### P1-16 — DONE in the member loop (`5fa86b8`, 2026-09-12); still open in the Delft3D benchmark
 
-`t_sim += dt_adaptive` uses the **pre-injection** CFL timestep while
-`solver.step(state)` recomputes its own `dt` from the **post-injection** state
-(`core.py:483-485`). The two differ exactly when injection changes the maximum
-wave speed. Consequences: the injected mass `Q × dt_adaptive` spans a different
-interval than the one integrated, so mass is not conserved across the injection;
-and arrival times are stamped against a clock that is not the solver's. The
-identical defect appears at `validation/delft3d_benchmark.py:502-508`.
+The diagnosis was right and the proposed remedy rested on an unsound premise, so
+what shipped is stricter than what was planned. Recording both is the point of
+this entry.
 
-```diff
--            state = solver.step(state)
--            t_sim += dt_adaptive
--            dt_adaptive = solver.compute_cfl_timestep(state)
-+            # Take the step with the SAME dt the injection was sized for, and
-+            # read the clock from the state rather than accumulating a separate
-+            # one. Letting solver.step() choose its own dt meant the injected
-+            # mass Q*dt_adaptive spanned a different interval than the one
-+            # integrated, and t_sim drifted from state.t.
-+            state = solver.step(state, dt=dt_adaptive)
-+            t_sim = state.t
-+            dt_adaptive = solver.compute_cfl_timestep(state)
-+            # Do not overshoot the requested duration.
-+            dt_adaptive = min(dt_adaptive, max(solver_duration_s - t_sim, 0.0))
-```
+The proposal argued that taking the step with the pre-injection `dt` is safe
+because "the injection only *adds* depth, which lowers the wave speed for a given
+discharge in the shallow limit". That is not true here: the Audusse wet-fraction
+term makes a thin film over a bed step **faster** than a deeper one (see
+`max_wave_speed_inverse_dt` in `jalraksha/solver/flux.py`), so adding depth can
+raise the limiting speed and a step sized before the injection can be CFL-invalid
+after it. A post-step warning, as proposed, would have reported the violation
+rather than prevented it.
 
-`SWESolver.step` already accepts an explicit `dt` and documents that the caller
-owns stability when it passes one — which is correct here, because `dt_adaptive`
-came from `compute_cfl_timestep` on the pre-injection state and the injection only
-*adds* depth, which lowers the wave speed for a given discharge in the shallow
-limit. Add a post-step CFL check that warns if the taken step violated the
-condition on the post-injection state. **Effort:** 2 h.
+`inject_with_one_timestep` (`jalraksha/solver/parallel.py:107`) instead makes the
+step valid by construction: take the pre-injection CFL limit, inject, re-check
+against the post-injection limit, and if it is exceeded shrink `dt` to that limit
+and re-inject — looping rather than assuming one pass converges, since the term
+above is exactly what breaks the monotonicity the single-pass argument needs. It
+terminates because `dt` only shrinks and the no-injection case is the
+pre-injection limit itself. `INJECTION_CFL_RTOL = 1e-6` is the accepted slack: a
+Courant number of 0.3000003 against a 0.3 ceiling, where the positivity proof
+holds to 0.5. `MAX_INJECTION_PASSES = 8` bounds the loop and returns
+`overran=True` rather than reporting success; measured on the harshest valley case
+(20,000 m³/s, no breach notch), 4 steps out of 2,745 used every pass and still
+finished within 5e-7 of the limit.
+
+The injection, the step and the clock then all use that one `dt`, so `t_sim` is
+the solver's own time by construction rather than by a separate accumulation. The
+GPU ensemble mirrors it in `choose_injection_step`, and `TestMemberTimestep`
+pins clock = physics and CFL validity on both backends.
+
+Measured before and after: the old three-`dt` loop ran the clock up to 2.6% ahead
+of the integrated physics and over-injected by up to 1.2% on a dry synthetic
+valley. On Khadakwasla the shrink fires about once in 75,000 steps, so no
+published Khadakwasla result moved.
+
+**Still open:** the duration clamp (nothing prevents overshooting
+`solver_duration_s`), and the identical defect in
+`validation/delft3d_benchmark.py`, which does not share the member loop and was
+not touched. Effort for the remainder: ~1 h.
 
 ##### P1-17 — `solver/types.py:276` vs `solver/parallel.py:37` — two different arrival thresholds
 
@@ -23326,7 +23484,7 @@ def _unit_for(data_name: str) -> str:
 
 **Verification:** `gdalinfo cog_h_max_p50.tif | grep UNIT` → `m`. **Effort:** 0.5 h.
 
-##### P1-20 — `export/shapefile.py:266-317` — a second, incompatible "FD2320" scheme
+##### P1-20 — `jalraksha/export/shapefile.py:266-317` — a second, incompatible "FD2320" scheme
 
 The hazard shapefile writer invents a four-class scheme with depth breaks at
 0.1/0.5/1.2/2.0 m plus velocity terms, while `impact/hazard.py` — declared the
@@ -23377,7 +23535,7 @@ Same commit: XML-escape `dam_name` at `kml.py:131,209` (`xml.sax.saxutils.escape
 since a dam name containing `&` produces KML Google Earth refuses to open.
 **Effort:** 1.5 h.
 
-##### P1-22 — `service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters come from
+##### P1-22 — `services/api/jalraksha_service/main.py:891-895` — the `.pvsm` staleness check omits the files the parameters come from
 
 It covers `render_static.py`, `camera_presets.py` and `main.py`, and omits
 `jalraksha/presets.py` and `jalraksha_service/config.py` — which is where
@@ -23400,9 +23558,9 @@ the check was added to close.
 
 **Effort:** 0.5 h.
 
-##### P1-23 — `main.py:83` — the `/files` mount exposes the entire `DATA_DIR` tree
+##### P1-23 — `services/api/jalraksha_service/main.py:85` — the `/files` mount exposes the entire `DATA_DIR` tree
 
-Including the SQLite metadata store itself (`config.py:85` defaults `DATABASE_URL`
+Including the SQLite metadata store itself (`jalraksha/config.py:85` defaults `DATABASE_URL`
 *inside* `DATA_DIR`, so `/files/jalraksha.db` is downloadable),
 `validation_cache.json`, the GEE caches, the Delft3D model directories, and the
 transient run payloads at `DATA_DIR/runs/<run_id>_*.json` — which are reachable
@@ -23516,7 +23674,7 @@ rule keys on. Undocumented in the module. Add POSIX globs
 `$DIMRSET_ROOT/bin/*`), honour a `JALRAKSHA_DFLOWFM_EXE` environment override, and
 state the limitation in the module docstring. **Effort:** 1 h.
 
-##### P1-29 — `dem.py:437-450` and `cache.py:41-116` + `dem.py:466` — synthetic terrain is generated on any fetch failure and then served as a cache hit
+##### P1-29 — `dem.py:437-450` and `jalraksha/cache.py:41-116` + `dem.py:466` — synthetic terrain is generated on any fetch failure and then served as a cache hit
 
 A bare `except Exception` routes an HTTP 404 (a legitimately non-existent
 all-ocean tile) and a genuine network outage into `generate_synthetic_dem_tile`
@@ -23573,7 +23731,7 @@ keyframe manifest so it reaches the dashboard —
 `result["terrain_provenance"] = {"synthetic_tiles": [...], "real_tiles": [...]}`,
 rendered as a banner. **Effort:** 3 h.
 
-##### P1-30 — `dem.py:50-51` versus `__init__.py:85-86` — `dem.py` pops the `PROJ_LIB`/`PROJ_DATA` the package init deliberately set
+##### P1-30 — `dem.py:50-51` versus `jalraksha/__init__.py:85-86` — `dem.py` pops the `PROJ_LIB`/`PROJ_DATA` the package init deliberately set
 
 Which behaviour wins depends entirely on import order, so the same code either
 works or raises `CRSError` depending on how it was reached. And §5.8.3 establishes
@@ -23611,11 +23769,11 @@ and `_repair_proj_data_path` must stop returning silently when no candidate
 
 **Effort:** 1 h.
 
-##### P1-31 — `cli.py:116-125` — a failed run is reported as a success
+##### P1-31 — `jalraksha/cli.py:123-132` — a failed run is reported as a success
 
 `cmd_run` never inspects the returned dict for `"error"`, while
 `run_dam_break_ensemble` returns `{"error": ...}` on three separate paths
-(`run.py:625-627` and two others), and the CLI unconditionally prints
+(`jalraksha/run.py:626-628` and two others), and the CLI unconditionally prints
 `[SUCCESS] Simulation completed successfully!` and exits 0. A CI pipeline or a
 demo script that checks the exit code sees success on every failure.
 
@@ -23760,15 +23918,15 @@ closes.
 
 ##### P2-WP1 — The no-silent-fallback contract, made structural (closes T-1: 15 findings)
 
-**Findings closed:** `terrain/conditioning.py:322-363` (any exception becomes a
+**Findings closed:** `jalraksha/terrain/conditioning.py:322-363` (any exception becomes a
 flat plane at the DEM mean); `export/geotiff.py:171-175` (a failed member's
 missing field becomes zeros, or `inf` for arrival, turning it into a member
 reporting no flood and dragging the ensemble median down);
 `delft3d/comparison.py:348-351` (absent grid keys become a fabricated 100×200 grid
 at 30 m); `delft3d/runner.py:223-270` (`_analytic_fallback` fabricates whole 2D
-fields and returns `success: True`); `terrain/roughness.py:59-63`;
-`service/main.py:369-370` and `:257-262` (`except Exception: pass` makes a corrupt
-artifact indistinguishable from an absent one); `run.py:625-627` (discards
+fields and returns `success: True`); `jalraksha/terrain/roughness.py:59-63`;
+`services/api/jalraksha_service/main.py:369-370` and `:257-262` (`except Exception: pass` makes a corrupt
+artifact indistinguishable from an absent one); `jalraksha/run.py:626-628` (discards
 exception type and traceback); `metrics.py:45-47,76-77,109-110` and
 `comparison.py:129,132-133` (empty inputs score perfect CSI, precision, recall and
 RMSE); `App.jsx:57,61`.
@@ -23815,7 +23973,7 @@ contradicting its own comment "tallest is ~300 m"); `core.py:170-171,545-546`
 `run()` silently `break` and return a `t=0`, `n_steps=0` result with no error);
 `types.py:63-67` (`Grid` validates only `dx, dy > 0`, so a geographic CRS with
 degree-valued spacing is accepted and the whole integration is silently
-mis-scaled by ~10⁵); `cli.py:78` (`if not all([...])` treats `0.0` as missing, so
+mis-scaled by ~10⁵); `jalraksha/cli.py:85` (`if not all([...])` treats `0.0` as missing, so
 a dam at latitude 0.0 is rejected); plus the four schema bounds already closed in
 P0-18.
 
@@ -23864,20 +24022,20 @@ def _is_real_number(x: Any) -> bool:
 `service/config.py::DEMO_DAMS`, `jalraksha/api.py:30`, plus the walkthrough's "6
 dams"); the two Froehlich 1995 implementations (`terrain/breach.py` and
 `api.py:143`); the three FD2320 threshold tables (closed structurally by P0-05 and
-P1-20, plus `GaugesPanel.jsx:112-120`); the five wet/dry cutoffs an order of
+P1-20, plus `frontend/src/panels/GaugesPanel.jsx:112-120`); the five wet/dry cutoffs an order of
 magnitude apart (`keyframes.py:218` 0.1, `xdmf_export.py:56` 0.01,
 `render_static.py:73` 0.01, `kml.py:311` 0.1, `shapefile.py:201` 0.1 — so the same
 flood has different extents in different products); the two arrival thresholds
-(closed by P1-17); the duplicated CRS zone parse (`run.py:316`,
-`service/tasks.py:1015` — `int(str(grid.crs).split(":")[-1]) % 100`, which raises
+(closed by P1-17); the duplicated CRS zone parse (`jalraksha/run.py:317`,
+`services/api/jalraksha_service/tasks.py:1015` — `int(str(grid.crs).split(":")[-1]) % 100`, which raises
 `ValueError` on a WKT or PROJ-string CRS and silently yields "zone 26" for
 `EPSG:4326`); the three UTM zone formulas (`terrain/domain.py:67-69`, `dem.py:84`
 and a third site, two of them unclamped and truncating rather than flooring); the
-three gravitational constants (`flux.py:73`, `types.py:184`,
-`tests/test_solver.py:32`); the two SPH coupling relations; the two Graham
-fatality tables (`impact/fatality.py:59-79`, `ImpactPanel.jsx:103-108`); the
+three gravitational constants (`jalraksha/solver/flux.py:75`, `types.py:184`,
+`tests/test_solver.py:33`); the two SPH coupling relations; the two Graham
+fatality tables (`impact/fatality.py:59-79`, `frontend/src/panels/ImpactPanel.jsx:103-108`); the
 `q_peak` / `q_peak_m3_s` key split; the two Von Thun & Gillette breach widths
-(`terrain/breach.py` and `service/tasks.py:688`, the latter an inlined literal
+(`terrain/breach.py` and `services/api/jalraksha_service/tasks.py:688`, the latter an inlined literal
 with no citation).
 
 **The package.** A new `jalraksha/constants.py` holding every cross-module
@@ -23957,7 +24115,7 @@ def utm_epsg_for(lat_deg: float, lon_deg: float) -> int:
 
 The four dam registries collapse to one: `jalraksha/presets.py` is canonical and
 `service/config.py::DEMO_DAMS` becomes a projection of it (which also closes the
-MEDIUM finding at `config.py:89-113`, where Tehri's hand-written entry omits
+MEDIUM finding at `jalraksha/config.py:89-113`, where Tehri's hand-written entry omits
 `surface_area_km2` and therefore routes Tehri through `breach.py`'s cone-reservoir
 fallback while Khadakwasla gets a real storage curve — the same dam yielding
 different reservoirs depending on which registry a caller reads). `jalraksha/api.py:30`'s
@@ -23971,9 +24129,9 @@ third registry is deleted, as is its duplicate Froehlich at `:143`.
 
 ##### P2-WP4 — Frontend lifecycle, accessibility and dead state (closes T-7 plus 24 MEDIUM/LOW frontend findings)
 
-**Findings closed:** `api.js:82` (no `AbortController`, so the poll loop survives
+**Findings closed:** `frontend/src/api.js:91` (no `AbortController`, so the poll loop survives
 unmount and calls `setStatus` on a dead component — partly closed by P0-10's
-`signal` parameter, completed here at the call sites); `api.js:83-85` (never
+`signal` parameter, completed here at the call sites); `frontend/src/api.js:92-94` (never
 terminates early on a 404 — closed by P0-10); `Scene3D.jsx:143` (the imagery-layer
 build loop is `await`-sequential with no try/catch, so a single 404 rejects the
 IIFE and **no further layers are built**); `Scene3D.jsx:144` (unguarded
@@ -24072,10 +24230,10 @@ was created to fix.
 always the hardcoded fallback, contradicting the comment at `:135-140`);
 `core.py:522,557` (`Result.update(state)` always called without the `hazard`
 argument, so the documented FD2320 `hazard_max` raster is permanently `None` from
-the core path); `core.py:571-572` (`mass_error` computed only
+the core path); `jalraksha/solver/core.py:618-619` (`mass_error` computed only
 `if volume_initial > 0.0`, so a breach-into-dry-terrain run — the standard case —
 reports the default 0.0, indistinguishable from perfect conservation);
-`core.py:455-464` (Manning friction Lie-split once after the full SSP-RK2 update,
+`jalraksha/solver/core.py:499-508` (Manning friction Lie-split once after the full SSP-RK2 update,
 making the scheme first order in time whenever `manning_n > 0`, which the Thacker
 period gate cannot catch because it runs frictionless);
 `types.py:269-272` vs `parallel.py:132,163` (`Result.u_max` holds speed |V| and
@@ -24083,11 +24241,11 @@ period gate cannot catch because it runs frictionless);
 two fields called `v_max` carrying different quantities);
 `flux.py:322-330,423-431` (nine `np.zeros(n_cols)` scratch arrays heap-allocated
 inside every `prange` iteration, ~36·(ny+nx) NRT allocations per timestep);
-`core.py:382-410` (`_to_primitive` un-jitted, allocating five full-domain
+`jalraksha/solver/core.py:382-410` (`_to_primitive` un-jitted, allocating five full-domain
 temporaries, called twice per step); `flux.py:486,556` (`apply_friction` and
 `max_wave_speed_inverse_dt` are serial `@njit` full-domain loops while the flux
 kernels are `parallel=True` — a pure Amdahl serial fraction);
-`core.py:543-544` (clamping `dt` onto snapshot times makes snapshot cadence change
+`jalraksha/solver/core.py:543-544` (clamping `dt` onto snapshot times makes snapshot cadence change
 the timestep sequence, so snapshotting is not purely diagnostic);
 `core.py:295-303,318-326` (transmissive ghost cells flat-extrapolate the bed,
 creating an artificial shelf that ponds water at a domain edge truncated
@@ -24140,7 +24298,7 @@ UNIQUE or CHECK constraints, and both child tables' `run_id` columns unindexed);
 `db.py:106` (f-string `ALTER TABLE` interpolation); `db.py:136,222,257,287` (SQL
 assembled with `%`); `main.py:40,104` (`db.init_db()` runs twice and at import
 time, so merely importing the module creates directories and a database file);
-`main.py:102` (`@app.on_event("startup")` deprecated and removed in newer
+`services/api/jalraksha_service/main.py:104` (`@app.on_event("startup")` deprecated and removed in newer
 Starlette); plus P1-25 and P1-26.
 
 `progress_pct` and `phase` become real columns with a single-statement write:
@@ -24183,7 +24341,7 @@ gaining a real `ORDER BY created_at DESC LIMIT ?`.
 
 ##### P2-WP8 — Process, timeout and cancellation lifecycle (closes 6 MEDIUM findings)
 
-**Findings closed:** `main.py:214-221` (the spawned run process is fire-and-forget
+**Findings closed:** `services/api/jalraksha_service/main.py:299-306` (the spawned run process is fire-and-forget
 — `Popen` discarded, no PID, no `wait()`, no timeout, no kill path, so POSIX
 zombies accumulate until the API exits and a hung run cannot be stopped);
 `tasks.py:1429-1439` (no server-side task timeout anywhere: no Celery
@@ -24243,7 +24401,7 @@ def cancel_run(run_id: str) -> Dict[str, Any]:
 **Findings closed:** the seven deprecated `datetime.utcnow()` call sites
 (`export/geotiff.py:101,197`, `shapefile.py:149,244`, `kml.py:138`,
 `keyframes.py:56`, `cache.py:167`), which return a naive timestamp that
-`kml.py:646` then labels with a literal `Z`, asserting a UTC it cannot know;
+`kml.py` (line not locatable — see Revision history) then labels with a literal `Z`, asserting a UTC it cannot know;
 `kml.py:37-42` (unused `gx:` namespace); `kml.py` (no `<altitudeMode>`/
 `<tessellate>`, so long polygon edges cut through terrain); `kml.py:317`
 (matplotlib `jet` — a third colour scheme alongside the two FD2320 schemes);
@@ -24281,21 +24439,21 @@ Mechanical across all seven timestamp sites:
 out of the box); `run_smoke.py:19-20` (`i, b, jb = compute_breach_location(...)`
 unpacks `(i_breach, j_breach, b_breach)` into the wrong names, so the printed
 "breach cell: i jb" is a column index and a bed elevation in metres labelled as a
-cell); `run.py:280` (`threshold_h` documented as the arrival threshold and never
+cell); `jalraksha/run.py:281` (`threshold_h` documented as the arrival threshold and never
 referenced, so passing a different threshold silently does nothing);
-`terrain/domain.py:216-221` (`compute_breach_location` returns the geometric
+`jalraksha/terrain/domain.py:219-224` (`compute_breach_location` returns the geometric
 centre cell with no terrain search, and `dam_lat`/`dam_lon`/`utm_zone` are unused,
 so the breach can land on a canyon wall above the thalweg — releasing the
 reservoir onto a hillside); `terrain/conditioning.py:170-235,387-409`
 (`manning_table` accepted by `preprocess_dem`/`build_domain_state` and silently
-ignored); `cli.py:121-122` (`solver_duration_s` and `target_resolution` hardcoded
+ignored); `jalraksha/cli.py:128-129` (`solver_duration_s` and `target_resolution` hardcoded
 with no flags, and `domain_radius_km` falling to 60.0, so a 30-minute simulation
 cannot reach Haridwar at 58.4 km and there is no way to ask for more);
 `scripts/run_api.py:53` (a personal GCP project id baked in via
 `os.environ.setdefault("JALRAKSHA_GEE_PROJECT", "sih-prototype-506812")`, so any
 other user silently inherits a project they cannot access); `run.py:672,673,781`;
-`run.py:457-466` (`inject_breach_hydrograph` returns `q_current = 0` at `idx == 0`
-so no water is injected on the first step); `run.py:466-479`;
+`jalraksha/run.py:458-467` (`inject_breach_hydrograph` returns `q_current = 0` at `idx == 0`
+so no water is injected on the first step); `jalraksha/run.py:467-480`;
 `api.py:242-243,108-113`; `cli.py` cache/validate ergonomics; `hardening.py:156-186`
 (`validate_dem_path` never imports rasterio and never opens the file despite a
 docstring claiming it verifies a readable raster — 16 null bytes named `.tif`
@@ -24366,11 +24524,11 @@ uses, while `setup._check_hydrolib_available` is itself never called);
 `sph/coupling.py`, `sph/domain.py` (`handoff_swe_to_sph`,
 `extract_sph_free_surface`, `NearFieldDomain` and `generate_near_field_particles`
 exported as the coupling/public API and called only from tests, while
-`pysph_runner.py:377-400` re-implements `u = Q/(h·w)` and the breach mask inline);
+`jalraksha/sph/pysph_runner.py:522-545` re-implements `u = Q/(h·w)` and the breach mask inline);
 `sph/domain.py:86-96` and `sph/coupling.py:87-92` (triple-nested Python loops and
-an O(nx·ny·N) per-cell mask, shipped as public API); `pysph_runner.py:290` (the
+an O(nx·ny·N) per-cell mask, shipped as public API); `jalraksha/sph/pysph_runner.py:435` (the
 1 m particle-spacing floor lets particle resolution reach thirty times finer than
-the 30 m terrain it runs over); `pysph_runner.py:538-541` (`front_speed_m_s` is a
+the 30 m terrain it runs over); `jalraksha/sph/pysph_runner.py:686-689` (`front_speed_m_s` is a
 two-point secant over the whole record including the `n_damp` ramp, displayed as
 "Surge front speed" without that caveat).
 
@@ -24407,11 +24565,11 @@ decision).
 ##### P2-WP12 — Documentation-versus-code reconciliation (closes the 14-site LOW theme plus the stale sensitivity claims)
 
 **Findings closed:** the fourteen places where a comment or doc asserts something
-the code beside it contradicts (`run.py:466-479`, `shapefile.py:100`,
+the code beside it contradicts (`jalraksha/run.py:467-480`, `shapefile.py:100`,
 `base_block.py:192-193`, `paraview/ARCHITECTURE.md:14,124,130,147-151`,
-`CLAUDE.md:376-380`, `CLAUDE.md:16` vs `validation_findings.md:7-8`, `App.jsx:33`,
-`Map2D.jsx:174` vs `dashboard_integration.md:371`, `core.py:150-153`,
-`cli.py:1311`, `__init__.py:48-54`, `sar.py:76-78` — which states "60 m …
+`CLAUDE.md:377-381`, `CLAUDE.md:16` vs `validation_findings.md:7-8`, `App.jsx:33`,
+`Map2D.jsx:174` vs `dashboard_integration.md:371`, `jalraksha/solver/core.py:237-240`,
+`jalraksha/cli.py` (line not locatable — see Revision history), `jalraksha/__init__.py:48-54`, `sar.py:76-78` — which states "60 m …
 comfortably finer than the 30 m DEM" when 60 m is *coarser* — `sar.py:228-232`,
 `test_impact.py:50`); `sensitivity.py:210` (`is_converging` returns `True` for an
 empty ratio list, so a two-point sweep always reports convergence);
@@ -24606,12 +24764,12 @@ async def _limit_body(request, call_next):
 
 ##### SEC-3 — Path-traversal-safe static file serving
 
-**Closes:** T-5, the `main.py:83` HIGH, and `main.py:98-99`.
+**Closes:** T-5, the `services/api/jalraksha_service/main.py:85` HIGH, and `services/api/jalraksha_service/main.py:100-101`.
 
 Starlette's `StaticFiles` does normalise `..`, so the exposure here is over-broad
 mounting rather than classical traversal — the entire `DATA_DIR` tree is served,
 including the SQLite metadata store at `/files/jalraksha.db` (because
-`config.py:85` defaults `DATABASE_URL` *inside* `DATA_DIR`), `validation_cache.json`,
+`jalraksha/config.py:85` defaults `DATABASE_URL` *inside* `DATA_DIR`), `validation_cache.json`,
 the GEE caches, the Delft3D model directories and the transient run payloads. The
 fix is a narrow allow-listed subtree plus a resolved-path check, and moving the
 database out of the served tree.
@@ -24743,7 +24901,7 @@ def _resolved_executable(setting_name: str, configured: Optional[str]) -> Path:
 
 ##### SEC-6 — Rate limiting
 
-**Closes:** the `main.py:154-157` HIGH.
+**Closes:** the `services/api/jalraksha_service/main.py:238-241` HIGH.
 
 A dependency-injected token bucket, in-process, keyed by principal. In-process is
 honest about its limitation (it does not span uvicorn workers) and is sufficient
@@ -24800,7 +24958,7 @@ limit_read = rate_limit("read", capacity=60, refill_per_second=20.0)
 
 ##### SEC-7 — Resource quotas
 
-**Closes:** the concurrency half of the `main.py:154-157` HIGH, and the
+**Closes:** the concurrency half of the `services/api/jalraksha_service/main.py:238-241` HIGH, and the
 `schemas.py:27` memory exhaustion at the process level rather than the schema
 level.
 
@@ -24936,13 +25094,13 @@ value, not a published one, and naming what would be needed to publish it.
 | VQ-01 | Graham fatality-rate table (severe/medium/low × 3 warning bands) | 0.75, 0.20, 0.01, 0.15, 0.04, 0.002, 0.01, 0.002, 0.0002 | `impact/fatality.py:59-79` | Graham, W.J. (1999) *A Procedure for Estimating Loss of Life Caused by Dam Failure*, DSO-99-06, USBR | All nine reproduced with the DSO-99-06 table number. Only the 0.75 is currently verifiable. If a value is not in the table, it is deleted, not adjusted. |
 | VQ-02 | Understanding-level multipliers | 1.5 / 1.0 / 0.7 | `impact/fatality.py:83-88` | DSO-99-06 §"vague vs precise understanding" | DSO-99-06 publishes a vague/precise *structure*, not multipliers. Either derive them from its published rate pairs and show the derivation, or delete the parameter. |
 | VQ-03 | Jonkman coefficients | 1.5 m²/s, 2.1 m, 0.03, 0.5, 0.4, 0.9, 0.02, 0.05 | `impact/fatality.py:135,139,144,147` | Jonkman, S.N. et al. (2008) *Loss of life due to floods*, J. Flood Risk Mgmt 1(1) | Only the 2.1 m matches a published criterion; the 1.5 m²/s matches nothing identifiable. Either implement the published log-normal with its μ and σ, or relabel the whole function as an unpublished parameterisation (P1-03 does the relabel now). |
-| VQ-04 | "Graham (2009)" depth-damage a/b triples | 0.0025/0.85, 0.0018/0.78, 0.0012/0.72 | ~~`impact/damage.py:42-58`~~ | A work titled "Graham (2009)" that is **not present in the repository** — not in `literature.md`, not in `RESEARCH-FINDINGS.md`, not in any docstring | **CLOSED BY DELETION (2026-09-06).** The reference could not be produced, so `DepthDamageAnalyzer` and its coefficients are gone rather than relabelled. |
-| VQ-05 | The r² values attached to those triples | 0.82 / 0.79 / 0.75 | ~~`impact/damage.py:42-58`~~ | as VQ-04 | **CLOSED BY DELETION (2026-09-06)**, as this row prescribed: deleted outright, not softened. |
+| VQ-04 | "Graham (2009)" depth-damage a/b triples | 0.0025/0.85, 0.0018/0.78, 0.0012/0.72 | ~~`jalraksha/impact/damage.py:42-58`~~ | A work titled "Graham (2009)" that is **not present in the repository** — not in `literature.md`, not in `RESEARCH-FINDINGS.md`, not in any docstring | **CLOSED BY DELETION (2026-09-06).** The reference could not be produced, so `DepthDamageAnalyzer` and its coefficients are gone rather than relabelled. |
+| VQ-05 | The r² values attached to those triples | 0.82 / 0.79 / 0.75 | ~~`jalraksha/impact/damage.py:42-58`~~ | as VQ-04 | **CLOSED BY DELETION (2026-09-06)**, as this row prescribed: deleted outright, not softened. |
 | VQ-06 | `_SECTOR_RATE` — the curve every caller and test actually uses | 0.8 / 0.7 / 0.6 m⁻¹ (the meaningless "total" rate is deleted) | `impact/damage.py` | none named anywhere | **Second branch taken (2026-09-06):** labelled explicitly as an unpublished saturating-exponential surrogate — every result carries `model_is_published: false` and a `model_note`. Now VERIFICATION_LOG row 36; the Huizinga fit remains open as row 10. |
 | VQ-07 | Asset baselines | ~~125 / 85 / 45 crore INR~~ | ~~`impact/damage.py:69-73`~~ | none; **no price year, no inflation basis, no deflator** | **CLOSED (2026-09-06) by the second remedy:** replaced with a per-cell asset raster — GHS-BUILT-S surface and WorldCover cropland on the run's own grid. The residual unit COST per m² carries a price year (2023) and is echoed in the payload; it is now VERIFICATION_LOG row 35. |
 | VQ-08 | Settlement densities, vulnerability multipliers, demographic shares | ~20 values (400/1200/4000 persons/km²; 1.2/1.0/0.8; 18/11/48/62 %; 1.1/1.3/1.05/0.9) | `population.py:41-60,63-68,232-234,307-317,346-352` | Census of India 2011, Uttarakhand district handbooks; Sample Registration System | One collective tag at `:38` is not enough. Each figure needs its table. The vulnerability multipliers in particular are not a census quantity at all. |
 | VQ-09 | Default population density substituted when no grid is supplied | ~~450 persons/km²~~ | ~~`impact/damage.py:209`~~ | none | **CLOSED BY DELETION (2026-09-06)**, as prescribed: `calculate_par` and its substituted density are gone with the rest of `DepthDamageAnalyzer`. |
-| VQ-10 | Warning lead time | `WARNING_LEAD_TIME_S = 1800.0` | `service/tasks.py:167` | CWC / NDMA dam-break EAP guidance | A 30-minute placeholder with no citation and no per-dam override shifts population between urgency buckets in every `population_at_risk.json`. Needs a CWC citation and a per-dam value. |
+| VQ-10 | Warning lead time | `WARNING_LEAD_TIME_S = 1800.0` | `services/api/jalraksha_service/tasks.py:167` | CWC / NDMA dam-break EAP guidance | A 30-minute placeholder with no citation and no per-dam override shifts population between urgency buckets in every `population_at_risk.json`. Needs a CWC citation and a per-dam value. |
 
 **Tier B — reaches a published discharge, arrival time or uncertainty band.**
 
@@ -24959,7 +25117,7 @@ value, not a published one, and naming what would be needed to publish it.
 | VQ-19 | Costa (1985) band | reuses the MacDonald width | `breach.py:717-718` | Costa, J.E. (1985) *Floods from dam failures*, USGS OFR 85-560 | A borrowed band is an assumption; either source Costa's own or state the borrowing in the metadata the member carries. |
 | VQ-20 | SCS (1981) band | assumed 0.50 log cycles, **reusing the `xu_zhang_2009` key** | `breach.py:750-751` | SCS (1981) TR-66 | The key reuse couples a cross-check's uncertainty to a quarantined family's; give it its own key regardless of the outcome. |
 | VQ-21 | Wahl peak-outflow factor and its multiplier | 1.89, `× 1.06  # Approx 2σ` | `sensitivity.py:124,150` | Wahl (2004) | The 1.89 is tagged; the 1.06 is not and is described only as "Approx 2σ". |
-| VQ-22 | Uniform Manning's n | 0.03 | `conditioning.py:281-284`, `domain.py:147-153` | Chow (1959) Table 5-6 | Chow is cited without a value-level reference. Name the channel description the 0.03 corresponds to. |
+| VQ-22 | Uniform Manning's n | 0.03 | `conditioning.py:281-284`, `jalraksha/terrain/domain.py:147-153` | Chow (1959) Table 5-6 | Chow is cited without a value-level reference. Name the channel description the 0.03 corresponds to. |
 | VQ-23 | WorldCover class→n table | 10 class→n values, **apparently shifted by one class** | `roughness.py:14-25,86-99` | ESA WorldCover v200 legend + Chow (1959) Table 5-6 | Realign against the published legend (P1-13) and give each class its Chow row. |
 | VQ-24 | Dam structural figures | Tehri FRL 830.0 / crest 839.5; Khadakwasla 39.6 m / 85.31 MCM / 14.72 km² | `presets.py:213-219,275-282,356-358` | THDC / CWC National Register of Large Dams | Tagged already; needs the register entry. |
 
@@ -24971,16 +25129,16 @@ value, not a published one, and naming what would be needed to publish it.
 | VQ-26 | FD2320 HR class boundaries | 0.75 / 1.25 / 2.5 | `impact/hazard.py:247-249` | as VQ-25 | These *match* the published Defra bands, so this is a documentation gap rather than a numerical error — but it is unauditable as it stands. Add the citation. |
 | VQ-27 | Hazard depth/velocity boxes and weights | 0.0/0.1/0.3/0.5/0.8/1.0 and the six depth bands | `hazard.py:46-52,65-72` | as VQ-25 | Closed structurally by P0-05, which forces the docstring/code reconciliation; the citation is still owed. |
 | VQ-28 | SAR publication guards | `MIN_TILE_CLASS_FRACTION=0.05`, `MAX_PLAUSIBLE_WATER_FRACTION=0.80`, `JRC_PERMANENT_OCCURRENCE_PCT=80`, tile guards `size<8` / `sum()<100` | `gee/sar.py:202,208,214,260` | JRC Global Surface Water (Pekel et al. 2016) for the occurrence percentile; the rest are working values | All four affect **whether a mask is published**; none carries a marker. Give them the `gee/sar.py:198` treatment. |
-| VQ-29 | SPH artificial viscosity | `ALPHA_VISCOSITY = 0.25` | `sph/pysph_runner.py:63` | Monaghan (1992) α–β artificial viscosity; δ-SPH literature for the alternative | Tagged. It is the **only** dissipation mechanism — no turbulence closure, no δ-SPH density diffusion, no laminar viscous term — so it is an uncalibrated eddy-viscosity surrogate at real-field heads. Needs a published-experiment validation (Koshizuka & Oka dam-break, or a Kleefsman case). |
+| VQ-29 | SPH artificial viscosity | `ALPHA_VISCOSITY = 0.25` | `jalraksha/sph/pysph_runner.py:64` | Monaghan (1992) α–β artificial viscosity; δ-SPH literature for the alternative | Tagged. It is the **only** dissipation mechanism — no turbulence closure, no δ-SPH density diffusion, no laminar viscous term — so it is an uncalibrated eddy-viscosity surrogate at real-field heads. Needs a published-experiment validation (Koshizuka & Oka dam-break, or a Kleefsman case). |
 | VQ-30 | Malpasset observed gauge data | elevations and arrival times for 7 gauges (docstring claims 17 survey points) | `validation/benchmarks.py:28-35` | Hervouet & Petitjean (1999); the EDF survey data | **Unmarked, uniquely** among the project's unsourced numbers, and presented as *observed* data for an unrun benchmark. Tag it, source it per value, or remove the benchmark until it can be sourced. |
 | VQ-31 | Chamoli observed travel times and speeds | hardcoded, cited generically to Shugar et al. (2021) | `validation/benchmarks.py:54-59` | Shugar, D.H. et al. (2021), *Science* 373:300-306, supplementary | Per-value citation to the supplementary table. This is the **designated headline Indian validation case** and it has never been run. |
 | VQ-32 | Depth-damage sensitivity curves | Wang 2016 a/b, Jiang 2019 a/b, ±20 % band, 0.1 m threshold | `damage.py:62-65,76,213` | Wang (2016); Jiang (2019) | Unreachable before P0-02; sourced or deleted now that they are reachable. |
 | VQ-33 | `DAM_HEIGHT_MAX_M` | 400.0, with an inline comment saying "tallest is ~300 m" | `hardening.py:28` | ICOLD register | The constant contradicts its own comment. Pick one. |
-| VQ-34 | Cesium/ParaView presentation constants | exaggeration 1.5, depth-max 25.0 | `service/main.py:383`, `render_static.py:219,238` | none — presentation choices | Not scientific values, but they are the literals that rendered Khadakwasla as a near-flat plate and survive as `_PARAVIEW_FALLBACK` and as argparse defaults. Derive per dam from the preset. |
+| VQ-34 | Cesium/ParaView presentation constants | exaggeration 1.5, depth-max 25.0 | `services/api/jalraksha_service/main.py:468`, `render_static.py:219,238` | none — presentation choices | Not scientific values, but they are the literals that rendered Khadakwasla as a near-flat plate and survive as `_PARAVIEW_FALLBACK` and as argparse defaults. Derive per dam from the preset. |
 | VQ-35 | Wet/dry cutoffs | 0.1 and 0.01, five sites | `keyframes.py:218`, `xdmf_export.py:56`, `render_static.py:73`, `kml.py:311`, `shapefile.py:201` | none | One value, one home (P2-WP3), one citation. |
 | VQ-36 | Arrival threshold | 0.05 and 0.1 | `types.py:276`, `parallel.py:37` | Spec §4.3 | Closed by P1-17; the Spec reference is the citation. |
 | VQ-37 | Gauge search radii | `channel_search_m` 1200 m, thalweg radius 3000 m, "town centre" 15.0 m | `run.py:282,433,442` | none | These determine *which cell* a quoted depth comes from, so they belong in the queue: "depth at Deccan Gymkhana" is a depth at whichever cell within 1.2 km had the lowest bed. |
-| VQ-38 | SPH particle-spacing floor | 1.0 m | `pysph_runner.py:290` | none | The floor lets particle resolution reach **thirty times finer than the 30 m GLO-30 terrain** it runs over. Either raise the floor to a defensible fraction of the DEM posting or state the mismatch in every SPH result. |
+| VQ-38 | SPH particle-spacing floor | 1.0 m | `jalraksha/sph/pysph_runner.py:435` | none | The floor lets particle resolution reach **thirty times finer than the 30 m GLO-30 terrain** it runs over. Either raise the floor to a defensible fraction of the DEM posting or state the mismatch in every SPH result. |
 
 Three exemplary cases already exist and are the model for the rest —
 `gee/sar.py:198` (`MIN_TILE_SEPARABILITY = 0.7`, with method references *and* the
@@ -25323,17 +25481,27 @@ reasoned conclusions. No speculative gains are quoted.
   cores via `prange`, and worker count is capped by **RAM, not cores** — each
   worker is a full interpreter at ~400 MB, so `_worker_memory_cap` allowed 6 of a
   possible 16.
-- **The project's own conclusion:** "On a box with more memory the same code
-  should reach ~5–6× (the model gives 225 s vs 1280 s for 100 members at 16
-  workers). **Raising the worker cap is the highest-value next step**, not more
-  parallelism elsewhere."
-- **GPU was evaluated and declined**, correctly: consumer Ada (RTX 4050) runs
+- **The project's own conclusion at the time:** "On a box with more memory the
+  same code should reach ~5–6× (the model gives 225 s vs 1280 s for 100 members
+  at 16 workers). **Raising the worker cap is the highest-value next step**, not
+  more parallelism elsewhere." That ranking no longer holds — PERF-6 below
+  delivered 11.5× on the same 30-member workload without touching the worker cap
+  at all, so the cap is now a fallback path's constraint rather than the system's.
+- **GPU was evaluated and declined, and the decline was an estimate that
+  measurement overturned.** The argument ran: consumer Ada (RTX 4050) executes
   float64 at ~1/64 of float32 (~0.2 vs ~13 TFLOPS), so a float64 CUDA port would
-  likely be *slower* than the current CPU kernels; `flux.py:48` deliberately
+  likely be *slower* than the CPU kernels; `jalraksha/solver/flux.py` deliberately
   forbids `fastmath` because the well-balanced C-property depends on strict IEEE
-  ordering; and `solver/types.py` documents float64 as "not negotiable" because
-  the lake-at-rest gate needs it. `numba.cuda` is additionally non-functional on
+  ordering; `jalraksha/solver/types.py` documents float64 as "not negotiable"
+  because the lake-at-rest gate needs it; and `numba.cuda` was non-functional on
   the build box (driver present, `nvvm.dll` absent).
+  **Every premise was true and the conclusion was still wrong.** The port was
+  built and is 11–20× faster in float64 — see PERF-6 below and
+  `docs/validation_findings.md` §11. A peak-FLOPS ratio does not predict a
+  memory-bound stencil. The missing `nvvm.dll` was the real obstacle and was
+  never a hardware one: `numba-cuda` ships NVVM and NVRTC as pip wheels. The
+  `fastmath` prohibition stands unchanged on both backends and is the reason the
+  two agree only to ~1e-15 rather than bit-exactly.
 
 ##### PERF-1 — Reduce per-worker memory so the cap admits more workers
 
@@ -25410,7 +25578,7 @@ already does (81 s vs 93.8 s predicted vs actual, and 138 s vs 187.4 s).
 
 ##### PERF-3 — Stop absorbing numba JIT compilation into the cost probe
 
-**Rank: 3.** `parallel.py:356-358` times the first member as a cost probe, and on
+**Rank: 3.** `jalraksha/solver/parallel.py:577-579` times the first member as a cost probe, and on
 a cold or invalidated JIT cache that first member includes compilation. The probe
 is therefore inflated, biasing the model toward sequential for ensembles that
 should be pooled — so **the first run after any code change to a jitted module
@@ -25443,7 +25611,7 @@ chosen for a 16-member ensemble on a cold cache.
 
 **Rank: 4.** `flux.py:322-330,423-431` heap-allocate nine `np.zeros(n_cols)`
 scratch arrays **inside every `prange` iteration** — roughly 36·(ny+nx) NRT
-allocations per timestep. And `core.py:382-410`'s `_to_primitive` is un-jitted
+allocations per timestep. And `jalraksha/solver/core.py:382-410`'s `_to_primitive` is un-jitted
 NumPy allocating five full-domain temporaries, called twice per step.
 
 The fix is standard numba practice: hoist the scratch buffers to per-thread
@@ -25518,7 +25686,7 @@ had been declined:
   reductions would break the same property.
 - Making a GPU worthwhile therefore means relaxing float64 to float32 **and**
   re-validating every blocking gate under the relaxed precision. The lake-at-rest
-  gate's tolerance and the `flux.py:172-173` `O(g·h_dry²/dx)` C-property
+  gate's tolerance and the `jalraksha/solver/flux.py:188-189` `O(g·h_dry²/dx)` C-property
   inexactness are both float64-scaled quantities; at float32 the bookkeeping would
   have to be redone from scratch.
 - `numba.cuda` is non-functional on the build machine (driver present, `nvvm.dll`
@@ -25572,7 +25740,7 @@ hidden.
 ##### CQ-2 — Error handling: an exception hierarchy instead of bare `Exception`
 
 The register records `except Exception` in eleven places, several of which discard
-the exception type and traceback entirely (`run.py:625-627`), and two of which are
+the exception type and traceback entirely (`jalraksha/run.py:626-628`), and two of which are
 `except Exception: pass` (`main.py:369-370`, `:257-262`). A hierarchy makes narrow
 catches possible:
 
@@ -25611,7 +25779,7 @@ each remaining bare catch carrying a `# noqa: BLE001` plus a one-line reason.
 
 ##### CQ-3 — Logging: structured, levelled, correlated
 
-`main.py:111` and throughout, diagnostics are bare `print()` with no levels, no
+`services/api/jalraksha_service/main.py:113` and throughout, diagnostics are bare `print()` with no levels, no
 structure and no correlation ids, so a run's progress and a run's failure are
 indistinguishable lines in one stream.
 
@@ -25653,7 +25821,7 @@ point, so every line a run emits carries its id.
 
 ##### CQ-4 — Enforcing the eight "deep modules" rules in CI
 
-`ARCHITECTURE_IMPROVEMENTS.md:121-136` states eight principles and says they are
+`docs/archive/ARCHITECTURE_IMPROVEMENTS.md:121-136` states eight principles and says they are
 "Enforced via ... CI gates (import graph acyclicity check)". **No such gate
 exists in the tree.** Here is one, plus what each of the eight rules maps to:
 
@@ -25874,9 +26042,9 @@ day they were written.
 
 ##### CQ-5 — Frontend quality gate
 
-`package.json:6-10` has no lint, test, typecheck or format script and there is no
+`frontend/package.json:6-10` has no lint, test, typecheck or format script and there is no
 ESLint configuration anywhere — yet four source files carry
-`eslint-disable-next-line` directives (`api.js:81`, `ControlPanel.jsx:54`,
+`eslint-disable-next-line` directives (`api.js:81`, `frontend/src/panels/ControlPanel.jsx:59`,
 `Scene3D.jsx:90`) that are therefore inert. **Zero of the 60 frontend findings
 could have been caught by an automated gate, because no gate exists.**
 
@@ -25903,7 +26071,7 @@ nothing upper-bounded or hashed; that `frontend/package.json` has no lockfile,
 while the exact `cesium` 1.144.0 and `resium` 1.25.0 pins are **load-bearing**
 (resium's `otherProps` handling of `terrainProvider` is version-specific); that
 `import yaml  # To be added to pyproject.toml` is an undeclared dependency at
-module scope (`config.py:31`); that `matplotlib` is imported unconditionally by
+module scope (`jalraksha/config.py:31`); that `matplotlib` is imported unconditionally by
 `tasks.py` and is in neither the requirements file nor the core dependencies; and
 that `addopts` hardcodes `--cov=jalraksha`, so the suite cannot run without
 `pytest-cov`, which neither Dockerfile installs.
@@ -25919,7 +26087,7 @@ measurement was taken on, and neither has been validated against the other.
 
 ##### CQ-7 — Ruff configuration that is not inert
 
-`pyproject.toml:105-131`'s ruff config is stale for the pinned range:
+`pyproject.toml:114-140`'s ruff config is stale for the pinned range:
 `select`/`ignore` moved under `[tool.ruff.lint]` (and `[tool.ruff.isort]` to
 `[tool.ruff.lint.isort]`) in ruff 0.2+, while the pin is only `ruff>=0.1.0`; and
 `W503` is a flake8 code with no ruff equivalent, so that ignore does nothing.
@@ -25941,3 +26109,92 @@ with the pin raised to `ruff>=0.6,<1.0`.
 
 **Total CQ effort:** 30 h.
 
+
+---
+
+# Revision history
+
+This manual is a point-in-time audit that has been revised rather than reissued.
+The table says what each revision actually covered, because "revised" and
+"re-audited" are different claims and conflating them is how the previous
+convention produced a self-contradicting file.
+
+| Date | Commits covered | What was done |
+| :--- | :--- | :--- |
+| 2026-09-03 | up to `16a8575` | Original full read. Every tracked source file read in full, no sampling. Everything in this manual that is not listed below still dates from here. |
+| 2026-09-06 | — | Targeted amendment. Six new subsections for work that had landed since: a second (hypothetical) blockage site, depression fill and corridor conditioning, the breach notch and asymmetric domains, job-object breakaway and script-registered runs, a labelled synthetic demo asset, and the Khadakwasla drainage measurement. No re-read of unaffected sections; the header counts were not recomputed. |
+| 2026-09-11 | `dd1e766`, `94a994e` | Targeted amendment. `dd1e766` unified FD2320 hazard classification on the published rating `HR = d(|V| + 0.5) + DF`, retired the `severe` class, renamed the hazard shapefile classes, deleted `PopulationEstimator`, made DEM interpolation raise on an all-nodata window, and gated breach regression families. `94a994e` stopped tracking `node_modules/`, the frontend DEM tiles, `.coverage` and the phase markers. Recorded as blockquote callouts layered over the original text — the convention retired in the next revision. |
+| 2026-09-12 | `5fa86b8`, `af996b7`, `b9baf75`, `cbc6af2` | Citation repair, retirement of the callout convention, and a targeted re-audit of what the GPU work touched. Detail below. |
+
+## The 2026-09-12 revision
+
+**What it was.** Three commits shipped a float64 CUDA backend, fixed two
+ensemble-member defects this manual had catalogued as open, and made the backend
+selectable from the dashboard. The manual had been amended for the first of those
+in two places and still argued against the GPU port in three others.
+
+**What was mechanically repaired, and how it is checked.**
+`tools/check_citations.py` was written for this revision — the manual had been
+citing that path for a tool that did not exist. It resolves every backticked
+`` `path:line` `` against the worktree and reports `OK`, `FILE_GONE`, `LINE_OOR`
+or `AMBIGUOUS`. First run over 2,506 citations: **225 did not resolve.**
+
+- **24 `FILE_GONE`** were a shorthand this manual invented — `service/main.py`
+  for `services/api/jalraksha_service/main.py`, plus one literal
+  `services/api/.../tasks.py`. Widened to real paths.
+- **163 `AMBIGUOUS`** were bare basenames that several tracked files could
+  satisfy: `core.py` (76, between `solver/` and `sph/`), `config.py` (38, between
+  the library and the service), `population.py`, `domain.py`, `__init__.py`,
+  `README.md`, `package.json`. A citation a reader must guess at is not a
+  citation, so all were widened; seven that no heuristic could separate were
+  resolved by reading the code.
+- **747 citations had drifted**, pointing at real lines that no longer held the
+  cited text. Each was relocated by matching the exact line content at the audit
+  commit against the current file and renumbering only where the match was
+  unique.
+
+**31 citations pointed into code that no longer exists**, principally the deleted
+`PopulationEstimator`. These are not drift and must not be deleted: "it returned
+zero for every input" is a claim about code that is gone, and dropping the
+citation to satisfy a checker destroys the evidence for a finding rather than
+verifying it. They are now written as `path@16a8575:line` and resolved with
+`git show`, so they stay checkable permanently.
+
+**Finding the audit commit was itself a correction.** This manual recorded that
+it had been written against `6130d0a`. It had not — that commit is from
+2026-09-11, eight days later, and by then `jalraksha/impact/population.py` was
+already 121 lines. The original read was against **`16a8575`** (2026-09-03,
+"river blockage"), where the same file is 439 lines and every one of these
+citations resolves. A wrong base commit is invisible until something tries to
+resolve against it.
+
+**Six citations were wrong when they were written** and are now marked as such
+rather than repaired into something plausible: kml.py lines 642 and 646 against a
+402-line file, cli.py line 1311 against a 226-line file, and gee/population.py
+lines 333–338 against 321 lines — none of those lines existed at `16a8575`. They
+now name the file with no line number, which is the only honest form left.
+Separately, hardening.py lines 258–282 were off by three: `check_forbidden_sources`
+spans 255–279, and that one is corrected rather than blanked.
+
+(Those five are written without backticks here on purpose: a bad citation quoted
+as an example inside its own post-mortem would be re-detected by the checker as a
+live defect.)
+
+**What this check does and does not prove.** It proves a cited line exists. It
+cannot prove the prose beside it is true, and a citation that lands on a real but
+wrong line passes. Treat a clean run as a floor, not a warrant.
+
+**What was re-audited.** The solver core (§4.1), the parts of the defect register
+and fix plan covering it (§5.3.5, P1-15, P1-16), the FastAPI endpoint surface
+(§2.2), and every passage arguing that a GPU port had been correctly declined
+(§1, §6). Findings F2 and F3 are marked FIXED with the commits that fixed them;
+F1, F4 and F5 stand. Sections not listed here were not re-read, and the original
+2026-09-03 reading stands in them.
+
+**One finding is worth carrying out of this revision.** The two fixed defects —
+the collapsed Manning field and the drifting member clock — were both found by
+*writing the GPU ensemble*, not by this audit. A second implementation of the
+member loop forced every implicit rule of the first one to be stated, and two
+defects that had survived review as a single CPU path became a difference between
+two implementations. That second implementation is now its own maintenance
+obligation, held by `tests/test_parallel.py::TestGpuEnsemble`.
