@@ -394,18 +394,29 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
 
       <label>Compute</label>
       <select value={backend} onChange={(e) => setBackend(e.target.value)}>
-        <option value="auto">Auto — GPU when available</option>
+        {/* GPU-first is the project default (2026-09-13): auto runs the SWE
+            ensemble AND the near-field SPH on the GPU, falling back to the CPU
+            with a stated reason only when the GPU cannot run. */}
+        <option value="auto">GPU (default) — CPU fallback if unavailable</option>
         {/* Disabled rather than hidden: an operator looking for the GPU should
             be told WHY it is not on offer, not left wondering. The reason is
             the probe's own words, from GET /backends. */}
         <option value="cuda" disabled={backends ? !backends.cuda_available : false}>
-          {backends?.cuda_device ? `GPU — ${backends.cuda_device}` : "GPU (CUDA, float64)"}
+          {backends?.cuda_device
+            ? `GPU only — ${backends.cuda_device} (refuse if unavailable)`
+            : "GPU only — refuse if unavailable"}
         </option>
-        <option value="cpu">CPU (numba, float64)</option>
+        <option value="cpu">CPU (float64)</option>
       </select>
       {backends && !backends.cuda_available && (
         <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
           No GPU available here: {backends.cuda_reason}
+        </div>
+      )}
+      {backend === "auto" && (
+        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+          The SWE ensemble and the near-field SPH both run on the GPU. If the GPU
+          cannot run, they fall back to the CPU and the result says why.
         </div>
       )}
       {backend === "cpu" && (

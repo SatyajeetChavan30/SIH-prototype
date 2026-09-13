@@ -1105,13 +1105,13 @@ estimate, and measurement replaced it.
     returned garbage neighbour counts: a 4,032-particle tank asked for
     748,965,269 entries (46× all N² pairs) and died with
     `INVALID_BUFFER_SIZE`. Smaller cases cannot be assumed correct on it.
-  - **The GPU is NOT faster for SPH, so `auto` stays on the CPU.** On the
-    production case (9,000 particles, both backends) the OpenCL run was stopped
-    unfinished at 2,442 s wall, 2,289 s of it CPU time, at 9.4 W GPU draw —
-    PySPH's GPU path is host-bound. Neither run finished, so no ratio is claimed.
-    The GPU runs SPH only on an explicit request (dashboard GPU →
-    `prefer_opencl`, or `JALRAKSHA_SPH_BACKEND=opencl`); the backends probe asks
-    `prefer_opencl` so it still reports a working device. Full record:
+  - **`auto` runs SPH on the GPU — the owner's choice (2026-09-13), NOT a
+    measured speed-up.** On the production case (9,000 particles) the OpenCL
+    run was stopped unfinished at 2,442 s wall, 2,289 s of it CPU time, at
+    9.4 W GPU draw — PySPH's GPU path is host-bound. No CPU/GPU ratio was
+    measured, so never claim GPU SPH is faster. `auto` falls back to the CPU
+    with a reason when the GPU cannot run; `JALRAKSHA_SPH_BACKEND=cpu` or the
+    dashboard's CPU option runs it on the CPU. Full record:
     `docs/validation_findings.md` §12.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing

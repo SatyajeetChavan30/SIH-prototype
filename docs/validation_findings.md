@@ -1056,7 +1056,7 @@ its value at the start of each step.
   the breach cell set the timestep, and nothing measurable on the Khadakwasla
   configuration.
 
-## 12. Near-field SPH on the GPU: it runs, and it is not faster (measured 2026-09-13)
+## 12. Near-field SPH on the GPU: it runs, and it is not shown faster (measured 2026-09-13)
 
 **What was done.** There is no SPH physics in this repository to port:
 `sph/core.py` is a gravestone for a deleted home-grown solver, and every real
@@ -1112,8 +1112,11 @@ fluid particles that overhead is not repaid. An earlier, larger 3.9 km test
 window was abandoned after 69 minutes on the CPU because it had roughly 11× the
 production area, not because either backend failed.
 
-**Consequence in code.** `resolve_sph_backend("auto")` keeps SPH on the CPU and
-says why. The GPU runs SPH only when asked — the dashboard's GPU choice
-(`prefer_opencl`) or `JALRAKSHA_SPH_BACKEND=opencl`. Revisit if a completed
-measurement, or a larger particle budget, shows the GPU ahead. The SWE solver's
-GPU backend (§11) is unaffected and remains 11–20× faster.
+**Consequence in code — revised the same day.** The first commit kept
+`resolve_sph_backend("auto")` on the CPU on the strength of the figures above.
+The project owner then chose GPU-first for every simulation, so `auto` now runs
+SPH on the GPU and falls back to the CPU, recording why, when the GPU cannot run.
+That is a DECISION, not a measured speed-up, and nothing above supports claiming
+GPU SPH is faster; the host-bound figures stand as the record. The CPU remains
+one setting away (the dashboard's CPU option or `JALRAKSHA_SPH_BACKEND=cpu`).
+The SWE solver's GPU backend (§11) is unaffected and remains 11–20× faster.

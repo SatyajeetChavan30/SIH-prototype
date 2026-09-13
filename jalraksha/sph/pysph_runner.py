@@ -266,6 +266,8 @@ def resolve_sph_backend(requested: Optional[str] = None) -> Dict[str, Any]:
 
       * "cpu"            -- PySPH's Cython backend.
       * "auto"           -- GPU when it can run, else CPU, recording why.
+                            The default. Chosen, not measured faster: see
+                            the note in the body.
       * "opencl"         -- GPU or nothing: RAISES when it cannot run, so a
                             script or a JALRAKSHA_SPH_BACKEND setting that asks
                             for the GPU cannot be quietly answered by the CPU.
@@ -292,19 +294,14 @@ def resolve_sph_backend(requested: Optional[str] = None) -> Dict[str, Any]:
     cpu = {"sph_backend": "cpu", "argv": [], "label": "CPU (PySPH Cython, float64)"}
     if requested == "cpu":
         return {**cpu, "reason": "CPU requested"}
-    if requested == "auto":
-        # "auto" means "the faster hardware", and for SPH that is NOT shown to be
-        # the GPU. On the production near-field case (Khadakwasla, 9,000 fluid
-        # particles, 15 s) the OpenCL run was stopped unfinished after 2,442 s
-        # wall -- 2,289 s of it CPU time, at 9.4 W of GPU draw -- because PySPH's
-        # GPU path rebuilds its octree on the host and round-trips every step
-        # (docs/validation_findings.md §12). Until a measurement shows the GPU
-        # winning, auto keeps SPH on the CPU. An explicit GPU request
-        # ("prefer_opencl" from the dashboard, or "opencl") still runs there.
-        return {**cpu, "reason": (
-            "auto keeps near-field SPH on the CPU: PySPH's OpenCL path is "
-            "host-bound and has not been measured faster at this particle count")}
-
+    # "auto" prefers the GPU, by the project owner's decision (2026-09-13), and
+    # NOT because it has been measured faster: on the production near-field case
+    # (Khadakwasla, 9,000 fluid particles, 15 s) the OpenCL run was stopped
+    # unfinished at 2,442 s wall, 2,289 s of it CPU time at 9.4 W of GPU draw,
+    # because PySPH's GPU path rebuilds its octree on the host and round-trips
+    # every step (docs/validation_findings.md §12). The CPU remains available
+    # with "cpu" or JALRAKSHA_SPH_BACKEND=cpu. Like "prefer_opencl", auto falls
+    # back to the CPU and records why when the GPU cannot run.
     # Checked before any device: a GPU that cannot be programmed is no GPU.
     incompatibility = _compyle_gpu_incompatibility()
     if incompatibility is not None:

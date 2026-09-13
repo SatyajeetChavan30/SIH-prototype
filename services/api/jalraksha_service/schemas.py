@@ -24,9 +24,10 @@ class RunRequest(BaseModel):
     solver: str = Field("swe", description="swe | delft3d | both")
     backend: str = Field(
         "auto",
-        description="Compute backend for the SWE ensemble: auto | cpu | cuda. "
-                    "'auto' uses the GPU wherever a float64 CUDA kernel runs "
-                    "and the CPU otherwise; 'cuda' is refused at submission "
+        description="Compute backend for the SWE ensemble and the near-field "
+                    "SPH: auto | cpu | cuda. 'auto' (the default) is GPU-first "
+                    "with CPU fallback: the GPU wherever it can run, the CPU "
+                    "otherwise, with the reason recorded; 'cuda' is refused at submission "
                     "when it cannot run, rather than failing after the terrain "
                     "and breach ensemble are already built. The Delft3D kernel "
                     "is a CPU binary whatever this says.",

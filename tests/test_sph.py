@@ -71,17 +71,25 @@ class TestSphBackendSelection:
         assert choice["argv"] == []
         assert "ast.Str" in choice["reason"]
 
-    def test_auto_keeps_sph_on_the_cpu_until_the_gpu_is_measured_faster(self, monkeypatch):
+    def test_auto_prefers_the_gpu_when_it_can_run(self, monkeypatch):
         """
-        On the production near-field case the OpenCL run was stopped unfinished
-        at 2,442 s, host-bound. "auto" must not make every default run slower on
-        the strength of hardware that is merely present.
+        GPU is the SPH default by the owner's decision. That default must still
+        name what ran, so the label and backend say opencl, not merely "auto".
         """
         monkeypatch.delenv(SPH_BACKEND_ENV, raising=False)
         monkeypatch.setattr(pysph_runner, "_compyle_gpu_incompatibility", lambda: None)
+        monkeypatch.setattr(
+            pysph_runner, "_opencl_fp64_gpu",
+            lambda: ((0, 0, "Fake GPU"), "OpenCL device: Fake GPU"))
+        monkeypatch.setenv("PYOPENCL_CTX", "0:0")
         choice = resolve_sph_backend("auto")
-        assert choice["sph_backend"] == "cpu"
-        assert "not been measured faster" in choice["reason"]
+        assert choice["sph_backend"] == "opencl"
+        assert "Fake GPU" in choice["label"]
+
+    def test_the_cpu_is_still_one_setting_away(self, monkeypatch):
+        monkeypatch.setenv(SPH_BACKEND_ENV, "cpu")
+        monkeypatch.setattr(pysph_runner, "_compyle_gpu_incompatibility", lambda: None)
+        assert resolve_sph_backend("auto")["sph_backend"] == "cpu"
 
     def test_explicit_opencl_request_raises_when_it_cannot_run(self, monkeypatch):
         monkeypatch.setattr(
