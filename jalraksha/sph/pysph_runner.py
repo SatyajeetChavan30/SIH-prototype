@@ -66,7 +66,7 @@ import numpy as np
 
 from jalraksha.sph.compyle_compat import (
     RESTORED_AST_NAMES,
-    compyle_python314_compat_if,
+    pysph_app_compat,
     visitor_repair_gaps,
 )
 
@@ -243,7 +243,11 @@ def sph_backend_for_solver(solver_backend: Optional[str]) -> str:
     """
     choice = (solver_backend or "auto").strip().lower()
     if choice == "cuda":
-        return "opencl"
+        # "prefer_opencl", not "opencl": an explicit "opencl" RAISES when it
+        # cannot run, which is right for a script or JALRAKSHA_SPH_BACKEND and
+        # wrong here -- a dashboard run asking for the GPU should lose the SPH
+        # speed-up, never the SPH result. See the asymmetry note above.
+        return "prefer_opencl"
     if choice in ("cpu", "auto", "opencl"):
         return choice
     return "auto"
@@ -258,19 +262,48 @@ def resolve_sph_backend(requested: Optional[str] = None) -> Dict[str, Any]:
     because it needs pycuda and therefore nvcc, which this project avoids; the
     NVIDIA driver's OpenCL runtime needs nothing extra.
 
+    Four requests, and the difference between the last two is the whole point:
+
+      * "cpu"            -- PySPH's Cython backend.
+      * "auto"           -- GPU when it can run, else CPU, recording why.
+      * "opencl"         -- GPU or nothing: RAISES when it cannot run, so a
+                            script or a JALRAKSHA_SPH_BACKEND setting that asks
+                            for the GPU cannot be quietly answered by the CPU.
+      * "prefer_opencl"  -- GPU when it can run, else CPU with the reason. This
+                            is what a dashboard "cuda" run maps to
+                            (sph_backend_for_solver), which must not lose its
+                            near-field result to an unavailable device.
+
     Raises:
         ValueError: on an unknown backend name.
         SPHUnavailableError: if "opencl" was requested and cannot run.
     """
-    if requested is None or str(requested).lower() == "auto":
-        requested = os.environ.get(SPH_BACKEND_ENV, "auto")
-    requested = str(requested).strip().lower()
-    if requested not in ("auto", "cpu", "opencl"):
-        raise ValueError(f"SPH backend must be auto, cpu or opencl (got {requested!r})")
+    requested = str(requested if requested is not None else "auto").strip().lower()
+    if requested in ("auto", "prefer_opencl"):
+        # The environment variable is the operator's explicit override and wins
+        # over both, including over a dashboard preference.
+        override = os.environ.get(SPH_BACKEND_ENV, "").strip().lower()
+        if override:
+            requested = override
+    if requested not in ("auto", "cpu", "opencl", "prefer_opencl"):
+        raise ValueError(
+            f"SPH backend must be auto, cpu, opencl or prefer_opencl (got {requested!r})")
 
     cpu = {"sph_backend": "cpu", "argv": [], "label": "CPU (PySPH Cython, float64)"}
     if requested == "cpu":
         return {**cpu, "reason": "CPU requested"}
+    if requested == "auto":
+        # "auto" means "the faster hardware", and for SPH that is NOT shown to be
+        # the GPU. On the production near-field case (Khadakwasla, 9,000 fluid
+        # particles, 15 s) the OpenCL run was stopped unfinished after 2,442 s
+        # wall -- 2,289 s of it CPU time, at 9.4 W of GPU draw -- because PySPH's
+        # GPU path rebuilds its octree on the host and round-trips every step
+        # (docs/validation_findings.md §12). Until a measurement shows the GPU
+        # winning, auto keeps SPH on the CPU. An explicit GPU request
+        # ("prefer_opencl" from the dashboard, or "opencl") still runs there.
+        return {**cpu, "reason": (
+            "auto keeps near-field SPH on the CPU: PySPH's OpenCL path is "
+            "host-bound and has not been measured faster at this particle count")}
 
     # Checked before any device: a GPU that cannot be programmed is no GPU.
     incompatibility = _compyle_gpu_incompatibility()
@@ -309,7 +342,21 @@ def resolve_sph_backend(requested: Optional[str] = None) -> Dict[str, Any]:
         # cast. A neighbour search is a lookup structure, not physics: it finds
         # the same neighbours within the same radius, so this changes summation
         # ORDER only, which is the round-off caveat in the module docstring.
-        "argv": ["--opencl", "--use-double", "--nnps", "gpu_octree"],
+        #
+        # --octree-elementwise is NOT a tuning choice either. The octree's
+        # default kernel runs in work groups of leaf_size (32) and, on this
+        # stack, returns GARBAGE neighbour counts once a case is big enough:
+        # a 4,032-particle still-water tank asked GPUNeighborCache for
+        # 748,965,269 neighbour entries (3.0 GB, over the 1.6 GB
+        # CL_DEVICE_MAX_MEM_ALLOC_SIZE) -- 46 times more than every particle
+        # paired with every other, so not a large answer but a wrong one. It
+        # surfaces as "create_buffer failed: INVALID_BUFFER_SIZE", and smaller
+        # cases that did not hit the allocation limit cannot be assumed to have
+        # had correct neighbour lists. The elementwise kernel of the same octree
+        # asked for 0.4 MB on that tank and passed the still-water gate
+        # (max speed 0.35 m/s, density error 0.65%).
+        "argv": ["--opencl", "--use-double", "--nnps", "gpu_octree",
+                 "--octree-elementwise"],
         "label": f"GPU (OpenCL, {name}, float64)",
         "reason": detail,
     }
@@ -705,9 +752,12 @@ def run_near_field_sph(
     # argv is passed explicitly: PySPH's Application parses sys.argv by default,
     # and inside a Celery worker or pytest that is the HOST process's command
     # line, which it then rejects as unknown options.
-    # The shim repairs compyle's Python 3.14 breakage for the duration of the
-    # compile, and only on the GPU path (sph/compyle_compat.py).
-    with compyle_python314_compat_if(sph_backend["sph_backend"] != "cpu"):
+    # pysph_app_compat gives this run its own compyle Config -- PySPH's
+    # use_opencl flag is a process-global that nothing clears, so without it a
+    # later CPU run in the same process silently generates OpenCL -- and on the
+    # GPU path also installs the Python 3.14 repairs for the compile
+    # (sph/compyle_compat.py).
+    with pysph_app_compat(sph_backend["sph_backend"] != "cpu"):
         app.run(argv=["--disable-output", "-d", _scratch_dir(dam_name)] + sph_backend["argv"])
     wall_clock = time.perf_counter() - started
 
@@ -903,7 +953,9 @@ def run_still_water_validation(
     surface_before = float(zs.max())
     sph_backend = resolve_sph_backend(backend)
     app = _StillWater()
-    with compyle_python314_compat_if(sph_backend["sph_backend"] != "cpu"):
+    # Same contract as the near-field run: an isolated compyle Config always,
+    # the Python 3.14 repairs on the GPU path only (sph/compyle_compat.py).
+    with pysph_app_compat(sph_backend["sph_backend"] != "cpu"):
         app.run(argv=["--disable-output", "-d", _scratch_dir("stillwater")] + sph_backend["argv"])
 
     fluid = app.particles[0]

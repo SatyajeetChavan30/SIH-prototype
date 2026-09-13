@@ -267,7 +267,7 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
             dam_name=dam_config.get("name", "Dam"),
             # One control governs both engines: the run's compute backend
             # (main.py::submit_run puts it on dam_config) maps to PySPH's,
-            # cuda -> opencl. A GPU request that cannot run degrades to the CPU
+            # cuda -> prefer_opencl. A GPU request that cannot run degrades to the CPU
             # and says so in sph_backend_reason rather than losing the SPH
             # result -- sph_backend_for_solver explains why that differs from
             # the SWE solver, which raises instead.

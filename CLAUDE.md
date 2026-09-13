@@ -1076,21 +1076,43 @@ estimate, and measurement replaced it.
     to Python scalars" — compiled Cython, unpatchable from here. An NNPS changes
     neighbour summation ORDER, not physics.
   - **One control governs both engines.** `RunRequest.backend` reaches SPH via
-    `dam_config["solver_backend"]` and `sph_backend_for_solver` (`cuda` →
-    `opencl`: same device, different API; PySPH's CUDA path needs pycuda and so
-    nvcc). `JALRAKSHA_SPH_BACKEND=auto|opencl|cpu` still forces it.
+    `dam_config["solver_backend"]` and `sph_backend_for_solver`, which maps
+    `cuda` → **`prefer_opencl`** (same device, different API; PySPH's CUDA path
+    needs pycuda and so nvcc). NOT `opencl`: the strict name RAISES when the GPU
+    cannot run, and the first wiring used it, so a dashboard GPU run would have
+    lost its SPH result instead of degrading. `JALRAKSHA_SPH_BACKEND` is the
+    operator override and beats a dashboard preference.
   - **Deliberate asymmetry with the SWE solver, which RAISES on an impossible
     `cuda`.** SPH degrades to the CPU and records why: it is a supplementary
     near-field product, and nothing can be mislabelled because `sph_backend`,
     `sph_backend_reason` and `engine_label` all name what actually ran.
+  - **compyle's config is a process-global PySPH never clears.** After one GPU
+    run, `use_opencl` stays set and every later PySPH run in that process
+    generates OpenCL whatever it asked for — measured as a "CPU" run dying inside
+    `compyle/translator.py` on `ast.Str`. That is exactly the GPU-then-CPU
+    fallback sequence, so `pysph_app_compat` gives every `app.run()` (both
+    backends) its own `compyle.config.use_config()`.
+  - **Pin the backend in SPH tests.** `run_near_field_sph` defaults to `auto`,
+    so once the GPU worked the "CPU" gates silently became GPU gates and a
+    40-second class took eight minutes. `_small_run` pins `cpu`;
+    `TestGpuNearField` asks for `opencl`.
   - **Never bit-compare the backends.** The Cython NNPS and the GPU octree sum
     neighbours in different orders, so a collapsing column diverges from
     round-off. Each backend passes the gates on its own physics; the only
     cross-backend assertions are integral (`tests/test_sph.py::TestGpuNearField`),
     the same stance `test_solver_cuda.py` takes for SWE.
-  - **Particle budget unchanged** at `TARGET_FLUID_PARTICLES = 9000` on both
-    backends, so only the hardware differs. Measured numbers — including where
-    the GPU is no faster — in `docs/validation_findings.md` §12.
+  - **`--octree-elementwise` is not tuning.** The octree's grouped kernel
+    returned garbage neighbour counts: a 4,032-particle tank asked for
+    748,965,269 entries (46× all N² pairs) and died with
+    `INVALID_BUFFER_SIZE`. Smaller cases cannot be assumed correct on it.
+  - **The GPU is NOT faster for SPH, so `auto` stays on the CPU.** On the
+    production case (9,000 particles, both backends) the OpenCL run was stopped
+    unfinished at 2,442 s wall, 2,289 s of it CPU time, at 9.4 W GPU draw —
+    PySPH's GPU path is host-bound. Neither run finished, so no ratio is claimed.
+    The GPU runs SPH only on an explicit request (dashboard GPU →
+    `prefer_opencl`, or `JALRAKSHA_SPH_BACKEND=opencl`); the backends probe asks
+    `prefer_opencl` so it still reports a working device. Full record:
+    `docs/validation_findings.md` §12.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

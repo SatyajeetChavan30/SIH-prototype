@@ -1055,3 +1055,65 @@ its value at the start of each step.
   whatever bias the old loop had on their terrain: up to about 2.6% late where
   the breach cell set the timestep, and nothing measurable on the Khadakwasla
   configuration.
+
+## 12. Near-field SPH on the GPU: it runs, and it is not faster (measured 2026-09-13)
+
+**What was done.** There is no SPH physics in this repository to port:
+`sph/core.py` is a gravestone for a deleted home-grown solver, and every real
+equation is PySPH's `WCSPHScheme`. So the GPU work unblocked PySPH's own OpenCL
+backend rather than writing a CUDA WCSPH. Four defects stood in the way, and each
+was proven before it was fixed:
+
+| # | Defect | Evidence | Fix |
+| ---: | :--- | :--- | :--- |
+| 1 | compyle 0.9.1 uses `ast.Str` (removed in Python 3.14) | `AttributeError` at the first kernel | scoped shim, `sph/compyle_compat.py` |
+| 2 | compyle's `visit_Num` / `visit_Str` / `visit_NameConstant` are dead on 3.14 | generated OpenCL read `r = ((r \| (r << None)) & None);` | `visit_Constant` dispatcher, same module |
+| 3 | `ZOrderGPUNNPS` casts a size-1 array to a scalar | NumPy 2: "only 0-dimensional arrays can be converted to Python scalars", `z_order_gpu_nnps.pyx:227` (compiled) | `--nnps gpu_octree` |
+| 4 | the octree's grouped kernel returns garbage neighbour counts | a 4,032-particle tank requested **748,965,269** neighbour entries (3.0 GB, over the 1.6 GB max allocation) — 46× more than all N² pairs | `--octree-elementwise` (0.4 MB on the same tank) |
+
+Defect 4 matters beyond the crash: cases small enough to stay under the
+allocation limit cannot be assumed to have had correct neighbour lists on the
+grouped kernel, which is why the elementwise kernel is unconditional.
+
+**Two integration defects, found by the tests.** compyle's config is a
+process-global that PySPH never clears, so after one GPU run a "CPU" run in the
+same process generated OpenCL and died in compyle's translator — exactly the
+GPU-then-CPU fallback sequence. Every `app.run()` now gets its own
+`compyle.config.use_config()`. And the dashboard's `cuda` first mapped to the
+strict `opencl` backend, which raises; it maps to `prefer_opencl`, which degrades
+to the CPU and records why.
+
+**Correctness gates on the GPU, each on its own physics** (`tests/test_sph.py`,
+`TestGpuNearField` and the GPU still-water test; never trajectory equality, since
+the octree and the Cython NNPS sum neighbours in different orders):
+
+| gate | GPU (OpenCL, RTX 4050, float64) |
+| :--- | :--- |
+| still water, 3 m column, 0.6 s | max speed 0.353 m/s (< 1), density error 0.78 % (< 2), all finite |
+| still water, 6 m column, 12 cells (the defect-4 case) | max speed 0.348 m/s, density error 0.65 % |
+| near-field valley run | energy bound, escaped fraction < 25 %, front advances, all finite — pass |
+| cross-backend (integral only) | same particle count and energy bound; both inside it |
+
+**Speed — no completed timing, and what was observed instead.** The comparison
+used the production path itself (`tasks._run_near_field_sph`, Khadakwasla,
+1.2 km window at 30 m, `TARGET_FLUID_PARTICLES = 9000` on both, 15 s simulated),
+one backend per process:
+
+| backend | result |
+| :--- | :--- |
+| OpenCL | **stopped unfinished at 2,442 s wall**, having used 2,289 s of CPU time; GPU power draw 9.4 W at "58 %" utilisation |
+| CPU (Cython) | stopped unfinished at 1,264 s wall (the session had to end the measurement) |
+
+Neither run finished, so **no speed-up or slow-down ratio is claimed.** What the
+figures do show is that PySPH's GPU path is host-bound here: 94 % of its wall
+time was CPU time, and a card drawing 9.4 W is idling between kernel launches.
+The octree is rebuilt on the host and data round-trips every step, and at 9,000
+fluid particles that overhead is not repaid. An earlier, larger 3.9 km test
+window was abandoned after 69 minutes on the CPU because it had roughly 11× the
+production area, not because either backend failed.
+
+**Consequence in code.** `resolve_sph_backend("auto")` keeps SPH on the CPU and
+says why. The GPU runs SPH only when asked — the dashboard's GPU choice
+(`prefer_opencl`) or `JALRAKSHA_SPH_BACKEND=opencl`. Revisit if a completed
+measurement, or a larger particle budget, shows the GPU ahead. The SWE solver's
+GPU backend (§11) is unaffected and remains 11–20× faster.
