@@ -219,7 +219,11 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
         possible. Never returns fabricated particles — the caller renders the
         reason instead.
     """
-    from jalraksha.sph.pysph_runner import SPHUnavailableError, run_near_field_sph
+    from jalraksha.sph.pysph_runner import (
+        SPHUnavailableError,
+        run_near_field_sph,
+        sph_backend_for_solver,
+    )
     from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
     from jalraksha.terrain.conditioning import load_dem_as_grid
 
@@ -261,6 +265,13 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
             q_peak_m3_s=q_peak,
             duration_s=SPH_DURATION_S,
             dam_name=dam_config.get("name", "Dam"),
+            # One control governs both engines: the run's compute backend
+            # (main.py::submit_run puts it on dam_config) maps to PySPH's,
+            # cuda -> opencl. A GPU request that cannot run degrades to the CPU
+            # and says so in sph_backend_reason rather than losing the SPH
+            # result -- sph_backend_for_solver explains why that differs from
+            # the SWE solver, which raises instead.
+            backend=sph_backend_for_solver(dam_config.get("solver_backend")),
         )
     except SPHUnavailableError as exc:
         return None, str(exc)

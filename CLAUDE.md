@@ -1041,13 +1041,56 @@ estimate, and measurement replaced it.
   chunks are sized to 60% of FREE VRAM (`ensemble_cuda.VRAM_FRACTION`); a
   member at 376 × 480 takes about 35 MB. A second concurrent run that runs out
   of memory falls back to the CPU and says so.
-- **Near-field SPH stays on the CPU on Python 3.14.** PySPH's OpenCL path is
-  wired in (`--opencl --use-double`, with `PYOPENCL_CTX` set to the NVIDIA
-  platform because the AMD gfx1103 iGPU is also an OpenCL platform). But
-  compyle 0.9.1, which generates PySPH's GPU kernels, uses `ast.Str`, which
-  Python 3.14 removed. `resolve_sph_backend` detects that from compyle's
-  source, and `JALRAKSHA_SPH_BACKEND=auto|opencl|cpu` controls the choice.
-  Whether a newer compyle or Python 3.13 would run it is UNTESTED.
+- **Near-field SPH now RUNS on the GPU on Python 3.14** (the old "stays on the
+  CPU" line is obsolete). PySPH's OpenCL path was already wired
+  (`--opencl --use-double`, `PYOPENCL_CTX` pinned to the NVIDIA platform because
+  the AMD gfx1103 iGPU is an OpenCL platform too); what blocked it was
+  **compyle 0.9.1 on Python 3.14**, and 0.9.1 is the latest release on PyPI, so
+  the repair had to be local: `jalraksha/sph/compyle_compat.py`.
+  - **There is no SPH physics in this repo to port**, which is why this is an
+    unblocking job and not a second `flux_cuda.py`. `sph/core.py` is a 35-line
+    gravestone — the home-grown `SPHNearFieldSolver` had no kernel, no neighbour
+    search and no continuity equation, and was deleted rather than kept. All the
+    real physics is PySPH's `WCSPHScheme`.
+  - **Two compyle defects, one loud and one silent.** Loud: `ast.Str` at four
+    sites (`jit.py` `visit_declare`/`visit_cast`, `translator.py`
+    `_remove_docstring`/`visit_Assign`). Silent and worse: compyle's constant
+    visitors are named `visit_Num` / `visit_Str` / `visit_NameConstant`, which
+    3.14 turned into dead code, so `generic_visit` returned None and the
+    generated OpenCL read `r = ((r | (r << None)) & None);`. That was a compile
+    error here — in a path that accepted it, it would have been a kernel that ran
+    and computed nonsense.
+  - The shim restores exactly what CPython provided: `ast.Str` whose
+    `isinstance` is true **only** for a `Constant` holding a `str` (a looser
+    "any Constant" would make compyle accept `declare(3)`), the `.s`/`.n`
+    properties, and a `visit_Constant` dispatching by value type — **bool before
+    int**, since `True` was `NameConstant` and `bool` subclasses `int`. Held by a
+    context manager and undone in `finally`, GPU path only.
+  - **PySPH's own dead `visit_Num` is deliberately NOT revived.** It rewrites a
+    numeric literal into a STRING holding its float32 spelling; under
+    `--use-double` `literal_to_float` is the identity, so reviving it would put a
+    quoted `"1.5"` into the generated C. One more reason `--use-double` is
+    mandatory rather than a preference.
+  - **`--nnps gpu_octree` is not tuning.** The default `ZOrderGPUNNPS` dies at
+    `z_order_gpu_nnps.pyx:227` with "only 0-dimensional arrays can be converted
+    to Python scalars" — compiled Cython, unpatchable from here. An NNPS changes
+    neighbour summation ORDER, not physics.
+  - **One control governs both engines.** `RunRequest.backend` reaches SPH via
+    `dam_config["solver_backend"]` and `sph_backend_for_solver` (`cuda` →
+    `opencl`: same device, different API; PySPH's CUDA path needs pycuda and so
+    nvcc). `JALRAKSHA_SPH_BACKEND=auto|opencl|cpu` still forces it.
+  - **Deliberate asymmetry with the SWE solver, which RAISES on an impossible
+    `cuda`.** SPH degrades to the CPU and records why: it is a supplementary
+    near-field product, and nothing can be mislabelled because `sph_backend`,
+    `sph_backend_reason` and `engine_label` all name what actually ran.
+  - **Never bit-compare the backends.** The Cython NNPS and the GPU octree sum
+    neighbours in different orders, so a collapsing column diverges from
+    round-off. Each backend passes the gates on its own physics; the only
+    cross-backend assertions are integral (`tests/test_sph.py::TestGpuNearField`),
+    the same stance `test_solver_cuda.py` takes for SWE.
+  - **Particle budget unchanged** at `TARGET_FLUID_PARTICLES = 9000` on both
+    backends, so only the hardware differs. Measured numbers — including where
+    the GPU is no faster — in `docs/validation_findings.md` §12.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

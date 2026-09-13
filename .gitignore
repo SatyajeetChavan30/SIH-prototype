@@ -23,6 +23,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+media/
 
 # Local environment files. These hold credentials — the Cesium Ion token lives
 # in frontend/.env.local — and must never be committed. Vite loads *.local

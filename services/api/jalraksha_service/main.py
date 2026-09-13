@@ -133,12 +133,20 @@ def _probe_cuda_out_of_process() -> Dict[str, Any]:
     server's whole life, competing with the run subprocess that actually needs
     it. The answer cannot change while the machine is up, so it is cached.
     """
+    # Answers for BOTH engines in one subprocess, because they can disagree: the
+    # SWE solver needs numba-cuda, the near-field SPH needs PySPH's OpenCL path
+    # (pyopencl plus the compyle repair in sph/compyle_compat.py). A machine can
+    # have one and not the other, and the control panel has to say which.
     code = (
         "import json;"
         "from jalraksha.solver.backend import cuda_probe;"
+        "from jalraksha.sph.pysph_runner import resolve_sph_backend;"
         "ok, detail, device = cuda_probe();"
+        "sph = resolve_sph_backend('auto');"
         "print(json.dumps({'cuda_available': bool(ok), 'cuda_reason': detail,"
-        " 'cuda_device': device}))"
+        " 'cuda_device': device,"
+        " 'sph_gpu_available': sph['sph_backend'] != 'cpu',"
+        " 'sph_gpu_reason': sph['reason']}))"
     )
     try:
         probe = subprocess.run(
@@ -150,11 +158,13 @@ def _probe_cuda_out_of_process() -> Dict[str, Any]:
         if probe.returncode == 0 and payloads:
             return json.loads(payloads[-1])
         noise = (probe.stderr or probe.stdout or "").strip().splitlines()
-        return {"cuda_available": False, "cuda_device": None,
-                "cuda_reason": f"probe failed: {noise[-1] if noise else 'no output'}"}
+        reason = f"probe failed: {noise[-1] if noise else 'no output'}"
+        return {"cuda_available": False, "cuda_device": None, "cuda_reason": reason,
+                "sph_gpu_available": False, "sph_gpu_reason": reason}
     except Exception as exc:
-        return {"cuda_available": False, "cuda_device": None,
-                "cuda_reason": f"probe failed ({type(exc).__name__}: {exc})"}
+        reason = f"probe failed ({type(exc).__name__}: {exc})"
+        return {"cuda_available": False, "cuda_device": None, "cuda_reason": reason,
+                "sph_gpu_available": False, "sph_gpu_reason": reason}
 
 
 def solver_backend_info() -> Dict[str, Any]:
