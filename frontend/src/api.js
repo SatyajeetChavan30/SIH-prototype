@@ -1,5 +1,9 @@
 // Thin fetch wrapper around the JalRaksha FastAPI service (brief §5.1).
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { API_URL } from "./runtimeConfig.js";
+
+// Build-time VITE_API_URL in a browser; the port the desktop app's backend was
+// actually started on inside Electron (see runtimeConfig.js).
+const API = API_URL;
 
 // Endpoints return export/keyframe/comparison-image paths as "/files/..."
 // (served by the API's static mount, services/api/jalraksha_service/main.py)
@@ -111,6 +115,16 @@ export async function pollUntilDone(runId, onTick, timeoutMs = 600000) {
     if (Date.now() - start > timeoutMs) throw new Error("Run timed out");
     await new Promise((r) => setTimeout(r, 2000));
   }
+}
+
+// Machine-local features the API will offer THIS browser. ParaView is offered
+// only when paraview.exe, pvpython.exe and the render script all exist AND the
+// browser is on the API's own machine, so a deployed dashboard never shows a
+// launch button that would open a window on a server nobody can see.
+export async function getCapabilities() {
+  const r = await fetch(`${API}/capabilities`);
+  if (!r.ok) throw new Error(`Could not read capabilities (${r.status})`);
+  return r.json();
 }
 
 // Ask the API to launch the ParaView desktop GUI for a run (3D terrain + flood).

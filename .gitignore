@@ -24,6 +24,7 @@ wheels/
 .installed.cfg
 *.egg
 media/
+dist/
 
 # Local environment files. These hold credentials — the Cesium Ion token lives
 # in frontend/.env.local — and must never be committed. Vite loads *.local
@@ -86,6 +87,12 @@ paraview/artifacts/*_frames/
 # `pytest --cov` rewrites .coverage — so tracking them only produces noise diffs.
 .coverage
 .phase_*.complete
+
+# Windows desktop app build output: staged frontend, build venvs, PyInstaller
+# work and dist trees, electron-builder output. Installers are copied to
+# dist/windows/ (already covered by dist/ and *.exe above); data packs to dist/packs/.
+/desktop/build/
+*.jrpack
 
 # Stale API database. The live one is ./data/jalraksha.db (DATABASE_URL default
 # in services/api/jalraksha_service/config.py), already excluded by /data/.

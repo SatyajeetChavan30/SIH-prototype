@@ -1,0 +1,71 @@
+# Frozen desktop backend, CPU variant — Python 3.14, Windows x64.
+#
+# Pinned to the versions this repository's validation gates and GPU/SPH
+# measurements were last run against (CLAUDE.md, docs/validation_findings.md).
+# Change a pin only together with a re-run of the blocking gates.
+#
+# PySPH 1.0b2 publishes no Windows wheel for Python 3.14: pip builds it from the
+# sdist, which needs MSVC Build Tools on the BUILD machine (GitHub's
+# windows-latest image has them). The installed app does not need them for
+# anything except PySPH's CPU path, which compiles Cython at run time.
+
+# Core numerical
+numpy==2.4.6
+scipy==1.18.0
+numba==0.67.0
+llvmlite==0.49.0
+
+# Geospatial
+rasterio==1.5.1
+pyproj==3.7.2
+shapely==2.1.2
+geopandas==1.1.4
+pyogrio==0.13.0
+affine
+
+# Data I/O
+xarray==2026.7.0
+netCDF4==1.7.4
+h5py==3.16.0
+pandas==3.0.3
+
+# Pipeline, exports, config
+matplotlib==3.11.0
+pillow==12.1.1
+PyYAML==6.0.3
+click==8.3.1
+tqdm==4.70.0
+requests==2.34.2
+psutil
+
+# Near-field SPH (BSD). compyle is repaired for 3.14 by jalraksha/sph/compyle_compat.py.
+# PySPH ITSELF is pinned in requirements-sph.txt and installed in a second step
+# with --no-build-isolation: its sdist's isolated build-dependency resolution
+# fails on Python 3.14 ("Failed to build 'pysph' when installing build
+# dependencies", measured), while building against the packages below works.
+Cython==3.3.0
+mako==1.4.1
+beaker==1.14.1
+cyarray==1.2
+compyle==0.9.1
+pytools==2026.1.1
+setuptools
+wheel
+
+# Earth Engine (credentials and project are the user's own; nothing is bundled)
+earthengine-api==1.7.41
+
+# Service
+fastapi==0.141.1
+starlette==1.6.0
+pydantic==2.13.4
+uvicorn==0.52.4
+celery==5.6.3
+kombu==5.6.2
+# Needed even with no broker: Celery builds its redis RESULT backend when a
+# task reports state, including eagerly. Measured: without it a frozen run
+# solved, exported, and then failed with "No module named 'redis'".
+redis==8.1.0
+
+# Freezing
+pyinstaller==6.22.3

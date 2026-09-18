@@ -3,7 +3,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip,
   XAxis, YAxis,
 } from "recharts";
-import { getValidation } from "../api.js";
+import { getValidation, resolveApiUrl } from "../api.js";
 
 /**
  * The analytical correctness gates — the answer to "how do we know this
@@ -229,9 +229,12 @@ function DemUpdateSection({ demUpdate }) {
 
       {demUpdate.updated_dem && (
         <p style={S.note}>
-          <a href={demUpdate.updated_dem}>Updated GeoTIFF</a>
+          {/* The API returns these as "/files/..." paths. Used raw they resolved
+              against the PAGE's origin (the Vite server, or the desktop app's UI
+              server) and 404'd; resolveApiUrl points them at the API. */}
+          <a href={resolveApiUrl(demUpdate.updated_dem)}>Updated GeoTIFF</a>
           {demUpdate.provenance_json && (
-            <> · <a href={demUpdate.provenance_json}>provenance JSON</a></>
+            <> · <a href={resolveApiUrl(demUpdate.provenance_json)}>provenance JSON</a></>
           )}
         </p>
       )}

@@ -1,0 +1,3 @@
+# Installed AFTER requirements-<variant>.txt, with --no-build-isolation
+# (see the note in requirements-cpu.txt). Needs MSVC Build Tools on the build machine.
+pysph==1.0b2

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   listDams, submitRun, pollUntilDone, getResult, openInParaview,
-  listRuns, getGeeStatus, getBlockageDetection, getSolverBackends,
+  listRuns, getGeeStatus, getBlockageDetection, getSolverBackends, getCapabilities,
 } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
@@ -61,6 +61,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // it, so both submit() and loadExisting() record it here.
   const [currentRunId, setCurrentRunId] = useState(null);
   const [pvStatus, setPvStatus] = useState("");
+  // Whether the API will open ParaView for THIS browser (GET /capabilities).
+  // null until answered, and treated as unavailable: a deployed dashboard, or a
+  // machine without ParaView, must not show a button that cannot work.
+  const [capabilities, setCapabilities] = useState(null);
   // Demo Mode: completed runs, loadable instantly with no compute. The only
   // way to load a previous run used to be typing a 32-character hex id.
   const [runs, setRuns] = useState([]);
@@ -76,6 +80,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
     refreshRuns();
     getGeeStatus().then(setGee).catch(() => setGee(null));
     getSolverBackends().then(setBackends).catch(() => setBackends(null));
+    getCapabilities().then(setCapabilities).catch((e) => setCapabilities({
+      paraview_available: false, paraview_reason: "unknown",
+      paraview_detail: `Could not ask the API whether ParaView is available: ${e.message}`,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -174,6 +182,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // A run can open in ParaView only if it wrote an XDMF, which only the SWE
   // path does. Read it off the loaded result rather than guessing from solver.
   const hasXdmf = Boolean(result?.exports?.some((e) => e.kind === "xdmf"));
+  const paraviewAvailable = Boolean(capabilities?.paraview_available);
 
   const submit = async () => {
     setStatus("submitting");
@@ -473,14 +482,20 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
           */}
           <button
             onClick={openParaview}
-            disabled={!hasXdmf || pvStatus === "launching ParaView…"}
+            disabled={!paraviewAvailable || !hasXdmf || pvStatus === "launching ParaView…"}
           >
             View in ParaView (3D)
           </button>
           <div style={{ marginTop: 4, fontSize: 11, color: "#666" }}>
-            {hasXdmf
-              ? "Opens the ParaView desktop app on the machine running the API."
-              : null}
+            {/* Availability is checked before the dataset: no dataset matters
+                only once there is a ParaView to open it in. */}
+            {!capabilities
+              ? "Checking whether ParaView is available…"
+              : !paraviewAvailable
+                ? capabilities.paraview_detail
+                : hasXdmf
+                  ? "Opens the ParaView desktop app on the machine running the API."
+                  : null}
           </div>
           {pvStatus && (
             <div style={{ marginTop: 4, fontSize: 11 }}>{pvStatus}</div>

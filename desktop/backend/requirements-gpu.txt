@@ -1,0 +1,11 @@
+# Frozen desktop backend, GPU variant: everything in the CPU variant, plus the
+# optional GPU stack from pyproject.toml's [gpu] extra, at the versions the
+# CUDA backend was measured with (docs/validation_findings.md §11-12).
+#
+# numba-cuda[cu12] brings NVVM and NVRTC as pip wheels, so no CUDA toolkit is
+# needed. An NVIDIA DRIVER still is, on the machine that runs the app: the
+# installer cannot bundle one, and the capability probe decides at run time.
+-r requirements-cpu.txt
+
+numba-cuda[cu12]==0.30.4
+pyopencl==2026.1.4

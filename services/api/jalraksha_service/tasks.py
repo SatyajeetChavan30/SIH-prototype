@@ -813,9 +813,12 @@ def _pool_surface_elevation(bed, j_dam: int, i_dam: int,
     then declines to invent one.
     """
     import sys
-    from pathlib import Path as _Path
 
-    tools_dir = str(_Path(__file__).resolve().parents[3] / "tools" / "paraview")
+    from jalraksha_service.runtime import resource_root
+
+    # The checkout's tools/paraview, or the same tree inside the frozen desktop
+    # bundle — without this a packaged build silently lost the pool elevation.
+    tools_dir = str(resource_root() / "tools" / "paraview")
     if tools_dir not in sys.path:
         sys.path.insert(0, tools_dir)
     try:

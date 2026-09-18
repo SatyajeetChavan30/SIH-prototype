@@ -23,7 +23,12 @@ Phases:
 For detailed constraints and testing strategy, see CLAUDE.md.
 """
 
-__version__ = "0.0.1-alpha"
+# THE single version source for the project. pyproject.toml reads it
+# (dynamic version), the FastAPI app reports it, and
+# `node desktop/scripts/sync-version.mjs` copies it into frontend/package.json
+# and desktop/package.json — the desktop installer's version. CI runs that
+# script with --check, so a hand-edited package.json fails the build.
+__version__ = "1.0.0"
 __author__ = "JalRaksha Team (SIH 2026)"
 
 

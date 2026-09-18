@@ -17,17 +17,17 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import threading
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from jalraksha_service import db
+import jalraksha
+from jalraksha_service import db, runtime
 from jalraksha_service.config import settings
 from jalraksha_service.schemas import (
     RunRequest, RunStatus, RunResult, GaugeResult, ExportRef,
@@ -41,7 +41,10 @@ from jalraksha_service.worker import celery_app
 settings.ensure_dirs()
 db.init_db()
 
-app = FastAPI(title="JalRaksha API", version="1.0", description="Dam-break screening + 3D viz service")
+# One version string for the whole project: jalraksha.__version__, which
+# pyproject.toml, both package.json files and the desktop installer all follow.
+app = FastAPI(title="JalRaksha API", version=jalraksha.__version__,
+              description="Dam-break screening + 3D viz service")
 
 # The React dev server (Vite, localhost:3000) and the API (localhost:8000) are
 # different origins; the browser blocks the fetches in api.js without this.
@@ -137,22 +140,15 @@ def _probe_cuda_out_of_process() -> Dict[str, Any]:
     # SWE solver needs numba-cuda, the near-field SPH needs PySPH's OpenCL path
     # (pyopencl plus the compyle repair in sph/compyle_compat.py). A machine can
     # have one and not the other, and the control panel has to say which.
-    code = (
-        "import json;"
-        "from jalraksha.solver.backend import cuda_probe;"
-        "from jalraksha.sph.pysph_runner import resolve_sph_backend;"
-        "ok, detail, device = cuda_probe();"
-        "sph = resolve_sph_backend('auto');"
-        "print(json.dumps({'cuda_available': bool(ok), 'cuda_reason': detail,"
-        " 'cuda_device': device,"
-        " 'sph_gpu_available': sph['sph_backend'] != 'cpu',"
-        " 'sph_gpu_reason': sph['reason']}))"
-    )
+    #
+    # The probe code lives in backend_probe.py rather than a `-c` string, because
+    # the frozen desktop backend has no `-c`; runtime.probe_argv() picks the
+    # module form in a checkout and the exe's subcommand when frozen.
     try:
         probe = subprocess.run(
-            [sys.executable, "-c", code],
+            runtime.probe_argv(),
             capture_output=True, text=True, timeout=120,
-            cwd=str(Path(__file__).resolve().parents[3]),
+            cwd=str(runtime.subprocess_cwd()), env=runtime.child_env(),
         )
         payloads = [ln for ln in probe.stdout.splitlines() if ln.startswith("{")]
         if probe.returncode == 0 and payloads:
@@ -348,12 +344,12 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     with handle as fh:
         json.dump(payload, fh)
 
-    repo_root = Path(__file__).resolve().parents[3]
-    env = dict(os.environ)
-    # The child needs both the service package and the library on its path.
-    env["PYTHONPATH"] = os.pathsep.join(
-        filter(None, [str(repo_root / "services" / "api"), str(repo_root),
-                      env.get("PYTHONPATH", "")]))
+    # The repo root in a checkout; the user's data root in the frozen desktop
+    # build, never the read-only install directory (runtime.py explains both).
+    repo_root = runtime.subprocess_cwd()
+    # In a checkout the child needs both the service package and the library on
+    # its path; a frozen exe carries its own.
+    env = runtime.child_env()
 
     # DETACHED, so a long run outlives the server that started it.
     #
@@ -399,7 +395,7 @@ def _spawn_run_subprocess(run_id: str, task_args: List[Any]) -> None:
     # discard the solver's progress. This is better than the old behaviour
     # anyway — the log survives the server and is attributable to one run,
     # instead of being interleaved with every other request in the API's stdout.
-    argv = [sys.executable, "-m", "jalraksha_service.run_worker", handle.name]
+    argv = runtime.worker_argv(handle.name)
     try:
         subprocess.Popen(argv, cwd=str(repo_root), env=env,
                          stdout=log_handle, stderr=subprocess.STDOUT,
@@ -1132,8 +1128,81 @@ def gee_blockage(
     )
 
 
+#: Client addresses that share a machine with this process. A GUI launched by
+#: open-paraview appears on the API's own desktop, so it only means something
+#: to a caller on that same desktop.
+_LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+def _paraview_script() -> Path:
+    """render_static.py, from the checkout or from the frozen bundle."""
+    return runtime.resource_root() / "paraview" / "render_static.py"
+
+
+def paraview_availability(client_host: str | None) -> Dict[str, Any]:
+    """
+    Whether POST /runs/{id}/open-paraview can work for THIS caller.
+
+    Four things must hold, and each failure has its own reason so the control
+    panel can say which instead of offering a button that cannot work:
+
+      not_local           the caller is not on the API's machine. The GUI would
+                          open on a desktop nobody asking can see — a deployed
+                          API must never offer this to a remote browser.
+      paraview_not_found  paraview.exe (the GUI) is not where settings say
+      pvpython_not_found  pvpython.exe (builds the .pvsm) is not there either.
+                          This used to be unchecked, so a missing pvpython
+                          escaped as an uncaught FileNotFoundError — a bare 500.
+      script_not_found    paraview/render_static.py is absent from this build
+    """
+    if (client_host or "") not in _LOOPBACK_HOSTS:
+        return {
+            "paraview_available": False, "paraview_reason": "not_local",
+            "paraview_detail": (
+                "Opening ParaView launches a desktop window on the machine running "
+                "the API, so it is only offered to a browser on that same machine."
+            ),
+        }
+    if not os.path.exists(settings.PARAVIEW_EXE):
+        return {
+            "paraview_available": False, "paraview_reason": "paraview_not_found",
+            "paraview_detail": (
+                f"ParaView is not at {settings.PARAVIEW_EXE!r}. Set "
+                f"JALRAKSHA_PARAVIEW_EXE to the full path of paraview.exe (the GUI "
+                f"— not pvpython.exe, which is headless)."
+            ),
+        }
+    if not os.path.exists(settings.PVPYTHON_EXE):
+        return {
+            "paraview_available": False, "paraview_reason": "pvpython_not_found",
+            "paraview_detail": (
+                f"pvpython is not at {settings.PVPYTHON_EXE!r}; it builds the "
+                f"ParaView state file. Set JALRAKSHA_PVPYTHON_EXE to its full path."
+            ),
+        }
+    script = _paraview_script()
+    if not script.exists():
+        return {
+            "paraview_available": False, "paraview_reason": "script_not_found",
+            "paraview_detail": f"The ParaView render script is missing from this build ({script}).",
+        }
+    return {"paraview_available": True, "paraview_reason": "available",
+            "paraview_detail": f"ParaView at {settings.PARAVIEW_EXE}"}
+
+
+@app.get("/capabilities")
+def capabilities(request: Request) -> Dict[str, Any]:
+    """
+    Machine-local features the dashboard may offer to THIS caller.
+
+    Separate from GET /backends, which is about compute. Answered per request
+    because availability depends on where the caller is, not only on this host.
+    """
+    return paraview_availability(request.client.host if request.client else None)
+
+
 @app.post("/runs/{run_id}/open-paraview")
-def open_in_paraview(run_id: str) -> Dict[str, Any]:
+def open_in_paraview(run_id: str, request: Request) -> Dict[str, Any]:
     """
     Launch the ParaView DESKTOP GUI on the API host, showing this run in 3D.
 
@@ -1151,7 +1220,11 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
       launched            ok — a new ParaView window is opening
       not_done            the run has not finished
       no_dataset          no XDMF for this run (see below)
+      not_local           the caller is not on this machine (see
+                          paraview_availability)
       paraview_not_found  the executable is not where settings say it is
+      pvpython_not_found  pvpython is not where settings say it is
+      script_not_found    render_static.py is missing from this build
       state_build_failed  pvpython could not build the .pvsm (stderr included)
 
     `no_dataset` is expected for two legitimate reasons: the run used
@@ -1164,7 +1237,6 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
     says, and is more useful than an error — a second view of the same run at a
     different camera angle is a reasonable thing to want.
     """
-    import os
     import subprocess
 
     run = _run_status(run_id)
@@ -1188,17 +1260,12 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
         }
 
     paraview_exe = settings.PARAVIEW_EXE
-    if not os.path.exists(paraview_exe):
-        return {
-            "launched": False, "reason": "paraview_not_found",
-            "detail": (
-                f"ParaView is not at {paraview_exe!r}. Set JALRAKSHA_PARAVIEW_EXE "
-                f"to the full path of paraview.exe (the GUI — not pvpython.exe, "
-                f"which is headless). If the API is running in a container or on "
-                f"a remote host, this endpoint cannot work at all: it opens a "
-                f"desktop window on the API's own machine."
-            ),
-        }
+    # The same checks GET /capabilities reports, so the button the dashboard
+    # enabled and the launch it triggers cannot disagree.
+    available = paraview_availability(request.client.host if request.client else None)
+    if not available["paraview_available"]:
+        return {"launched": False, "reason": available["paraview_reason"],
+                "detail": available["paraview_detail"]}
 
     # A .pvsm bakes in the dataset path, so it is per-run and cannot be a shared
     # template. Build it once and reuse it on subsequent clicks.
@@ -1217,7 +1284,7 @@ def open_in_paraview(run_id: str) -> Dict[str, Any]:
     xdmf_path = str(Path(xdmf_path).resolve())
     state_path = (settings.DATA_DIR / "simulation" / f"{run_id}.pvsm").resolve()
 
-    render_script = Path(__file__).resolve().parents[3] / "paraview" / "render_static.py"
+    render_script = _paraview_script()
     # Rebuild when the state is missing, older than the dataset, OR older than the
     # code that generates it. A .pvsm bakes in the dataset's timestep values and
     # animation frame count, so re-running scripts/backfill_xdmf.py with different

@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jalraksha"
-version = "0.0.1-alpha"
+# Version lives in jalraksha/__init__.py (__version__), the single source.
+dynamic = ["version"]
 description = "Dam-break inundation modelling system combining 2D SWE solver with 3D SPH near-field dynamics"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -101,6 +102,9 @@ packages = [
     "jalraksha.validation",
 ]
 package-dir = {"" = "."}
+
+[tool.setuptools.dynamic]
+version = {attr = "jalraksha.__version__"}
 
 [tool.setuptools.package-data]
 jalraksha = ["*.yaml", "*.yml"]

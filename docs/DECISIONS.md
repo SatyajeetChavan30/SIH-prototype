@@ -404,6 +404,65 @@ GPU, CI, and the fallback itself).
 
 ---
 
+## 15. Windows Desktop App: Electron Over the Existing Service, No Data Inside
+
+**Context:** The dashboard needed a Windows installer that runs fully on one
+machine, offline, without a Python installation, and without replacing the React
+app or the FastAPI service that the browser and Docker deployments still use.
+
+**Decision:** An Electron shell (`desktop/`) starts the service, frozen with
+PyInstaller (onedir, Python 3.14), on a free 127.0.0.1 port. It serves the
+existing Vite build from a loopback static server and shows it in a sandboxed
+window. The API URL reaches the page through a read-only preload object
+(`window.jalrakshaDesktop`). Writable state lives under
+`%LOCALAPPDATA%\JalRaksha`. Two installers are built, CPU and GPU. The installers
+contain no data; completed runs arrive as `.jrpack` data packs imported from the
+File menu.
+
+**Rationale:**
+- **Reuse, not a rewrite.** The service's only frozen-build blockers were how it
+  starts child processes (`-m` / `-c`) and where it looks for `paraview/` and
+  `tools/`. `jalraksha_service/runtime.py` answers both, and returns the
+  checkout's command lines unchanged, so nothing that computes a result changed.
+- **A loopback HTTP origin instead of `file://` or a custom scheme.** The built
+  bundle and Cesium's workers load unmodified, with no CORS workarounds.
+- **No token or credential in any installer.** The desktop frontend build forces
+  the Cesium token empty, and the build script fails if the developer's token
+  appears in the output. Tokens and Earth Engine settings are read at runtime
+  from the user's own `desktop.json`.
+- **Packs are a CLI, not an endpoint.** Import writes files and database rows
+  from an arbitrary path; over HTTP any local web page could trigger that. Every
+  check runs before any write, nothing is overwritten, and an undeclared
+  synthetic run is refused.
+
+**Consequences:**
+- **Quitting with active runs is a choice.** The app asks "Stop runs and quit" or
+  "Keep running in background". Keeping them means stopping the backend WITHOUT
+  its process tree, because detached workers are still its children by pid.
+- **GPU needs a driver the installer cannot bundle.** The GPU installer bundles
+  numba-cuda and pyopencl but not an NVIDIA driver. The capability probe
+  decides at run time, and the CPU installer's probe says numba-cuda is absent.
+- **CPU SPH still needs MSVC on the target machine.** PySPH's CPU path compiles
+  Cython at run time. The build machine needs MSVC too, and PySPH is built
+  without build isolation on 3.14.
+- **Basemaps need internet.** OSM tiles and Cesium ion imagery are online
+  services, so the offline guarantee covers the solver and the run overlays,
+  not the basemaps.
+- **One version string.** `jalraksha.__version__` is the single version source
+  (pyproject dynamic version, FastAPI, both `package.json` files via
+  `desktop/scripts/sync-version.mjs --check` in CI).
+- **No auto-update.** `.github/workflows/windows-installer.yml` builds new
+  installers on every push to `main`.
+
+**Rejected alternatives:**
+- **A native Windows UI:** a second dashboard.
+- **PyInstaller onefile:** unpacks to %TEMP% for every worker and pool process.
+- **Serving the UI from FastAPI:** changes the web deployment's API surface.
+- **Bundling a demo dataset:** the user asked for import instead; packs keep
+  installers small and data licensing per file.
+
+---
+
 ## References & Future Refinements
 
 - **Numerical analysis:** Toro 2001, Audusse 2004 (cited above)

@@ -3,10 +3,13 @@ import { Viewer, Entity } from "resium";
 import * as Cesium from "cesium";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { DAM, GAUGES, camerasFor } from "../data/entities.js";
+import { TILES_URL, CESIUM_ION_TOKEN, CESIUM_ION_ASSET_ID } from "../runtimeConfig.js";
 
-const TILES = import.meta.env.VITE_TILES_URL || "http://localhost:8080";
-const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "";
-const ION_ASSET_ID = import.meta.env.VITE_CESIUM_ION_ASSET_ID || "";
+// Build-time VITE_* in a browser; injected at runtime by the desktop app, whose
+// installer carries no Cesium token (runtimeConfig.js).
+const TILES = TILES_URL;
+const ION_TOKEN = CESIUM_ION_TOKEN;
+const ION_ASSET_ID = CESIUM_ION_ASSET_ID;
 const EPOCH = "2026-01-01T00:00:00Z";
 
 // Set at MODULE scope, before any component renders.
