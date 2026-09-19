@@ -313,6 +313,14 @@
   padding: 8px 0;
 }
 
+/* A server-rendered figure (comparison PNGs). */
+.jr-figure {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+
 /* ------------------------------------------------------------ primitives -- */
 
 .jr-pill {
