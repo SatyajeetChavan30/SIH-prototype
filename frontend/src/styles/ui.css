@@ -277,6 +277,23 @@
   margin-top: 24px;
 }
 
+/* Spacing steps, for the few places a flow layout needs one gap. */
+.jr-mt-8 {
+  margin-top: 8px;
+}
+
+.jr-mt-12 {
+  margin-top: 12px;
+}
+
+.jr-mt-16 {
+  margin-top: 16px;
+}
+
+.jr-mb-12 {
+  margin-bottom: 12px;
+}
+
 .jr-divider {
   height: 1px;
   margin: 16px 0;
@@ -599,6 +616,13 @@
 
 .jr-caveat__title + * {
   margin-top: 4px;
+}
+
+/* A note attached to one table row (a gauge's no-arrival reason, a minority
+   arrival). */
+.jr-row-note {
+  margin-top: 4px;
+  max-width: 380px;
 }
 
 .jr-caveat__detail {

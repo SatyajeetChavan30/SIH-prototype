@@ -1,4 +1,5 @@
 import React from "react";
+import { Caveat, Chip, DataTable, Empty } from "../ui/index.jsx";
 
 /**
  * Downstream gauge table — the headline output of the whole system.
@@ -28,74 +29,78 @@ export default function GaugesPanel({ result, dam }) {
       }));
 
   if (rows.length === 0) {
-    return <div style={S.empty}>No downstream corridor is defined for this dam.</div>;
+    return <Empty>No downstream corridor is defined for this dam.</Empty>;
   }
 
   return (
-    <div style={S.page}>
-      <h3 style={S.h3}>
+    <div className="jr-page">
+      <h3 className="jr-h1">
         Downstream gauges{dam?.name ? ` — ${dam.name}` : ""}
       </h3>
       {!hasRun && (
-        <div style={S.lede}>
+        <p className="jr-lede">
           Reference corridor. Run or load a simulation to populate arrival times.
-        </div>
+        </p>
       )}
 
-      <table style={S.table}>
+      <DataTable className="jr-measure-wide">
         <thead>
           <tr>
-            <Th>Town</Th>
-            <Th align="right">Distance</Th>
-            <Th align="right">Arrival (median)</Th>
-            <Th align="right">5th–95th</Th>
-            <Th align="right">Peak depth</Th>
-            <Th>Hazard</Th>
+            <th>Town</th>
+            <th className="num">Distance</th>
+            <th className="num">Arrival (median)</th>
+            <th className="num">5th–95th</th>
+            <th className="num">Peak depth</th>
+            <th>Hazard</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((g) => {
             const hazard = hazardClass(g.max_depth_m);
             return (
-              <tr key={g.gauge_name} style={S.tr}>
-                <Td>
+              <tr key={g.gauge_name}>
+                <td>
                   <strong>{g.gauge_name}</strong>
-                  {g.river && <span style={S.river}> · {g.river}</span>}
-                  {g.note && <div style={S.note}>{g.note}</div>}
-                </Td>
-                <Td align="right">{fmtKm(g.distance_km)}</Td>
-                <Td align="right" strong={g.arrival_time_s != null}>
+                  {g.river && <span className="muted"> · {g.river}</span>}
+                  {g.note && (
+                    <Caveat compact className="jr-row-note">{g.note}</Caveat>
+                  )}
+                </td>
+                <td className="num">{fmtKm(g.distance_km)}</td>
+                <td className={g.arrival_time_s != null ? "num strong" : "num muted"}>
                   {fmtMin(g.arrival_time_s)}
-                </Td>
-                <Td align="right" muted>
+                </td>
+                <td className="num muted">
                   {g.arrival_p05_s != null && g.arrival_p95_s != null
                     ? `${fmtMin(g.arrival_p05_s)} – ${fmtMin(g.arrival_p95_s)}`
                     : "—"}
-                </Td>
-                <Td align="right">
+                </td>
+                <td className="num">
                   {g.max_depth_m != null ? `${g.max_depth_m.toFixed(2)} m` : "—"}
-                </Td>
-                <Td>
+                </td>
+                <td>
+                  {/* Shape from the class, colour from the FD2320 mirror below:
+                      hazard colours are data and never live in the stylesheet. */}
                   {hazard && (
-                    <span style={{ ...S.badge, background: hazard.bg, color: hazard.fg }}>
+                    <Chip style={{ background: hazard.bg, color: hazard.fg }}>
                       {hazard.label}
-                    </span>
+                    </Chip>
                   )}
-                </Td>
+                </td>
               </tr>
             );
           })}
         </tbody>
-      </table>
+      </DataTable>
 
       {hasRun && rows.every((r) => r.arrival_time_s == null) && (
-        <div style={S.warn}>
+        <Caveat className="jr-measure jr-mt-12">
           The flood did not reach any gauge within the simulated time. Increase
           the simulated duration, or check that the domain contains the corridor.
-        </div>
+        </Caveat>
       )}
 
-      <p style={S.footnote}>
+      <p className="jr-note jr-measure jr-mt-16">
         Arrival times are the defensible output at 30 m DEM resolution. Point
         depths are indicative only — lead with arrival and inundation extent.
       </p>
@@ -138,40 +143,3 @@ function fmtMin(seconds) {
     ? `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60)}m`
     : `${minutes.toFixed(1)} min`;
 }
-
-function Th({ children, align = "left" }) {
-  return <th style={{ ...S.th, textAlign: align }}>{children}</th>;
-}
-
-function Td({ children, align = "left", strong, muted }) {
-  return (
-    <td
-      style={{
-        ...S.td,
-        textAlign: align,
-        fontWeight: strong ? 700 : 400,
-        color: strong ? "#1565C0" : muted ? "#888" : "#222",
-      }}
-    >
-      {children}
-    </td>
-  );
-}
-
-const S = {
-  page: { padding: 16, overflowY: "auto", height: "100%" },
-  h3: { margin: "0 0 8px" },
-  lede: { fontSize: 12, color: "#777", marginBottom: 10 },
-  table: { width: "100%", maxWidth: 900, borderCollapse: "collapse", fontSize: 13 },
-  th: { fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4, color: "#666",
-        borderBottom: "2px solid #ddd", padding: "6px 8px", whiteSpace: "nowrap" },
-  td: { padding: "8px", verticalAlign: "top" },
-  tr: { borderBottom: "1px solid #f0f0f0" },
-  river: { color: "#888", fontWeight: 400, fontSize: 11 },
-  note: { fontSize: 10, color: "#7a3e00", marginTop: 3, maxWidth: 320, lineHeight: 1.4 },
-  badge: { fontSize: 10, fontWeight: 700, borderRadius: 3, padding: "2px 7px" },
-  warn: { marginTop: 12, padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
-          background: "#fff4e5", borderRadius: 4, color: "#7a3e00", maxWidth: 760 },
-  footnote: { fontSize: 11, color: "#777", marginTop: 14, maxWidth: 760, lineHeight: 1.45 },
-  empty: { padding: 16, fontSize: 12, color: "#777" },
-};
