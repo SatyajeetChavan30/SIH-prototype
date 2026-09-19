@@ -3,6 +3,15 @@ import {
   Button, Card, Caveat, Chip, DataTable, Empty, SectionLabel, Stat, TabPill,
 } from "./index.jsx";
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
+import DemUpdateBanner from "../panels/DemUpdateBanner.jsx";
+
+// Sample props for the real banner component (no stored run carries one).
+const SAMPLE_DEM_UPDATE = {
+  observation_source: "manual_operator_input",
+  barrier: { lat: 30.4861, lon: 79.7348, crest_height_m: 110, width_m_final: 1500 },
+  lake: { volume_mm3: 22.177, area_km2: 0.79, spill_detected_at_m: null },
+  raster: { cells_modified: 412, max_elevation_change_m: 108.4 },
+};
 
 /**
  * Development-only gallery of the primitives, opened with `?ui-preview` on the
@@ -67,6 +76,9 @@ export default function Preview() {
             The official Deltares kernel produced the depth field.
           </Caveat>
         </div>
+
+        <SectionLabel>DemUpdateBanner (real component, sample props)</SectionLabel>
+        <DemUpdateBanner demUpdate={SAMPLE_DEM_UPDATE} />
 
         <SectionLabel>Stats</SectionLabel>
         <div className="jr-row">
