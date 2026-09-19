@@ -202,6 +202,64 @@
   color: var(--ink-2);
 }
 
+/* Help text under a control. Never below 12 px. */
+.jr-hint {
+  margin: 4px 0 0;
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+}
+
+.jr-hint--ink {
+  color: var(--ink);
+}
+
+.jr-hint--danger {
+  color: var(--danger-ink);
+}
+
+.jr-form label.jr-label-first {
+  margin-top: 0;
+}
+
+.jr-form label.jr-inline.is-disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.jr-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+/* A heading inside the sidebar. */
+.jr-side-h {
+  margin: 0 0 6px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 600;
+}
+
+.jr-list {
+  margin: 8px 0 4px;
+  padding-left: 18px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-playback {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.jr-mb-8 {
+  margin-bottom: 8px;
+}
+
 .jr-field-row {
   display: flex;
   gap: 8px;
@@ -210,6 +268,10 @@
 .jr-field-row > * {
   flex: 1;
   min-width: 0;
+}
+
+.jr-field-row > .jr-btn {
+  flex: none;
 }
 
 /* ---------------------------------------------------------------- pages -- */
