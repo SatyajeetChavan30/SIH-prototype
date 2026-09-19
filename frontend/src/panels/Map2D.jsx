@@ -210,7 +210,7 @@ export function SarStatus({ sar, show, onToggle }) {
   // scene, scored its mask at 0.486 precision against JRC permanent water,
   // and declined to show it — the quality guard working exactly as intended.
   // Collapsed to one line, expandable, because the full reason is worth reading
-  // but not worth dominating the view.
+  // but not worth dominating the view. Clicking the expanded box folds it back.
   if (unavailable && !expanded) {
     return (
       <div
@@ -228,9 +228,15 @@ export function SarStatus({ sar, show, onToggle }) {
     <div
       role="status"
       className="jr-overlay jr-map-status"
+      // Only the refusal collapses: the live/cached box holds the layer toggle.
+      onClick={unavailable ? () => setExpanded(false) : undefined}
+      title={unavailable ? "Click to collapse" : undefined}
       // The border colour is the observation's STATE (refused / cached / live),
       // kept as the three values it always had.
-      style={{ borderColor: unavailable ? "#e65100" : cached ? "#f9a825" : "#1565C0" }}
+      style={{
+        borderColor: unavailable ? "#e65100" : cached ? "#f9a825" : "#1565C0",
+        cursor: unavailable ? "pointer" : undefined,
+      }}
     >
       <div className="jr-overlay__title">
         {unavailable

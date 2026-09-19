@@ -8,7 +8,7 @@
         "scripts/run_api.py"
       ],
       "port": 8000,
-      "autoPort": true
+      "autoPort": false
     },
     {
       "name": "frontend",
