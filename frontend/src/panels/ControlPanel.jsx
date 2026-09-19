@@ -410,14 +410,22 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       )}
       {backend === "cpu" && (
         <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
-          Same float64 physics, measured 11–20x slower than the GPU on this
-          machine. Useful to keep the card free for a run already in flight.
+          Same float64 physics for the SWE ensemble and the near-field SPH,
+          measured 11–20x slower than the GPU for the ensemble. Useful to keep
+          the card free for a run already in flight.
+        </div>
+      )}
+      {backend !== "cpu" && backends && !backends.sph_gpu_available && (
+        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+          Near-field SPH will run on the CPU: {backends.sph_gpu_reason}. The SWE
+          ensemble still uses the GPU, and the SPH tab names whichever engine
+          and backend actually produced its result.
         </div>
       )}
       {solver === "delft3d" && (
         <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
           The Deltares kernel is a CPU binary whatever this is set to; the
-          choice applies to the SWE ensemble.
+          choice applies to the SWE ensemble and the near-field SPH.
         </div>
       )}
       {isBlockage && blockageIncomplete && (

@@ -343,6 +343,10 @@ class SolverBackendInfo(BaseModel):
     cuda_available: bool = False
     cuda_device: Optional[str] = None
     cuda_reason: Optional[str] = None
+    # The near-field SPH answers separately: it runs through PySPH's OpenCL
+    # path, not numba-cuda, so a machine can have one and not the other.
+    sph_gpu_available: bool = False
+    sph_gpu_reason: Optional[str] = None
 
 
 class RunStatus(BaseModel):
