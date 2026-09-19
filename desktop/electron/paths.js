@@ -27,6 +27,7 @@ const CONFIG_KEYS = Object.freeze([
   "paraviewExe", // JALRAKSHA_PARAVIEW_EXE
   "pvpythonExe", // JALRAKSHA_PVPYTHON_EXE
   "dflowfmExe", // JALRAKSHA_DFLOWFM_EXE
+  "dualsphysicsDir", // JALRAKSHA_DUALSPHYSICS_DIR; DualSPHysics is never bundled (LGPL, external program)
   "python", // development mode only: the interpreter that runs the source checkout
 ]);
 

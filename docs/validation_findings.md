@@ -1120,3 +1120,39 @@ That is a DECISION, not a measured speed-up, and nothing above supports claiming
 GPU SPH is faster; the host-bound figures stand as the record. The CPU remains
 one setting away (the dashboard's CPU option or `JALRAKSHA_SPH_BACKEND=cpu`).
 The SWE solver's GPU backend (§11) is unaffected and remains 11–20× faster.
+
+## 13. Near-field SPH in DualSPHysics on the GPU (measured 2026-09-14)
+
+§12's PySPH GPU path is host-bound, so near-field SPH now runs in DualSPHysics
+v5.4 (`jalraksha/sph/dualsphysics_runner.py`). Build machine: RTX 4050 Laptop
+GPU (compute 8.9), driver CUDA 13.3. The release's CUDA kernels ran on it
+unmodified; `Run.out` reports `RunMode="Pos-Cell - Single-GPU"`.
+
+**Gates**, each backend on its own physics:
+
+| gate | GPU (CUDA) | CPU build (OpenMP, 16 threads) |
+| :--- | :--- | :--- |
+| still water, 3 m column, dp 0.1 m, 1 s, 12,000 fluid | max speed 0.174 m/s, density error 0.32 %, surface drop −1.4 mm, 0 excluded — **9.7 s** | max speed 0.174 m/s, density error 0.32 %, 0 excluded — **101.2 s** |
+| synthetic valley, 40,666 fluid, 6 s | max speed 24.4 m/s against a 33.0 m/s energy bound; front 72 → 115 m; 0 excluded — 17.9 s | not run |
+
+The fitted hydrostatic slope in the still-water tank was 10 % above ρg on both
+backends after 1 s; it is reported, not gated, as in §12.
+
+**Production path** (`tasks._run_near_field_sph`, Khadakwasla, 1.2 × 1.2 km at
+30 m, breach 50 m, Q 11,609 m³/s, available head 65.6 m, energy bound
+35.9 m/s, 15 s simulated):
+
+| budget | backend | fluid particles | spacing | max speed | wall clock |
+| ---: | :--- | ---: | ---: | ---: | ---: |
+| 250,000 (default) | GPU | 232,426 | 3.85 m | 34.9 m/s | **89.4 s**, GPU 90 % / 58 W |
+| 30,000 | GPU | 28,178 | 7.80 m | 28.5 m/s | **14.7 s** |
+| 30,000 | CPU build | 28,178 | 7.80 m | 29.6 m/s | **143.2 s** |
+
+No particle was excluded in any of these runs. At the default budget: max depth
+33.6 m, front advanced 246.5 m at 16.9 m/s and did not exit the window.
+
+**What is and is not claimed.** The wall clocks are measured and comparable
+(same case, same particles, same release). GPU and CPU runs are not
+bit-identical and are not compared particle by particle. DualSPHysics and PySPH
+use different c0 and smoothing-length rules (DECISIONS §16), so a DualSPHysics
+result is not a PySPH result computed faster.

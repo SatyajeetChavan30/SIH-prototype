@@ -192,8 +192,8 @@ def _apply_blockage_provenance(
 # The window has to outlast the run: a Tehri-scale surge front moves at tens of
 # m/s, so a 600 m window was exhausted in about 12 s and everything after that
 # was particles in free flight past the last DEM row. 1.2 km at 15 s keeps the
-# front inside the terrain, and pysph_runner reports front_exited_domain when it
-# does not.
+# front inside the terrain, and both SPH engines report front_exited_domain when
+# it does not.
 SPH_WINDOW_RADIUS_KM = 0.6
 SPH_WINDOW_RESOLUTION_M = 30.0   # native Copernicus GLO-30 posting
 SPH_DURATION_S = 15.0
@@ -219,13 +219,24 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
         possible. Never returns fabricated particles — the caller renders the
         reason instead.
     """
-    from jalraksha.sph.pysph_runner import (
+    # The engine module picks DualSPHysics (native CUDA) when it is installed and
+    # PySPH otherwise; the result names both the engine and the hardware.
+    from jalraksha.sph.engine import (
         SPHUnavailableError,
         run_near_field_sph,
         sph_backend_for_solver,
     )
     from jalraksha.terrain.breach import synthesize_scenario_ensemble, ensemble_statistics
     from jalraksha.terrain.conditioning import load_dem_as_grid
+
+    # Per-run size overrides (scripts/run_khadakwasla_drainage_check.py sets
+    # them). Absent, the module constants apply and nothing changes. The particle
+    # budget is passed only when given, so each engine otherwise keeps its own
+    # default (DualSPHysics 250k, PySPH 9k).
+    window_radius_km = float(dam_config.get("sph_window_radius_km") or SPH_WINDOW_RADIUS_KM)
+    duration_s = float(dam_config.get("sph_duration_s") or SPH_DURATION_S)
+    budget = dam_config.get("sph_target_particles")
+    size_kwargs = {"target_particles": int(budget)} if budget else {}
 
     try:
         dem_path = _resolve_dem(dam_config)
@@ -236,7 +247,7 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
         _grid, bed = load_dem_as_grid(
             dem_path, dam_config["lat"], dam_config["lon"],
             target_resolution=SPH_WINDOW_RESOLUTION_M,
-            domain_radius_km=SPH_WINDOW_RADIUS_KM,
+            domain_radius_km=window_radius_km,
         )
     except Exception as exc:
         return None, f"Could not load the near-field DEM window ({type(exc).__name__}: {exc})"
@@ -263,15 +274,15 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
             reservoir_depth_m=reservoir_depth,
             breach_width_m=breach_width,
             q_peak_m3_s=q_peak,
-            duration_s=SPH_DURATION_S,
+            duration_s=duration_s,
             dam_name=dam_config.get("name", "Dam"),
-            # One control governs both engines: the run's compute backend
-            # (main.py::submit_run puts it on dam_config) maps to PySPH's,
-            # cuda -> prefer_opencl. A GPU request that cannot run degrades to the CPU
-            # and says so in sph_backend_reason rather than losing the SPH
-            # result -- sph_backend_for_solver explains why that differs from
-            # the SWE solver, which raises instead.
+            # One control governs both solvers: the run's compute backend
+            # (main.py::submit_run puts it on dam_config) maps to the SPH one.
+            # cuda -> the strict "gpu", exactly like the SWE ensemble: a GPU
+            # failure lands in the except below as "no SPH result" with its
+            # reason, never as a CPU run. auto keeps the labelled CPU fallback.
             backend=sph_backend_for_solver(dam_config.get("solver_backend")),
+            **size_kwargs,
         )
     except SPHUnavailableError as exc:
         return None, str(exc)
@@ -280,6 +291,8 @@ def _run_near_field_sph(dam_config: Dict[str, Any]) -> tuple:
 
     result["breach_width_m"] = breach_width
     result["q_peak_m3_s"] = q_peak
+    result["sph_window_radius_km"] = window_radius_km
+    result["sph_target_particles"] = int(budget) if budget else None
     return result, None
 
 
@@ -1099,12 +1112,12 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
     SPH vs Delft3D-class comparison, in the service layer so the
     React Comparison tab (brief §5.7) has real data via GET /runs/{id}/comparison.
 
-    The SPH side is a REAL PySPH WCSPH run over the dam's own terrain
-    (jalraksha.sph.pysph_runner). It used to be fabricated: particle positions
-    drawn from np.random.uniform, and "gauge arrivals" from a wave-celerity
-    formula plus np.random.normal noise, rendered in the dashboard as a
-    simulation result. If PySPH cannot run, this function records that fact and
-    the tab says so — it never substitutes numbers.
+    The SPH side is a REAL SPH run over the dam's own terrain (jalraksha.sph.engine:
+    DualSPHysics, or PySPH where DualSPHysics is not installed). It used to be
+    fabricated: particle positions drawn from np.random.uniform, and "gauge
+    arrivals" from a wave-celerity formula plus np.random.normal noise, rendered
+    in the dashboard as a simulation result. If SPH cannot run, this function
+    records that fact and the tab says so — it never substitutes numbers.
 
     NO SPH GAUGE ARRIVALS, BY CONSTRUCTION. The near-field domain is a few
     hundred metres over tens of seconds and cannot reach gauges at 13-58 km. The
@@ -1485,6 +1498,11 @@ def _sph_summary(sph_res: Dict[str, Any] | None,
         "available": True,
         "engine": sph_res.get("engine"),
         "engine_label": sph_res.get("engine_label"),
+        "sph_engine": sph_res.get("sph_engine"),
+        "sph_backend": sph_res.get("sph_backend"),
+        "sph_backend_label": sph_res.get("sph_backend_label"),
+        "sph_backend_reason": sph_res.get("sph_backend_reason"),
+        "n_escaped": sph_res.get("n_escaped"),
         "coupling": sph_res.get("coupling"),
         "reaches_downstream_gauges": sph_res.get("reaches_downstream_gauges"),
         "n_fluid": n_fluid,
@@ -1501,6 +1519,8 @@ def _sph_summary(sph_res: Dict[str, Any] | None,
         "domain_width_m": sph_res.get("domain_width_m"),
         "breach_width_m": sph_res.get("breach_width_m"),
         "q_peak_m3_s": sph_res.get("q_peak_m3_s"),
+        "sph_window_radius_km": sph_res.get("sph_window_radius_km"),
+        "sph_target_particles": sph_res.get("sph_target_particles"),
         "front_time_s": sample(sph_res.get("front_time_s"), 1),
         "front_position_m": sample(sph_res.get("front_position_m"), 1),
         "particles": {

@@ -93,6 +93,7 @@ function buildBackendEnv({ baseEnv, paths, config, packaged }) {
     paraviewExe: "JALRAKSHA_PARAVIEW_EXE",
     pvpythonExe: "JALRAKSHA_PVPYTHON_EXE",
     dflowfmExe: "JALRAKSHA_DFLOWFM_EXE",
+    dualsphysicsDir: "JALRAKSHA_DUALSPHYSICS_DIR",
   };
   for (const [key, variable] of Object.entries(mapping)) {
     if (config[key]) env[variable] = config[key];

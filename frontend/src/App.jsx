@@ -56,6 +56,10 @@ function Workspace() {
           keyframes: (m.keyframes || []).map((kf) => ({
             ...kf,
             png_url: new URL(kf.png_url, manifestUrl).href,
+            // Web-Mercator warp for Leaflet (keyframes.py); absent on older runs.
+            ...(kf.png_url_mercator
+              ? { png_url_mercator: new URL(kf.png_url_mercator, manifestUrl).href }
+              : {}),
           })),
         }))
         .then(setManifest)

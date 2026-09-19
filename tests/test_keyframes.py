@@ -137,6 +137,104 @@ def test_manifest_json_serializable(tmp_path):
     json.dumps(data)
 
 
+class TestOverlayRegistration:
+    """
+    The overlay must land where the flood is, not near it.
+
+    Khadakwasla's 500 x 400 km run drew its flood band beside the Bhima near
+    Daund: the PNG was the raw UTM grid placed inside a lat/lon box built from
+    two corners. These tests put ONE wet cell at a known UTM position and check
+    that each warped PNG has it at that position's true lat/lon, within a pixel.
+    """
+
+    # The real 500 x 400 km domain's geometry in EPSG:32643, at 5 km cells so
+    # the test stays fast. The error being tested does not depend on cell size.
+    GRID = {"nx": 100, "ny": 80, "dx": 5000.0, "dy": 5000.0,
+            "x0": 289962.5, "y0": 1839707.0, "crs": "EPSG:32643"}
+    WET_I, WET_J = 62, 57   # column (east) and row (NORTH-counting), near Daund
+
+    def _export(self, tmp_path):
+        depth = np.zeros((self.GRID["ny"], self.GRID["nx"]), dtype=np.float32)
+        depth[self.WET_J, self.WET_I] = 5.0
+        result = {"dam_name": "Registration", "grid": dict(self.GRID),
+                  "depth_series": [{"time_s": 0.0, "depth": depth}]}
+        return export_keyframes(result, None, n_keyframes=1, out_dir=tmp_path).keyframes[0]
+
+    def _true_lonlat(self):
+        from pyproj import Transformer
+
+        x = self.GRID["x0"] + (self.WET_I + 0.5) * self.GRID["dx"]
+        y = self.GRID["y0"] + (self.WET_J + 0.5) * self.GRID["dy"]
+        return Transformer.from_crs("EPSG:32643", "EPSG:4326", always_xy=True).transform(x, y)
+
+    @staticmethod
+    def _alpha_near(png, col, row):
+        from PIL import Image
+
+        alpha = np.array(Image.open(png))[:, :, 3]
+        r, c = int(round(row)), int(round(col))
+        return alpha[max(r - 1, 0):r + 2, max(c - 1, 0):c + 2].max()
+
+    def test_geographic_png_places_the_cell_at_its_true_lat_lon(self, tmp_path):
+        from PIL import Image
+
+        kf = self._export(tmp_path)
+        lon, lat = self._true_lonlat()
+        west, south, east, north = kf.bounds
+        width, height = Image.open(tmp_path / kf.png_url).size
+        col = (lon - west) / (east - west) * width
+        row = (north - lat) / (north - south) * height
+        assert self._alpha_near(tmp_path / kf.png_url, col, row) == 255
+
+    def test_mercator_png_places_the_cell_at_its_true_lat_lon(self, tmp_path):
+        from PIL import Image
+
+        def merc_y(lat_deg):
+            return np.log(np.tan(np.pi / 4 + np.radians(lat_deg) / 2))
+
+        kf = self._export(tmp_path)
+        lon, lat = self._true_lonlat()
+        west, south, east, north = kf.bounds_mercator
+        width, height = Image.open(tmp_path / kf.png_url_mercator).size
+        col = (lon - west) / (east - west) * width
+        row = (merc_y(north) - merc_y(lat)) / (merc_y(north) - merc_y(south)) * height
+        assert self._alpha_near(tmp_path / kf.png_url_mercator, col, row) == 255
+
+    def test_the_old_placement_missed_by_kilometres(self):
+        """Pins the bug: two-corner bounds + raw grid put this cell > 1 km away."""
+        from pyproj import Transformer
+
+        g = self.GRID
+        to_ll = Transformer.from_crs("EPSG:32643", "EPSG:4326", always_xy=True)
+        (w, e), (s, n) = to_ll.transform([g["x0"], g["x0"] + g["nx"] * g["dx"]],
+                                         [g["y0"], g["y0"] + g["ny"] * g["dy"]])
+        lon_old = w + (self.WET_I + 0.5) / g["nx"] * (e - w)
+        lat_old = s + (self.WET_J + 0.5) / g["ny"] * (n - s)
+        lon, lat = self._true_lonlat()
+        miss_km = np.hypot((lon_old - lon) * 111.32 * np.cos(np.radians(lat)), (lat_old - lat) * 110.57)
+        assert miss_km > 1.0
+
+    def test_bounds_envelope_uses_all_four_corners(self):
+        from pyproj import Transformer
+
+        from jalraksha.export.keyframes import _reproject_bounds_utm_to_wgs84
+
+        g = self.GRID
+        xs = [g["x0"], g["x0"] + g["nx"] * g["dx"]]
+        ys = [g["y0"], g["y0"] + g["ny"] * g["dy"]]
+        lons, lats = Transformer.from_crs("EPSG:32643", "EPSG:4326", always_xy=True).transform(
+            [xs[0], xs[1], xs[1], xs[0]], [ys[0], ys[0], ys[1], ys[1]])
+        expected = [min(lons), min(lats), max(lons), max(lats)]
+        assert np.allclose(_reproject_bounds_utm_to_wgs84(g), expected, atol=1e-9)
+
+    def test_manifest_says_it_is_warped(self, tmp_path):
+        import json
+
+        self._export(tmp_path)
+        info = json.loads((tmp_path / "manifest.json").read_text())["simulation_info"]
+        assert info["overlay_warped"] is True
+
+
 def test_missing_depth_series_raises(tmp_path):
     result = {"dam_name": "Tehri", "grid": {"nx": 10, "ny": 10, "dx": 200, "dy": 200,
                                             "x0": 0, "y0": 0, "crs": 32644}}

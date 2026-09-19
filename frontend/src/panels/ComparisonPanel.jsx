@@ -169,8 +169,9 @@ function fmt(value, unit) {
  * The SPH half of this tab used to be np.random output — particle positions
  * from np.random.uniform and gauge arrivals from a celerity formula plus
  * Gaussian noise — rendered indistinguishably from solver results. It is now a
- * real PySPH WCSPH run, and when PySPH cannot run there is NO SPH result and
- * this says so, rather than anything being substituted for it.
+ * real SPH run (DualSPHysics, or PySPH where DualSPHysics is not installed), and
+ * when neither can run there is NO SPH result and this says so, rather than
+ * anything being substituted for it.
  */
 export function SphBanner({ error, engine, nearField }) {
   if (!error && !engine) return null;

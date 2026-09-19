@@ -19,6 +19,17 @@ export function SimulationClockProvider({ manifest, children }) {
   const keyframes = manifest?.keyframes || [];
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+
+  React.useEffect(() => {
+    if (!keyframes.length) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const frameParam = urlParams.get("frame");
+    if (frameParam === "last") {
+      setIndex(keyframes.length - 1);
+    } else if (frameParam !== null && !isNaN(parseInt(frameParam, 10))) {
+      setIndex(Math.max(0, Math.min(keyframes.length - 1, parseInt(frameParam, 10))));
+    }
+  }, [keyframes]);
   const [speed, setSpeed] = useState(60); // 60 sim-seconds per wall-second
 
   const current = keyframes[index] || null;

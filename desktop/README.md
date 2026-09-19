@@ -65,6 +65,7 @@ are read; anything else is ignored and noted in `logs\desktop-*.log`.
   "paraviewExe": "C:/Program Files/ParaView 6.2.0/bin/paraview.exe",
   "pvpythonExe": "C:/Program Files/ParaView 6.2.0/bin/pvpython.exe",
   "dflowfmExe": "C:/Program Files/Deltares/…/dflowfm-cli.exe",
+  "dualsphysicsDir": "D:/tools/DualSPHysics_v5.4", // near-field SPH on the GPU
   "dataDir": "D:/some/checkout/data"   // absolute; use an existing data folder instead
 }
 ```
@@ -222,6 +223,10 @@ fails on Python 3.14, and it needs **MSVC Build Tools** on the build machine.
   - An explicit `cuda` request on a machine that cannot run it is refused at
     submission, as before.
 - **Near-field SPH:**
+  - DualSPHysics v5.4 is never bundled (LGPL-2.1; it runs as an external
+    program). With `dualsphysicsDir` set, near-field SPH runs on its CUDA build
+    — only the NVIDIA driver is needed — or on its CPU build with the reason
+    when no CUDA device can run it. Without it, SPH falls back to PySPH below.
   - On the CPU, PySPH compiles Cython at runtime, which needs MSVC Build Tools
     on the machine running the app.
   - Without MSVC, SPH reports why it did not run, and the SWE result is

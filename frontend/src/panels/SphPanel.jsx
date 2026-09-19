@@ -15,11 +15,12 @@ import {
  * by a one-way handoff with no feedback (CLAUDE.md).
  *
  * Two views, both real:
- *   surge front   front_position_m against front_time_s, appended every solver
- *                 step. This is the only genuinely time-resolved SPH output.
- *   particles     the final state. PySPH is configured with intermediate dumps
- *                 disabled, so there is one snapshot, not an animation — and
- *                 the panel says so rather than implying otherwise.
+ *   surge front   front_position_m against front_time_s — every solver step
+ *                 on PySPH, every output snapshot (40 per run) on DualSPHysics.
+ *                 This is the only genuinely time-resolved SPH output.
+ *   particles     the final state. Intermediate snapshots are used only to
+ *                 measure the front and are not kept, so there is one
+ *                 snapshot, not an animation — and the panel says so.
  */
 export default function SphPanel({ result }) {
   const sph = result?.sph;
@@ -102,9 +103,11 @@ export default function SphPanel({ result }) {
 
       <h4 style={S.h4}>Surge front advance</h4>
       <p style={S.note}>
-        The 99th-percentile downstream position of in-domain particles, recorded
-        every solver step. This is the one time-resolved output the near-field
-        run produces.
+        The 99th-percentile downstream position of in-domain particles
+        {sph.engine === "DualSPHysics"
+          ? `, sampled at ${num(sph.front_time_s?.length)} output snapshots`
+          : ", recorded every solver step"}
+        . This is the one time-resolved output the near-field run produces.
       </p>
       {frontRows.length === 0 ? (
         <Empty>No front history was recorded.</Empty>
@@ -134,8 +137,8 @@ export default function SphPanel({ result }) {
       <h4 style={S.h4}>Particle cloud — final state</h4>
       <p style={S.note}>
         Plan view at t = {fmt(sph.duration_s, 0)} s. This is a single snapshot,
-        not an animation: PySPH is run with intermediate dumps disabled, so the
-        run produces one particle state rather than a sequence.
+        not an animation: intermediate particle states are used only to measure
+        the surge front and are not kept, so the run publishes one particle state.
         {sph.particles?.stride > 1 &&
           ` Showing ${num(sph.particles.n_plotted)} of ${num(sph.n_fluid)} particles (every ${sph.particles.stride}th) — the full cloud is unreadable at this scale.`}
       </p>

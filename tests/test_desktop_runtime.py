@@ -91,11 +91,11 @@ def test_probe_module_prints_the_same_payload_keys(monkeypatch):
     """The probe moved out of a -c string; its JSON contract must not change."""
     from jalraksha_service import backend_probe
     import jalraksha.solver.backend as backend
-    import jalraksha.sph.pysph_runner as pysph_runner
+    import jalraksha.sph.engine as sph_engine
 
     monkeypatch.setattr(backend, "cuda_probe", lambda: (False, "no GPU here", None))
-    monkeypatch.setattr(pysph_runner, "resolve_sph_backend",
-                        lambda req: {"sph_backend": "cpu", "reason": "cpu only"})
+    monkeypatch.setattr(sph_engine, "probe_sph_gpu",
+                        lambda: {"available": False, "reason": "cpu only", "engine": None})
     answer = backend_probe.probe()
     # The reason may carry a note that numba-cuda is absent from this build.
     assert answer.pop("cuda_reason").startswith("no GPU here")
@@ -111,12 +111,12 @@ def test_probe_names_a_missing_numba_cuda(monkeypatch):
 
     from jalraksha_service import backend_probe
     import jalraksha.solver.backend as backend
-    import jalraksha.sph.pysph_runner as pysph_runner
+    import jalraksha.sph.engine as sph_engine
 
     monkeypatch.setattr(backend, "cuda_probe",
                         lambda: (False, "numba.cuda found no usable CUDA driver or device", None))
-    monkeypatch.setattr(pysph_runner, "resolve_sph_backend",
-                        lambda req: {"sph_backend": "cpu", "reason": "cpu only"})
+    monkeypatch.setattr(sph_engine, "probe_sph_gpu",
+                        lambda: {"available": False, "reason": "cpu only", "engine": None})
     real_find_spec = importlib.util.find_spec
     monkeypatch.setattr(importlib.util, "find_spec",
                         lambda name, *a: None if name == "numba_cuda" else real_find_spec(name, *a))

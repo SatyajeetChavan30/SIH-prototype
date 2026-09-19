@@ -203,3 +203,29 @@ def test_default_request_still_asks_for_auto(api, monkeypatch):
     _set_probe(main_module, monkeypatch, available=True)
     main_module.submit_run(_request(main_module))
     assert captured["run_record"]["solver_backend"] == "auto"
+
+
+@pytest.mark.parametrize("solver", ["sph", "both"])
+def test_gpu_only_run_with_sph_is_refused_when_sph_cannot_use_the_gpu(api, monkeypatch, solver):
+    """
+    A cuda run is GPU-only for near-field SPH too, so it is refused up front
+    rather than solving the ensemble and then publishing "no SPH result".
+    """
+    main_module, _ = api
+    monkeypatch.setattr(main_module, "solver_backend_info", lambda: {
+        "cuda_available": True, "cuda_device": "Stub GPU", "cuda_reason": "ok",
+        "sph_gpu_available": False, "sph_gpu_reason": "DualSPHysics not found",
+        "available": ["auto", "cpu", "cuda"], "default": "auto"})
+    with pytest.raises(HTTPException) as refused:
+        main_module.submit_run(_request(main_module, backend="cuda", solver=solver))
+    assert refused.value.status_code == 422
+    assert "DualSPHysics not found" in refused.value.detail
+
+
+def test_gpu_only_swe_run_does_not_need_the_sph_gpu(api, monkeypatch):
+    main_module, _ = api
+    monkeypatch.setattr(main_module, "solver_backend_info", lambda: {
+        "cuda_available": True, "cuda_device": "Stub GPU", "cuda_reason": "ok",
+        "sph_gpu_available": False, "sph_gpu_reason": "DualSPHysics not found",
+        "available": ["auto", "cpu", "cuda"], "default": "auto"})
+    assert main_module.submit_run(_request(main_module, backend="cuda")).status == "queued"

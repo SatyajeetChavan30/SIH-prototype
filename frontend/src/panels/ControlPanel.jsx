@@ -48,6 +48,12 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // you leave the card free for a long ensemble already in flight.
   const [backend, setBackend] = useState("auto");
   const [backends, setBackends] = useState(null);
+  // "GPU only" must hold for EVERY solver in the run: near-field SPH is strict
+  // under cuda too, so a run with SPH needs the SPH GPU probe to pass as well.
+  const solverNeedsSph = solver === "sph" || solver === "both";
+  const gpuOnlyPossible = Boolean(
+    backends?.cuda_available && (!solverNeedsSph || backends?.sph_gpu_available !== false)
+  );
   // 180 min, not 30. At 30 minutes the flood covers ~3.7 km and Khadakwasla's
   // nearest gauge is 10.5 km away, so the default guaranteed an empty arrival
   // table and the message "The flood did not reach any gauge within the
@@ -78,6 +84,11 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       })
       .catch(() => setDams([]));
     refreshRuns();
+    const urlParams = new URLSearchParams(window.location.search);
+    const runToLoad = urlParams.get("run") || urlParams.get("run_id");
+    if (runToLoad) {
+      loadExisting(runToLoad);
+    }
     getGeeStatus().then(setGee).catch(() => setGee(null));
     getSolverBackends().then(setBackends).catch(() => setBackends(null));
     getCapabilities().then(setCapabilities).catch((e) => setCapabilities({
@@ -389,9 +400,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       </select>
       {solver === "sph" && (
         <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
-          Near-field only: a ~600 m window over 15 s at the breach, one-way
-          coupled from the SWE result. It resolves the breach jet — it does
-          <strong> not</strong> reach downstream gauges, and it is slow.
+          Near-field only: a 1.2 km window over 15 s at the breach, one-way
+          coupled from the SWE result, run in DualSPHysics on the GPU (about
+          90 s on an RTX 4050). It resolves the breach jet — it does
+          <strong> not</strong> reach downstream gauges.
         </div>
       )}
       {isRiverScenario && !["swe", "sph"].includes(solver) && (
@@ -410,7 +422,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         {/* Disabled rather than hidden: an operator looking for the GPU should
             be told WHY it is not on offer, not left wondering. The reason is
             the probe's own words, from GET /backends. */}
-        <option value="cuda" disabled={backends ? !backends.cuda_available : false}>
+        <option value="cuda" disabled={backends ? !gpuOnlyPossible : false}>
           {backends?.cuda_device
             ? `GPU only — ${backends.cuda_device} (refuse if unavailable)`
             : "GPU only — refuse if unavailable"}
@@ -420,6 +432,17 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       {backends && !backends.cuda_available && (
         <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
           No GPU available here: {backends.cuda_reason}
+        </div>
+      )}
+      {backends && backends.cuda_available && solverNeedsSph && backends.sph_gpu_available === false && (
+        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+          GPU only is unavailable with near-field SPH: {backends.sph_gpu_reason}
+        </div>
+      )}
+      {backend === "cuda" && (
+        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+          Every solver in this run uses the GPU. If a GPU solve fails, the run
+          reports the failure — nothing is recomputed on the CPU.
         </div>
       )}
       {backend === "auto" && (

@@ -214,6 +214,18 @@ def submit_run(req: RunRequest):
                 f"float64 CUDA kernel: {probe.get('cuda_reason')}. Choose 'cpu', "
                 f"or 'auto' to use the GPU only where one exists.",
             )
+        # A GPU-only run is GPU-only for near-field SPH too (it is strict, never
+        # finished on the CPU -- sph/engine.py::sph_backend_for_solver), so a run
+        # that includes SPH is refused here when the probe already knows SPH
+        # cannot use the GPU, rather than solving the whole ensemble first and
+        # then publishing "no SPH result".
+        if req.solver in ("sph", "both") and not probe.get("sph_gpu_available"):
+            raise HTTPException(
+                422,
+                f"backend='cuda' was requested with near-field SPH, but SPH cannot "
+                f"run on the GPU here: {probe.get('sph_gpu_reason')}. Choose 'auto' "
+                f"to let SPH fall back to the CPU, or a solver without SPH.",
+            )
     if req.scenario_type != "dam_break" and req.solver not in {"swe", "sph"}:
         raise HTTPException(
             422,

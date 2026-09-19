@@ -16,7 +16,7 @@ This document records key architectural decisions for JalRaksha, with rationale.
 - **Python 3.11+**: Standard for geospatial, numerical, and ML in 2026. Good ecosystem for climate/water science.
 - **NumPy/SciPy**: Foundation for numerical computing. Well-vetted, performant.
 - **Numba JIT**: Accelerate hot-path kernel (HLLC flux) to ~100 Mflops/s on desktop CPU without C++ rewrite.
-- **PySPH (BSD licence)**: Open-source 3D SPH library, approved for redistribution. Avoids HOOMD (restricted), DualSPHysics (GPU-centric, complicates CI).
+- **PySPH (BSD licence)**: Open-source 3D SPH library, approved for redistribution. Avoids HOOMD (restricted), DualSPHysics (GPU-centric, complicates CI). *Superseded for the near-field GPU run by §16: DualSPHysics now runs as an external program, PySPH stays as the reference engine.*
 - **Rasterio**: De facto standard for GeoTIFF I/O in Python. Supports Cloud-Optimized GeoTIFF (COG) natively.
 - **GeoPandas**: Shapefile/GeoJSON I/O and spatial operations (clipping, reprojection, polygonization).
 - **Xarray**: NetCDF/Zarr time-series output with CF conventions. Interoperates with Jupyter/Dask.
@@ -460,6 +460,55 @@ File menu.
 - **Serving the UI from FastAPI:** changes the web deployment's API surface.
 - **Bundling a demo dataset:** the user asked for import instead; packs keep
   installers small and data licensing per file.
+
+---
+
+## 16. Near-field SPH Runs in DualSPHysics on the GPU; PySPH Is the Reference Engine
+
+**Context:** §1 chose PySPH and rejected DualSPHysics as "GPU-centric,
+complicates CI". PySPH's GPU path then turned out to be host-bound: the
+production near-field case (9,000 particles) was stopped unfinished at 2,442 s
+wall, 94 % of it CPU time, at 9.4 W of GPU draw (validation_findings §12). The
+project owner asked for SPH to run on the GPU and installed DualSPHysics v5.4.
+
+**Decision:** Near-field SPH runs in DualSPHysics v5.4's CUDA build by default
+(`jalraksha/sph/dualsphysics_runner.py`), selected by `jalraksha/sph/engine.py`.
+With no usable CUDA device it runs DualSPHysics's own CPU build and records why.
+PySPH is kept as the reference engine and as the fallback where DualSPHysics is
+not installed. This reverses the §1 rejection.
+
+**Rationale:**
+- **The GPU does the work.** 232,426 fluid particles over the Khadakwasla
+  window, 15 s simulated, in 89.4 s at 90 % utilisation and 58 W.
+- **The licence concern does not apply to how it is used.** DualSPHysics
+  (LGPL-2.1) is run as a separate program, never linked and never
+  redistributed. It is located on disk (`JALRAKSHA_DUALSPHYSICS_DIR`) and
+  git-ignored.
+- **The CI concern is handled by skipping.** CI has no install; tests that
+  start DualSPHysics skip there, and the pure parts (case writer, reader,
+  selection) run everywhere. PySPH's gates keep running on CI.
+- **One result contract.** The runner returns PySPH's keys, so the service, the
+  comparison and the dashboard keep one code path, and `engine`, `sph_engine`,
+  `sph_backend` and `engine_label` name what ran.
+
+**Consequences:**
+- The initial state is written by JalRaksha, not GenCase, to keep one geometry
+  for both engines. The `.bi4` value types are DualSPHysics's contract; a future
+  release that changes them fails loudly at load.
+- The desktop installers do not contain DualSPHysics; users point
+  `dualsphysicsDir` at their own copy.
+- Cite Dominguez et al. (2022), Computational Particle Mechanics 9:867-895, for
+  any result produced with it.
+- **"GPU only" means GPU only for both solvers (2026-09-14).** A `backend="cuda"`
+  run maps SPH to the strict `gpu` backend: a GPU failure is reported as "no
+  SPH result" with its reason and is never recomputed on the CPU, matching the
+  SWE ensemble. `submit_run` refuses such a run with SPH when the probe says SPH
+  cannot use the GPU. `auto` keeps the labelled CPU fallback.
+
+**Rejected alternatives:** porting WCSPH to numba-cuda (a second SPH
+implementation to validate); GenCase `drawbathymetry` (re-triangulates the bed,
+so the two engines would start from different terrain); removing PySPH (no SPH
+at all on machines without DualSPHysics, and no reference engine).
 
 ---
 

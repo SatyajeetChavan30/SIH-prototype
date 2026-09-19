@@ -97,3 +97,7 @@ paraview/artifacts/*_frames/
 # Stale API database. The live one is ./data/jalraksha.db (DATABASE_URL default
 # in services/api/jalraksha_service/config.py), already excluded by /data/.
 services/api/data/
+
+# DualSPHysics v5.4 release (LGPL-2.1, ~1 GB). Located by path, never committed
+# or bundled: JALRAKSHA_DUALSPHYSICS_DIR, else ./DualSPHysics_v5.4.
+/DualSPHysics_v5.4/

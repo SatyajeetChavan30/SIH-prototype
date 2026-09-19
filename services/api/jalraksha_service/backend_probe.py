@@ -19,9 +19,10 @@ from typing import Any, Dict
 
 def probe() -> Dict[str, Any]:
     # Answers for BOTH engines, because they can disagree: the SWE solver needs
-    # numba-cuda, the near-field SPH needs PySPH's OpenCL path.
+    # numba-cuda, the near-field SPH needs DualSPHysics's CUDA build (or, where
+    # DualSPHysics is not installed, PySPH's OpenCL path).
     from jalraksha.solver.backend import cuda_probe
-    from jalraksha.sph.pysph_runner import resolve_sph_backend
+    from jalraksha.sph.engine import probe_sph_gpu
 
     ok, detail, device = cuda_probe()
     if not ok:
@@ -33,15 +34,14 @@ def probe() -> Dict[str, Any]:
         if find_spec("numba_cuda") is None:
             detail = (f"{detail} — numba-cuda is not installed in this build "
                       f"(the CPU desktop installer does not bundle it)")
-    # "prefer_opencl", not "auto": this asks whether the GPU CAN run SPH, and
-    # auto now keeps SPH on the CPU by policy (pysph_runner.resolve_sph_backend),
-    # which would report a working GPU as unavailable.
-    sph = resolve_sph_backend("prefer_opencl")
+    # Asks whether the GPU CAN run SPH on the engine that would run, by running
+    # it: DualSPHysics's GPU executable is started on a tiny tank.
+    sph = probe_sph_gpu()
     return {
         "cuda_available": bool(ok),
         "cuda_reason": detail,
         "cuda_device": device,
-        "sph_gpu_available": sph["sph_backend"] != "cpu",
+        "sph_gpu_available": sph["available"],
         "sph_gpu_reason": sph["reason"],
     }
 

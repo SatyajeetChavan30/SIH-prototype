@@ -37,14 +37,19 @@ export default function Map2D({ dam = DAM, gauges = GAUGES, reach, result }) {
 
   const sarObserved = sar && sar.source !== "unavailable" && sar.bbox && sar.observed_extent_url;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const qLat = parseFloat(urlParams.get("lat"));
+  const qLon = parseFloat(urlParams.get("lon"));
+  const qZoom = parseInt(urlParams.get("zoom"), 10);
+  const center = (!isNaN(qLat) && !isNaN(qLon)) ? [qLat, qLon] : [dam.lat, dam.lon];
+  const zoom = !isNaN(qZoom) ? qZoom : 11;
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       <MapContainer
-        // key= forces a remount when the dam changes: MapContainer treats
-        // `center` as an initial value only and will not recentre on its own.
-        key={`${dam.lat},${dam.lon}`}
-        center={[dam.lat, dam.lon]}
-        zoom={11}
+        key={`${center[0]},${center[1]},${zoom}`}
+        center={center}
+        zoom={zoom}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
