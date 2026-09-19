@@ -437,7 +437,10 @@
   background: var(--surface-1);
 }
 
+/* The lead figure of a row: tinted, and given more of the row so a range
+   ("153 – 11,126") stays on one line at display size. */
 .jr-stat--emphasis {
+  flex: 1.5 1 220px;
   background: var(--info-bg);
   border-color: var(--info-rule);
 }
