@@ -438,6 +438,30 @@ def insert_exports(run_id: str, exports: List[Dict[str, Any]]) -> None:
         conn.close()
 
 
+def replace_export(run_id: str, kind: str, path_or_url: str) -> None:
+    """
+    Set a run's single export of `kind`, removing any earlier row of that kind.
+
+    insert_exports is a plain append (the table has no uniqueness constraint),
+    so writing a dataset twice would otherwise leave duplicate rows and the
+    result endpoint would hand the frontend duplicate ExportRefs.
+    """
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"DELETE FROM exports WHERE run_id = {_placeholder(1)} AND kind = {_placeholder(1)}",
+            (run_id, kind),
+        )
+        cur.execute(
+            f"INSERT INTO exports (run_id, kind, path_or_url) VALUES ({_placeholder(3)})",
+            (run_id, kind, path_or_url),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_exports(run_id: str) -> List[Dict[str, Any]]:
     conn = _connect()
     try:
