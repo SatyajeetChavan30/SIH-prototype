@@ -689,6 +689,47 @@
   background: var(--ink);
 }
 
+/* A row of actions with their status text. */
+.jr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* A validation gate: verdict chip, name, what it measured. */
+.jr-check__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jr-check__detail {
+  margin: 6px 0 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+}
+
+.jr-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+
+.jr-metric {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-metric strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
 /* A floating card over the map or globe. */
 .jr-overlay {
   padding: 8px 10px;

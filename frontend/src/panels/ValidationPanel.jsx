@@ -4,6 +4,7 @@ import {
   XAxis, YAxis,
 } from "recharts";
 import { getValidation, resolveApiUrl } from "../api.js";
+import { Button, Card, Caveat, Chip, DataTable, Empty } from "../ui/index.jsx";
 
 /**
  * The analytical correctness gates — the answer to "how do we know this
@@ -58,51 +59,53 @@ export default function ValidationPanel({ result }) {
   const ritter = data?.checks?.find((c) => c.series?.x_m);
 
   return (
-    <div style={S.page}>
-      <h3 style={S.h3}>Validation</h3>
-      <p style={S.lede}>
+    <div className="jr-page">
+      <h3 className="jr-h1">Validation</h3>
+      <p className="jr-lede jr-measure">
         These gates run the solver against solutions whose answers are known in
         advance. They are the same checks that block a merge in CI, executed
         here against the running build.
       </p>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
-        <button onClick={() => run(false)} disabled={busy}>
+      <div className="jr-toolbar">
+        <Button variant="primary" onClick={() => run(false)} disabled={busy}>
           {busy ? "Running the gates…" : data ? "Re-check (cached)" : "Run validation"}
-        </button>
+        </Button>
         {busy && (
-          <span style={S.muted}>
+          <span className="jr-meta">
             two 1000-step solves plus a Delft3D kernel run — a minute or two
           </span>
         )}
         {data && (
-          <button onClick={() => run(true)} disabled={busy} style={{ fontSize: 12 }}>
+          <Button size="sm" onClick={() => run(true)} disabled={busy}>
             Force re-run
-          </button>
+          </Button>
         )}
-        {data?.cached && <span style={S.muted}>served from cache</span>}
+        {data?.cached && <Chip tone="info">served from cache</Chip>}
         {data?.generated_at && (
-          <span style={S.muted}>· {new Date(data.generated_at).toLocaleString()}</span>
+          <span className="jr-meta">· {new Date(data.generated_at).toLocaleString()}</span>
         )}
       </div>
 
-      {error && <div style={S.err}>{error}</div>}
+      {error && <Caveat tone="danger" className="jr-measure jr-mb-12">{error}</Caveat>}
 
       {!data && !busy && !error && (
-        <div style={S.empty}>
+        <Empty inline>
           Not run yet. The Ritter cross-check starts the Delft3D FM kernel, so it
           is triggered by the button rather than on page load.
-        </div>
+        </Empty>
       )}
 
-      {data?.checks?.map((c) => (
-        <Check key={c.name} check={c} />
-      ))}
+      <div className="jr-stack jr-measure-wide">
+        {data?.checks?.map((c) => (
+          <Check key={c.name} check={c} />
+        ))}
+      </div>
 
       {ritter && (
         <>
-          <h4 style={S.h4}>Ritter dam-break — depth profile</h4>
-          <p style={S.note}>
+          <h4 className="jr-h2">Ritter dam-break — depth profile</h4>
+          <p className="jr-note jr-measure jr-mb-12">
             One instant of a dry-bed dam-break. The analytical curve is the exact
             solution; the others are what each engine computed. Curves that lie
             on top of each other are the result.
@@ -175,31 +178,26 @@ function DemUpdateSection({ demUpdate }) {
 
   return (
     <>
-      <h4 style={S.h4}>DEM update — what was changed, and from what</h4>
-      <p style={S.note}>
+      <h4 className="jr-h2">DEM update — what was changed, and from what</h4>
+      <Caveat className="jr-measure">
         <strong>{demUpdate.not_a_survey}</strong>
-      </p>
+      </Caveat>
 
-      <table style={{ fontSize: 11, borderCollapse: "collapse", marginTop: 8 }}>
+      <DataTable compact kv className="jr-measure-wide jr-mt-8">
         <tbody>
           {rows.map(([key, value]) => (
             <tr key={key}>
-              <td style={{ padding: "3px 12px 3px 0", color: "#666",
-                           verticalAlign: "top", whiteSpace: "nowrap" }}>
-                {key}
-              </td>
-              <td style={{ padding: "3px 0", color: "#222", wordBreak: "break-all" }}>
-                {value ?? "—"}
-              </td>
+              <td>{key}</td>
+              <td>{value ?? "—"}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
 
       {curve.length > 2 && (
         <>
-          <h4 style={S.h4}>Impounded lake — stage-storage curve</h4>
-          <p style={S.note}>
+          <h4 className="jr-h2">Impounded lake — stage-storage curve</h4>
+          <p className="jr-note jr-measure jr-mb-12">
             Read directly off the DEM with the barrier burned in, level by level.
             This is more than the dam-break path has: there, storage comes from a
             published gross figure and the shape is a power law through a single
@@ -228,7 +226,7 @@ function DemUpdateSection({ demUpdate }) {
       )}
 
       {demUpdate.updated_dem && (
-        <p style={S.note}>
+        <p className="jr-note">
           {/* The API returns these as "/files/..." paths. Used raw they resolved
               against the PAGE's origin (the Vite server, or the desktop app's UI
               server) and 404'd; resolveApiUrl points them at the API. */}
@@ -244,29 +242,29 @@ function DemUpdateSection({ demUpdate }) {
 
 function Check({ check }) {
   const state = check.error ? "error" : check.passed ? "pass" : "fail";
-  const badge = { pass: S.pass, fail: S.fail, error: S.errBadge }[state];
+  const tone = { pass: "ok", fail: "danger", error: "warn" }[state];
   const label = { pass: "PASS", fail: "FAIL", error: "ERROR" }[state];
 
   return (
-    <div style={S.check}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={badge}>{label}</span>
-        <strong style={{ fontSize: 13 }}>{check.name}</strong>
+    <Card outline>
+      <div className="jr-check__head">
+        <Chip tone={tone}>{label}</Chip>
+        <strong>{check.name}</strong>
       </div>
-      <div style={S.detail}>{check.detail || check.error}</div>
+      <p className="jr-check__detail">{check.detail || check.error}</p>
       {check.metrics && (
-        <div style={S.metrics}>
+        <div className="jr-metrics">
           {Object.entries(check.metrics)
             .filter(([, v]) => v !== null && v !== undefined)
             .map(([k, v]) => (
-              <span key={k} style={S.metric}>
+              <span key={k} className="jr-metric">
                 {k.replace(/_/g, " ")}:{" "}
                 <strong>{typeof v === "number" ? fmtNum(v) : String(v)}</strong>
               </span>
             ))}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -328,25 +326,3 @@ function fmtNum(v) {
   if (abs < 1e-4 || abs >= 1e6) return v.toExponential(2);
   return abs >= 100 ? v.toFixed(1) : v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
 }
-
-const S = {
-  page: { padding: 16, overflowY: "auto", height: "100%" },
-  h3: { margin: "0 0 6px" },
-  h4: { margin: "22px 0 6px", fontSize: 13, color: "#555" },
-  lede: { fontSize: 12, color: "#555", maxWidth: 760, lineHeight: 1.5, marginTop: 0 },
-  note: { fontSize: 11, color: "#777", maxWidth: 760, lineHeight: 1.45 },
-  muted: { fontSize: 11, color: "#888" },
-  check: { border: "1px solid #ddd", borderRadius: 4, padding: "10px 12px", marginBottom: 8 },
-  detail: { fontSize: 12, color: "#444", marginTop: 6, lineHeight: 1.45 },
-  metrics: { display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 },
-  metric: { fontSize: 10, color: "#666" },
-  pass: { background: "#edf7ed", color: "#1b5e20", border: "1px solid #2e7d32",
-          borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  fail: { background: "#fdecea", color: "#7f1d1d", border: "1px solid #c62828",
-          borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  errBadge: { background: "#fff4e5", color: "#7a3e00", border: "1px solid #e65100",
-              borderRadius: 3, padding: "1px 7px", fontSize: 11, fontWeight: 700 },
-  err: { padding: "8px 10px", fontSize: 12, border: "2px solid #c62828",
-         background: "#fdecea", borderRadius: 4, color: "#7f1d1d", marginBottom: 12 },
-  empty: { fontSize: 12, color: "#777", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
-};
