@@ -386,6 +386,13 @@ class GaugeResult(BaseModel):
     max_depth_m: Optional[float] = None
     par_estimate: Optional[float] = None
     note: Optional[str] = None
+    # Distance from the gauge to the nearest solver-domain edge, km (negative =
+    # outside), and whether it is inside BOUNDARY_CONTAMINATION_KM. A depth read
+    # there is shaped by the transmissive boundary as well as by the flood.
+    # None for runs written before this existed, and wherever the grid origin
+    # was never recorded.
+    boundary_clearance_km: Optional[float] = None
+    near_boundary: Optional[bool] = None
 
 
 class ExportRef(BaseModel):
@@ -446,6 +453,12 @@ class EnsembleSummary(BaseModel):
     dam_class_note: Optional[str] = None
     dam_type: Optional[str] = None
     scenario_type: Optional[str] = None
+    # A quarantined regression (e.g. Xu & Zhang 2009) contributed members. Only
+    # possible with allow_unverified_regressions=True, which no API or script
+    # path passes today - but when it happens the payload must say so.
+    unverified_regressions: List[str] = Field(default_factory=list)
+    uses_unverified_regression: Optional[bool] = None
+    unverified_regression_note: Optional[str] = None
 
 
 class GridSummary(BaseModel):
@@ -517,6 +530,12 @@ class RunResult(BaseModel):
     # 3D view shows the modified terrain whether or not anything says so.
     dem_update: Optional[Dict[str, Any]] = None
     dem_used: Optional[str] = None
+    # scripts/make_synthetic_demo_run.py paints a prescribed wave onto the DEM
+    # with no solver. It already says so in the run name, the burned-in PNG
+    # caption and run_summary.json; this carries it to the dashboard so the
+    # label is on screen above every tab, not only in the picker.
+    is_synthetic: bool = False
+    synthetic_note: Optional[str] = None
 
 
 class RunListEntry(BaseModel):

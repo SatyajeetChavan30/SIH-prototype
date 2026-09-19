@@ -56,7 +56,8 @@ def _make_done_run(data_dir: Path, *, synthetic: bool = False) -> str:
         {"kind": "keyframe_manifest", "path_or_url": str(keyframes / "manifest.json")},
     ])
     db.insert_gauge_results(run_id, [{"gauge_name": "Pune", "distance_km": 12.0,
-                                      "arrival_time_s": 3600.0, "max_depth_m": 2.5}])
+                                      "arrival_time_s": 3600.0, "max_depth_m": 2.5,
+                                      "boundary_clearance_km": 3.0, "near_boundary": True}])
     db.update_run_status(run_id, "done", 100.0, phase="Done")
     return run_id
 
@@ -99,7 +100,11 @@ def test_round_trip_preserves_the_run(tmp_path, monkeypatch, source):
     assert run["status"] == "done"
     # A pid is machine-local; carried over it would read as a live claim.
     assert "worker_pid" not in run["params"]
-    assert db.get_gauge_results(run_id)[0]["gauge_name"] == "Pune"
+    gauge = db.get_gauge_results(run_id)[0]
+    assert gauge["gauge_name"] == "Pune"
+    # The boundary flag is an honesty label; a pack must not drop it.
+    assert gauge["near_boundary"] is True
+    assert gauge["boundary_clearance_km"] == 3.0
     for export in db.get_exports(run_id):
         path = Path(export["path_or_url"])
         assert path.is_absolute() and path.is_file()

@@ -440,10 +440,13 @@ def import_pack(pack_path: Path) -> Dict[str, Any]:
                     continue
                 cur.execute(
                     f"INSERT INTO gauge_results (run_id, gauge_name, distance_km, arrival_time_s, "
-                    f"max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note) VALUES ({ph(9)})",
+                    f"max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note, "
+                    f"boundary_clearance_km, near_boundary) VALUES ({ph(11)})",
                     (run_id, g.get("gauge_name"), g.get("distance_km"), g.get("arrival_time_s"),
                      g.get("max_depth_m"), g.get("par_estimate"), g.get("arrival_p05_s"),
-                     g.get("arrival_p95_s"), g.get("note")),
+                     g.get("arrival_p95_s"), g.get("note"), g.get("boundary_clearance_km"),
+                     # Packs written before these columns existed carry neither key.
+                     None if g.get("near_boundary") is None else int(bool(g["near_boundary"]))),
                 )
             for e in tables.get("exports") or []:
                 if e.get("run_id") != run_id:

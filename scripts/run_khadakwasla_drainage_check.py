@@ -460,12 +460,8 @@ def _add_near_field_sph(run, dam_config, progress) -> None:
               flush=True)
 
 
-#: A gauge closer than this to a domain edge has its depth and arrival shaped by
-#: the transmissive boundary rather than by the flood alone. UNVETTED: chosen as
-#: a few times the coarsest grid spacing this script is run at, not from a
-#: published guidance figure. It exists to make contamination visible, not to
-#: quantify it.
-BOUNDARY_CONTAMINATION_KM = 5.0
+#: Defined once in the service, where the dashboard's gauge rows use it too.
+from jalraksha_service.script_runs import BOUNDARY_CONTAMINATION_KM  # noqa: E402
 
 
 def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION_KM):

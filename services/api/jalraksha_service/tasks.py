@@ -1567,6 +1567,12 @@ def _ensemble_summary(result: Dict[str, Any]) -> Dict[str, Any] | None:
         "dam_class_note": breach.get("dam_class_note"),
         "dam_type": breach.get("dam_type"),
         "scenario_type": breach.get("scenario_type"),
+        # ensemble_statistics computes these (breach.py) and they were dropped
+        # here, so a quarantined regression could contribute members with no
+        # trace in the payload.
+        "unverified_regressions": breach.get("unverified_regressions") or [],
+        "uses_unverified_regression": breach.get("uses_unverified_regression"),
+        "unverified_regression_note": breach.get("unverified_regression_note"),
     }
 
 

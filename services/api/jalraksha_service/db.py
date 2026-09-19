@@ -121,10 +121,20 @@ def init_db() -> None:
         _add_column(cur, "gauge_results", "arrival_p05_s", "REAL")
         _add_column(cur, "gauge_results", "arrival_p95_s", "REAL")
         _add_column(cur, "gauge_results", "note", "TEXT")
+        # Distance to the domain edge (km, negative = outside) and whether that
+        # is inside BOUNDARY_CONTAMINATION_KM. INTEGER, not BOOLEAN, so the
+        # same DDL works on SQLite and Postgres; NULL for runs written before.
+        _add_column(cur, "gauge_results", "boundary_clearance_km", "REAL")
+        _add_column(cur, "gauge_results", "near_boundary", "INTEGER")
         _add_column(cur, "runs", "error", "TEXT")
         conn.commit()
     finally:
         conn.close()
+
+
+def _bool_to_int(value: Optional[bool]) -> Optional[int]:
+    """A tri-state flag as the INTEGER column stores it: None stays NULL."""
+    return None if value is None else int(bool(value))
 
 
 def _add_column(cur: Any, table: str, column: str, coltype: str) -> None:
@@ -367,10 +377,12 @@ def insert_gauge_results(run_id: str, gauges: List[Dict[str, Any]]) -> None:
             cur.execute(
                 f"INSERT INTO gauge_results (run_id, gauge_name, distance_km, "
                 f"arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, "
-                f"arrival_p95_s, note) VALUES ({_placeholder(9)})",
+                f"arrival_p95_s, note, boundary_clearance_km, near_boundary) "
+                f"VALUES ({_placeholder(11)})",
                 (run_id, g.get("gauge_name"), g.get("distance_km"),
                  g.get("arrival_time_s"), g.get("max_depth_m"), g.get("par_estimate"),
-                 g.get("arrival_p05_s"), g.get("arrival_p95_s"), g.get("note")),
+                 g.get("arrival_p05_s"), g.get("arrival_p95_s"), g.get("note"),
+                 g.get("boundary_clearance_km"), _bool_to_int(g.get("near_boundary"))),
             )
         conn.commit()
     finally:
@@ -381,12 +393,14 @@ def get_gauge_results(run_id: str) -> List[Dict[str, Any]]:
     conn = _connect()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT gauge_name, distance_km, arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note FROM gauge_results WHERE run_id = %s" % ("?" if not settings.DATABASE_URL.startswith("postgres") else "%s"), (run_id,))
+        cur.execute("SELECT gauge_name, distance_km, arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note, boundary_clearance_km, near_boundary FROM gauge_results WHERE run_id = %s" % ("?" if not settings.DATABASE_URL.startswith("postgres") else "%s"), (run_id,))
         rows = cur.fetchall()
         return [
             {"gauge_name": r[0], "distance_km": r[1], "arrival_time_s": r[2],
              "max_depth_m": r[3], "par_estimate": r[4],
-             "arrival_p05_s": r[5], "arrival_p95_s": r[6], "note": r[7]}
+             "arrival_p05_s": r[5], "arrival_p95_s": r[6], "note": r[7],
+             "boundary_clearance_km": r[8],
+             "near_boundary": None if r[9] is None else bool(r[9])}
             for r in rows
         ]
     finally:

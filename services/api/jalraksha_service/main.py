@@ -512,6 +512,14 @@ def run_result(run_id: str) -> RunResult:
             if dem_update.get(key):
                 dem_update[key] = _to_file_url(dem_update[key])
 
+    # A synthetic demo run records the flag in its DB params (read first, as
+    # data_packs does) and in run_summary.json.
+    params = run.get("params") or {}
+    is_synthetic = bool(params.get("is_synthetic") or summary.get("is_synthetic"))
+    synthetic_note = (
+        (params.get("synthetic_note") or summary.get("note")) if is_synthetic else None
+    )
+
     return RunResult(
         run_id=run_id,
         dam_name=run.get("params", {}).get("name", "Dam"),
@@ -533,6 +541,8 @@ def run_result(run_id: str) -> RunResult:
         comparison_url=comparison_url,
         dem_update=dem_update,
         dem_used=_to_file_url(dem_block["dem_used"]) if dem_block.get("dem_used") else None,
+        is_synthetic=is_synthetic,
+        synthetic_note=synthetic_note,
     )
 
 
