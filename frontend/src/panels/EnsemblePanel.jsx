@@ -3,6 +3,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ErrorBar, Legend, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
+import { Caveat, Empty, Stat } from "../ui/index.jsx";
 
 /**
  * Ensemble statistics — peak outflow, breach formation time, arrival spread.
@@ -90,21 +91,25 @@ export default function EnsemblePanel({ result }) {
       : null;
 
   return (
-    <div style={S.page}>
-      <h3 style={S.h3}>Ensemble statistics</h3>
+    <div className="jr-page">
+      <h3 className="jr-h1">Ensemble statistics</h3>
 
       {ensemble.dam_class_outside_fitted_population && (
-        <div style={S.warn}>
-          <strong>
-            Screening figure only — dam class outside fitted population
-            {ensemble.dam_type ? ` (${ensemble.dam_type})` : ""}
-            {ensemble.scenario_type ? ` · ${ensemble.scenario_type.replaceAll("_", " ")}` : ""}
-          </strong>
-          <div style={{ marginTop: 4 }}>{ensemble.dam_class_note}</div>
-        </div>
+        <Caveat
+          className="jr-measure-wide jr-mb-12"
+          title={
+            <>
+              Screening figure only — dam class outside fitted population
+              {ensemble.dam_type ? ` (${ensemble.dam_type})` : ""}
+              {ensemble.scenario_type ? ` · ${ensemble.scenario_type.replaceAll("_", " ")}` : ""}
+            </>
+          }
+        >
+          <div>{ensemble.dam_class_note}</div>
+        </Caveat>
       )}
 
-      <div style={S.row}>
+      <div className="jr-row jr-measure-wide">
         <Band
           title="Peak breach outflow"
           unit="m³/s"
@@ -121,7 +126,7 @@ export default function EnsemblePanel({ result }) {
         />
       </div>
 
-      <div style={S.meta}>
+      <p className="jr-meta jr-mt-12">
         {converged && <span>{converged}</span>}
         {ensemble.regressions_used?.length > 0 && (
           <span>
@@ -138,17 +143,17 @@ export default function EnsemblePanel({ result }) {
             <strong>{result.solver_backend.solver_backend_label}</strong>
           </span>
         )}
-      </div>
-      <p style={S.note}>
+      </p>
+      <p className="jr-note jr-measure">
         The four published regressions disagree with each other by a factor of
         3–4. That inter-method spread is the dominant term in this band and is
         the documented state of the art, not a defect in this implementation —
         which is why the range is quoted rather than a single number.
       </p>
 
-      <h4 style={S.h4}>Arrival time with uncertainty</h4>
+      <h4 className="jr-h2">Arrival time with uncertainty</h4>
       {chartData.length === 0 ? (
-        <Empty>
+        <Empty inline>
           The flood reached no gauge within the simulated time, so there is no
           arrival band to plot.
         </Empty>
@@ -182,19 +187,19 @@ export default function EnsemblePanel({ result }) {
       )}
 
       {gauges.some((g) => g.median == null) && (
-        <div style={S.note}>
+        <p className="jr-note jr-measure">
           Not plotted:{" "}
           {gauges
             .filter((g) => g.median == null)
             .map((g) => `${g.name}${g.note ? ` (${g.note})` : ""}`)
             .join("; ")}
-        </div>
+        </p>
       )}
 
       {ensemble.h_max_stats && (
         <>
-          <h4 style={S.h4}>Peak depth across the domain</h4>
-          <div style={S.row}>
+          <h4 className="jr-h2">Peak depth across the domain</h4>
+          <div className="jr-row jr-measure-wide">
             <Band
               title="Maximum depth anywhere"
               unit="m"
@@ -218,42 +223,13 @@ function Band({ title, unit, median, p05, p95, hint }) {
       ? Math.round(v).toLocaleString()
       : v.toFixed(v < 10 ? 2 : 1);
   return (
-    <div style={S.card}>
-      <div style={S.cardTitle}>{title}</div>
-      <div style={S.cardValue}>
-        {fmt(median)} <span style={S.cardUnit}>{unit}</span>
-      </div>
-      <div style={S.cardBand}>
-        {fmt(p05)} – {fmt(p95)} {unit}
-      </div>
-      {hint && <div style={S.cardHint}>{hint}</div>}
-    </div>
+    <Stat
+      size="lg"
+      label={title}
+      value={fmt(median)}
+      unit={unit}
+      band={`${fmt(p05)} – ${fmt(p95)} ${unit}`}
+      hint={hint}
+    />
   );
 }
-
-function Empty({ children }) {
-  return <div style={S.empty}>{children}</div>;
-}
-
-const S = {
-  page: { padding: 16, overflowY: "auto", height: "100%" },
-  h3: { margin: "0 0 12px" },
-  h4: { margin: "20px 0 8px", fontSize: 13, color: "#555" },
-  row: { display: "flex", gap: 12, flexWrap: "wrap" },
-  card: {
-    flex: "1 1 220px", border: "1px solid #ddd", borderRadius: 4,
-    padding: "10px 12px", background: "#fafafa",
-  },
-  cardTitle: { fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: 0.4 },
-  cardValue: { fontSize: 26, fontWeight: 700, marginTop: 4 },
-  cardUnit: { fontSize: 13, fontWeight: 400, color: "#666" },
-  cardBand: { fontSize: 12, color: "#1565C0", marginTop: 2 },
-  cardHint: { fontSize: 10, color: "#888", marginTop: 6 },
-  meta: { fontSize: 12, color: "#555", marginTop: 10 },
-  note: { fontSize: 11, color: "#777", marginTop: 8, lineHeight: 1.45, maxWidth: 760 },
-  warn: {
-    padding: "8px 10px", fontSize: 11, border: "2px solid #e65100",
-    background: "#fff4e5", borderRadius: 4, color: "#7a3e00", marginBottom: 12,
-  },
-  empty: { fontSize: 12, color: "#777", padding: "12px 0", maxWidth: 700, lineHeight: 1.5 },
-};
