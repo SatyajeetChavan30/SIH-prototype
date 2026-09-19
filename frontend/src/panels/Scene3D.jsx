@@ -4,6 +4,7 @@ import * as Cesium from "cesium";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { DAM, GAUGES, camerasFor } from "../data/entities.js";
 import { TILES_URL, CESIUM_ION_TOKEN, CESIUM_ION_ASSET_ID } from "../runtimeConfig.js";
+import { Caveat } from "../ui/index.jsx";
 
 // Build-time VITE_* in a browser; injected at runtime by the desktop app, whose
 // installer carries no Cesium token (runtimeConfig.js).
@@ -236,21 +237,18 @@ export default function Scene3D({ dam = DAM, gauges = GAUGES }) {
     // the viewer fill the whole window, which covers the control panel and
     // swallows its clicks.
     <div style={{ height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", zIndex: 10, top: 8, left: 8 }}>
+      <div className="jr-globe-cameras">
         {cameras.map((p) => (
-          <button key={p.id} onClick={() => flyToPreset(p.id)} style={{ marginRight: 4 }}>
+          <button key={p.id} type="button" className="jr-pill jr-pill--overlay"
+                  onClick={() => flyToPreset(p.id)}>
             {p.label}
           </button>
         ))}
       </div>
       {terrainWarning && (
-        <div style={{
-          position: "absolute", zIndex: 10, bottom: 30, left: 8, right: 8,
-          background: "#7a1f1f", color: "white", padding: "6px 10px",
-          fontSize: 12, borderRadius: 4,
-        }}>
+        <Caveat tone="danger" role="alert" className="jr-globe-warning">
           ⚠ {terrainWarning}
-        </div>
+        </Caveat>
       )}
       <Viewer
         ref={viewerRef}

@@ -164,26 +164,21 @@ function HazardLegend({ hazard: rawHazard, grid }) {
     : null;
 
   return (
-    <div style={{
-      position: "absolute", bottom: 20, left: 8, zIndex: 1000,
-      background: "rgba(255,255,255,0.94)", border: "1px solid #bbb",
-      borderRadius: 4, padding: "7px 9px", fontSize: 10, lineHeight: 1.5,
-      minWidth: 150,
-    }}>
-      <div style={{ fontWeight: 700 }}>Flood hazard (FD2320)</div>
-      <div style={{ color: "#777", marginBottom: 4 }}>share of flooded area</div>
+    <div className="jr-overlay jr-map-legend">
+      <div className="jr-overlay__title">Flood hazard (FD2320)</div>
+      <div className="jr-overlay__sub">share of flooded area</div>
       {rows.map((r) => (
-        <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 12, height: 12, background: r.color,
-                         border: "1px solid #999", flexShrink: 0 }} />
-          <span style={{ flex: 1, textTransform: "capitalize" }}>{r.name}</span>
-          <span style={{ color: "#666" }}>
+        <div key={r.name} className="jr-legend-row">
+          {/* Swatch colour from the payload: the classifier that painted the
+              pixels, never a stylesheet. */}
+          <span className="jr-swatch" style={{ background: r.color }} />
+          <span className="jr-legend-row__name">{r.name}</span>
+          <span className="jr-legend-row__value">
             {r.share < 0.5 ? "<1%" : `${Math.round(r.share)}%`}
           </span>
         </div>
       ))}
-      <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid #eee",
-                    color: "#555" }}>
+      <div className="jr-overlay__foot">
         {floodedKm2 != null && (
           <div>Flooded <strong>{floodedKm2.toFixed(2)} km²</strong>
             {domainShare != null ? ` — ${domainShare.toFixed(1)}% of domain` : ""}
@@ -222,12 +217,7 @@ export function SarStatus({ sar, show, onToggle }) {
         role="status"
         onClick={() => setExpanded(true)}
         title="Click for the full reason"
-        style={{
-          position: "absolute", top: 8, right: 8, zIndex: 1000,
-          padding: "4px 9px", borderRadius: 4, cursor: "pointer",
-          background: "rgba(255,255,255,0.94)", border: "1px solid #b0863a",
-          fontSize: 11, color: "#7a3e00", maxWidth: 260,
-        }}
+        className="jr-overlay jr-map-status jr-map-status--collapsed"
       >
         Sentinel-1: no usable mask for this reach ⓘ
       </div>
@@ -237,15 +227,12 @@ export function SarStatus({ sar, show, onToggle }) {
   return (
     <div
       role="status"
-      style={{
-        position: "absolute", top: 8, right: 8, zIndex: 1000,
-        maxWidth: 340, padding: "8px 10px", borderRadius: 4,
-        background: "rgba(255,255,255,0.94)",
-        border: `2px solid ${unavailable ? "#e65100" : cached ? "#f9a825" : "#1565C0"}`,
-        fontSize: 11, lineHeight: 1.35,
-      }}
+      className="jr-overlay jr-map-status"
+      // The border colour is the observation's STATE (refused / cached / live),
+      // kept as the three values it always had.
+      style={{ borderColor: unavailable ? "#e65100" : cached ? "#f9a825" : "#1565C0" }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+      <div className="jr-overlay__title">
         {unavailable
           ? "⚠️ No observed SAR extent"
           : cached
@@ -254,7 +241,7 @@ export function SarStatus({ sar, show, onToggle }) {
       </div>
 
       {unavailable ? (
-        <div style={{ color: "#7a3e00" }}>{sar.reason}</div>
+        <div className="jr-overlay__warn">{sar.reason}</div>
       ) : (
         <>
           <div>
@@ -268,14 +255,14 @@ export function SarStatus({ sar, show, onToggle }) {
               ? ` · ${(sar.water_fraction * 100).toFixed(1)}% water`
               : ""}
           </div>
-          <div style={{ marginTop: 4, color: "#555" }}>
+          <div className="jr-overlay__sub jr-mt-8">
             This is observed <strong>water</strong> — reservoir and river included —
             not a detected flood.
           </div>
           {cached && sar.reason && (
-            <div style={{ marginTop: 4, color: "#7a5c00" }}>{sar.reason}</div>
+            <div className="jr-overlay__warn jr-mt-8">{sar.reason}</div>
           )}
-          <label style={{ display: "block", marginTop: 6 }}>
+          <label className="jr-overlay__toggle">
             <input type="checkbox" checked={show} onChange={onToggle} /> Show observed layer
           </label>
         </>
