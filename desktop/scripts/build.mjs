@@ -125,6 +125,41 @@ function buildFrontend(opts) {
     }
     console.log("verified: no Cesium token in the desktop frontend build");
   }
+
+  // Prove the fonts and stylesheets are bundled: the dashboard is offline-first,
+  // and a font pulled from a CDN renders fine on a connected dev machine and
+  // falls back to other metrics on demo day. Only CSS and HTML are checked —
+  // the JS legitimately carries network URLs (OSM tiles, the API default).
+  const external = findExternalStyleRefs(outDir);
+  if (external.length) {
+    throw new Error(`the frontend build loads styles or fonts from the network:\n  ${external.join("\n  ")}`);
+  }
+  console.log("verified: no external font or stylesheet URL in the desktop frontend build");
+}
+
+/**
+ * Every CSS url()/@import and HTML <link href> in `dir` that points off-machine.
+ * data: URIs (Cesium's widget icons) and relative paths are fine; an absolute
+ * or protocol-relative http(s) URL is not.
+ */
+function findExternalStyleRefs(dir) {
+  const offMachine = String.raw`['"]?\s*(?:https?:)?\/\/`;
+  const patterns = [
+    new RegExp(String.raw`url\(\s*${offMachine}`, "i"),
+    new RegExp(String.raw`@import\s+${offMachine}`, "i"),
+    new RegExp(String.raw`<link\b[^>]*\bhref=${offMachine}`, "i"),
+    /fonts\.(?:googleapis|gstatic)\.com/i,
+  ];
+  const hits = [];
+  for (const file of listFiles(dir)) {
+    if (!/\.css$/.test(file) && path.basename(file) !== "index.html") continue;
+    const text = fs.readFileSync(file, "utf8");
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) hits.push(`${path.relative(dir, file)}: ${match[0]}`);
+    }
+  }
+  return hits;
 }
 
 function buildBackend(opts) {

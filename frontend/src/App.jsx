@@ -83,7 +83,7 @@ function Workspace() {
   return (
     <SimulationClockProvider manifest={manifest}>
       <PlaybackDriver />
-      <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
+      <div className="jr" style={{ display: "flex", height: "100vh", width: "100vw" }}>
         <ControlPanel onRunLoaded={onRunLoaded} onDamChange={setSelectedDam} result={result} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div style={{ borderBottom: "1px solid #ddd", padding: "4px 8px",
