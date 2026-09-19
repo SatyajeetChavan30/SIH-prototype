@@ -5,6 +5,7 @@ import {
 } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
+import { APP_NAME, APP_TAGLINE } from "../ui/brand.js";
 
 // Grid resolution every run is submitted at. Named rather than left to the
 // API's default because the blockage form has to state, live, how many cells a
@@ -299,8 +300,11 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   };
 
   return (
-    <div style={{ padding: 12, width: 280, overflowY: "auto", borderRight: "1px solid #ddd" }}>
-      <h3>JalRaksha</h3>
+    <div className="jr-sidebar">
+      <div className="jr-brand">
+        <span className="jr-brand__mark">{APP_NAME}</span>
+        <span className="jr-brand__tag">{APP_TAGLINE}</span>
+      </div>
       <label>Site</label>
       <select value={effectiveDamId || ""}
               onChange={(e) => selectDam(e.target.value)}>

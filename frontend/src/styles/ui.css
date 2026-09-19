@@ -72,15 +72,26 @@
   scrollbar-width: none;
 }
 
+/* The loaded run's name. It gives way to the tabs: run names can be long
+   ("Khadakwasla — drainage check 200 m, 30 h, exit domain …"), the tabs must
+   never scroll out of view, and the full name is in the title tooltip. */
 .jr-topbar__status {
-  margin-left: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: 12px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  flex-shrink: 0;
   font-size: var(--fs-micro);
   color: var(--ink-2);
   white-space: nowrap;
+}
+
+.jr-topbar__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The 2D map and the 3D globe sit in two framed viewports on a quiet ground:

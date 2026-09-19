@@ -13,6 +13,7 @@ import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
 import { resolveApiUrl } from "./api.js";
 import { DAM, GAUGES } from "./data/entities.js";
+import { Chip, TabPill } from "./ui/index.jsx";
 
 function PlaybackDriver() {
   // Auto-advance the shared clock while playing (drives both panels).
@@ -83,16 +84,21 @@ function Workspace() {
   return (
     <SimulationClockProvider manifest={manifest}>
       <PlaybackDriver />
-      <div className="jr" style={{ display: "flex", height: "100vh", width: "100vw" }}>
+      <div className="jr jr-shell">
         <ControlPanel onRunLoaded={onRunLoaded} onDamChange={setSelectedDam} result={result} />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <div style={{ borderBottom: "1px solid #ddd", padding: "4px 8px",
-                        display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div className="jr-main">
+          <div className="jr-topbar" role="tablist" aria-label="Result views">
             {tabs.map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)} disabled={tab === t.id}>
-                {t.label}{t.badge ? ` (${t.badge})` : ""}
-              </button>
+              <TabPill key={t.id} active={tab === t.id} badge={t.badge} onClick={() => setTab(t.id)}>
+                {t.label}
+              </TabPill>
             ))}
+            {result?.run_id && (
+              <div className="jr-topbar__status" title={`${result.dam_name || ""} — ${result.run_id}`}>
+                {result.dam_name && <span className="jr-topbar__name">{result.dam_name}</span>}
+                <Chip mono>{result.run_id.slice(0, 8)}</Chip>
+              </div>
+            )}
           </div>
 
           {/*
@@ -115,16 +121,13 @@ function Workspace() {
             whose default min-height:auto lets a self-sizing widget (Cesium)
             grow its container without bound.
           */}
-          <div style={{ flex: 1, position: "relative", minHeight: 0, minWidth: 0 }}>
+          <div className="jr-stage">
             <Pane active={tab === "workspace"}>
-              <div style={{ height: "100%", display: "grid",
-                            gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr",
-                            minHeight: 0 }}>
-                <div style={{ borderRight: "1px solid #ddd", minWidth: 0, minHeight: 0,
-                              overflow: "hidden" }}>
+              <div className="jr-workspace">
+                <div className="jr-viewport">
                   <Map2D dam={dam} gauges={gauges} result={result} />
                 </div>
-                <div style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+                <div className="jr-viewport">
                   <Scene3D dam={dam} gauges={gauges} />
                 </div>
               </div>
