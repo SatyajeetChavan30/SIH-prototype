@@ -2,6 +2,7 @@ import React from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { TOOLTIP_PROPS } from "../ui/chartTheme.js";
 import { HAZARD_LEVELS, foldLegacyLevels } from "../hazard.js";
 import { Caveat, Empty, Stat } from "../ui/index.jsx";
 
@@ -249,11 +250,11 @@ function HazardSection({ hazard: rawHazard }) {
       <div style={{ height: 180, marginTop: 10 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }}
-                   label={{ value: "% of flooded area", angle: -90, position: "insideLeft", fontSize: 11 }} />
-            <Tooltip formatter={(v, _n, p) => [`${Number(v).toFixed(1)}% of the flood (${num(p.payload.cells)} cells)`, "area"]} />
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis
+                   label={{ value: "% of flooded area", angle: -90, position: "insideLeft" }} />
+            <Tooltip {...TOOLTIP_PROPS} formatter={(v, _n, p) => [`${Number(v).toFixed(1)}% of the flood (${num(p.payload.cells)} cells)`, "area"]} />
             <Bar dataKey="pct">
               {rows.map((r) => (
                 <Cell key={r.name} fill={r.color} />

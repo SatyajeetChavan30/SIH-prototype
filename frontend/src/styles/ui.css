@@ -957,3 +957,33 @@
       color var(--dur-fast) var(--ease);
   }
 }
+
+/* --------------------------------------------------------------- charts -- */
+
+/* recharts chrome. CSS outranks SVG presentation attributes, so these win over
+   recharts' defaults without a prop on every chart. ONLY chrome is targeted:
+   never .recharts-line-curve, .recharts-bar-rectangle or .recharts-scatter,
+   whose colours are data (engine series, FD2320 classes from the payload). */
+.jr .recharts-cartesian-grid line {
+  stroke: var(--line);
+}
+
+.jr .recharts-cartesian-axis-line,
+.jr .recharts-cartesian-axis-tick-line {
+  stroke: var(--surface-4);
+}
+
+.jr .recharts-cartesian-axis-tick-value,
+.jr .recharts-label {
+  fill: var(--ink-2);
+  font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr .recharts-legend-item-text {
+  font-size: var(--fs-micro);
+}
+
+.jr .recharts-default-legend {
+  font-size: var(--fs-micro);
+}

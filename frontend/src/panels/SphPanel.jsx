@@ -3,6 +3,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Scatter,
   ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from "recharts";
+import { LEGEND_PROPS, SERIES, TOOLTIP_PROPS } from "../ui/chartTheme.js";
 import { Caveat, Empty, Stat } from "../ui/index.jsx";
 
 /**
@@ -115,19 +116,19 @@ export default function SphPanel({ result }) {
         <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={frontRows} margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="t" type="number" tick={{ fontSize: 11 }}
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="t" type="number"
                      tickFormatter={(v) => v.toFixed(1)}
                      label={{ value: "time (s)", position: "insideBottom",
-                              offset: -14, fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }}
+                              offset: -14 }} />
+              <YAxis
                      label={{ value: "front position (m)", angle: -90,
-                              position: "insideLeft", fontSize: 11 }} />
-              <Tooltip formatter={(v) => `${Number(v).toFixed(1)} m`}
+                              position: "insideLeft" }} />
+              <Tooltip {...TOOLTIP_PROPS} formatter={(v) => `${Number(v).toFixed(1)} m`}
                        labelFormatter={(v) => `t = ${Number(v).toFixed(2)} s`} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend {...LEGEND_PROPS} />
               <Line type="monotone" dataKey="position" name="Surge front"
-                    stroke="#1565C0" strokeWidth={2} dot={false}
+                    stroke={SERIES.primary} strokeWidth={2} dot={false}
                     isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -148,17 +149,17 @@ export default function SphPanel({ result }) {
         <div style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="x" type="number"
                      label={{ value: "across flow (m)", position: "insideBottom",
-                              offset: -14, fontSize: 11 }} />
-              <YAxis dataKey="y" type="number" tick={{ fontSize: 11 }}
+                              offset: -14 }} />
+              <YAxis dataKey="y" type="number"
                      label={{ value: "downstream (m)", angle: -90,
-                              position: "insideLeft", fontSize: 11 }} />
+                              position: "insideLeft" }} />
               <ZAxis dataKey="z" range={[6, 6]} />
-              <Tooltip cursor={{ strokeDasharray: "3 3" }}
+              <Tooltip {...TOOLTIP_PROPS} cursor={{ strokeDasharray: "3 3" }}
                        formatter={(v) => `${Number(v).toFixed(1)} m`} />
-              <Scatter data={particles} fill="#1565C0" fillOpacity={0.45}
+              <Scatter data={particles} fill={SERIES.primary} fillOpacity={0.45}
                        isAnimationActive={false} />
             </ScatterChart>
           </ResponsiveContainer>

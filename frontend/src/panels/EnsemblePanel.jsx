@@ -3,6 +3,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ErrorBar, Legend, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
+import { LEGEND_PROPS, SERIES, TOOLTIP_PROPS } from "../ui/chartTheme.js";
 import { Caveat, Empty, Stat } from "../ui/index.jsx";
 
 /**
@@ -184,22 +185,20 @@ export default function EnsemblePanel({ result }) {
         <div style={{ height: 260 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 40, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11 }}
                 angle={-25}
                 textAnchor="end"
                 interval={0}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
-                label={{ value: "minutes", angle: -90, position: "insideLeft", fontSize: 11 }}
+                label={{ value: "minutes", angle: -90, position: "insideLeft" }}
               />
-              <Tooltip formatter={(v) => `${Number(v).toFixed(1)} min`} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="median" name="Median arrival" fill="#1565C0">
-                <ErrorBar dataKey="err" width={4} strokeWidth={1.5} stroke="#7a3e00" />
+              <Tooltip {...TOOLTIP_PROPS} formatter={(v) => `${Number(v).toFixed(1)} min`} />
+              <Legend {...LEGEND_PROPS} />
+              <Bar dataKey="median" name="Median arrival" fill={SERIES.jalraksha}>
+                <ErrorBar dataKey="err" width={4} strokeWidth={1.5} stroke={SERIES.errorBar} />
                 {chartData.map((entry) => (
                   <Cell key={entry.name} />
                 ))}

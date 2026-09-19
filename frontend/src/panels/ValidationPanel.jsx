@@ -3,6 +3,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip,
   XAxis, YAxis,
 } from "recharts";
+import { LEGEND_PROPS, SERIES, TOOLTIP_PROPS } from "../ui/chartTheme.js";
 import { getValidation, resolveApiUrl } from "../api.js";
 import { Button, Card, Caveat, Chip, DataTable, Empty } from "../ui/index.jsx";
 
@@ -212,13 +213,13 @@ function DemUpdateSection({ demUpdate }) {
                        tickFormatter={(v) => v.toFixed(0)}
                        label={{ value: "water level (m)", position: "insideBottom", offset: -12 }} />
                 <YAxis label={{ value: "MCM", angle: -90, position: "insideLeft" }} />
-                <Tooltip formatter={(v, n) => [Number(v).toFixed(2), n]}
+                <Tooltip {...TOOLTIP_PROPS} formatter={(v, n) => [Number(v).toFixed(2), n]}
                          labelFormatter={(v) => `${Number(v).toFixed(1)} m`} />
-                <Legend verticalAlign="top" height={24} />
+                <Legend {...LEGEND_PROPS} />
                 <Line type="monotone" dataKey="volume_mm3" name="storage (MCM)"
-                      stroke="#1565C0" dot={false} strokeWidth={2} />
+                      stroke={SERIES.primary} dot={false} strokeWidth={2} />
                 <Line type="monotone" dataKey="area_km2" name="surface area (km²)"
-                      stroke="#e65100" dot={false} strokeWidth={1} />
+                      stroke={SERIES.secondary} dot={false} strokeWidth={1} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -282,29 +283,27 @@ function RitterChart({ series }) {
     <div style={{ height: 320 }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={rows} margin={{ top: 8, right: 24, bottom: 28, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="x"
             type="number"
-            tick={{ fontSize: 11 }}
             tickFormatter={(v) => `${Math.round(v)}`}
             label={{ value: "distance along channel (m)", position: "insideBottom",
-                     offset: -14, fontSize: 11 }}
+                     offset: -14 }}
           />
           <YAxis
-            tick={{ fontSize: 11 }}
-            label={{ value: "depth (m)", angle: -90, position: "insideLeft", fontSize: 11 }}
+            label={{ value: "depth (m)", angle: -90, position: "insideLeft" }}
           />
-          <Tooltip formatter={(v) => (v == null ? "—" : `${Number(v).toFixed(3)} m`)} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Tooltip {...TOOLTIP_PROPS} formatter={(v) => (v == null ? "—" : `${Number(v).toFixed(3)} m`)} />
+          <Legend {...LEGEND_PROPS} />
           {/* Analytical drawn thickest and first so the engines overlay it. */}
           <Line type="monotone" dataKey="analytical" name="Exact (Ritter)"
-                stroke="#111" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                stroke={SERIES.exact} strokeWidth={2.5} dot={false} isAnimationActive={false} />
           <Line type="monotone" dataKey="jalraksha" name="JalRaksha 2D SWE"
-                stroke="#1565C0" strokeWidth={1.6} dot={false} isAnimationActive={false} />
+                stroke={SERIES.jalraksha} strokeWidth={1.6} dot={false} isAnimationActive={false} />
           {hasDelft3d && (
             <Line type="monotone" dataKey="delft3d" name="Delft3D FM"
-                  stroke="#e65100" strokeWidth={1.6} strokeDasharray="5 3"
+                  stroke={SERIES.delft3d} strokeWidth={1.6} strokeDasharray="5 3"
                   dot={false} isAnimationActive={false} />
           )}
         </LineChart>
