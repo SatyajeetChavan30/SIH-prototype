@@ -25,6 +25,7 @@ wheels/
 *.egg
 media/
 dist/
+video.mp4
 
 # Local environment files. These hold credentials — the Cesium Ion token lives
 # in frontend/.env.local — and must never be committed. Vite loads *.local
