@@ -299,6 +299,52 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   `main.py` is in the `.pvsm` staleness check, so changing those arguments
   invalidates cached states.
 
+## Dashboard styling — a design system, scoped away from the maps
+
+Plan and rationale: `docs/UI_Design_Language_Plan.md` (the andhüman-derived
+visual language; phases A–E and D2 are built, the phone/landing Phase F is not).
+
+- **Where things live.** `frontend/src/styles/` holds `tokens.css` (custom
+  properties on `:root`), `base.css` and `ui.css`; `frontend/src/ui/` holds the
+  primitives (`TabPill`, `Card`, `SectionLabel`, `Stat`, `DataTable`, `Chip`,
+  `Caveat`, `Button`, `Empty`), `brand.js` (`APP_NAME`) and `chartTheme.js`.
+  Panels use classes and primitives; the remaining inline `style` props are the
+  `Pane` mechanism, data colours, widget-container sizing and chart heights.
+- **Scoping under `.jr` is not enough.** Leaflet and Cesium render INSIDE the
+  app root, so an element rule like `.jr a` still outranks Leaflet's
+  `.leaflet-bar a`. Every element-level rule in `base.css` excludes
+  `.leaflet-container`/`.cesium-viewer` subtrees AND is wrapped whole in
+  `:where()` for zero specificity — without that, the `:not()` exclusion added
+  enough specificity to beat the component classes (the primary button's white
+  text lost to `color: inherit`). Element selectors are otherwise used only
+  under `.jr-form`, the sidebar, which holds no map DOM.
+- **No hazard colour in the stylesheets.** FD2320 colours come from the run
+  payload (map legend swatches, Impact bars) or from `GaugesPanel.hazardClass`,
+  which mirrors `hazard.py`. Chart engine colours are data too and live in
+  `chartTheme.js` `SERIES`. Chart chrome is styled by CSS on `.recharts-*`
+  (CSS outranks SVG presentation attributes); never target series or bar fills.
+- **`Caveat` is a correctness component.** Four tones (warn, danger, ok, info),
+  every pairing ≥ 7:1, never below 13 px, and no `collapsed`/`muted` prop. The
+  spec's `#999` secondary text is 2.85:1, so secondary text is `--ink-2 #666`
+  and `--muted` is for rules and disabled states only. Nothing ships below 12 px.
+- **Fonts are bundled** from `@fontsource` (Inter variable, Space Grotesk, IBM
+  Plex Mono). `desktop/scripts/build.mjs` fails the build if any built CSS or
+  `index.html` references a font or stylesheet by network URL.
+- **`?ui-preview`** on the dev server renders `ui/Preview.jsx`, a gallery of the
+  primitives and one Caveat per honesty label. It is gated on
+  `import.meta.env.DEV` and absent from production builds.
+- **Honesty labels now reach the screen** (they were computed and dropped):
+  `RunResult.is_synthetic`/`synthetic_note` (a danger strip above every tab),
+  `EnsembleSummary.unverified_regressions` (+ `uses_unverified_regression`,
+  `unverified_regression_note`), and per-gauge `boundary_clearance_km` /
+  `near_boundary`, measured against the solver grid by
+  `script_runs.gauge_boundary_clearance_km`. `BOUNDARY_CONTAMINATION_KM` (5 km,
+  UNVETTED) has one definition, in `script_runs.py`, which the drainage script
+  imports. `scripts/backfill_gauge_boundary.py` fills older runs from their
+  recorded grid origin (dry run by default); `e2e09ea3` is backfilled. The
+  sidebar `DamClassWarning` reads `result.ensemble` — it read `hazard_summary`,
+  whose dam-class keys are added after the manifest is written, and never fired.
+
 ## Windows desktop app
 
 The full record is in `desktop/README.md` and `docs/DECISIONS.md` §15. The desktop app does not
