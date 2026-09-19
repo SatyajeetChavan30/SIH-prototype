@@ -280,7 +280,7 @@ class RegisteredRun:
         complete run with nothing in it.
         """
         from jalraksha_service import db
-        from jalraksha_service.tasks import _existing_exports, impact_exports
+        from jalraksha_service.tasks import _existing_exports, _write_xdmf, impact_exports
 
         exports: List[Dict[str, str]] = []
 
@@ -317,6 +317,16 @@ class RegisteredRun:
         else:
             print("[script-run] no depth_series in result — the run will list "
                   "in the picker but will NOT play back.")
+
+        # The ParaView 3D dataset. SHARED with tasks.py. This path never wrote
+        # one, so script-launched runs (the 500 x 400 km GPU runs among them)
+        # listed as 3D-capable and then had a disabled ParaView button, with the
+        # depth series already discarded. _write_xdmf never fails the run.
+        if result.get("depth_series"):
+            xdmf = _write_xdmf(self.run_id, result, self.dam_config,
+                               source="script_runs.RegisteredRun.finish")
+            if xdmf:
+                exports.append(xdmf)
 
         exports.append(write_run_summary(
             self.run_id, result, self.dam_config, self.solver_params,

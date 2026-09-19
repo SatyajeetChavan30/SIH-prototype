@@ -227,3 +227,41 @@ def test_the_gauge_mapping_is_shared_with_the_api_path():
     source = inspect.getsource(tasks.run_dam_break_task)
     assert "gauge_rows_from_result" in source
     assert "write_run_summary" in source
+
+
+def test_a_script_run_with_a_depth_series_gets_a_paraview_dataset(service, tmp_path):
+    """
+    The script path wrote keyframes and rasters but never the XDMF, so runs
+    launched from scripts listed as 3D-capable with a disabled ParaView button
+    - and by then the depth series was gone. It now writes the dataset through
+    the same _write_xdmf the API path uses.
+    """
+    pytest.importorskip("h5py")
+    import numpy as np
+
+    from jalraksha_service.script_runs import registered_run
+
+    ny, nx = 4, 5
+    snapshot = {
+        "time_s": 60.0,
+        "depth": np.full((ny, nx), 0.5, dtype=np.float32),
+        "velocity_x": np.full((ny, nx), 0.2, dtype=np.float32),
+        "velocity_y": np.zeros((ny, nx), dtype=np.float32),
+    }
+    result = {
+        **_fake_result(tmp_path),
+        "grid": {"nx": nx, "ny": ny, "dx": 100.0, "dy": 100.0,
+                 "x0": 370000.0, "y0": 2030000.0, "crs": "EPSG:32643"},
+        "terrain_elevation": np.zeros((ny, nx), dtype=np.float32),
+        "depth_series": [snapshot],
+    }
+    with registered_run("khadakwasla", {"name": "XDMF run"}, "swe",
+                        {"ensemble_size": 1}) as run:
+        run.keyframe_dir.mkdir(parents=True, exist_ok=True)
+        (run.keyframe_dir / "manifest.json").write_text('{"keyframes": []}', encoding="utf-8")
+        run.finish(result, keyframes_already_exported=True)
+        run_id = run.run_id
+
+    exports = {e["kind"]: e["path_or_url"] for e in service.get_exports(run_id)}
+    assert "xdmf" in exports
+    assert Path(exports["xdmf"]).exists()

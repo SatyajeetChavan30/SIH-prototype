@@ -1261,7 +1261,8 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
 
 
 def _write_xdmf(run_id: str, result: Dict[str, Any],
-                dam_config: Dict[str, Any]) -> Dict[str, Any] | None:
+                dam_config: Dict[str, Any],
+                source: str = "services/api run_dam_break_task") -> Dict[str, Any] | None:
     """
     Write the run's XDMF+HDF5 3D dataset, mirroring tools/paraview/make_dataset.py.
 
@@ -1301,7 +1302,7 @@ def _write_xdmf(run_id: str, result: Dict[str, Any],
                 "dam_lat": dam_config.get("lat"),
                 "dam_lon": dam_config.get("lon"),
                 "solver": "jalraksha SWE (HLLC + Audusse, well-balanced)",
-                "source": "services/api run_dam_break_task",
+                "source": source,
             },
         )
         print(f"[xdmf] run {run_id}: wrote {xdmf_path} ({len(frames)} timesteps)")

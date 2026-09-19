@@ -399,7 +399,7 @@ def main(argv=None) -> int:
         return _report_and_register(
             run, result, dam_config, kf_dir, series_args=(
                 resolution_m, duration_s, members, n_snapshots, run_tag, t0,
-            margins, condition_corridor_m))
+            margins, condition_corridor_m), dem_path=dem_path)
 
 
 def _add_comparison_and_sph(run, dam_config, progress) -> None:
@@ -531,7 +531,8 @@ def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION
     }
 
 
-def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
+def _report_and_register(run, result, dam_config, kf_dir, series_args,
+                         dem_path=None) -> int:
     """
     Everything after the solve: keyframes, the hazard series, and registration.
 
@@ -698,7 +699,10 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     # becomes selectable in the dashboard picker. The manifest was exported
     # above (the series is derived from its per-frame hazard counts), so finish
     # reuses it instead of rendering all 60 frames a second time.
-    run.finish(result, keyframes_already_exported=True)
+    # dem_path is recorded in run_summary.json. It used to be omitted, so a run
+    # launched with --dem left dem_used null and nothing could rebuild its
+    # terrain later without being told which DEM it was.
+    run.finish(result, keyframes_already_exported=True, dem_path=dem_path)
 
     print(f"[drainage-check] wrote {summary_path}")
     print(f"[drainage-check] first: {series[0] if series else None}")
