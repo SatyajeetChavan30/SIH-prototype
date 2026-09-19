@@ -9,6 +9,7 @@ import EnsemblePanel from "./panels/EnsemblePanel.jsx";
 import ImpactPanel from "./panels/ImpactPanel.jsx";
 import ValidationPanel from "./panels/ValidationPanel.jsx";
 import SphPanel from "./panels/SphPanel.jsx";
+import ProvenancePanel from "./panels/ProvenancePanel.jsx";
 import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
 import SyntheticRunBanner from "./panels/SyntheticRunBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
@@ -79,6 +80,7 @@ function Workspace() {
     ...(result?.sph ? [{ id: "sph", label: "SPH" }] : []),
     { id: "comparison", label: "Comparison" },
     { id: "validation", label: "Validation" },
+    { id: "provenance", label: "Provenance" },
     { id: "downloads", label: "Downloads", badge: result?.exports?.length },
   ];
 
@@ -152,6 +154,9 @@ function Workspace() {
             </Pane>
             <Pane active={tab === "validation"}>
               <ValidationPanel result={result} />
+            </Pane>
+            <Pane active={tab === "provenance"}>
+              <ProvenancePanel result={result} />
             </Pane>
             <Pane active={tab === "downloads"}>
               <DownloadsPanel result={result} />
