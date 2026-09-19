@@ -1,6 +1,7 @@
 import React from "react";
 import { Caveat, Chip, DataTable, Empty } from "../ui/index.jsx";
 import { boundaryNote } from "../honesty.js";
+import { evacuationSummary, hasDirectives, thresholdText } from "../evacuation.js";
 
 /**
  * Downstream gauge table — the headline output of the whole system.
@@ -33,6 +34,12 @@ export default function GaugesPanel({ result, dam }) {
     return <Empty>No downstream corridor is defined for this dam.</Empty>;
   }
 
+  // Directives exist only on runs written after they were introduced. On an
+  // older run the column still renders, with a dash that says why, so a
+  // missing directive is never mistaken for "no action needed".
+  const directives = hasRun && hasDirectives(result);
+  const summary = directives ? evacuationSummary(result) : null;
+
   return (
     <div className="jr-page">
       <h3 className="jr-h1">
@@ -53,6 +60,7 @@ export default function GaugesPanel({ result, dam }) {
             <th className="num">5th–95th</th>
             <th className="num">Peak depth</th>
             <th>Hazard</th>
+            {hasRun && <th>Directive</th>}
           </tr>
         </thead>
         <tbody>
@@ -91,11 +99,28 @@ export default function GaugesPanel({ result, dam }) {
                     </Chip>
                   )}
                 </td>
+                {hasRun && (
+                  <td>
+                    <DirectiveCell evacuation={g.evacuation} />
+                  </td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </DataTable>
+
+      {summary?.anyUnvetted && (
+        <Caveat className="jr-measure jr-mt-12" title="Directive thresholds are UNVETTED">
+          <div>
+            {thresholdText(summary.thresholds)} A directive orders gauges for
+            attention; it is not an evacuation order.
+          </div>
+          {summary.thresholdSource && (
+            <div className="jr-caveat__detail">{summary.thresholdSource}</div>
+          )}
+        </Caveat>
+      )}
 
       {hasRun && rows.every((r) => r.arrival_time_s == null) && (
         <Caveat className="jr-measure jr-mt-12">
@@ -109,6 +134,41 @@ export default function GaugesPanel({ result, dam }) {
         depths are indicative only — lead with arrival and inundation extent.
       </p>
     </div>
+  );
+}
+
+/**
+ * One gauge's directive, rendered exactly as the service stored it.
+ *
+ * Colour and label come from the payload (jalraksha/impact/evacuation.py), the
+ * same route FD2320 colours take, so no directive colour lives in a stylesheet.
+ * A directive computed from a boundary-shaped depth or a minority arrival says
+ * so beside the badge: it was still issued, and it is not a clean measurement.
+ */
+function DirectiveCell({ evacuation }) {
+  if (!evacuation) {
+    return (
+      <span className="muted" title="This run predates evacuation directives.">—</span>
+    );
+  }
+  // A gauge the flood never reached has no depth to be boundary-shaped; its
+  // own no-arrival note already sits in the Town column.
+  const assessed = evacuation.directive !== "no_arrival";
+  return (
+    <>
+      <Chip
+        style={{ background: evacuation.color?.bg, color: evacuation.color?.fg }}
+        title={evacuation.basis || undefined}
+      >
+        {evacuation.label}
+      </Chip>
+      {assessed && evacuation.near_boundary && (
+        <Caveat compact className="jr-row-note">From a boundary-shaped depth.</Caveat>
+      )}
+      {assessed && evacuation.minority_arrival && (
+        <Caveat compact className="jr-row-note">From a minority of ensemble members.</Caveat>
+      )}
+    </>
   );
 }
 

@@ -393,6 +393,11 @@ class GaugeResult(BaseModel):
     # was never recorded.
     boundary_clearance_km: Optional[float] = None
     near_boundary: Optional[bool] = None
+    # The gauge's evacuation directive, as jalraksha/impact/evacuation.py
+    # computed it: directive, label, colours, lead time, the boundary and
+    # minority flags it inherited, and the UNVETTED thresholds it used. None
+    # means the run predates directives - absent, not "no action needed".
+    evacuation: Optional[Dict[str, Any]] = None
 
 
 class ExportRef(BaseModel):

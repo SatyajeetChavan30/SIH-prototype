@@ -126,6 +126,10 @@ def init_db() -> None:
         # same DDL works on SQLite and Postgres; NULL for runs written before.
         _add_column(cur, "gauge_results", "boundary_clearance_km", "REAL")
         _add_column(cur, "gauge_results", "near_boundary", "INTEGER")
+        # The per-gauge evacuation directive (jalraksha/impact/evacuation.py),
+        # stored as the JSON payload it was computed as so every surface
+        # renders the same object. NULL for runs written before directives.
+        _add_column(cur, "gauge_results", "evacuation_json", "TEXT")
         _add_column(cur, "runs", "error", "TEXT")
         conn.commit()
     finally:
@@ -369,6 +373,16 @@ def get_run(run_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
+def evacuation_to_json(value: Optional[Dict[str, Any]]) -> Optional[str]:
+    """A gauge's directive payload as the evacuation_json column stores it."""
+    return None if value is None else json.dumps(value)
+
+
+def evacuation_from_json(value: Optional[str]) -> Optional[Dict[str, Any]]:
+    """The inverse; NULL (a run written before directives) stays None."""
+    return None if value is None else json.loads(value)
+
+
 def insert_gauge_results(run_id: str, gauges: List[Dict[str, Any]]) -> None:
     conn = _connect()
     try:
@@ -377,12 +391,14 @@ def insert_gauge_results(run_id: str, gauges: List[Dict[str, Any]]) -> None:
             cur.execute(
                 f"INSERT INTO gauge_results (run_id, gauge_name, distance_km, "
                 f"arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, "
-                f"arrival_p95_s, note, boundary_clearance_km, near_boundary) "
-                f"VALUES ({_placeholder(11)})",
+                f"arrival_p95_s, note, boundary_clearance_km, near_boundary, "
+                f"evacuation_json) "
+                f"VALUES ({_placeholder(12)})",
                 (run_id, g.get("gauge_name"), g.get("distance_km"),
                  g.get("arrival_time_s"), g.get("max_depth_m"), g.get("par_estimate"),
                  g.get("arrival_p05_s"), g.get("arrival_p95_s"), g.get("note"),
-                 g.get("boundary_clearance_km"), _bool_to_int(g.get("near_boundary"))),
+                 g.get("boundary_clearance_km"), _bool_to_int(g.get("near_boundary")),
+                 evacuation_to_json(g.get("evacuation"))),
             )
         conn.commit()
     finally:
@@ -410,14 +426,15 @@ def get_gauge_results(run_id: str) -> List[Dict[str, Any]]:
     conn = _connect()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT gauge_name, distance_km, arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note, boundary_clearance_km, near_boundary FROM gauge_results WHERE run_id = %s" % ("?" if not settings.DATABASE_URL.startswith("postgres") else "%s"), (run_id,))
+        cur.execute("SELECT gauge_name, distance_km, arrival_time_s, max_depth_m, par_estimate, arrival_p05_s, arrival_p95_s, note, boundary_clearance_km, near_boundary, evacuation_json FROM gauge_results WHERE run_id = %s" % ("?" if not settings.DATABASE_URL.startswith("postgres") else "%s"), (run_id,))
         rows = cur.fetchall()
         return [
             {"gauge_name": r[0], "distance_km": r[1], "arrival_time_s": r[2],
              "max_depth_m": r[3], "par_estimate": r[4],
              "arrival_p05_s": r[5], "arrival_p95_s": r[6], "note": r[7],
              "boundary_clearance_km": r[8],
-             "near_boundary": None if r[9] is None else bool(r[9])}
+             "near_boundary": None if r[9] is None else bool(r[9]),
+             "evacuation": evacuation_from_json(r[10])}
             for r in rows
         ]
     finally:

@@ -512,6 +512,61 @@ at all on machines without DualSPHysics, and no reference engine).
 
 ---
 
+## 17. Evacuation Directives Are Labelled, Not Refused
+
+**Context:** The Aazhi feature-integration spec (2026-09-19, workstream W1) asks
+for a per-gauge directive — evacuate, prepare, monitor — built from what a run
+already reports. The thresholds that turn a hazard class and a warning time into
+a directive are chosen, not published (verification queue row 39). Every other
+unvetted coefficient family in this repo that changes a figure is quarantined:
+the ensemble refuses Walder & O'Connor, Jonkman 2008 and Huizinga until they are
+verified.
+
+**Decision:** Compute the directive once, in `jalraksha/impact/evacuation.py`,
+inside the shared `script_runs.gauge_rows_from_result`, and store it with the
+gauge row (`gauge_results.evacuation_json`). Gate it by LABEL: every payload
+carries `thresholds_unvetted` and the threshold values, and both dashboard
+surfaces render a Caveat beside any directive that carries it. Do not refuse.
+
+**Rationale:**
+- A quarantined regression changes a number the reader cannot see through; a
+  directive orders gauges that are already on screen with their depth and
+  arrival beside them. Refusing to order them protects nobody, while a visible
+  label keeps the judgement inspectable.
+- **One definition.** FD2320 had five copies in this repo and two live ones
+  disagreed. The directive is computed server-side, the hazard class comes from
+  `HazardClassifier.classify_depth_only` (no new band table), and colours travel
+  in the payload, so the Gauges tab, the Impact tab and any later dossier render
+  the same object.
+- **Both run paths, by construction.** Computing it inside the shared gauge-row
+  function is what gives the API path and the script path directives without a
+  second call site — the rule whose violation left the flagship run's Impact
+  tab empty.
+
+**Consequences:**
+- **No arrival is not safety.** A null arrival — flood did not reach, OR gauge
+  outside the domain — yields NO_ARRIVAL, labelled "Not assessed", in grey, with
+  the gauge's note carried verbatim. It never yields MONITOR.
+- **No green anywhere in the palette.** None of the four states means "safe".
+- A directive from a boundary-shaped depth or a minority arrival is still issued
+  and says so beside the badge.
+- The Impact tab counts **gauged places**, not villages: the gauges are named
+  towns and, on some presets, terrain-derived thalweg points.
+- Runs written before this have `evacuation` null and render a dash with a
+  tooltip; they are not backfilled.
+- **Known gap:** the Delft3D-only path in `tasks.run_dam_break_task` still builds
+  its gauge rows inline (no boundary fields, and now no directives). It predates
+  the shared function and is left as it was.
+- `WARNING_LEAD_TIME_S` (PAR urgency buckets) is a different quantity and is not
+  reused as the directive lead time.
+
+**Rejected alternatives:** a `*_VERIFIED` refusal (removes the feature without
+making anything safer); computing directives in the frontend (a second copy of
+the mapping); computing them at read time in `main.run_result` (old runs would
+silently acquire directives computed from rows written under older rules).
+
+---
+
 ## References & Future Refinements
 
 - **Numerical analysis:** Toro 2001, Audusse 2004 (cited above)
@@ -527,5 +582,5 @@ at all on machines without DualSPHysics, and no reference engine).
 ---
 
 **Document maintained by:** Claude Code (SIH 2026 team)  
-**Last updated:** 2026-09-12  
+**Last updated:** 2026-09-19  
 **Next review:** After Phase 1 completion (approx. 2026-08-28)

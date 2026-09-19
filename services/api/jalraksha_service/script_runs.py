@@ -130,6 +130,7 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     schemas.py declares them required, so a null there turns
     ``GET /runs/{id}/result`` into a 500 rather than a missing value.
     """
+    from jalraksha.impact.evacuation import directive_for_gauge, hazard_level_at_depth
     from jalraksha_service.tasks import _gauge_max_depths, _minority_arrival_note
 
     gauge_depths = _gauge_max_depths(result)
@@ -140,14 +141,15 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for gname, g in (result.get("arrival_times") or {}).items():
         clearance = gauge_boundary_clearance_km(grid, *positions.get(gname, (None, None)))
-        rows.append({
+        minority_note = _minority_arrival_note(g)
+        row = {
             "gauge_name": gname,
             "distance_km": g.get("distance_km"),
             "arrival_time_s": g.get("median"),
             "arrival_p05_s": g.get("p05"),
             "arrival_p95_s": g.get("p95"),
             "max_depth_m": gauge_depths.get(gname),
-            "note": _minority_arrival_note(g) or g.get("note"),
+            "note": minority_note or g.get("note"),
             # Deliberately null, matching the API path: a domain-wide
             # population-at-risk figure cannot be divided among gauges without a
             # per-gauge catchment radius that no source defines.
@@ -160,7 +162,19 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
                 None if clearance is None
                 else 0 <= clearance < BOUNDARY_CONTAMINATION_KM
             ),
-        })
+        }
+        # Computed HERE, from the row's own fields, so the API path and the
+        # script path cannot disagree about a directive, and so it inherits the
+        # boundary flag and the minority note rather than re-deriving them.
+        # One definition of the mapping: jalraksha/impact/evacuation.py.
+        row["evacuation"] = directive_for_gauge(
+            hazard_level_at_depth(row["max_depth_m"]),
+            row["arrival_time_s"],
+            row["near_boundary"],
+            row["note"],
+            minority_arrival=minority_note is not None,
+        )
+        rows.append(row)
     return rows
 
 

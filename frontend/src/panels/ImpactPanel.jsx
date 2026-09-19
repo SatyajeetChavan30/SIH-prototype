@@ -4,7 +4,8 @@ import {
 } from "recharts";
 import { TOOLTIP_PROPS } from "../ui/chartTheme.js";
 import { HAZARD_LEVELS, foldLegacyLevels } from "../hazard.js";
-import { Caveat, Empty, Stat } from "../ui/index.jsx";
+import { Caveat, Chip, Empty, Stat } from "../ui/index.jsx";
+import { DIRECTIVE_ORDER, evacuationSummary, hasDirectives, thresholdText } from "../evacuation.js";
 
 /**
  * Impact assessment — population at risk, loss of life, hazard classes.
@@ -69,6 +70,7 @@ export default function ImpactPanel({ result }) {
     <div className="jr-page">
       <h3 className="jr-h1">Impact assessment</h3>
 
+      <EvacuationSection result={result} par={par} />
       <PopulationSection par={par} />
       <FatalitySection par={par} />
       <HazardSection hazard={hazard} />
@@ -76,6 +78,81 @@ export default function ImpactPanel({ result }) {
       <DamageSection impact={impact} />
     </div>
   );
+}
+
+/**
+ * Evacuation summary across the gauged places.
+ *
+ * Summarises the directives the service stored per gauge (see
+ * frontend/src/evacuation.js); it decides nothing itself. "Gauged places" is
+ * deliberate: these are the corridor's named gauges, some of them
+ * terrain-derived thalweg points, not a census of villages. A run written
+ * before directives existed says so instead of showing zeros.
+ */
+function EvacuationSection({ result, par }) {
+  if (!hasDirectives(result)) {
+    return (
+      <section className="jr-section">
+        <h4 className="jr-h2">Evacuation directives</h4>
+        <Empty inline>Directives were not computed for this run — it predates them.</Empty>
+      </section>
+    );
+  }
+  const s = evacuationSummary(result);
+  const exposed = par?.available ? par.exposure?.total_exposed_population : null;
+  return (
+    <section className="jr-section">
+      <h4 className="jr-h2">Evacuation directives</h4>
+      <div className="jr-row jr-measure-wide">
+        <Tile label="Gauged places reached" value={`${s.reached} of ${s.total}`} emphasis />
+        <Tile
+          label="Exposed population"
+          value={num(exposed)}
+          sub={par?.available ? "people in cells ≥ 0.1 m deep" : (par?.reason || "not computed")}
+        />
+        <Tile
+          label="Mean peak depth"
+          value={s.meanPeakDepthM == null ? "—" : `${s.meanPeakDepthM.toFixed(2)} m`}
+          sub={s.depthsCounted ? `over ${s.depthsCounted} reached places` : "no depth reported"}
+        />
+        <Tile
+          label="Shortest warning"
+          value={fmtLead(s.shortestLeadS)}
+          sub="earliest arrival after the breach"
+        />
+      </div>
+      <div className="jr-row jr-mt-12">
+        {DIRECTIVE_ORDER.filter((d) => s.counts[d]).map((d) => {
+          // Colour and label from a stored payload, never from the stylesheet.
+          const sample = result.gauges.find((g) => g.evacuation?.directive === d)?.evacuation;
+          return (
+            <Chip key={d} style={{ background: sample?.color?.bg, color: sample?.color?.fg }}>
+              {sample?.label} · {s.counts[d]}
+            </Chip>
+          );
+        })}
+      </div>
+      {(s.nearBoundaryCount > 0 || s.minorityCount > 0) && (
+        <p className="jr-note jr-measure">
+          {s.nearBoundaryCount > 0 && `${s.nearBoundaryCount} directive(s) from a boundary-shaped depth. `}
+          {s.minorityCount > 0 && `${s.minorityCount} from a minority of ensemble members.`}
+        </p>
+      )}
+      {s.anyUnvetted && (
+        <Caveat compact className="jr-measure jr-mt-8" title="Directive thresholds are UNVETTED">
+          <div>{thresholdText(s.thresholds)} Screening prompts, not evacuation orders.</div>
+        </Caveat>
+      )}
+    </section>
+  );
+}
+
+function fmtLead(seconds) {
+  if (seconds == null) return "—";
+  const minutes = seconds / 60;
+  return minutes >= 60
+    ? `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60)}m`
+    : `${Math.round(minutes)} min`;
 }
 
 function PopulationSection({ par }) {
