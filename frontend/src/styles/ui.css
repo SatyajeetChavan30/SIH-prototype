@@ -256,6 +256,11 @@
   margin-bottom: 4px;
 }
 
+/* Phase markers carry a label and a time each; let them wrap in the sidebar. */
+.jr-playback--wrap {
+  flex-wrap: wrap;
+}
+
 .jr-mb-8 {
   margin-bottom: 8px;
 }

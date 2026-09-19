@@ -8,6 +8,7 @@ import { GAUGES, DAM } from "../data/entities.js";
 import { APP_NAME, APP_TAGLINE } from "../ui/brand.js";
 import { Button, Caveat, DataTable, SectionLabel, Stat } from "../ui/index.jsx";
 import { boundaryNote } from "../honesty.js";
+import PlaybackRate from "./PlaybackRate.jsx";
 
 // Grid resolution every run is submitted at. Named rather than left to the
 // API's default because the blockage form has to state, live, how many cells a
@@ -1015,6 +1016,7 @@ function PlaybackControls() {
       <p className="jr-meta num jr-mt-8">
         t = {keyframes[index]?.time_s?.toFixed(0)} s ({index + 1}/{keyframes.length})
       </p>
+      <PlaybackRate />
     </div>
   );
 }

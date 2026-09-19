@@ -242,7 +242,7 @@ Presentation, solver, and export are in separate trees:
 Full record: `docs/dashboard_integration.md`. The demo-critical facts:
 
 - **Tabs**: 2D+3D · Gauges · Ensemble · Impact · SPH · Comparison · Validation ·
-  Downloads. Panels stay MOUNTED and are hidden with CSS — switching tabs used
+  Provenance · Downloads. Panels stay MOUNTED and are hidden with CSS — switching tabs used
   to tear down and rebuild the Cesium viewer and Leaflet map every time.
 - **Run picker** (`GET /runs`) loads any completed run instantly. This is the
   offline demo path; it replaced typing a 32-character hex id by hand.
@@ -298,6 +298,50 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   rendered Khadakwasla — 1,170 m of relief across 54 km — as a near-flat plate.
   `main.py` is in the `.pvsm` staleness check, so changing those arguments
   invalidates cached states.
+
+## Aazhi integration, slice 1 — provenance, directives, playback (2026-09-19)
+
+Three of the nine workstreams in the Aazhi feature-integration spec are built
+(W8, W1, W9); the other six are designed but not started. The spec's
+`prototype specs.md` references mean **`docs/VERIFICATION_LOG.md`** — that file
+is the queue now (row 39 is the newest).
+
+- **Provenance tab** (`panels/ProvenancePanel.jsx`, logic in `provenance.js`).
+  Frontend only. Each row names the `RunResult` field it came from. A field the
+  run never recorded says "not recorded for this run", not a blank, and a
+  refused exposure sector shows its refusal reason.
+- **Evacuation directives are computed once, server-side.**
+  `jalraksha/impact/evacuation.py` runs inside the shared
+  `script_runs.gauge_rows_from_result`, so the API path and the script path
+  both get directives. The payload is stored as JSON in
+  `gauge_results.evacuation_json` and `data_packs` carries it. The frontend only
+  renders it; colours come from the payload.
+  - **No arrival yields `NO_ARRIVAL`, "Not assessed", in grey, with
+    `hazard_level` null.** No-arrival gauges store `max_depth_m = 0.0`, not null,
+    so without that null the payload would read "dry".
+  - **There is no green anywhere in the palette.**
+  - **Thresholds are UNVETTED (row 39) and gated by a LABEL, not a refusal**
+    (DECISIONS.md §17). `thresholds_unvetted` and the values travel in every
+    payload, and both tabs show a Caveat.
+  - **Runs before this have `evacuation` null** and render a dash.
+  - **The Delft3D-only path** builds gauge rows inline and has no directives.
+- **`tests/test_layering.py`** is the first test of the import rules. It is an
+  AST forbidden-edge list (impact must not import gee; solver must not import
+  export/impact/gee; presets must not import any other jalraksha module; library
+  must not import service).
+  - Pre-existing violations are recorded, not fixed: `jalraksha/cli.py` imports
+    `jalraksha_service.db`.
+  - There is also a lazy `solver/parallel.py` → `jalraksha.run` import, which
+    makes a Phase 1 ↔ Phase 4 cycle. That is why the test has no full cycle
+    check yet.
+- **Playback speed is `playbackRate`, not `speed`.** `SimulationClock` already
+  had an unread `speed` (60 sim-s per wall-s). `playbackRate` (1/2/5/10) divides
+  `BASE_FRAME_INTERVAL_MS = 500`, so 1× is the old interval exactly. The phase
+  markers come from the run's own keyframe `hazard_summary` counts. With no
+  summaries there is no peak marker.
+- **`npm test --prefix frontend`** runs Node's built-in test runner over pure
+  `src/*.test.js` helpers, with no test dependency. Keep new frontend logic in
+  such helpers, not inside JSX, if it needs a test.
 
 ## Dashboard styling — a design system, scoped away from the maps
 

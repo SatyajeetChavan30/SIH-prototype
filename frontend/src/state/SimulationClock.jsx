@@ -12,6 +12,9 @@ import React, { createContext, useContext, useMemo, useState, useCallback } from
  *   index     : current keyframe index
  *   playing   : auto-advance on/off
  *   speed     : seconds of wall-clock per simulation second (playback rate)
+ *   playbackRate : frame-advance multiplier for PlaybackDriver (1 = the
+ *               original 500 ms per frame). Separate from `speed`, which has
+ *               different units and no reader; see playback.js.
  */
 const SimulationClockContext = createContext(null);
 
@@ -31,6 +34,7 @@ export function SimulationClockProvider({ manifest, children }) {
     }
   }, [keyframes]);
   const [speed, setSpeed] = useState(60); // 60 sim-seconds per wall-second
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   const current = keyframes[index] || null;
 
@@ -48,15 +52,17 @@ export function SimulationClockProvider({ manifest, children }) {
       current,
       playing,
       speed,
+      playbackRate,
       setPlaying,
       setSpeed,
+      setPlaybackRate,
       seekTo,
       next,
       prev,
       // Cesium's Clock uses JulianDate; expose current sim time in seconds.
       currentTimeS: current ? current.time_s : 0,
     }),
-    [keyframes, index, current, playing, speed]
+    [keyframes, index, current, playing, speed, playbackRate]
   );
 
   return (

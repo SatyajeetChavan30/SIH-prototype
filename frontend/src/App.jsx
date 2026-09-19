@@ -14,17 +14,26 @@ import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
 import SyntheticRunBanner from "./panels/SyntheticRunBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
 import { resolveApiUrl } from "./api.js";
+import { frameIntervalMs } from "./playback.js";
 import { DAM, GAUGES } from "./data/entities.js";
 import { Chip, TabPill } from "./ui/index.jsx";
 
+// Wording for the header's scenario chip; an unknown type shows its raw name.
+const SCENARIO_LABELS = {
+  dam_break: "Dam break",
+  river_blockage: "River blockage",
+  river_overflow: "River overflow",
+};
+
 function PlaybackDriver() {
-  // Auto-advance the shared clock while playing (drives both panels).
-  const { playing, next, keyframes } = useSimulationClock();
+  // Auto-advance the shared clock while playing (drives both panels). At the
+  // default rate of 1 the interval is exactly the original 500 ms.
+  const { playing, next, keyframes, playbackRate } = useSimulationClock();
   useEffect(() => {
     if (!playing || !keyframes.length) return;
-    const id = setInterval(next, 500);
+    const id = setInterval(next, frameIntervalMs(playbackRate));
     return () => clearInterval(id);
-  }, [playing, next, keyframes.length]);
+  }, [playing, next, keyframes.length, playbackRate]);
   return null;
 }
 
@@ -99,6 +108,12 @@ function Workspace() {
             {result?.run_id && (
               <div className="jr-topbar__status" title={`${result.dam_name || ""} — ${result.run_id}`}>
                 {result.dam_name && <span className="jr-topbar__name">{result.dam_name}</span>}
+                {/* The scenario the run itself recorded; absent on runs that
+                    predate it. Reservoir level joins this line only once a run
+                    payload carries one - nothing is filled in from a preset. */}
+                {result.ensemble?.scenario_type && (
+                  <Chip>{SCENARIO_LABELS[result.ensemble.scenario_type] || result.ensemble.scenario_type}</Chip>
+                )}
                 <Chip mono>{result.run_id.slice(0, 8)}</Chip>
               </div>
             )}
