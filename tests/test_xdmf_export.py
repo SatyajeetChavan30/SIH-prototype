@@ -161,3 +161,57 @@ def test_terrain_only_dataset_is_valid(tmp_path):
     depth = ds.GetPointData().GetArray("water_depth")
     assert depth is not None
     assert all(depth.GetTuple1(i) == 0.0 for i in range(depth.GetNumberOfTuples()))
+
+
+class TestPeakEnvelope:
+    """
+    A peak envelope is ONE state of maximum depths with no velocity. The file
+    must say what it is in a form ParaView can read, and must not carry a
+    velocity field it never had (zeros would render as still water).
+    """
+
+    def _envelope(self, tmp_path):
+        frame = {"time_s": 345600.0, "depth": np.full((NY, NX), 2.0, dtype=np.float32)}
+        return write_xdmf_series(tmp_path / "env", GRID, _terrain(), [frame],
+                                 include_velocity=False, dataset_kind="peak_envelope")
+
+    def test_no_velocity_is_written(self, tmp_path):
+        import h5py
+
+        path = self._envelope(tmp_path)
+        with h5py.File(path.with_suffix(".h5"), "r") as h5:
+            assert "velocity" not in h5 and "velocity_magnitude" not in h5
+            assert h5.attrs["dataset_kind"] == "peak_envelope"
+            assert h5.attrs["has_velocity"] == 0
+        ds, _ = _read(path)
+        assert ds.GetPointData().GetArray("velocity") is None
+        assert ds.GetPointData().GetArray("water_depth") is not None
+
+    def test_the_label_reaches_the_reader_as_field_data(self, tmp_path):
+        ds, _ = _read(self._envelope(tmp_path))
+        arr = ds.GetFieldData().GetArray("is_peak_envelope")
+        assert arr is not None and arr.GetTuple1(0) == 1.0
+
+    def test_the_xdmf_declares_its_kind(self, tmp_path):
+        text = self._envelope(tmp_path).read_text(encoding="utf-8")
+        assert 'Name="dataset_kind" Value="peak_envelope"' in text
+
+    def test_an_envelope_is_one_state(self, tmp_path):
+        with pytest.raises(XdmfExportError, match="ONE state"):
+            write_xdmf_series(tmp_path / "env", GRID, _terrain(), _frames(2),
+                              dataset_kind="peak_envelope")
+
+    def test_a_time_series_is_unchanged_and_says_so(self, tmp_path):
+        import h5py
+
+        path = _write(tmp_path, _frames())
+        with h5py.File(path.with_suffix(".h5"), "r") as h5:
+            assert "velocity" in h5
+            assert h5.attrs["dataset_kind"] == "time_series"
+        ds, _ = _read(path)
+        assert ds.GetFieldData().GetArray("is_peak_envelope").GetTuple1(0) == 0.0
+
+    def test_an_unknown_kind_is_refused(self, tmp_path):
+        with pytest.raises(XdmfExportError, match="unknown dataset_kind"):
+            write_xdmf_series(tmp_path / "x", GRID, _terrain(), _frames(),
+                              dataset_kind="animation")

@@ -80,6 +80,11 @@ DRY_DEPTH_M = 0.01
 TARGET_GLYPH_COUNT = 400
 
 
+#: Colour-bar title for the water field unless the caller overrides it. A
+#: peak-envelope dataset gets its own title in its place.
+DEFAULT_DEPTH_LABEL = "Water Depth (m)"
+
+
 def build_terrain(xdmf_path: str, vertical_exaggeration: float,
                   interpolate: bool = False):
     """
@@ -106,8 +111,15 @@ def build_terrain(xdmf_path: str, vertical_exaggeration: float,
     stutter, and ``render_animation`` labels the output accordingly.
     """
     reader = XDMFReader(FileNames=[xdmf_path])
-    reader.PointArrayStatus = [
-        "terrain_elevation", "water_depth", "velocity", "velocity_magnitude"]
+    # Load what the file OFFERS. A peak-envelope dataset carries no velocity
+    # (none was stored, and zeros would read as still water), so a fixed list of
+    # four names would ask the reader for arrays that are not there.
+    wanted = ["terrain_elevation", "water_depth", "velocity", "velocity_magnitude"]
+    try:
+        available = set(reader.PointArrayStatus.Available)
+    except AttributeError:
+        available = set(wanted)
+    reader.PointArrayStatus = [name for name in wanted if name in available]
 
     source = TemporalInterpolator(Input=reader) if interpolate else reader
 
@@ -175,8 +187,14 @@ def add_velocity_glyphs(threshold_water, *, stride, scale, render_time, domain_d
         print("[render_static] --glyphs requested but no cells are wet at this "
               "time — skipping.")
         return None
-    vmag_range = threshold_water.GetPointDataInformation().GetArray(
-        "velocity_magnitude").GetRange()
+    vmag = threshold_water.GetPointDataInformation().GetArray("velocity_magnitude")
+    if vmag is None:
+        # A peak-envelope dataset has no velocity at all. /open-paraview always
+        # passes --glyphs, so this must skip, not raise.
+        print("[render_static] --glyphs requested but the dataset carries no "
+              "velocity (a peak-depth envelope) — skipping.")
+        return None
+    vmag_range = vmag.GetRange()
     max_speed = float(vmag_range[1])
     if max_speed <= 0.0:
         print("[render_static] --glyphs requested but max velocity is 0 "
@@ -290,7 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
                              "whole domain. The reservoir is ~0.2%% of a 120 km "
                              "domain and the flood channel is narrower still, so a "
                              "domain-wide shot renders either as a hairline.")
-    parser.add_argument("--depth-label", default="Water Depth (m)",
+    parser.add_argument("--depth-label", default=DEFAULT_DEPTH_LABEL,
                         help="Colour-bar title for the water field. Override for "
                              "the reservoir dataset, where the value is height "
                              "above the GLO-30 surface rather than true depth — "
@@ -373,6 +391,17 @@ def build_scene(args, view=None):
     _ny = max(1, _extent[3] - _extent[2])
     cell_area_km2 = ((_bx1 - _bx0) / _nx) * ((_by1 - _by0) / _ny) / 1.0e6
     domain_diagonal = math.dist((_bx0, _by0), (_bx1, _by1))
+
+    # A peak envelope holds each cell's MAXIMUM depth over the whole run in one
+    # state. It is labelled as such, and nothing that implies a moment in time
+    # (a clock readout, "flooded area") is drawn over it. Read from the data's
+    # own field data, the same mechanism as is_synthetic.
+    is_peak_envelope = False
+    if "is_peak_envelope" in reader.FieldData.keys():
+        is_peak_envelope = reader.FieldData["is_peak_envelope"].GetRange()[1] > 0
+    depth_label = args.depth_label
+    if is_peak_envelope and depth_label == DEFAULT_DEPTH_LABEL:
+        depth_label = "Peak depth, ensemble median (m)"
 
     scene = GetAnimationScene()
     scene.UpdateAnimationUsingDataTimeSteps()
@@ -491,7 +520,7 @@ def build_scene(args, view=None):
             water_display.Opacity = 0.92
             water_display.SetScalarBarVisibility(view, True)
             water_bar = GetScalarBar(water_ctf, view)
-            water_bar.Title = args.depth_label
+            water_bar.Title = depth_label
             water_bar.ComponentTitle = ""
 
         if args.glyphs:
@@ -531,7 +560,20 @@ def build_scene(args, view=None):
     synthetic_display.Bold = 1
     synthetic_display.WindowLocation = "Upper Center"
 
-    if not args.no_time_annotation:
+    if is_peak_envelope:
+        envelope_annotation = PythonAnnotation(Input=source)
+        envelope_annotation.ArrayAssociation = "Field Data"
+        envelope_annotation.Expression = (
+            "'PEAK DEPTH ENVELOPE — ensemble-median maximum depth, not a time series' "
+            "if inputs[0].FieldData['is_peak_envelope'][0] else ''"
+        )
+        envelope_display = Show(envelope_annotation, view)
+        envelope_display.Color = [0.48, 0.24, 0.0]
+        envelope_display.FontSize = 18
+        envelope_display.Bold = 1
+        envelope_display.WindowLocation = "Upper Center"
+
+    if not args.no_time_annotation and not is_peak_envelope:
         # Built-in Annotate Time filter, per Section 8/ARCHITECTURE.md section 7:
         # it reads the scene's own clock, so it cannot drift out of sync the way
         # a hand-drawn text label could.
@@ -549,8 +591,9 @@ def build_scene(args, view=None):
         # PythonAnnotation's sandboxed expression evaluator.
         area_annotation = PythonAnnotation(Input=source)
         area_annotation.ArrayAssociation = "Point Data"
+        area_title = "Peak inundated area" if is_peak_envelope else "Flooded area"
         area_annotation.Expression = (
-            f"'Flooded area: %.2f km^2' % "
+            f"'{area_title}: %.2f km^2' % "
             f"((inputs[0].PointData['water_depth'] > {DRY_DEPTH_M}).sum() "
             f"* {cell_area_km2!r})"
         )

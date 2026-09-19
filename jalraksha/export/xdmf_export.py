@@ -136,6 +136,8 @@ def write_xdmf_series(
     *,
     is_synthetic: bool = False,
     provenance: Optional[Dict[str, Any]] = None,
+    include_velocity: bool = True,
+    dataset_kind: str = "time_series",
 ) -> Path:
     """
     Write <stem>.h5 and <stem>.xdmf.
@@ -152,6 +154,17 @@ def write_xdmf_series(
             in the file itself so a mislabeled dataset cannot be produced by
             forgetting a flag at render time.
         provenance: Extra strings recorded alongside; never load-bearing.
+        include_velocity: False omits the velocity vector and its magnitude
+            entirely, for a dataset that has no velocity to give. The frame
+            contract otherwise fills a missing velocity with zeros, and zeros
+            render as still water - a claim, not an absence.
+        dataset_kind: "time_series" (the solver's own snapshots) or
+            "peak_envelope" (one state holding each cell's MAXIMUM depth over
+            the whole run, rebuilt from stored rasters). Written into the file
+            three ways - an HDF5 attribute, an XDMF Information element and a
+            Grid-centred Int ``is_peak_envelope`` that reaches ParaView as field
+            data - so the render can label it and nothing downstream can present
+            an envelope as a moment in time.
 
     Returns:
         Path to the written .xdmf.
@@ -180,6 +193,14 @@ def write_xdmf_series(
             f"grid crs {crs!r} is not an EPSG code. Everything downstream assumes a "
             f"projected metric CRS and performs no reprojection."
         )
+
+    if dataset_kind not in ("time_series", "peak_envelope"):
+        raise XdmfExportError(f"unknown dataset_kind {dataset_kind!r}")
+    is_peak_envelope = dataset_kind == "peak_envelope"
+    if is_peak_envelope and frames is not None and len(frames) != 1:
+        raise XdmfExportError(
+            f"a peak envelope is ONE state (the maximum over the run); got "
+            f"{len(frames)} frames")
 
     frames = list(frames or [])
     terrain_only = not frames
@@ -212,12 +233,16 @@ def write_xdmf_series(
         h5.create_dataset("terrain_elevation", data=_slab(terrain), compression="gzip")
 
         g_depth = h5.create_group("water_depth")
-        g_vel = h5.create_group("velocity")
-        g_mag = h5.create_group("velocity_magnitude")
+        if include_velocity:
+            g_vel = h5.create_group("velocity")
+            g_mag = h5.create_group("velocity_magnitude")
 
         for idx, frame in enumerate(frames):
             key = f"{idx:04d}"
             depth = _as_field(frame["depth"], shape, "depth", idx)
+            g_depth.create_dataset(key, data=_slab(depth), compression="gzip")
+            if not include_velocity:
+                continue
             vx = _as_field(frame.get("velocity_x", 0.0) if "velocity_x" in frame
                            else np.zeros(shape), shape, "velocity_x", idx)
             vy = _as_field(frame.get("velocity_y", 0.0) if "velocity_y" in frame
@@ -231,7 +256,6 @@ def write_xdmf_series(
             vel[..., 0] = vx
             vel[..., 1] = vy
 
-            g_depth.create_dataset(key, data=_slab(depth), compression="gzip")
             g_vel.create_dataset(key, data=_slab(vel), compression="gzip")
             g_mag.create_dataset(key, data=_slab(np.hypot(vx, vy)), compression="gzip")
 
@@ -245,6 +269,8 @@ def write_xdmf_series(
             datetime.timezone.utc).isoformat()
         h5.attrs["git_sha"] = _git_sha()
         h5.attrs["terrain_only"] = int(terrain_only)
+        h5.attrs["dataset_kind"] = dataset_kind
+        h5.attrs["has_velocity"] = int(bool(include_velocity))
         for key, value in (provenance or {}).items():
             h5.attrs[f"provenance_{key}"] = str(value)
 
@@ -309,13 +335,15 @@ def write_xdmf_series(
             "Name": "water_depth", "AttributeType": "Scalar", "Center": "Node"})
         _data_item(attr, slab, f"{h5_name}:/water_depth/{key}")
 
-        attr = ET.SubElement(step, "Attribute", {
-            "Name": "velocity", "AttributeType": "Vector", "Center": "Node"})
-        _data_item(attr, slab + (3,), f"{h5_name}:/velocity/{key}")
+        if include_velocity:
+            attr = ET.SubElement(step, "Attribute", {
+                "Name": "velocity", "AttributeType": "Vector", "Center": "Node"})
+            _data_item(attr, slab + (3,), f"{h5_name}:/velocity/{key}")
 
-        attr = ET.SubElement(step, "Attribute", {
-            "Name": "velocity_magnitude", "AttributeType": "Scalar", "Center": "Node"})
-        _data_item(attr, slab, f"{h5_name}:/velocity_magnitude/{key}")
+            attr = ET.SubElement(step, "Attribute", {
+                "Name": "velocity_magnitude", "AttributeType": "Scalar",
+                "Center": "Node"})
+            _data_item(attr, slab, f"{h5_name}:/velocity_magnitude/{key}")
 
         # Grid-centred attributes arrive in ParaView as field data. is_synthetic
         # drives the mandatory SYNTHETIC annotation, so it travels inside the
@@ -326,7 +354,16 @@ def write_xdmf_series(
             "Format": "XML", "Dimensions": "1", "NumberType": "Int"})
         item.text = str(int(bool(is_synthetic)))
 
+        # Same mechanism, so the render can say "peak envelope, not a moment".
+        attr = ET.SubElement(step, "Attribute", {
+            "Name": "is_peak_envelope", "AttributeType": "Scalar", "Center": "Grid"})
+        item = ET.SubElement(attr, "DataItem", {
+            "Format": "XML", "Dimensions": "1", "NumberType": "Int"})
+        item.text = str(int(is_peak_envelope))
+
         ET.SubElement(step, "Information", {"Name": "crs", "Value": crs})
+        ET.SubElement(step, "Information",
+                      {"Name": "dataset_kind", "Value": dataset_kind})
 
     _indent(xdmf)
     ET.ElementTree(xdmf).write(xdmf_path, encoding="utf-8", xml_declaration=True)
@@ -340,7 +377,9 @@ def write_xdmf_series(
     # kind of confident-but-wrong label this project keeps having to hunt down.
     label = ("SYNTHETIC" if is_synthetic
              else str((provenance or {}).get("solver", "unlabelled source")))
-    if nt > 1:
+    if is_peak_envelope:
+        span = " (PEAK ENVELOPE: maximum depth over the run, single state)"
+    elif nt > 1:
         span = f", t = {times[0]:.0f}..{times[-1]:.0f} s"
     elif depth_max > 0.0:
         span = " (single state, with water)"
