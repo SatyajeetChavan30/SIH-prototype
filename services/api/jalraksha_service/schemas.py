@@ -536,6 +536,10 @@ class RunResult(BaseModel):
     # label is on screen above every tab, not only in the picker.
     is_synthetic: bool = False
     synthetic_note: Optional[str] = None
+    # "peak_envelope" when the ParaView dataset is one state of maximum depths
+    # rebuilt from stored rasters (scripts/build_peak_envelope_xdmf.py) rather
+    # than the solver's own time series. None = time series, or no dataset.
+    paraview_dataset_kind: Optional[str] = None
 
 
 class RunListEntry(BaseModel):

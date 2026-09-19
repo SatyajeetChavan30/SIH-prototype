@@ -520,6 +520,9 @@ def run_result(run_id: str) -> RunResult:
         (params.get("synthetic_note") or summary.get("note")) if is_synthetic else None
     )
 
+    xdmf_path = next((e["path_or_url"] for e in exports_rows if e["kind"] == "xdmf"), None)
+    paraview_dataset_kind = _xdmf_dataset_kind(xdmf_path)
+
     return RunResult(
         run_id=run_id,
         dam_name=run.get("params", {}).get("name", "Dam"),
@@ -543,7 +546,29 @@ def run_result(run_id: str) -> RunResult:
         dem_used=_to_file_url(dem_block["dem_used"]) if dem_block.get("dem_used") else None,
         is_synthetic=is_synthetic,
         synthetic_note=synthetic_note,
+        paraview_dataset_kind=paraview_dataset_kind,
     )
+
+
+def _xdmf_dataset_kind(xdmf_path: str | None) -> str | None:
+    """
+    The dataset_kind a 3D dataset declares, or None.
+
+    Read from the XDMF's own <Information Name="dataset_kind"> - the file is a
+    few KB of XML, so no HDF5 library is needed on this path. Datasets written
+    before the field existed declare nothing and are time series.
+    """
+    import re
+
+    if not xdmf_path or not Path(xdmf_path).exists():
+        return None
+    try:
+        text = Path(xdmf_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    match = re.search(r'Name="dataset_kind"\s+Value="([^"]+)"', text)
+    kind = match.group(1) if match else None
+    return None if kind in (None, "time_series") else kind
 
 
 def _read_export_json(exports_rows: List[Dict[str, Any]], kind: str,

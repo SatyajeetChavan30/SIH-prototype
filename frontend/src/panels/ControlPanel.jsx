@@ -536,6 +536,13 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
                   ? "Opens the ParaView desktop app on the machine running the API."
                   : null}
           </p>
+          {hasXdmf && result?.paraview_dataset_kind === "peak_envelope" && (
+            <p className="jr-hint">
+              This run&rsquo;s 3D view is its peak-depth envelope (ensemble
+              median) — one state, not an animation. The depth time series was
+              not kept.
+            </p>
+          )}
           {pvStatus && (
             <p className="jr-hint jr-hint--ink">{pvStatus}</p>
           )}
