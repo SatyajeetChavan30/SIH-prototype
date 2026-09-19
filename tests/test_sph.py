@@ -66,10 +66,30 @@ class TestSphBackendSelection:
         monkeypatch.delenv(SPH_BACKEND_ENV, raising=False)
         monkeypatch.setattr(
             pysph_runner, "_compyle_gpu_incompatibility", lambda: "compyle uses ast.Str")
-        choice = resolve_sph_backend("auto")
+        choice = resolve_sph_backend("prefer_opencl")
         assert choice["sph_backend"] == "cpu"
         assert choice["argv"] == []
         assert "ast.Str" in choice["reason"]
+
+    def test_auto_prefers_the_gpu_when_it_can_run(self, monkeypatch):
+        """
+        GPU is the SPH default by the owner's decision. That default must still
+        name what ran, so the label and backend say opencl, not merely "auto".
+        """
+        monkeypatch.delenv(SPH_BACKEND_ENV, raising=False)
+        monkeypatch.setattr(pysph_runner, "_compyle_gpu_incompatibility", lambda: None)
+        monkeypatch.setattr(
+            pysph_runner, "_opencl_fp64_gpu",
+            lambda: ((0, 0, "Fake GPU"), "OpenCL device: Fake GPU"))
+        monkeypatch.setenv("PYOPENCL_CTX", "0:0")
+        choice = resolve_sph_backend("auto")
+        assert choice["sph_backend"] == "opencl"
+        assert "Fake GPU" in choice["label"]
+
+    def test_the_cpu_is_still_one_setting_away(self, monkeypatch):
+        monkeypatch.setenv(SPH_BACKEND_ENV, "cpu")
+        monkeypatch.setattr(pysph_runner, "_compyle_gpu_incompatibility", lambda: None)
+        assert resolve_sph_backend("auto")["sph_backend"] == "cpu"
 
     def test_explicit_opencl_request_raises_when_it_cannot_run(self, monkeypatch):
         monkeypatch.setattr(
@@ -84,11 +104,14 @@ class TestSphBackendSelection:
             pysph_runner, "_opencl_fp64_gpu",
             lambda: ((0, 0, "Fake GPU"), "OpenCL device: Fake GPU"))
         monkeypatch.setenv("PYOPENCL_CTX", "0:0")
-        choice = resolve_sph_backend("auto")
+        choice = resolve_sph_backend("prefer_opencl")
         assert choice["sph_backend"] == "opencl"
         # --nnps gpu_octree is not tuning: the default Z-order GPU NNPS dies in
-        # compiled Cython on NumPy 2 and cannot be patched from here.
-        assert choice["argv"] == ["--opencl", "--use-double", "--nnps", "gpu_octree"]
+        # compiled Cython on NumPy 2 and cannot be patched from here. Nor is
+        # --octree-elementwise: the octree's grouped kernel returned neighbour
+        # counts larger than N^2 (see resolve_sph_backend).
+        assert choice["argv"] == ["--opencl", "--use-double", "--nnps", "gpu_octree",
+                                  "--octree-elementwise"]
         assert "float64" in choice["label"]
 
     def test_unknown_backend_is_rejected(self):
@@ -100,7 +123,9 @@ class TestSphBackendSelection:
         The run's compute backend maps to PySPH's, so the dashboard needs no
         second switch. cuda -> opencl is the same device through another API.
         """
-        assert sph_backend_for_solver("cuda") == "opencl"
+        # "prefer_opencl", not "opencl": the strict name raises when the GPU
+        # cannot run, and a dashboard run must keep its SPH result.
+        assert sph_backend_for_solver("cuda") == "prefer_opencl"
         assert sph_backend_for_solver("cpu") == "cpu"
         assert sph_backend_for_solver("auto") == "auto"
         assert sph_backend_for_solver(None) == "auto"
@@ -128,9 +153,26 @@ class TestSphBackendSelection:
         assert "no OpenCL here" in choice["reason"]
         assert "CPU" in choice["label"]
 
+    def test_a_strict_opencl_request_still_raises(self, monkeypatch):
+        """The non-strict path must not weaken the strict one beside it."""
+        monkeypatch.setattr(
+            pysph_runner, "_compyle_gpu_incompatibility", lambda: "no OpenCL here")
+        with pytest.raises(SPHUnavailableError):
+            resolve_sph_backend("opencl")
+
+    def test_the_environment_override_beats_a_dashboard_preference(self, monkeypatch):
+        """
+        JALRAKSHA_SPH_BACKEND is the operator's explicit choice, so a run
+        submitted with backend="cuda" must still land on the CPU when it says so.
+        """
+        monkeypatch.setenv(SPH_BACKEND_ENV, "cpu")
+        monkeypatch.setattr(pysph_runner, "_compyle_gpu_incompatibility", lambda: None)
+        choice = resolve_sph_backend(sph_backend_for_solver("cuda"))
+        assert choice["sph_backend"] == "cpu"
+
     @requires_pysph
     def test_still_water_gate_on_the_gpu_when_it_can_run(self):
-        choice = resolve_sph_backend("auto")
+        choice = resolve_sph_backend("prefer_opencl")
         if choice["sph_backend"] != "opencl":
             pytest.skip(choice["reason"])
         result = run_still_water_validation(
@@ -150,7 +192,15 @@ def _valley(ny=8, nx=8, cell=10.0, slope=1.5, walls=0.4):
 
 
 def _small_run(bed=None, reservoir_depth_m=6.0, **kw):
-    """One deliberately tiny near-field run, sized to stay test-fast."""
+    """
+    One deliberately tiny near-field run, sized to stay test-fast.
+
+    The backend is PINNED, never "auto". Left on auto these gates would silently
+    follow whatever hardware the machine has — they were CPU gates that became
+    GPU gates the moment the OpenCL path started working, which both hid the CPU
+    path and made a 40-second class take eight minutes. TestGpuNearField asks
+    for the GPU explicitly.
+    """
     if bed is None:
         bed = _valley()
     params = dict(
@@ -158,6 +208,7 @@ def _small_run(bed=None, reservoir_depth_m=6.0, **kw):
         reservoir_depth_m=reservoir_depth_m,
         breach_width_m=20.0, q_peak_m3_s=800.0,
         duration_s=0.8, dam_name="TestDam", target_particles=400,
+        backend="cpu",
     )
     params.update(kw)
     return run_near_field_sph(**params)
@@ -361,7 +412,7 @@ def _gpu_skip_reason():
     """Why the GPU SPH gates cannot run here, or None if they can."""
     if not PYSPH_OK:
         return f"PySPH unavailable: {PYSPH_DETAIL}"
-    choice = resolve_sph_backend("auto")
+    choice = resolve_sph_backend("prefer_opencl")
     if choice["sph_backend"] == "cpu":
         return choice["reason"]
     return None
@@ -472,7 +523,7 @@ class TestStillWaterGate:
 
     def test_water_at_rest_stays_at_rest(self):
         result = run_still_water_validation(
-            depth_m=3.0, spacing_m=0.5, duration_s=0.6, tank_cells=8)
+            depth_m=3.0, spacing_m=0.5, duration_s=0.6, tank_cells=8, backend="cpu")
 
         assert result["all_finite"], "still water produced non-finite values"
         # Residual motion is the WCSPH startup transient, not flow. The bar is
@@ -486,7 +537,7 @@ class TestStillWaterGate:
 
     def test_pressure_is_hydrostatic_when_measurable(self):
         result = run_still_water_validation(
-            depth_m=3.0, spacing_m=0.5, duration_s=0.6, tank_cells=8)
+            depth_m=3.0, spacing_m=0.5, duration_s=0.6, tank_cells=8, backend="cpu")
 
         if result["slope_error_pct"] is None:
             pytest.skip(f"pressure gradient not measurable here: {result['slope_note']}")

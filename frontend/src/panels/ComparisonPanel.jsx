@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getComparison, resolveApiUrl } from "../api.js";
+import { Caveat, DataTable, Empty, Stat } from "../ui/index.jsx";
 
 /**
  * Comparison tab (brief §5.7) — originally ported from the since-removed Streamlit
@@ -23,13 +24,13 @@ export default function ComparisonPanel({ runId }) {
   }, [runId]);
 
   if (!runId) {
-    return <Empty text="Run a simulation first." />;
+    return <Empty>Run a simulation first.</Empty>;
   }
   if (error) {
-    return <Empty text={`Failed to load comparison: ${error}`} />;
+    return <Empty>{`Failed to load comparison: ${error}`}</Empty>;
   }
   if (!data) {
-    return <Empty text="Loading comparison…" />;
+    return <Empty>Loading comparison…</Empty>;
   }
 
   const metrics = data.metrics?.metrics;
@@ -45,13 +46,13 @@ export default function ComparisonPanel({ runId }) {
   const hasComparison = metrics && Object.keys(metrics).length > 0;
   if (!hasComparison && !sphError) {
     return (
-      <Empty text='No comparison data for this run — submit with solver="both" to compare SPH vs Delft3D-class.' />
+      <Empty>No comparison data for this run — submit with solver="both" to compare SPH vs Delft3D-class.</Empty>
     );
   }
 
   return (
-    <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
-      <h3>⚖️ SPH vs Delft3D-Class SWE Solver Comparison</h3>
+    <div className="jr-page">
+      <h3 className="jr-h1">⚖️ SPH vs Delft3D-Class SWE Solver Comparison</h3>
 
       <EngineBanner
         binaryUsed={data.metrics?.delft3d_binary_used}
@@ -62,7 +63,7 @@ export default function ComparisonPanel({ runId }) {
       <SphBanner error={sphError} engine={data.metrics?.sph_engine} nearField={nearField} />
 
       {hasComparison && (
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "12px 0" }}>
+        <div className="jr-row jr-measure-wide jr-mt-12">
           <MetricCard label="Depth Field RMSE" value={`${metrics.rmse_m?.toFixed?.(3) ?? metrics.rmse_m} m`} color="#2196f3" />
           <MetricCard label="Mass Balance Bias" value={`${metrics.bias_m} m`} color="#ff9800" />
           <MetricCard label="Critical Success Index (CSI)" value={metrics.csi} color="#4caf50" />
@@ -72,8 +73,8 @@ export default function ComparisonPanel({ runId }) {
 
       {nearField && (
         <>
-          <h4>🌊 Near-Field SPH — what the particle run actually measured</h4>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0" }}>
+          <h4 className="jr-h2">🌊 Near-Field SPH — what the particle run actually measured</h4>
+          <div className="jr-row jr-measure-wide">
             <MetricCard label="Surge front speed" value={fmt(nearField.front_speed_m_s, "m/s")} color="#0288d1" />
             <MetricCard label="Front advance" value={fmt(nearField.front_advance_m, "m")} color="#0288d1" />
             <MetricCard label="Max near-field depth" value={fmt(nearField.max_depth_m, "m")} color="#00796b" />
@@ -81,7 +82,7 @@ export default function ComparisonPanel({ runId }) {
             <MetricCard label="Fluid particles" value={nearField.n_fluid?.toLocaleString?.() ?? "—"} color="#5e35b1" />
             <MetricCard label="Particle spacing" value={fmt(nearField.particle_spacing_m, "m")} color="#5e35b1" />
           </div>
-          <p style={{ fontSize: 12, color: "#555", maxWidth: 820 }}>
+          <p className="jr-note jr-measure-wide">
             {fmt(nearField.duration_s, "s")} of simulated time over a{" "}
             {fmt(nearField.domain_length_m, "m")} window, computed in{" "}
             {fmt(nearField.wall_clock_s, "s")}. Coupling:{" "}
@@ -94,62 +95,62 @@ export default function ComparisonPanel({ runId }) {
 
       {hasComparison && depthMap && (
         <>
-          <h4>🗺️ Rasterised Depth Field Comparison</h4>
-          <img src={resolveApiUrl(depthMap.path_or_url)} alt="Depth field comparison" style={{ maxWidth: "100%" }} />
+          <h4 className="jr-h2">🗺️ Rasterised Depth Field Comparison</h4>
+          <img className="jr-figure" src={resolveApiUrl(depthMap.path_or_url)} alt="Depth field comparison" />
         </>
       )}
 
       {hydro && (
         <>
-          <h4>⏱️ Downstream Hydrograph Overlays</h4>
-          <img src={resolveApiUrl(hydro.path_or_url)} alt="Hydrograph overlay" style={{ maxWidth: "100%" }} />
+          <h4 className="jr-h2">⏱️ Downstream Hydrograph Overlays</h4>
+          <img className="jr-figure" src={resolveApiUrl(hydro.path_or_url)} alt="Hydrograph overlay" />
         </>
       )}
 
-      <h4>🔢 Arrival Times at Downstream Gauges</h4>
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
+      <h4 className="jr-h2">🔢 Arrival Times at Downstream Gauges</h4>
+      <DataTable className="jr-measure-wide">
         <thead>
           <tr>
-            {["Gauge", "SPH Arrival (min)", "Delft3D Arrival (min)", "Δ (min)", "Δ (%)", "Distance (km)"].map((h) => (
-              <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 4 }}>{h}</th>
+            {["Gauge", "SPH Arrival (min)", "Delft3D Arrival (min)", "Δ (min)", "Δ (%)", "Distance (km)"].map((h, i) => (
+              <th key={h} className={i ? "num" : undefined}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {gaugeComparison.map((row) => (
             <tr key={row.gauge}>
-              <td style={{ padding: 4 }}>{row.gauge}</td>
-              <td style={{ padding: 4 }}>{row.arrival_SPH_min?.toFixed?.(1) ?? "—"}</td>
-              <td style={{ padding: 4 }}>{row.arrival_Delft3D_min?.toFixed?.(1) ?? "—"}</td>
-              <td style={{ padding: 4 }}>{row.delta_min ?? "—"}</td>
-              <td style={{ padding: 4 }}>{row.delta_pct ?? "—"}</td>
-              <td style={{ padding: 4 }}>{row.distance_km ?? "—"}</td>
+              <td>{row.gauge}</td>
+              <td className="num">{row.arrival_SPH_min?.toFixed?.(1) ?? "—"}</td>
+              <td className="num">{row.arrival_Delft3D_min?.toFixed?.(1) ?? "—"}</td>
+              <td className="num">{row.delta_min ?? "—"}</td>
+              <td className="num">{row.delta_pct ?? "—"}</td>
+              <td className="num">{row.distance_km ?? "—"}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
 
-      <p style={{ fontSize: 12, marginTop: 8, color: "#8a5a00" }}>
+      <Caveat className="jr-measure-wide jr-mt-12">
         ⚠ The <strong>SPH arrival column is empty by construction</strong>, not
         by omission. The near-field particle run covers a few hundred metres over
         tens of seconds; the nearest gauge is 13&nbsp;km downstream, so it cannot
         reach any of them. That is what a one-way near-field/far-field
         decomposition means. This column previously showed numbers generated from
         a celerity formula plus random noise.
-      </p>
+      </Caveat>
 
       {data.metrics?.gauge_arrival_method === "ritter_celerity_estimate" && (
-        <p style={{ fontSize: 12, marginTop: 8, color: "#8a5a00" }}>
+        <Caveat className="jr-measure-wide jr-mt-8">
           ⚠ The Delft3D-side arrival times above are a <strong>Ritter celerity
           estimate</strong> (t = distance ÷ 0.5√(gH)), not readings taken from the
           simulation. The comparison domain is 1.2 km across; the nearest gauge is
           13 km downstream, so the run cannot reach these locations. Treat them as
           an order-of-magnitude screening figure.
-        </p>
+        </Caveat>
       )}
 
       {data.metrics?.sph_engine && (
-        <p style={{ fontSize: 12, marginTop: 12, color: "#555" }}>
+        <p className="jr-note jr-mt-12">
           SPH engine: <code>{data.metrics.sph_engine}</code>.
         </p>
       )}
@@ -169,31 +170,23 @@ function fmt(value, unit) {
  * The SPH half of this tab used to be np.random output — particle positions
  * from np.random.uniform and gauge arrivals from a celerity formula plus
  * Gaussian noise — rendered indistinguishably from solver results. It is now a
- * real PySPH WCSPH run, and when PySPH cannot run there is NO SPH result and
- * this says so, rather than anything being substituted for it.
+ * real SPH run (DualSPHysics, or PySPH where DualSPHysics is not installed), and
+ * when neither can run there is NO SPH result and this says so, rather than
+ * anything being substituted for it.
  */
 export function SphBanner({ error, engine, nearField }) {
   if (!error && !engine) return null;
   const ok = !error;
   return (
-    <div
+    <Caveat
       role="status"
-      style={{
-        border: `2px solid ${ok ? "#2e7d32" : "#e65100"}`,
-        background: ok ? "#edf7ed" : "#fff4e5",
-        color: ok ? "#1b5e20" : "#7a3e00",
-        borderRadius: 4,
-        padding: "10px 14px",
-        margin: "12px 0",
-        maxWidth: 820,
-      }}
+      tone={ok ? "ok" : "warn"}
+      className="jr-measure-wide jr-mt-12"
+      title={ok
+        ? "✅ Near-field SPH: real particle simulation"
+        : "⚠️ No near-field SPH result for this run"}
     >
-      <div style={{ fontWeight: 700, fontSize: 14 }}>
-        {ok
-          ? "✅ Near-field SPH: real particle simulation"
-          : "⚠️ No near-field SPH result for this run"}
-      </div>
-      <div style={{ fontSize: 12, marginTop: 6 }}>
+      <div>
         {ok ? (
           <>
             Weakly Compressible SPH over this dam&rsquo;s own Copernicus
@@ -204,7 +197,7 @@ export function SphBanner({ error, engine, nearField }) {
           <>Nothing has been substituted for it. Reason: {error}</>
         )}
       </div>
-    </div>
+    </Caveat>
   );
 }
 
@@ -223,23 +216,16 @@ export function SphBanner({ error, engine, nearField }) {
  */
 export function EngineBanner({ binaryUsed, label, reason }) {
   const ok = binaryUsed === true;
-  const style = {
-    border: `2px solid ${ok ? "#2e7d32" : "#e65100"}`,
-    background: ok ? "#edf7ed" : "#fff4e5",
-    color: ok ? "#1b5e20" : "#7a3e00",
-    borderRadius: 4,
-    padding: "10px 14px",
-    margin: "12px 0",
-    maxWidth: 820,
-  };
   return (
-    <div style={style} role="status">
-      <div style={{ fontWeight: 700, fontSize: 14 }}>
-        {ok
-          ? "✅ Engine: Delft3D FM (official dflowfm binary)"
-          : "⚠️ Delft3D FM was NOT used — these numbers come from JalRaksha's own solver"}
-      </div>
-      <div style={{ fontSize: 12, marginTop: 6 }}>
+    <Caveat
+      role="status"
+      tone={ok ? "ok" : "warn"}
+      className="jr-measure-wide jr-mt-12"
+      title={ok
+        ? "✅ Engine: Delft3D FM (official dflowfm binary)"
+        : "⚠️ Delft3D FM was NOT used — these numbers come from JalRaksha's own solver"}
+    >
+      <div>
         {ok ? (
           <>The official Deltares D-Flow FM engine produced the depth field below.</>
         ) : (
@@ -252,28 +238,19 @@ export function EngineBanner({ binaryUsed, label, reason }) {
         )}
       </div>
       {!ok && reason && (
-        <div style={{ fontSize: 11, marginTop: 6, opacity: 0.85 }}>
+        <div className="jr-caveat__detail">
           Reason: {reason}
         </div>
       )}
       {label && (
-        <div style={{ fontSize: 11, marginTop: 6, opacity: 0.7 }}>
+        <div className="jr-caveat__detail">
           Engine label: <code>{label}</code>
         </div>
       )}
-    </div>
+    </Caveat>
   );
 }
 
 function MetricCard({ label, value, color }) {
-  return (
-    <div style={{ borderLeft: `4px solid ${color}`, padding: "8px 12px", minWidth: 160 }}>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
-    </div>
-  );
-}
-
-function Empty({ text }) {
-  return <div style={{ padding: 24, color: "#777" }}>{text}</div>;
+  return <Stat label={label} value={value} accent={color} />;
 }

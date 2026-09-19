@@ -34,7 +34,7 @@ The build is organized into 18 phases. **Phases 0, 1, and 4 are marked critical 
 3. **Phase 2**: Terrain conditioning — DEM interpolation, smoothing, breach location
 4. **Phase 3**: Breach regressions — peak outflow, failure time, width/depth regressions (Wahl method, with uncertainty bands)
 5. **Phase 4★**: End-to-end dam-break — breach → solver → arrival-time rasters, inundation polygons. *The mandatory core deliverable.*
-6. Phases 5–12: Export formats (.shp, .kml, .tif), impact analysis, SPH coupling, GEE integration, validation, dashboard (React + Vite + Leaflet/Cesium, served by FastAPI — the Streamlit + leafmap fallback was built and has since been removed), hardening.
+6. Phases 5–12: Export formats (.shp, .kml, .tif), impact analysis, SPH coupling, GEE integration, validation, dashboard (React + Vite + Leaflet/Cesium, talking to the FastAPI service — the Streamlit + leafmap fallback was built and has since been removed; the same dashboard also ships as a Windows desktop app, see "Windows desktop app" below), hardening.
 7. **Minimum defensible slice** (if schedule collapses): Phases 0–5 + Phase 7 (reduced) — working simulation with shapefile/KML export and small SPH near-field run.
 
 ## Testing Strategy
@@ -76,10 +76,15 @@ Multi-tier validation framework:
 
 ## Python Environment & Build
 
-- **Setup**: `pyproject.toml` with pip/setuptools
-- **Key dependencies**: PySPH (BSD licence), NumPy, Numba (JIT), rasterio, geopandas, xarray
-- **Run**: Entry point is CLI-based (no build system yet). Invoke solver via command line with config file
-- **Linting**: ruff (auto-format on edit in hooks)
+- **Setup**: `pyproject.toml` with pip/setuptools; `pip install -e ".[dev,viz]"`, plus `".[gpu]"` for CUDA/OpenCL. Python 3.14 is the interpreter everything is validated on (CI's Linux job still uses 3.11).
+- **Key dependencies**: PySPH (BSD licence), NumPy, Numba (JIT), rasterio, geopandas, xarray; FastAPI + Celery for the service
+- **Run**:
+  - dashboard: `python scripts/run_api.py` + `npm run dev --prefix frontend`
+  - CLI: `python -m jalraksha.cli run --dam tehri ...`
+  - long runs: `scripts/`
+  - Windows desktop app: `npm run desktop:dev`
+- **Version**: ONE source, `jalraksha/__init__.py` `__version__` (1.0.0). `pyproject.toml` reads it dynamically, the FastAPI app reports it, and `node desktop/scripts/sync-version.mjs` copies it into `frontend/package.json` and `desktop/package.json` (`--check` in CI). It is not written into run outputs, so provenance does not depend on it.
+- **Linting**: ruff (auto-format on edit in hooks — currently inert, see the W503 note under Repository layout)
 
 ## Literature & Specifications
 
@@ -116,8 +121,7 @@ Multi-tier validation framework:
 ## Repository layout
 
 Every phase in the build order above is implemented. The tree below is the real
-one as of 2026-09-11; it replaces an August "Project Setup Progress" block that
-still listed most modules as Phase stubs.
+one as of 2026-09-13.
 
 ```
 jalraksha/                 core library
@@ -141,15 +145,24 @@ jalraksha/                 core library
 └── validation/            metrics, benchmarks, delft3d_benchmark, sensitivity
 
 services/api/jalraksha_service/   FastAPI backend: main (routes), tasks (run pipeline),
-                                  run_worker (subprocess runs), script_runs, db, schemas
-frontend/src/                     React + Vite dashboard: App, api.js, hazard.js,
-                                  panels/ (11 tabs and panels), state/SimulationClock
+                                  run_worker (subprocess runs), script_runs, db, schemas,
+                                  runtime (checkout vs frozen-build process launch),
+                                  backend_probe (GPU probe), data_packs (.jrpack
+                                  import/export CLI), run_control (stop in-flight runs)
+frontend/src/                     React + Vite dashboard: App, api.js, runtimeConfig.js,
+                                  hazard.js, panels/ (11 tabs and panels), state/SimulationClock
+desktop/                          Windows desktop app: electron/ (main, preload, backend
+                                  lifecycle, static server, navigation), backend/ (PyInstaller
+                                  entry + spec + pinned requirements), scripts/ (build.mjs,
+                                  sync-version.mjs, Khadakwasla pack), test/, README.md
+package.json                      root convenience scripts only (desktop:*, version:*)
 scripts/                          long runs and maintenance (run_blockage, drainage check,
                                   validate_against_delft3d, register/backfill, run_api)
 paraview/                         ParaView render pipeline (static, animation, cameras)
 tools/                            sih-presentation/ decks, architecture diagrams,
                                   cesium/ terrain tiles, matlab/, paraview/ dataset builders
-tests/                            32 test modules + conftest.py
+tests/                            37 test modules + conftest.py
+.github/workflows/                ci.yml (Linux pytest), windows-installer.yml (CPU + GPU installers)
 docs/                             validation_findings, dashboard_integration, progress,
                                   DECISIONS, VERIFICATION_LOG, the Technical Reference
                                   Manual; archive/ holds dated status snapshots
@@ -233,6 +246,16 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   to tear down and rebuild the Cesium viewer and Leaflet map every time.
 - **Run picker** (`GET /runs`) loads any completed run instantly. This is the
   offline demo path; it replaced typing a 32-character hex id by hand.
+- **The API URL is decided at run time** (`frontend/src/runtimeConfig.js`): the
+  desktop app's preload object wins, otherwise the build-time `VITE_*` values
+  apply exactly as before. Every `/files/...` link goes through `resolveApiUrl`
+  — ValidationPanel's DEM-update links used to resolve against the PAGE origin
+  and 404 even in dev.
+- **ParaView is offered only when it can work.** `GET /capabilities` checks
+  paraview.exe, pvpython.exe and `render_static.py` all exist AND the caller is
+  loopback, so a deployed dashboard never shows a launch button that opens a
+  window on a server. `open-paraview` applies the same checks; a missing
+  pvpython used to escape as an uncaught `FileNotFoundError` (a bare 500).
 - **Earth Engine is live.** `JALRAKSHA_GEE_PROJECT=sih-prototype-506812`, set in
   `scripts/run_api.py` because `.claude/launch.json` has no env field. Both the
   Sentinel-1 overlay and GHSL population-at-risk depend on it.
@@ -275,6 +298,152 @@ Full record: `docs/dashboard_integration.md`. The demo-critical facts:
   rendered Khadakwasla — 1,170 m of relief across 54 km — as a near-flat plate.
   `main.py` is in the `.pvsm` staleness check, so changing those arguments
   invalidates cached states.
+
+## Dashboard styling — a design system, scoped away from the maps
+
+Plan and rationale: `docs/UI_Design_Language_Plan.md` (the andhüman-derived
+visual language; phases A–E and D2 are built, the phone/landing Phase F is not).
+
+- **Where things live.** `frontend/src/styles/` holds `tokens.css` (custom
+  properties on `:root`), `base.css` and `ui.css`; `frontend/src/ui/` holds the
+  primitives (`TabPill`, `Card`, `SectionLabel`, `Stat`, `DataTable`, `Chip`,
+  `Caveat`, `Button`, `Empty`), `brand.js` (`APP_NAME`) and `chartTheme.js`.
+  Panels use classes and primitives; the remaining inline `style` props are the
+  `Pane` mechanism, data colours, widget-container sizing and chart heights.
+- **Scoping under `.jr` is not enough.** Leaflet and Cesium render INSIDE the
+  app root, so an element rule like `.jr a` still outranks Leaflet's
+  `.leaflet-bar a`. Every element-level rule in `base.css` excludes
+  `.leaflet-container`/`.cesium-viewer` subtrees AND is wrapped whole in
+  `:where()` for zero specificity — without that, the `:not()` exclusion added
+  enough specificity to beat the component classes (the primary button's white
+  text lost to `color: inherit`). Element selectors are otherwise used only
+  under `.jr-form`, the sidebar, which holds no map DOM.
+- **No hazard colour in the stylesheets.** FD2320 colours come from the run
+  payload (map legend swatches, Impact bars) or from `GaugesPanel.hazardClass`,
+  which mirrors `hazard.py`. Chart engine colours are data too and live in
+  `chartTheme.js` `SERIES`. Chart chrome is styled by CSS on `.recharts-*`
+  (CSS outranks SVG presentation attributes); never target series or bar fills.
+- **`Caveat` is a correctness component.** Four tones (warn, danger, ok, info),
+  every pairing ≥ 7:1, never below 13 px, and no `collapsed`/`muted` prop. The
+  spec's `#999` secondary text is 2.85:1, so secondary text is `--ink-2 #666`
+  and `--muted` is for rules and disabled states only. Nothing ships below 12 px.
+- **Fonts are bundled** from `@fontsource` (Inter variable, Space Grotesk, IBM
+  Plex Mono). `desktop/scripts/build.mjs` fails the build if any built CSS or
+  `index.html` references a font or stylesheet by network URL.
+- **`?ui-preview`** on the dev server renders `ui/Preview.jsx`, a gallery of the
+  primitives and one Caveat per honesty label. It is gated on
+  `import.meta.env.DEV` and absent from production builds.
+- **Honesty labels now reach the screen** (they were computed and dropped):
+  `RunResult.is_synthetic`/`synthetic_note` (a danger strip above every tab),
+  `EnsembleSummary.unverified_regressions` (+ `uses_unverified_regression`,
+  `unverified_regression_note`), and per-gauge `boundary_clearance_km` /
+  `near_boundary`, measured against the solver grid by
+  `script_runs.gauge_boundary_clearance_km`. `BOUNDARY_CONTAMINATION_KM` (5 km,
+  UNVETTED) has one definition, in `script_runs.py`, which the drainage script
+  imports. `scripts/backfill_gauge_boundary.py` fills older runs from their
+  recorded grid origin (dry run by default); `e2e09ea3` is backfilled. The
+  sidebar `DamClassWarning` reads `result.ensemble` — it read `hazard_summary`,
+  whose dam-class keys are added after the manifest is written, and never fired.
+
+## Windows desktop app
+
+The full record is in `desktop/README.md` and `docs/DECISIONS.md` §15. The desktop app does not
+replace the browser workflow or Docker. It wraps them.
+
+- **Shape.**
+  - Electron (`desktop/electron/main.js`) starts the FastAPI service on a free
+    127.0.0.1 port. Packaged, that is PyInstaller's
+    `resources\backend\jalraksha-backend.exe serve`; in dev, `scripts/run_api.py`.
+  - It waits for `/health` (bounded at 120 s, and it fails fast if the process
+    dies).
+  - It serves the Vite build from a loopback static server, never `file://`.
+  - The window is sandboxed, context-isolated and has no Node. The only bridge
+    is a frozen, function-free `window.jalrakshaDesktop` holding the API URL.
+- **Frozen processes cannot use `-m` or `-c`.**
+  - `jalraksha_service/runtime.py` builds every child command line: run worker,
+    GPU probe. In a checkout it returns exactly the old argv/cwd/PYTHONPATH.
+    Frozen, it returns the exe's subcommands (`run-worker`, `probe-backends`,
+    `pack`, `stop-active-runs`; the entry script also has `serve` and
+    `diagnose`).
+  - The same file resolves `paraview/` and `tools/paraview/` under `sys._MEIPASS`
+    when frozen. Anything new that shells out to Python or reads a repo-relative
+    script must go through it.
+- **PyInstaller spec choices that are not tuning** (`desktop/backend/jalraksha-backend.spec`):
+  - onedir, not onefile.
+  - `module_collection_mode="py"` for jalraksha, jalraksha_service, compyle and
+    pysph. Numba's `cache=True` kernels need their `.py` source on disk, and
+    compyle calls `inspect.getsource`.
+  - `console=True`, started hidden.
+  - `multiprocessing.freeze_support()` first in the entry script, for the
+    solver's process pool.
+  - `redis` is bundled even though there is no broker. Celery builds its redis
+    result backend when an eager task reports state. Measured: a frozen run
+    solved, exported, then died with `No module named 'redis'`.
+- **Nothing is written in the install dir.**
+  - Everything goes under `%LOCALAPPDATA%\JalRaksha`: `data`, `logs`,
+    `cache\numba` (`NUMBA_CACHE_DIR`), `config\desktop.json`, `electron`.
+  - The backend's cwd is the data directory's PARENT, so relative `data\...`
+    export rows still resolve.
+  - `JALRAKSHA_DESKTOP_ROOT` overrides the root, for tests.
+- **No credentials in installers.**
+  - The desktop frontend build forces `VITE_CESIUM_ION_TOKEN=""`, and
+    `build.mjs` fails if `frontend/.env.local`'s token appears in the output.
+  - The Cesium token, the GEE project and the ParaView/Delft3D paths come from
+    the user's `desktop.json` at run time.
+- **No data in installers — data packs instead.**
+  - `jalraksha_service/data_packs.py` is CLI only; there is deliberately no HTTP
+    endpoint.
+  - Import validates everything BEFORE writing: sha256, zip-slip, conflicting
+    files, and undeclared `is_synthetic` runs.
+  - It never overwrites, and it skips existing run ids.
+  - The Khadakwasla pack (flagship `e2e09ea3`, its DEM, Pune-basin GHSL v2 /
+    GHS-BUILT / WorldCover caches) is built by
+    `npm run desktop:pack:khadakwasla` — 86 MB, 228 files. A packaged app
+    imported it and served the run's result, 90-keyframe manifest and PNGs.
+- **Two installers, CPU and GPU.**
+  - The GPU one bundles numba-cuda and pyopencl but no NVIDIA driver. `/backends`
+    is the real probe in both.
+  - **The CUDA stack cannot be frozen by module analysis.** It took four measured
+    failures to get a working frozen probe:
+    1. numba-cuda swaps in `numba.cuda` through a `.pth` import hook, which frozen
+       apps never read. The probe loaded numba's LEGACY `numba.cuda` and blamed
+       the driver.
+    2. Its `.pyd` extensions were dropped.
+    3. Their delvewheel `msvcp140-<hash>.dll` was missing.
+    4. The namespace package `cuda.core` lost its compiled modules, and
+       `importlib.metadata` found no dist-info.
+
+    The fix: the spec copies `numba_cuda`, `cuda`, `nvidia`, the `*.libs` dirs and
+    their `*.dist-info` as plain files, and the entry script imports
+    `_numba_cuda_redirector` / `_cuda_bindings_redirector` itself.
+    `jalraksha-backend.exe diagnose` prints what decides GPU availability. Once
+    fixed, the frozen GPU backend solved a Khadakwasla run labelled
+    `GPU (CUDA, NVIDIA GeForce RTX 4050 Laptop GPU, float64)` in ~14 s.
+  - The CPU build's probe appends that numba-cuda is not installed, because
+    numba's legacy `numba.cuda` otherwise blames a driver that is fine.
+  - CPU PySPH needs MSVC on the target machine; building PySPH on 3.14 needs
+    `--no-build-isolation` (`requirements-sph.txt`).
+- **Quitting with active runs asks** "Stop runs and quit" or "Keep running in
+  background".
+  - Keep: `taskkill` WITHOUT `/T`, because detached run workers are still the
+    backend's children by pid, and `/T` would kill them.
+  - Stop: `run_control.stop_active_runs` kills each recorded worker tree and
+    marks the run failed with that reason.
+- **Build and CI.**
+  - Build: `node desktop/scripts/build.mjs --stage dist --variant cpu|gpu`, which
+    produces `dist/windows/JalRaksha-<ver>+<sha>[-dirty]-win-x64-<CPU|GPU>-Setup.exe`.
+  - `.github/workflows/windows-installer.yml` builds both on pushes to `main`,
+    `v*` tags and dispatch.
+  - No auto-update, no signing secrets. Releases are attached by hand.
+- **Offline caveat.** OSM tiles and Cesium ion imagery are online services.
+  Offline, run overlays load over a blank basemap.
+- **Measured sizes (2026-09-13).** CPU installer 320 MB (1.16 GB installed), GPU
+  installer 429 MB (~1.6 GB installed). The deepest bundled path is 129 chars (a
+  CUDA CCCL header), so an install folder longer than ~120 chars hits
+  `MAX_PATH`, and the uninstaller leaves that file behind. That was measured once
+  under a long scratch path; the default `%LOCALAPPDATA%\Programs\JalRaksha` is
+  fine.
+
 ## River blockage (landslide dam) and the observation-conditioned DEM update
 
 Half the events PS-26161 names are natural blockages, not dam failures. The
@@ -1041,6 +1210,56 @@ estimate, and measurement replaced it.
   chunks are sized to 60% of FREE VRAM (`ensemble_cuda.VRAM_FRACTION`); a
   member at 376 × 480 takes about 35 MB. A second concurrent run that runs out
   of memory falls back to the CPU and says so.
+- **Near-field SPH's default engine is DualSPHysics v5.4 in native CUDA**
+  (`jalraksha/sph/dualsphysics_runner.py`, chosen by `jalraksha/sph/engine.py`).
+  PySPH (below) stays as the reference engine and the fallback where
+  DualSPHysics is not installed. Full record: `docs/validation_findings.md` §13,
+  `docs/DECISIONS.md` §16.
+  - **Measured on the production path** (`tasks._run_near_field_sph`,
+    Khadakwasla, 1.2 km window, 15 s simulated): **232,426 fluid particles in
+    89.4 s on the RTX 4050**, GPU at 90% utilisation and 58 W. PySPH's OpenCL
+    path had not finished 9,000 particles after 2,442 s. Same case at a 30,000
+    budget (28,178 particles): GPU 14.7 s, DualSPHysics's CPU build 143.2 s.
+  - **It is an external program, never linked, never bundled** (LGPL-2.1).
+    `JALRAKSHA_DUALSPHYSICS_DIR`, else `<repo>/DualSPHysics_v5.4` (git-ignored);
+    desktop.json `dualsphysicsDir`. A set-but-wrong path is reported, never
+    searched around. CI has no install, so those tests skip there.
+  - **GenCase is NOT used.** The runner writes `Case.xml` + `Case.bi4` itself
+    from the same geometry PySPH builds (`sph/geometry.py`: orientation,
+    spacing, bed, level-surface reservoir, breach-strip velocity). The `.bi4`
+    VALUE TYPES must match GenCase v5.4.354's exactly (DualSPHysics checks
+    them), and they were read from GenCase's own output, not guessed.
+  - **`-gpu` is mandatory.** `DualSPHysics5.4_win64.exe` without it runs on
+    the CPU, silently. The device and `RunMode` are read back from `Run.out`,
+    so the label is evidence, not an assumption.
+  - **Backend:** `auto`/`prefer_gpu` use the GPU when a real probe run succeeds
+    (cached per process), else the CPU build with the reason, and a GPU run
+    that fails for a GPU reason is rerun on the CPU. **`gpu` is strict start to
+    finish** — no device raises, and a GPU run that fails partway is an error,
+    never a CPU rerun. **A dashboard `cuda` run maps to that strict `gpu`**
+    (2026-09-14, owner's choice), so "GPU only" means GPU only for BOTH solvers;
+    `submit_run` refuses `cuda` with solver `sph`/`both` when `sph_gpu_available`
+    is false. Strictness is decided once, in `resolve_dsph_backend` (`strict`):
+    the first version derived it at each call site and treated ANY set
+    `JALRAKSHA_SPH_BACKEND` as non-strict, so `=gpu` still finished on the CPU.
+    `JALRAKSHA_SPH_BACKEND` overrides only `auto`; `JALRAKSHA_SPH_ENGINE`
+    (`auto`|`dualsphysics`|`pysph`) picks the engine and RAISES when an
+    explicitly named one cannot run.
+  - **Two scheme differences from PySPH are deliberate, not drift:**
+    c0 = 20·√(g·head) (GenCase's default rule, head = the whole window's
+    available drop) and h = 1.0·√3·dp (DualSPHysics's 01_DamBreak). Artificial
+    viscosity 0.01 is UNVETTED, like PySPH's.
+  - **Front history is per snapshot (40 per run), not per step.** Snapshots are
+    deleted after parsing (40 × 250k particles ≈ 440 MB); Run.out and Case.xml
+    stay in a unique per-run temp directory (unique because the API's GPU
+    probe runs in a child process while runs may be solving).
+  - **Never bit-compare GPU and CPU builds**: "Pos-Cell" on the GPU,
+    "Pos-Double" on the CPU. `tests/test_sph_dualsphysics.py` holds each to its
+    own gates.
+  - **The bed is closed on steep terrain.** Each bed column extends below its
+    lowest 4-neighbour, so a stepped 30 m DEM leaves no particle-free vertical
+    face for water to leak through (PySPH lays a fixed two layers).
+- **PySPH's GPU path** — the reference engine; the notes below apply only to it.
 - **Near-field SPH now RUNS on the GPU on Python 3.14** (the old "stays on the
   CPU" line is obsolete). PySPH's OpenCL path was already wired
   (`--opencl --use-double`, `PYOPENCL_CTX` pinned to the NVIDIA platform because
@@ -1075,22 +1294,39 @@ estimate, and measurement replaced it.
     `z_order_gpu_nnps.pyx:227` with "only 0-dimensional arrays can be converted
     to Python scalars" — compiled Cython, unpatchable from here. An NNPS changes
     neighbour summation ORDER, not physics.
-  - **One control governs both engines.** `RunRequest.backend` reaches SPH via
-    `dam_config["solver_backend"]` and `sph_backend_for_solver` (`cuda` →
-    `opencl`: same device, different API; PySPH's CUDA path needs pycuda and so
-    nvcc). `JALRAKSHA_SPH_BACKEND=auto|opencl|cpu` still forces it.
-  - **Deliberate asymmetry with the SWE solver, which RAISES on an impossible
-    `cuda`.** SPH degrades to the CPU and records why: it is a supplementary
-    near-field product, and nothing can be mislabelled because `sph_backend`,
-    `sph_backend_reason` and `engine_label` all name what actually ran.
+  - **One control governs both engines — SUPERSEDED 2026-09-14.** The run's
+    backend now goes through `sph/engine.py::sph_backend_for_solver`, where
+    `cuda` → strict `gpu` (→ `opencl` for PySPH), matching the SWE solver.
+    `pysph_runner.sph_backend_for_solver` still maps `cuda` → `prefer_opencl`,
+    but the service no longer calls it. The old asymmetry (SPH degrading to the
+    CPU under `cuda`) survives only under `auto`.
+  - **compyle's config is a process-global PySPH never clears.** After one GPU
+    run, `use_opencl` stays set and every later PySPH run in that process
+    generates OpenCL whatever it asked for — measured as a "CPU" run dying inside
+    `compyle/translator.py` on `ast.Str`. That is exactly the GPU-then-CPU
+    fallback sequence, so `pysph_app_compat` gives every `app.run()` (both
+    backends) its own `compyle.config.use_config()`.
+  - **Pin the backend in SPH tests.** `run_near_field_sph` defaults to `auto`,
+    so once the GPU worked the "CPU" gates silently became GPU gates and a
+    40-second class took eight minutes. `_small_run` pins `cpu`;
+    `TestGpuNearField` asks for `opencl`.
   - **Never bit-compare the backends.** The Cython NNPS and the GPU octree sum
     neighbours in different orders, so a collapsing column diverges from
     round-off. Each backend passes the gates on its own physics; the only
     cross-backend assertions are integral (`tests/test_sph.py::TestGpuNearField`),
     the same stance `test_solver_cuda.py` takes for SWE.
-  - **Particle budget unchanged** at `TARGET_FLUID_PARTICLES = 9000` on both
-    backends, so only the hardware differs. Measured numbers — including where
-    the GPU is no faster — in `docs/validation_findings.md` §12.
+  - **`--octree-elementwise` is not tuning.** The octree's grouped kernel
+    returned garbage neighbour counts: a 4,032-particle tank asked for
+    748,965,269 entries (46× all N² pairs) and died with
+    `INVALID_BUFFER_SIZE`. Smaller cases cannot be assumed correct on it.
+  - **`auto` runs SPH on the GPU — the owner's choice (2026-09-13), NOT a
+    measured speed-up.** On the production case (9,000 particles) the OpenCL
+    run was stopped unfinished at 2,442 s wall, 2,289 s of it CPU time, at
+    9.4 W GPU draw — PySPH's GPU path is host-bound. No CPU/GPU ratio was
+    measured, so never claim GPU SPH is faster. `auto` falls back to the CPU
+    with a reason when the GPU cannot run; `JALRAKSHA_SPH_BACKEND=cpu` or the
+    dashboard's CPU option runs it on the CPU. Full record:
+    `docs/validation_findings.md` §12.
 
 ## ParaView Visualization Pipeline — Model/Effort Routing
 

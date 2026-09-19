@@ -1055,3 +1055,104 @@ its value at the start of each step.
   whatever bias the old loop had on their terrain: up to about 2.6% late where
   the breach cell set the timestep, and nothing measurable on the Khadakwasla
   configuration.
+
+## 12. Near-field SPH on the GPU: it runs, and it is not shown faster (measured 2026-09-13)
+
+**What was done.** There is no SPH physics in this repository to port:
+`sph/core.py` is a gravestone for a deleted home-grown solver, and every real
+equation is PySPH's `WCSPHScheme`. So the GPU work unblocked PySPH's own OpenCL
+backend rather than writing a CUDA WCSPH. Four defects stood in the way, and each
+was proven before it was fixed:
+
+| # | Defect | Evidence | Fix |
+| ---: | :--- | :--- | :--- |
+| 1 | compyle 0.9.1 uses `ast.Str` (removed in Python 3.14) | `AttributeError` at the first kernel | scoped shim, `sph/compyle_compat.py` |
+| 2 | compyle's `visit_Num` / `visit_Str` / `visit_NameConstant` are dead on 3.14 | generated OpenCL read `r = ((r \| (r << None)) & None);` | `visit_Constant` dispatcher, same module |
+| 3 | `ZOrderGPUNNPS` casts a size-1 array to a scalar | NumPy 2: "only 0-dimensional arrays can be converted to Python scalars", `z_order_gpu_nnps.pyx:227` (compiled) | `--nnps gpu_octree` |
+| 4 | the octree's grouped kernel returns garbage neighbour counts | a 4,032-particle tank requested **748,965,269** neighbour entries (3.0 GB, over the 1.6 GB max allocation) — 46× more than all N² pairs | `--octree-elementwise` (0.4 MB on the same tank) |
+
+Defect 4 matters beyond the crash: cases small enough to stay under the
+allocation limit cannot be assumed to have had correct neighbour lists on the
+grouped kernel, which is why the elementwise kernel is unconditional.
+
+**Two integration defects, found by the tests.** compyle's config is a
+process-global that PySPH never clears, so after one GPU run a "CPU" run in the
+same process generated OpenCL and died in compyle's translator — exactly the
+GPU-then-CPU fallback sequence. Every `app.run()` now gets its own
+`compyle.config.use_config()`. And the dashboard's `cuda` first mapped to the
+strict `opencl` backend, which raises; it maps to `prefer_opencl`, which degrades
+to the CPU and records why.
+
+**Correctness gates on the GPU, each on its own physics** (`tests/test_sph.py`,
+`TestGpuNearField` and the GPU still-water test; never trajectory equality, since
+the octree and the Cython NNPS sum neighbours in different orders):
+
+| gate | GPU (OpenCL, RTX 4050, float64) |
+| :--- | :--- |
+| still water, 3 m column, 0.6 s | max speed 0.353 m/s (< 1), density error 0.78 % (< 2), all finite |
+| still water, 6 m column, 12 cells (the defect-4 case) | max speed 0.348 m/s, density error 0.65 % |
+| near-field valley run | energy bound, escaped fraction < 25 %, front advances, all finite — pass |
+| cross-backend (integral only) | same particle count and energy bound; both inside it |
+
+**Speed — no completed timing, and what was observed instead.** The comparison
+used the production path itself (`tasks._run_near_field_sph`, Khadakwasla,
+1.2 km window at 30 m, `TARGET_FLUID_PARTICLES = 9000` on both, 15 s simulated),
+one backend per process:
+
+| backend | result |
+| :--- | :--- |
+| OpenCL | **stopped unfinished at 2,442 s wall**, having used 2,289 s of CPU time; GPU power draw 9.4 W at "58 %" utilisation |
+| CPU (Cython) | stopped unfinished at 1,264 s wall (the session had to end the measurement) |
+
+Neither run finished, so **no speed-up or slow-down ratio is claimed.** What the
+figures do show is that PySPH's GPU path is host-bound here: 94 % of its wall
+time was CPU time, and a card drawing 9.4 W is idling between kernel launches.
+The octree is rebuilt on the host and data round-trips every step, and at 9,000
+fluid particles that overhead is not repaid. An earlier, larger 3.9 km test
+window was abandoned after 69 minutes on the CPU because it had roughly 11× the
+production area, not because either backend failed.
+
+**Consequence in code — revised the same day.** The first commit kept
+`resolve_sph_backend("auto")` on the CPU on the strength of the figures above.
+The project owner then chose GPU-first for every simulation, so `auto` now runs
+SPH on the GPU and falls back to the CPU, recording why, when the GPU cannot run.
+That is a DECISION, not a measured speed-up, and nothing above supports claiming
+GPU SPH is faster; the host-bound figures stand as the record. The CPU remains
+one setting away (the dashboard's CPU option or `JALRAKSHA_SPH_BACKEND=cpu`).
+The SWE solver's GPU backend (§11) is unaffected and remains 11–20× faster.
+
+## 13. Near-field SPH in DualSPHysics on the GPU (measured 2026-09-14)
+
+§12's PySPH GPU path is host-bound, so near-field SPH now runs in DualSPHysics
+v5.4 (`jalraksha/sph/dualsphysics_runner.py`). Build machine: RTX 4050 Laptop
+GPU (compute 8.9), driver CUDA 13.3. The release's CUDA kernels ran on it
+unmodified; `Run.out` reports `RunMode="Pos-Cell - Single-GPU"`.
+
+**Gates**, each backend on its own physics:
+
+| gate | GPU (CUDA) | CPU build (OpenMP, 16 threads) |
+| :--- | :--- | :--- |
+| still water, 3 m column, dp 0.1 m, 1 s, 12,000 fluid | max speed 0.174 m/s, density error 0.32 %, surface drop −1.4 mm, 0 excluded — **9.7 s** | max speed 0.174 m/s, density error 0.32 %, 0 excluded — **101.2 s** |
+| synthetic valley, 40,666 fluid, 6 s | max speed 24.4 m/s against a 33.0 m/s energy bound; front 72 → 115 m; 0 excluded — 17.9 s | not run |
+
+The fitted hydrostatic slope in the still-water tank was 10 % above ρg on both
+backends after 1 s; it is reported, not gated, as in §12.
+
+**Production path** (`tasks._run_near_field_sph`, Khadakwasla, 1.2 × 1.2 km at
+30 m, breach 50 m, Q 11,609 m³/s, available head 65.6 m, energy bound
+35.9 m/s, 15 s simulated):
+
+| budget | backend | fluid particles | spacing | max speed | wall clock |
+| ---: | :--- | ---: | ---: | ---: | ---: |
+| 250,000 (default) | GPU | 232,426 | 3.85 m | 34.9 m/s | **89.4 s**, GPU 90 % / 58 W |
+| 30,000 | GPU | 28,178 | 7.80 m | 28.5 m/s | **14.7 s** |
+| 30,000 | CPU build | 28,178 | 7.80 m | 29.6 m/s | **143.2 s** |
+
+No particle was excluded in any of these runs. At the default budget: max depth
+33.6 m, front advanced 246.5 m at 16.9 m/s and did not exit the window.
+
+**What is and is not claimed.** The wall clocks are measured and comparable
+(same case, same particles, same release). GPU and CPU runs are not
+bit-identical and are not compared particle by particle. DualSPHysics and PySPH
+use different c0 and smoothing-length rules (DECISIONS §16), so a DualSPHysics
+result is not a PySPH result computed faster.

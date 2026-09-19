@@ -14,18 +14,18 @@ CLAUDE.md's no-silent-fallback rule the code was deleted rather than kept as a
 "fallback" — a plausible-looking wrong answer is the outcome that rule exists
 to prevent.
 
-The real implementation is jalraksha.sph.pysph_runner, which runs PySPH's
-WCSPHScheme (Wendland quintic kernel, Tait equation of state, Monaghan
-artificial viscosity, dynamic boundary particles) and raises
-SPHUnavailableError rather than substituting anything when PySPH cannot run.
+The real implementations are jalraksha.sph.dualsphysics_runner (DualSPHysics
+v5.4, native CUDA, the default when installed) and jalraksha.sph.pysph_runner
+(PySPH's WCSPHScheme). jalraksha.sph.engine chooses between them, and both
+raise SPHUnavailableError rather than substituting anything when they cannot run.
 """
 
-from jalraksha.sph.pysph_runner import (  # noqa: F401  (re-export)
-    SPHUnavailableError,
-    is_pysph_available,
+from jalraksha.sph.engine import (  # noqa: F401  (re-export)
     run_near_field_sph,
     run_still_water_validation,
 )
+from jalraksha.sph.geometry import SPHUnavailableError  # noqa: F401
+from jalraksha.sph.pysph_runner import is_pysph_available  # noqa: F401
 
 __all__ = [
     "SPHUnavailableError",

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>JalRaksha — starting</title>
+  <style>
+    body { margin: 0; height: 100vh; display: grid; place-items: center;
+           font: 15px/1.5 "Segoe UI", system-ui, sans-serif; background: #f5f5f2; color: #1f2a33; }
+    main { text-align: center; max-width: 34rem; padding: 2rem; }
+    h1 { font-size: 1.6rem; margin: 0 0 .4rem; font-weight: 600; }
+    p { margin: .3rem 0; color: #52606b; }
+    .bar { margin: 1.4rem auto 0; width: 14rem; height: 4px; border-radius: 2px; background: #dde3e7; overflow: hidden; }
+    .bar::after { content: ""; display: block; width: 35%; height: 100%; background: #1d6fa5;
+                  animation: slide 1.4s ease-in-out infinite; }
+    @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>JalRaksha</h1>
+    <p>Starting the local simulation service…</p>
+    <p>The first launch can take a minute while the solver libraries load.</p>
+    <div class="bar" role="progressbar" aria-label="Starting"></div>
+  </main>
+</body>
+</html>

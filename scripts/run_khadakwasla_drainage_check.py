@@ -89,6 +89,67 @@ ENSEMBLE_SIZE = 4
 RUN_TAG = "khadakwasla_drainage_check"
 
 
+DEFAULT_DEM = ROOT / "data" / "dem" / "dem_18.44_73.77_clipped.tif"
+
+
+def dem_margin_shortfall(dem_path, dam_lat: float, dam_lon: float, margins: dict,
+                         tolerance_deg: float = 0.002):
+    """
+    Which edges of the requested domain the DEM does not reach, or [] if it covers it.
+
+    Uses the same flat km-per-degree conversion as jalraksha.dem.fetch_dem, so a
+    DEM staged for exactly these margins passes. A domain outside the DEM is not
+    an error anywhere downstream: load_dem_as_grid nearest-fills the missing
+    cells and the run completes over invented terrain. Refusing here is the only
+    place that failure is loud.
+    """
+    import math
+
+    import rasterio
+
+    lat_scale = 111.0
+    lon_scale = 111.0 * math.cos(math.radians(dam_lat))
+    need = {
+        "west": dam_lon - margins["west"] / lon_scale,
+        "east": dam_lon + margins["east"] / lon_scale,
+        "south": dam_lat - margins["south"] / lat_scale,
+        "north": dam_lat + margins["north"] / lat_scale,
+    }
+    with rasterio.open(str(dem_path)) as src:
+        b = src.bounds
+    short = []
+    if b.left > need["west"] + tolerance_deg:
+        short.append(f"west (DEM {b.left:.3f} vs needed {need['west']:.3f})")
+    if b.right < need["east"] - tolerance_deg:
+        short.append(f"east (DEM {b.right:.3f} vs needed {need['east']:.3f})")
+    if b.bottom > need["south"] + tolerance_deg:
+        short.append(f"south (DEM {b.bottom:.3f} vs needed {need['south']:.3f})")
+    if b.top < need["north"] - tolerance_deg:
+        short.append(f"north (DEM {b.top:.3f} vs needed {need['north']:.3f})")
+    return short
+
+
+def parse_margins(text: str) -> dict:
+    """
+    "W,E,S,N" in km from the dam -> a margins dict.
+
+    Refuses anything but four non-negative numbers with a non-zero extent on
+    each axis, because a typo here silently changes which gauges are in the grid.
+    """
+    parts = [p.strip() for p in str(text).split(",")]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError(f"--margins needs W,E,S,N (4 values), got {text!r}")
+    try:
+        west, east, south, north = (float(p) for p in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"--margins values must be numbers: {text!r}") from exc
+    if min(west, east, south, north) < 0:
+        raise argparse.ArgumentTypeError(f"--margins values must be >= 0 km: {text!r}")
+    if west + east <= 0 or south + north <= 0:
+        raise argparse.ArgumentTypeError(f"--margins gives an empty domain: {text!r}")
+    return {"west": west, "east": east, "south": south, "north": north}
+
+
 def parse_args(argv=None):
     """
     Flags exist so a coarser/shorter first look does not require editing
@@ -125,12 +186,36 @@ def parse_args(argv=None):
                              "= 28x26 km with its east boundary 3.5 km INSIDE "
                              "the measured 23.5 km flood front, so water can "
                              "actually leave the domain. See DOMAINS.")
-    parser.add_argument("--solver", choices=("swe", "both"), default="swe",
+    parser.add_argument("--margins", type=parse_margins, default=None,
+                        metavar="W,E,S,N",
+                        help="Custom domain extent in km from the dam, e.g. "
+                             "8,32,8,18. Overrides --domain.")
+    parser.add_argument("--solver", choices=("swe", "sph", "both"), default="swe",
                         help="'swe' (default) runs the far-field pipeline "
-                             "only. 'both' additionally runs Delft3D FM and "
-                             "the one-way near-field SPH handoff on top of it, "
-                             "which is what the dashboard's Comparison and SPH "
-                             "tabs read. Same meaning as POST /runs.")
+                             "only. 'sph' adds the one-way near-field SPH "
+                             "handoff. 'both' additionally runs Delft3D FM and "
+                             "the SPH handoff on top of it, which is what the "
+                             "dashboard's Comparison and SPH tabs read. Same "
+                             "meaning as POST /runs.")
+    parser.add_argument("--backend", choices=("auto", "cpu", "cuda"), default="auto",
+                        help="Compute backend, same meaning as POST /runs. 'cuda' "
+                             "is GPU-only for BOTH solvers: refused at start "
+                             "when either GPU probe fails, and never finished "
+                             "on the CPU.")
+    parser.add_argument("--sph-window-km", type=float, default=None,
+                        help="Near-field SPH window half-width in km (service "
+                             "default 0.6, i.e. 1.2 x 1.2 km).")
+    parser.add_argument("--sph-duration-s", type=float, default=None,
+                        help="Near-field SPH simulated time in s (service default 15).")
+    parser.add_argument("--sph-particles", type=int, default=None,
+                        help="Near-field SPH fluid-particle budget (engine default "
+                             "when unset: DualSPHysics 250,000).")
+    parser.add_argument("--dem", default=None, metavar="PATH",
+                        help="DEM GeoTIFF for the far-field solve (default "
+                             "data/dem/dem_18.44_73.77_clipped.tif). The run is "
+                             "refused if the domain reaches past its edges.")
+    parser.add_argument("--label", default=None,
+                        help="Run-picker name. Default: the drainage-check label.")
     parser.add_argument("--n-workers", type=int, default=None,
                         help="Ensemble members solved concurrently. Default "
                              "(unset) uses every core; lower it when the grid "
@@ -151,8 +236,13 @@ def main(argv=None) -> int:
     n_snapshots = int(args.snapshots)
     run_tag = str(args.tag)
     condition_corridor_m = float(args.condition_corridor)
-    margins = DOMAINS[args.domain]
+    margins = args.margins or DOMAINS[args.domain]
+    domain_name = (
+        "custom W{west:g}/E{east:g}/S{south:g}/N{north:g}".format(**margins)
+        if args.margins else args.domain
+    )
     solver = str(args.solver)
+    backend = str(args.backend)
     n_workers = args.n_workers
 
     from jalraksha.presets import get_preset
@@ -165,21 +255,59 @@ def main(argv=None) -> int:
     # The hydrograph is routed for as long as the solver runs; without this the
     # release window is capped independently of the requested duration.
     dam_config["hydrograph_duration_s"] = duration_s
+    # The run's compute backend travels on dam_config exactly as POST /runs puts
+    # it there, so the SPH handoff maps cuda -> the strict "gpu" backend.
+    dam_config["solver_backend"] = backend
+    for key, value in (("sph_window_radius_km", args.sph_window_km),
+                       ("sph_duration_s", args.sph_duration_s),
+                       ("sph_target_particles", args.sph_particles)):
+        if value is not None:
+            dam_config[key] = value
+
+    if backend == "cuda":
+        # Same rule as main.py::submit_run: an impossible GPU-only request is
+        # refused before the terrain and the ensemble are built.
+        from jalraksha.solver.backend import cuda_probe
+
+        ok, detail, _device = cuda_probe()
+        if not ok:
+            print(f"[drainage-check] REFUSED: backend=cuda but the SWE GPU probe failed: {detail}")
+            return 2
+        if solver in ("sph", "both"):
+            from jalraksha.sph.engine import probe_sph_gpu
+
+            sph_probe = probe_sph_gpu()
+            if not sph_probe["available"]:
+                print(f"[drainage-check] REFUSED: backend=cuda but SPH cannot use "
+                      f"the GPU: {sph_probe['reason']}")
+                return 2
 
     # NOTE: no tag-named output directory. Artifacts go to the RUN-ID
     # directories the registration hands back below, because that is the only
     # layout the API can serve. `--tag` survives as the human-readable label
     # inside the summary, not as a path.
-    dem_path = str(ROOT / "data" / "dem" / "dem_18.44_73.77_clipped.tif")
+    dem_path = str(Path(args.dem).resolve() if args.dem else DEFAULT_DEM)
+    shortfall = dem_margin_shortfall(dem_path, float(dam_config["lat"]),
+                                     float(dam_config["lon"]), margins)
+    if shortfall:
+        print(f"[drainage-check] REFUSED: the domain reaches past the DEM on "
+              f"{'; '.join(shortfall)}. Stage a wider DEM (jalraksha.dem.fetch_dem "
+              f"with these margins) and pass it with --dem.")
+        return 2
 
     print(f"[drainage-check] dam        : {dam_config.get('name')}")
     print(f"[drainage-check] dem        : {dem_path}")
-    print(f"[drainage-check] domain     : {args.domain} {margins}")
+    print(f"[drainage-check] domain     : {domain_name} {margins}")
     print(f"[drainage-check] resolution : {resolution_m} m")
     print(f"[drainage-check] duration   : {duration_s} s ({duration_s / 3600:.1f} h)")
     print(f"[drainage-check] members    : {members}")
     print(f"[drainage-check] snapshots  : {n_snapshots}")
     print(f"[drainage-check] solver     : {solver}")
+    print(f"[drainage-check] backend    : {backend}")
+    if solver in ("sph", "both"):
+        print(f"[drainage-check] sph        : window {dam_config.get('sph_window_radius_km', 'default')} km, "
+              f"duration {dam_config.get('sph_duration_s', 'default')} s, "
+              f"particles {dam_config.get('sph_target_particles', 'default')}")
     nx = int(round((margins["west"] + margins["east"]) * 1000 / resolution_m))
     ny = int(round((margins["south"] + margins["north"]) * 1000 / resolution_m))
     print(f"[drainage-check] grid       : {nx} x {ny} = {nx * ny:,} cells")
@@ -198,8 +326,9 @@ def main(argv=None) -> int:
     # The domain goes in the label because 'exit' is not a cheaper version of
     # the others — it deliberately clips the study area so the flood crosses a
     # boundary, and a result read without knowing that is read wrongly.
-    label = (f"Khadakwasla — drainage check {resolution_m:.0f} m, "
-             f"{duration_s / 3600:.0f} h, {args.domain} domain"
+    label = ((args.label or
+              f"Khadakwasla — drainage check {resolution_m:.0f} m, "
+              f"{duration_s / 3600:.0f} h, {domain_name} domain")
              + (f" [CORRIDOR-CONDITIONED {condition_corridor_m:.0f} m]"
                 if conditioned else ""))
     registration = registered_run(
@@ -223,6 +352,10 @@ def main(argv=None) -> int:
             "domain_margins_km": margins,
             "condition_corridor_m": condition_corridor_m,
             "scenario_type": "dam_break",
+            "solver_backend": backend,
+            "sph_window_radius_km": dam_config.get("sph_window_radius_km"),
+            "sph_duration_s": dam_config.get("sph_duration_s"),
+            "sph_target_particles": dam_config.get("sph_target_particles"),
         },
     )
 
@@ -250,6 +383,7 @@ def main(argv=None) -> int:
             notch_breach=True,
             condition_corridor_m=condition_corridor_m,
             n_workers=n_workers,
+            backend=backend,
         )
 
         if result.get("error"):
@@ -259,11 +393,13 @@ def main(argv=None) -> int:
 
         if solver == "both":
             _add_comparison_and_sph(run, dam_config, progress)
+        if solver == "sph":
+            _add_near_field_sph(run, dam_config, progress)
 
         return _report_and_register(
             run, result, dam_config, kf_dir, series_args=(
                 resolution_m, duration_s, members, n_snapshots, run_tag, t0,
-            margins, condition_corridor_m))
+            margins, condition_corridor_m), dem_path=dem_path)
 
 
 def _add_comparison_and_sph(run, dam_config, progress) -> None:
@@ -295,12 +431,37 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
               f"({type(exc).__name__}: {exc}); far-field result is unaffected")
 
 
-#: A gauge closer than this to a domain edge has its depth and arrival shaped by
-#: the transmissive boundary rather than by the flood alone. UNVETTED: chosen as
-#: a few times the coarsest grid spacing this script is run at, not from a
-#: published guidance figure. It exists to make contamination visible, not to
-#: quantify it.
-BOUNDARY_CONTAMINATION_KM = 5.0
+def _add_near_field_sph(run, dam_config, progress) -> None:
+    """
+    The one-way near-field SPH handoff alone, as ``solver="sph"`` in the API.
+
+    Mirrors the ``solver == "sph"`` branch of tasks.py and reuses its two
+    functions, so the artifact is the one the dashboard's SPH tab reads. A
+    failed SPH run is written as an unavailable payload with its reason, never
+    raised: the far-field result is already complete.
+    """
+    progress(95.0, "Near-field SPH")
+    from jalraksha_service.tasks import _run_near_field_sph, _sph_summary
+
+    started = time.time()
+    sph_res, sph_error = _run_near_field_sph(dict(dam_config))
+    payload = _sph_summary(sph_res, sph_error)
+    path = run.export_dir / "sph_near_field.json"
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    run.add_export("sph_near_field", path)
+    if sph_res is None:
+        print(f"[drainage-check] SPH: no result ({sph_error})", flush=True)
+    else:
+        print(f"[drainage-check] SPH: {payload.get('engine_label')} | "
+              f"{payload.get('n_fluid'):,} particles, spacing "
+              f"{payload.get('particle_spacing_m'):.2f} m, window "
+              f"{payload.get('domain_length_m'):.0f} m, solver wall "
+              f"{payload.get('wall_clock_s'):.0f} s (phase {time.time() - started:.0f} s)",
+              flush=True)
+
+
+#: Defined once in the service, where the dashboard's gauge rows use it too.
+from jalraksha_service.script_runs import BOUNDARY_CONTAMINATION_KM  # noqa: E402
 
 
 def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION_KM):
@@ -370,7 +531,8 @@ def _boundary_proximity(dam_config, margins, threshold_km=BOUNDARY_CONTAMINATION
     }
 
 
-def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
+def _report_and_register(run, result, dam_config, kf_dir, series_args,
+                         dem_path=None) -> int:
     """
     Everything after the solve: keyframes, the hazard series, and registration.
 
@@ -537,13 +699,17 @@ def _report_and_register(run, result, dam_config, kf_dir, series_args) -> int:
     # becomes selectable in the dashboard picker. The manifest was exported
     # above (the series is derived from its per-frame hazard counts), so finish
     # reuses it instead of rendering all 60 frames a second time.
-    run.finish(result, keyframes_already_exported=True)
+    # dem_path is recorded in run_summary.json. It used to be omitted, so a run
+    # launched with --dem left dem_used null and nothing could rebuild its
+    # terrain later without being told which DEM it was.
+    run.finish(result, keyframes_already_exported=True, dem_path=dem_path)
 
     print(f"[drainage-check] wrote {summary_path}")
     print(f"[drainage-check] first: {series[0] if series else None}")
     print(f"[drainage-check] last : {series[-1] if series else None}")
     print(f"[drainage-check] DONE in {_time.time() - t0:.0f}s")
     print(f"[drainage-check] load it in the dashboard: run {run.run_id}")
+    print(f"RUN_ID={run.run_id}", flush=True)
     return 0
 
 

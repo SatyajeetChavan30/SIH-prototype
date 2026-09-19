@@ -69,6 +69,53 @@ STATUS_DONE = "done"
 STATUS_FAILED = "failed"
 
 
+#: A gauge closer than this to a domain edge has its depth and arrival shaped by
+#: the transmissive boundary rather than by the flood alone.
+#: TODO: UNVETTED — chosen as a few times the coarsest grid spacing the drainage
+#: runs use, not from a published guidance figure. It exists to make
+#: contamination visible, not to quantify it. One definition, shared by the
+#: gauge rows below and scripts/run_khadakwasla_drainage_check.py.
+BOUNDARY_CONTAMINATION_KM = 5.0
+
+
+def gauge_boundary_clearance_km(
+    grid: Dict[str, Any], lat: Optional[float], lon: Optional[float]
+) -> Optional[float]:
+    """
+    Distance in km from a gauge to the nearest edge of the solver domain.
+
+    Negative means the gauge is outside the domain. None when the grid or the
+    gauge position is not known — a synthetic run, a delft3d-only row, or a
+    run whose grid origin was never recorded — because a guessed origin would
+    be worse than no answer.
+
+    Grid-based, unlike the margins-based check the drainage script used to
+    carry: the domain is measured from the grid the solver actually ran on,
+    with ``Grid.extent()``'s convention (x0/y0 the lower-left corner). The gauge
+    is projected into the DOMAIN's UTM zone exactly as ``_gauge_max_depths``
+    does, so a gauge across a zone line is not placed in its own zone.
+    """
+    if not grid or lat is None or lon is None:
+        return None
+    try:
+        from jalraksha.terrain.domain import latlon_to_utm
+
+        zone = int(str(grid.get("crs", "")).split(":")[-1]) % 100
+        nx, ny = int(grid["nx"]), int(grid["ny"])
+        x0, y0 = float(grid["x0"]), float(grid["y0"])
+        dx, dy = float(grid["dx"]), float(grid["dy"])
+        _zone, x_utm, y_utm = latlon_to_utm(float(lat), float(lon), utm_zone=zone)
+    except (KeyError, TypeError, ValueError):
+        return None
+    clearances_m = (
+        x_utm - x0,
+        (x0 + nx * dx) - x_utm,
+        y_utm - y0,
+        (y0 + ny * dy) - y_utm,
+    )
+    return round(min(clearances_m) / 1000.0, 2)
+
+
 def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Turn a solver result's ``arrival_times`` into ``gauge_results`` rows.
@@ -86,8 +133,13 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     from jalraksha_service.tasks import _gauge_max_depths, _minority_arrival_note
 
     gauge_depths = _gauge_max_depths(result)
+    grid = result.get("grid") or {}
+    positions = {
+        g.get("name"): (g.get("lat"), g.get("lon")) for g in (result.get("gauges") or [])
+    }
     rows: List[Dict[str, Any]] = []
     for gname, g in (result.get("arrival_times") or {}).items():
+        clearance = gauge_boundary_clearance_km(grid, *positions.get(gname, (None, None)))
         rows.append({
             "gauge_name": gname,
             "distance_km": g.get("distance_km"),
@@ -100,6 +152,14 @@ def gauge_rows_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
             # population-at-risk figure cannot be divided among gauges without a
             # per-gauge catchment radius that no source defines.
             "par_estimate": None,
+            # A depth read next to the transmissive boundary is partly the
+            # outflow condition's, not the flood's. Flagged rather than hidden,
+            # the same stance as the minority-arrival note.
+            "boundary_clearance_km": clearance,
+            "near_boundary": (
+                None if clearance is None
+                else 0 <= clearance < BOUNDARY_CONTAMINATION_KM
+            ),
         })
     return rows
 
@@ -220,7 +280,7 @@ class RegisteredRun:
         complete run with nothing in it.
         """
         from jalraksha_service import db
-        from jalraksha_service.tasks import _existing_exports, impact_exports
+        from jalraksha_service.tasks import _existing_exports, _write_xdmf, impact_exports
 
         exports: List[Dict[str, str]] = []
 
@@ -257,6 +317,16 @@ class RegisteredRun:
         else:
             print("[script-run] no depth_series in result — the run will list "
                   "in the picker but will NOT play back.")
+
+        # The ParaView 3D dataset. SHARED with tasks.py. This path never wrote
+        # one, so script-launched runs (the 500 x 400 km GPU runs among them)
+        # listed as 3D-capable and then had a disabled ParaView button, with the
+        # depth series already discarded. _write_xdmf never fails the run.
+        if result.get("depth_series"):
+            xdmf = _write_xdmf(self.run_id, result, self.dam_config,
+                               source="script_runs.RegisteredRun.finish")
+            if xdmf:
+                exports.append(xdmf)
 
         exports.append(write_run_summary(
             self.run_id, result, self.dam_config, self.solver_params,

@@ -44,6 +44,10 @@ class Keyframe:
     png_url: str
     bounds: List[float]          # [west, south, east, north] in WGS84 degrees
     hazard_summary: Dict[str, Any] = field(default_factory=dict)
+    # Web-Mercator warp of the same frame, for Leaflet. Optional so manifests
+    # written before the warp existed still load.
+    png_url_mercator: Optional[str] = None
+    bounds_mercator: Optional[List[float]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -104,36 +108,82 @@ def _parse_epsg(grid: Dict[str, Any]) -> int:
 def _reproject_bounds_utm_to_wgs84(
     grid: Dict[str, Any]
 ) -> List[float]:
-    """Reproject domain corners UTM → WGS84 [west, south, east, north]."""
-    x_min, y_min, x_max, y_max = _utmtp_corners(grid)
-    # jalraksha.solver.types.Grid.crs is a string like "EPSG:32643"; accept
-    # that form as well as a bare int for callers that pass one directly.
+    """
+    WGS84 envelope [west, south, east, north] of the domain's FOUR corners.
+
+    Reuses jalraksha.export.georef.wgs84_bounds, which reprojects all four
+    corners of the metric grid to return the true bounding envelope in degrees.
+    """
+    from jalraksha.export.georef import wgs84_bounds
     crs = _parse_epsg(grid)
-    try:
-        from rasterio.warp import transform
-        xs, ys = transform(
-            f"EPSG:{crs}", "EPSG:4326", [x_min, x_max], [y_min, y_max]
-        )
-        # transform returns (xs_list, ys_list) for the two input points
-        lon0, lon1 = float(xs[0]), float(xs[1])
-        lat0, lat1 = float(ys[0]), float(ys[1])
-        west, east = min(lon0, lon1), max(lon0, lon1)
-        south, north = min(lat0, lat1), max(lat0, lat1)
-        return [west, south, east, north]
-    except Exception:
-        # Fallback: very rough degrees-per-metre approximation (Tehri latitude).
-        # Only used if rasterio warp is unavailable; flagged as approximate.
-        lat0 = 30.0
-        dlat = (y_max - y_min) / 111320.0
-        dlon = (x_max - x_min) / (111320.0 * np.cos(np.radians(lat0)))
-        cx = (x_min + x_max) / 2.0
-        cy = (y_min + y_max) / 2.0
-        return [
-            cx / (111320.0 * np.cos(np.radians(lat0))) - dlon / 2.0,
-            lat0 + (cy - 0) / 111320.0 - dlat / 2.0,
-            cx / (111320.0 * np.cos(np.radians(lat0))) + dlon / 2.0,
-            lat0 + (cy - 0) / 111320.0 + dlat / 2.0,
-        ]
+    w, s, e, n = wgs84_bounds(grid, crs)
+    return [float(w), float(s), float(e), float(n)]
+
+
+#: Projections the overlay PNGs are warped into, keyed by the manifest field
+#: suffix. Cesium's SingleTileImageryProvider stretches an image linearly in
+#: lat/lon; Leaflet's ImageOverlay stretches it linearly in Web Mercator.
+OVERLAY_PROJECTIONS = {"geographic": "EPSG:4326", "mercator": "EPSG:3857"}
+
+
+def _overlay_warps(grid: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """
+    Destination grids for warping a north-up solver raster into each viewer's projection.
+
+    Why this exists: the PNG used to BE the solver's UTM grid, flipped, and the
+    viewers placed it inside a lat/lon box. That box is not the shape of a UTM
+    rectangle, so every pixel lands a little off, and the offset grows with the
+    size of the domain. On the 500 x 400 km Khadakwasla run the flood band sat
+    visibly beside the Bhima near Daund rather than on it. Warping the pixels
+    themselves removes the approximation instead of shrinking it.
+
+    Returns {name: {"crs", "transform", "width", "height", "bounds"}} with bounds
+    as [west, south, east, north] in DEGREES for both projections, because both
+    viewers take degrees and do their own projection.
+    """
+    from rasterio.warp import calculate_default_transform, transform as warp_points
+
+    nx, ny = int(grid["nx"]), int(grid["ny"])
+    x_min, y_min, x_max, y_max = _utmtp_corners(grid)
+    src_crs = f"EPSG:{_parse_epsg(grid)}"
+    warps = {}
+    for name, dst_crs in OVERLAY_PROJECTIONS.items():
+        dst_transform, width, height = calculate_default_transform(
+            src_crs, dst_crs, nx, ny, left=x_min, bottom=y_min, right=x_max, top=y_max)
+        left, top = dst_transform * (0, 0)
+        right, bottom = dst_transform * (width, height)
+        if dst_crs != "EPSG:4326":
+            (left, right), (bottom, top) = warp_points(dst_crs, "EPSG:4326", [left, right], [bottom, top])
+        warps[name] = {
+            "crs": dst_crs, "transform": dst_transform, "width": int(width), "height": int(height),
+            "bounds": [float(left), float(bottom), float(right), float(top)],
+        }
+    return warps
+
+
+def _warp_rgba(rgba_north_up: np.ndarray, grid: Dict[str, Any], warp: Dict[str, Any]) -> np.ndarray:
+    """
+    Warp a north-up (ny, nx, 4) uint8 RGBA frame onto one destination grid.
+
+    NEAREST neighbour on purpose: every pixel is a hazard class colour plus a
+    binary alpha, and blending two classes produces a colour that means nothing
+    and a half-transparent edge the legend does not describe. Pixels outside the
+    source footprint stay fully transparent.
+    """
+    from rasterio.transform import from_origin
+    from rasterio.warp import Resampling, reproject
+
+    x_min, _y_min, _x_max, y_max = _utmtp_corners(grid)
+    src_transform = from_origin(x_min, y_max, float(grid["dx"]), float(grid["dy"]))
+    source = np.ascontiguousarray(np.moveaxis(rgba_north_up.astype(np.uint8), -1, 0))
+    destination = np.zeros((4, warp["height"], warp["width"]), dtype=np.uint8)
+    reproject(
+        source=source, destination=destination,
+        src_transform=src_transform, src_crs=f"EPSG:{_parse_epsg(grid)}",
+        dst_transform=warp["transform"], dst_crs=warp["crs"],
+        resampling=Resampling.nearest, src_nodata=None, dst_nodata=0,
+    )
+    return np.moveaxis(destination, 0, -1)
 
 
 def _extract_depth_series(result: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -288,7 +338,7 @@ def export_keyframes(
     s_times_arr = np.array(series_times, dtype=np.float64)
     s_depths = [s["depth"] for s in series]
 
-    wgs84_bounds = _reproject_bounds_utm_to_wgs84(grid)
+    warps = _overlay_warps(grid)
     dam_name = result.get("dam_name", "unknown")
 
     keyframes: List[Keyframe] = []
@@ -297,24 +347,25 @@ def export_keyframes(
         nearest = int(np.argmin(np.abs(s_times_arr - t_k)))
         depth = s_depths[nearest]
 
-        # FD2320 classification (depth-only, conservative) → exact color map.
+        # FD2320 classification (depth-only, conservative) + exact color map.
         classification = hazard_classifier.classify_depth_only(depth)
         rgb = hazard_classifier.apply_to_rgb(classification)
         hazard_summary = hazard_classifier.summarize(classification)
 
         # depth/rgb row 0 is the grid's southernmost row (Grid.cell_centres_2d,
-        # row index increasing northward — see _utmtp_corners above), but image
+        # row index increasing northward -> see _utmtp_corners above), but image
         # row 0 is conventionally the TOP; Leaflet's ImageOverlay and Cesium's
         # SingleTileImageryProvider both place image row 0 at the NORTH edge of
         # the given bounds. Flip vertically or the flood renders upside-down.
         # Alpha comes from the SAME depth array, so it is flipped with the
-        # image rather than after it — a mismatch here would punch the
+        # image rather than after it -> a mismatch here would punch the
         # transparent holes in upside down.
         rgba = np.flipud(_to_rgba(rgb, depth))
 
         png_name = f"keyframe_{idx:04d}_{int(round(t_k)):06d}s.png"
-        png_path = out_dir / png_name
-        _render_png(rgba, png_path)
+        png_mercator = f"keyframe_{idx:04d}_{int(round(t_k)):06d}s_3857.png"
+        _render_png(_warp_rgba(rgba, grid, warps["geographic"]), out_dir / png_name)
+        _render_png(_warp_rgba(rgba, grid, warps["mercator"]), out_dir / png_mercator)
 
         # png_url is a bare filename, not a filesystem path: manifest.json and
         # its PNGs are always siblings in out_dir, and whatever serves the
@@ -325,8 +376,10 @@ def export_keyframes(
             Keyframe(
                 time_s=float(t_k),
                 png_url=png_name,
-                bounds=[float(b) for b in wgs84_bounds],
+                bounds=warps["geographic"]["bounds"],
                 hazard_summary=hazard_summary,
+                png_url_mercator=png_mercator,
+                bounds_mercator=warps["mercator"]["bounds"],
             )
         )
 
@@ -340,6 +393,9 @@ def export_keyframes(
             "classification_scheme": "FD2320",
             "color_source": "jalraksha.impact.hazard.HazardClassifier",
             "crs_source": f"EPSG:{_parse_epsg(grid)}",
+            # png_url is warped to EPSG:4326 and png_url_mercator to EPSG:3857;
+            # manifests without this key hold the raw UTM grid in a lat/lon box.
+            "overlay_warped": True,
         },
         metadata={
             "description": "Flood keyframes for JalRaksha dam-break visualization",

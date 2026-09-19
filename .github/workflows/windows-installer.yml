@@ -1,0 +1,115 @@
+name: Windows installer
+
+# Builds a new pair of JalRaksha desktop installers (CPU and GPU) whenever the
+# project changes. An installed copy is never updated in place — there is no
+# auto-update — so a change reaches users as a new installer from this workflow.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks (blocking gates, desktop, frontend)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Version is consistent across Python and both package.json files
+        run: node desktop/scripts/sync-version.mjs --check
+
+      - name: Install the project and the service test dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r desktop/backend/requirements-cpu.txt
+          pip install --pre --no-build-isolation -r desktop/backend/requirements-sph.txt
+          pip install -e ".[test]" --no-deps
+          pip install pytest pytest-cov httpx
+
+      - name: Blocking solver gates (lake-at-rest, mass conservation) and desktop-facing service tests
+        run: >
+          python -m pytest -q --no-cov
+          tests/test_solver.py
+          tests/test_desktop_runtime.py
+          tests/test_data_packs.py
+          tests/test_run_backend_option.py
+          tests/test_run_orphaning.py
+
+      - name: Desktop shell unit tests
+        run: node --test "desktop/test/*.test.mjs"
+
+      - name: Frontend production build (web)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  installer:
+    name: Installer (${{ matrix.variant }})
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [cpu, gpu]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build installer
+        env:
+          # No signing certificate is configured for this repository; the
+          # installer is unsigned (desktop/README.md, "Code signing").
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: node desktop/scripts/build.mjs --stage dist --variant ${{ matrix.variant }} --python python
+
+      - name: Name the artifact after version and commit
+        id: meta
+        shell: pwsh
+        run: |
+          # File filters are case-insensitive on Windows; the name says CPU/GPU.
+          $installer = Get-ChildItem dist/windows -Filter "*-${{ matrix.variant }}-Setup.exe" | Select-Object -First 1
+          if (-not $installer) { throw "no ${{ matrix.variant }} installer produced" }
+          "name=$($installer.BaseName)" >> $env:GITHUB_OUTPUT
+          "path=$($installer.FullName)" >> $env:GITHUB_OUTPUT
+          "Installer: $($installer.Name) ($([math]::Round($installer.Length / 1MB, 1)) MB)" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}
+          path: |
+            ${{ steps.meta.outputs.path }}
+            desktop/build/build-info-${{ matrix.variant }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+      # Tags: this repository has no release automation configured, so a tag
+      # produces the same named artifacts and a person attaches them to a
+      # GitHub Release by hand (desktop/README.md, "Releasing").

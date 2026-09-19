@@ -1,4 +1,5 @@
 import React from "react";
+import { Caveat } from "../ui/index.jsx";
 
 /**
  * "The terrain you are looking at has been modified."
@@ -24,16 +25,7 @@ export default function DemUpdateBanner({ demUpdate }) {
   const raster = demUpdate.raster || {};
 
   return (
-    <div
-      style={{
-        padding: "7px 12px",
-        borderBottom: "1px solid #e0b070",
-        background: "#fff4e5",
-        color: "#5c3000",
-        fontSize: 11,
-        lineHeight: 1.5,
-      }}
-    >
+    <Caveat strip>
       <strong>Terrain modified — observation-conditioned DEM update.</strong>{" "}
       Base: Copernicus GLO-30.{" "}
       {observed ? (
@@ -73,7 +65,7 @@ export default function DemUpdateBanner({ demUpdate }) {
       {lake.iou != null && (
         <> Modelled lake vs observed extent: IoU {fmt(lake.iou, 2)}.</>
       )}
-    </div>
+    </Caveat>
   );
 }
 

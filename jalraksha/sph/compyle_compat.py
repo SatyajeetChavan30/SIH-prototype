@@ -263,3 +263,52 @@ def compyle_python314_compat_if(enabled: bool):
     nobody needs should not be installed.
     """
     return compyle_python314_compat() if enabled else contextlib.nullcontext()
+
+
+@contextlib.contextmanager
+def compyle_config_isolated() -> Iterator[None]:
+    """
+    Give this PySPH run its own compyle Config, and restore the caller's after.
+
+    WHY THIS IS NOT OPTIONAL, and not only a test concern. compyle's
+    configuration is a PROCESS-GLOBAL singleton (`compyle.config.get_config()`),
+    and PySPH's Application writes `use_opencl` / `use_double` into it from the
+    `--opencl` flags. Nothing ever clears them, so after one GPU run every
+    LATER PySPH run in that process generates OpenCL too, whatever backend it
+    was asked for. Measured: a CPU run following a GPU run in one process died
+    in `compyle/translator.py:238` with "module 'ast' has no attribute 'Str'" --
+    a CPU run failing inside the GPU code generator, which is the clearest
+    possible sign it was never really on the CPU.
+
+    That matters in production and not just in the test suite, because the
+    fallback this project documents runs exactly that sequence: a GPU attempt,
+    then the CPU. Leaking `use_opencl` would turn "degrade to the CPU and say
+    so" into a second GPU failure with a confusing message.
+    """
+    try:
+        from compyle.config import use_config
+    except Exception:  # compyle absent: the CPU path may not need it at all
+        yield
+        return
+    with use_config():
+        yield
+
+
+def pysph_app_compat(gpu: bool):
+    """
+    Everything one `Application.run()` needs: config isolation, plus the Python
+    3.14 repairs when that run is on the GPU.
+
+    Config isolation applies to BOTH backends (see `compyle_config_isolated`);
+    the ast and visitor patches are installed only for the GPU, because that is
+    the only path that generates code through compyle's translator.
+    """
+    if not gpu:
+        return compyle_config_isolated()
+    return _both(compyle_config_isolated(), compyle_python314_compat())
+
+
+@contextlib.contextmanager
+def _both(outer, inner) -> Iterator[None]:
+    with outer, inner:
+        yield

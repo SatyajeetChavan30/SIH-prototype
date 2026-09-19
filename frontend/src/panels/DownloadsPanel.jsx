@@ -1,5 +1,6 @@
 import React from "react";
 import { resolveApiUrl } from "../api.js";
+import { DataTable, Empty } from "../ui/index.jsx";
 
 /**
  * Downloads tab — the problem statement's ".shp or .Kml" deliverable, made
@@ -115,13 +116,15 @@ function filename(pathOrUrl) {
 
 export default function DownloadsPanel({ result }) {
   if (!result) {
-    return <Empty text="Run a simulation first, or load a run id." />;
+    return <Empty>Run a simulation first, or load a run id.</Empty>;
   }
 
   const exports = result.exports || [];
   if (!exports.length) {
     return (
-      <Empty text="This run recorded no export products. A run only records an export once the file is verified on disk, so an empty list means nothing was written — check the worker log for [FAIL] lines." />
+      <Empty>
+        This run recorded no export products. A run only records an export once the file is verified on disk, so an empty list means nothing was written — check the worker log for [FAIL] lines.
+      </Empty>
     );
   }
 
@@ -138,9 +141,9 @@ export default function DownloadsPanel({ result }) {
   }).filter((g) => g.items.length);
 
   return (
-    <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
-      <h3>Downloads — {result.dam_name}</h3>
-      <p style={{ fontSize: 12, color: "#555", maxWidth: 680 }}>
+    <div className="jr-page">
+      <h3 className="jr-h1">Downloads — {result.dam_name}</h3>
+      <p className="jr-lede jr-measure">
         {exports.length} products for run <code>{result.run_id}</code>. All
         coordinates are metric UTM except the KML/KMZ, which are WGS84 as the
         format requires. Tier-1 screening outputs from 30&nbsp;m Copernicus
@@ -149,20 +152,18 @@ export default function DownloadsPanel({ result }) {
       </p>
 
       {grouped.map((group) => (
-        <section key={group.id} style={{ marginTop: 20 }}>
-          <h4 style={{ marginBottom: 4 }}>{group.title}</h4>
-          <div style={{ fontSize: 12, color: "#666", maxWidth: 680, marginBottom: 8 }}>
-            {group.blurb}
-          </div>
-          <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 680 }}>
+        <section key={group.id} className="jr-section jr-measure">
+          <h4 className="jr-h2">{group.title}</h4>
+          <p className="jr-lede">{group.blurb}</p>
+          <DataTable>
             <tbody>
               {group.items.map((e) => (
-                <tr key={e.kind} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "6px 8px 6px 0" }}>{label(e.kind)}</td>
-                  <td style={{ padding: "6px 8px", fontSize: 11, color: "#888" }}>
+                <tr key={e.kind}>
+                  <td>{label(e.kind)}</td>
+                  <td className="file">
                     {filename(e.path_or_url)}
                   </td>
-                  <td style={{ padding: "6px 0", textAlign: "right" }}>
+                  <td className="num">
                     <a
                       href={resolveApiUrl(e.path_or_url)}
                       download={filename(e.path_or_url)}
@@ -173,13 +174,9 @@ export default function DownloadsPanel({ result }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </section>
       ))}
     </div>
   );
-}
-
-function Empty({ text }) {
-  return <div style={{ padding: 24, color: "#777", maxWidth: 620 }}>{text}</div>;
 }

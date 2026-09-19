@@ -40,16 +40,33 @@ from typing import Optional, Tuple
 #: 2023 access change, so there is no sensible default to fall back on.
 GEE_PROJECT_ENV = "JALRAKSHA_GEE_PROJECT"
 
+#: The pre-rename name (the project was FloodView until 2026-09-11). The service's
+#: config._env already honours it, but this module reads the environment itself
+#: — the library cannot import the service — so a shell still exporting only the
+#: old name got a working settings.GEE_PROJECT and a "not set" refusal here.
+LEGACY_GEE_PROJECT_ENV = "FLOODVIEW_GEE_PROJECT"
+
 # Initialization is a network round-trip, so the outcome is cached. Guarded by a
 # lock because FastAPI serves requests from a threadpool and two concurrent
 # /gee/latest calls would otherwise both pay for it.
 _LOCK = threading.Lock()
 _STATUS: Optional[Tuple[bool, str]] = None
+_LEGACY_WARNED = False
 
 
 def gee_project() -> str:
     """The configured Cloud project, or "" if none is set."""
-    return os.environ.get(GEE_PROJECT_ENV, "").strip()
+    global _LEGACY_WARNED
+    if GEE_PROJECT_ENV in os.environ:
+        return os.environ[GEE_PROJECT_ENV].strip()
+    legacy = os.environ.get(LEGACY_GEE_PROJECT_ENV)
+    if legacy is None:
+        return ""
+    if not _LEGACY_WARNED:
+        _LEGACY_WARNED = True
+        print(f"[gee] using legacy {LEGACY_GEE_PROJECT_ENV} for {GEE_PROJECT_ENV} "
+              "(project renamed FloodView -> JalRaksha); please rename it", flush=True)
+    return legacy.strip()
 
 
 def reset_gee_status() -> None:

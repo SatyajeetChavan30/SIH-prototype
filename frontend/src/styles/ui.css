@@ -1,0 +1,989 @@
+/*
+ * Component classes for the src/ui/ primitives and the app shell.
+ *
+ * Every selector is a .jr-* class this app owns, so none of it can reach
+ * Leaflet's or Cesium's DOM (see base.css for why that has to be designed in).
+ * Class = geometry and chrome. Data colour — hazard classes, chart series —
+ * is passed inline by the caller and never defined here.
+ */
+
+/* ---------------------------------------------------------------- shell -- */
+
+.jr-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.jr-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.jr-stage {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+}
+
+.jr-brand {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  height: var(--topbar-h);
+  margin: 0 calc(-1 * var(--pad-panel));
+  padding: 0 var(--pad-panel);
+  padding-top: 14px;
+  background: var(--page);
+  border-bottom: 1px solid var(--line);
+}
+
+.jr-brand__mark {
+  font-family: var(--font-accent);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jr-brand__tag {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+}
+
+.jr-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--topbar-h);
+  flex: 0 0 var(--topbar-h);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--page);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* The loaded run's name. It gives way to the tabs: run names can be long
+   ("Khadakwasla — drainage check 200 m, 30 h, exit domain …"), the tabs must
+   never scroll out of view, and the full name is in the title tooltip. */
+.jr-topbar__status {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: var(--fs-micro);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.jr-topbar__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The 2D map and the 3D globe sit in two framed viewports on a quiet ground:
+   light chrome, dark viewports. The frames clip; they never animate. */
+.jr-workspace {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: var(--gutter);
+  padding: var(--gutter);
+  min-height: 0;
+  background: var(--surface-2);
+}
+
+.jr-viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--r-card);
+  background: #1b1b1b;
+}
+
+/* ------------------------------------------------------------- sidebar -- */
+
+.jr-sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 var(--pad-panel) var(--pad-panel);
+  border-right: 1px solid var(--line);
+  background: var(--page);
+}
+
+.jr-sidebar__section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.jr-sidebar__section:last-child {
+  border-bottom: 0;
+}
+
+/* Scoped form styling for the sidebar. Element selectors are safe here and
+   only here: .jr-form never contains map DOM. */
+.jr-form label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+}
+
+.jr-form label.jr-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-weight: 400;
+}
+
+.jr-form select,
+.jr-form input[type="text"],
+.jr-form input[type="number"],
+.jr-form input[type="search"] {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--surface-4);
+  border-radius: var(--r-control);
+  background: var(--page);
+  font-size: var(--fs-body);
+}
+
+.jr-form select:hover,
+.jr-form input[type="text"]:hover,
+.jr-form input[type="number"]:hover {
+  border-color: var(--muted);
+}
+
+.jr-form input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 4px 0 0;
+  accent-color: var(--ink);
+}
+
+.jr-form input[type="radio"],
+.jr-form input[type="checkbox"] {
+  accent-color: var(--ink);
+  margin: 0;
+}
+
+.jr-form fieldset {
+  margin: 12px 0 0;
+  padding: 4px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+
+.jr-form legend {
+  padding: 0 4px;
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* Help text under a control. Never below 12 px. */
+.jr-hint {
+  margin: 4px 0 0;
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+}
+
+.jr-hint--ink {
+  color: var(--ink);
+}
+
+.jr-hint--danger {
+  color: var(--danger-ink);
+}
+
+.jr-form label.jr-label-first {
+  margin-top: 0;
+}
+
+.jr-form label.jr-inline.is-disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.jr-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+/* A heading inside the sidebar. */
+.jr-side-h {
+  margin: 0 0 6px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 600;
+}
+
+.jr-list {
+  margin: 8px 0 4px;
+  padding-left: 18px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-playback {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.jr-mb-8 {
+  margin-bottom: 8px;
+}
+
+.jr-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.jr-field-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.jr-field-row > .jr-btn {
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- pages -- */
+
+.jr-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px 24px 32px;
+}
+
+.jr-measure {
+  max-width: 760px;
+}
+
+.jr-measure-wide {
+  max-width: 900px;
+}
+
+.jr-h1 {
+  margin: 0 0 12px;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  font-weight: 500;
+}
+
+.jr-h2 {
+  margin: 24px 0 8px;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  font-weight: 500;
+}
+
+.jr-h2:first-child {
+  margin-top: 0;
+}
+
+.jr-lede,
+.jr-note,
+.jr-meta {
+  margin: 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink-2);
+}
+
+.jr-lede {
+  margin-bottom: 12px;
+}
+
+.jr-note {
+  margin-top: 8px;
+}
+
+.jr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.jr-stack > * + * {
+  margin-top: 12px;
+}
+
+.jr-section + .jr-section {
+  margin-top: 24px;
+}
+
+/* Spacing steps, for the few places a flow layout needs one gap. */
+.jr-mt-8 {
+  margin-top: 8px;
+}
+
+.jr-mt-12 {
+  margin-top: 12px;
+}
+
+.jr-mt-16 {
+  margin-top: 16px;
+}
+
+.jr-mb-12 {
+  margin-bottom: 12px;
+}
+
+.jr-divider {
+  height: 1px;
+  margin: 16px 0;
+  border: 0;
+  background: var(--line);
+}
+
+.jr-empty {
+  max-width: 620px;
+  padding: 24px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+}
+
+.jr-empty--inline {
+  padding: 8px 0;
+}
+
+/* A server-rendered figure (comparison PNGs). */
+.jr-figure {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+
+/* ------------------------------------------------------------ primitives -- */
+
+.jr-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.jr-pill:hover {
+  background: var(--surface-3);
+}
+
+.jr-pill[aria-selected="true"],
+.jr-pill.is-active {
+  background: var(--surface-4);
+  font-weight: 500;
+}
+
+/* Floating over a map or globe: needs its own ground to stay legible. */
+.jr-pill--overlay {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--fs-meta);
+  background: rgba(249, 249, 249, 0.94);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.jr-pill--overlay:hover {
+  background: var(--page);
+}
+
+.jr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-chip--count {
+  min-width: 20px;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--page);
+}
+
+.jr-chip--ok {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.jr-chip--warn {
+  background: var(--caveat-bg);
+  color: var(--caveat-ink);
+}
+
+.jr-chip--danger {
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+
+.jr-chip--info {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.jr-chip--mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.jr-card {
+  padding: var(--pad-card);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+}
+
+.jr-card--outline {
+  background: var(--page);
+  border: 1px solid var(--line);
+}
+
+.jr-card__head {
+  margin-bottom: 8px;
+}
+
+.jr-eyebrow {
+  display: block;
+  font-size: var(--fs-eyebrow);
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.jr-stat {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+}
+
+/* The lead figure of a row: tinted, and given more of the row so a range
+   ("153 – 11,126") stays on one line at display size. */
+.jr-stat--emphasis {
+  flex: 1.5 1 220px;
+  background: var(--info-bg);
+  border-color: var(--info-rule);
+}
+
+.jr-stat--plain {
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.jr-stat__value {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.jr-stat--lg .jr-stat__value {
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+}
+
+.jr-stat__unit {
+  margin-left: 4px;
+  font-size: var(--fs-body);
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.jr-stat__band,
+.jr-stat__hint {
+  margin-top: 4px;
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-stat__band {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink);
+}
+
+.jr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+}
+
+.jr-table th {
+  padding: 8px;
+  border-bottom: 1px solid var(--surface-4);
+  font-size: var(--fs-eyebrow);
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.jr-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.jr-table th:first-child,
+.jr-table td:first-child {
+  padding-left: 0;
+}
+
+.jr-table th:last-child,
+.jr-table td:last-child {
+  padding-right: 0;
+}
+
+.jr-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.jr-table .muted {
+  color: var(--ink-2);
+}
+
+.jr-table .strong {
+  font-weight: 600;
+}
+
+/* A file name or path: mono, secondary, allowed to break anywhere. */
+.jr-table .file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.jr-table--compact td {
+  padding: 5px 6px;
+}
+
+.jr-table--compact th {
+  padding: 5px 6px;
+}
+
+/* A row followed by its own note row: the rule goes under the note. */
+.jr-table tr.has-note td {
+  border-bottom: 0;
+}
+
+.jr-table tr.jr-note-row td {
+  padding-top: 0;
+}
+
+.jr-table--kv td:first-child {
+  color: var(--ink-2);
+  white-space: nowrap;
+  width: 1%;
+}
+
+.jr-table--kv td:last-child {
+  overflow-wrap: anywhere;
+}
+
+/* Caveat: a correctness component. It is never muted, never collapsed by
+   default and never smaller than --fs-meta; every tone is >= 7:1. */
+.jr-caveat {
+  display: block;
+  padding: 10px 12px;
+  border-left: 3px solid var(--caveat-rule);
+  border-radius: var(--r-chip);
+  background: var(--caveat-bg);
+  color: var(--caveat-ink);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+}
+
+.jr-caveat--danger {
+  border-left-color: var(--danger-rule);
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+
+.jr-caveat--ok {
+  border-left-color: var(--ok-rule);
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.jr-caveat--info {
+  border-left-color: var(--info-rule);
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.jr-caveat--compact {
+  padding: 6px 8px;
+}
+
+/* A full-width strip above every tab (run-level labels). */
+.jr-caveat--strip {
+  border-left: 0;
+  border-bottom: 1px solid var(--caveat-rule);
+  border-radius: 0;
+  padding: 8px 16px;
+}
+
+.jr-caveat--strip.jr-caveat--danger {
+  border-bottom-color: var(--danger-rule);
+}
+
+.jr-caveat__title {
+  display: block;
+  font-weight: 600;
+}
+
+.jr-caveat__title + * {
+  margin-top: 4px;
+}
+
+/* A note attached to one table row (a gauge's no-arrival reason, a minority
+   arrival). */
+.jr-row-note {
+  margin-top: 4px;
+  max-width: 380px;
+}
+
+.jr-caveat__detail {
+  margin-top: 4px;
+}
+
+.jr-caveat code {
+  color: inherit;
+}
+
+.jr-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.jr-btn:hover {
+  background: var(--surface-3);
+}
+
+.jr-btn--primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.jr-btn--primary:hover {
+  background: #3a3a3a;
+}
+
+.jr-btn--sm {
+  height: 28px;
+  padding: 0 12px;
+  font-size: var(--fs-meta);
+}
+
+.jr-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.jr-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.jr-btn:disabled:hover {
+  background: var(--surface-2);
+}
+
+.jr-btn--primary:disabled:hover {
+  background: var(--ink);
+}
+
+/* A row of actions with their status text. */
+.jr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* A validation gate: verdict chip, name, what it measured. */
+.jr-check__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jr-check__detail {
+  margin: 6px 0 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+}
+
+.jr-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+
+.jr-metric {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-metric strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* A floating card over the map or globe. */
+.jr-overlay {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: rgba(249, 249, 249, 0.94);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+}
+
+.jr-overlay__title {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.jr-overlay__sub {
+  color: var(--ink-2);
+}
+
+.jr-overlay__warn {
+  color: var(--caveat-ink);
+}
+
+.jr-overlay__foot {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.jr-overlay__foot strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.jr-overlay__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.jr-overlay__toggle input {
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+/* Map overlay slots. z-index 1000 sits above Leaflet's panes (<= 700) and
+   controls (800), as the inline values it replaces did. */
+.jr-map-legend {
+  position: absolute;
+  bottom: 20px;
+  left: 8px;
+  z-index: 1000;
+  min-width: 170px;
+}
+
+.jr-map-status {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  max-width: 340px;
+  border-width: 2px;
+}
+
+.jr-map-status--collapsed {
+  max-width: 280px;
+  padding: 4px 10px;
+  border-width: 1px;
+  border-color: #b0863a;
+  color: var(--caveat-ink);
+  cursor: pointer;
+}
+
+/* Camera presets over the globe. Right edge stops short of Cesium's own
+   toolbar (geocoder, home, scene mode, help), which it used to run under. */
+.jr-globe-cameras {
+  position: absolute;
+  z-index: 10;
+  top: 8px;
+  left: 8px;
+  right: 180px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.jr-globe-cameras > * {
+  pointer-events: auto;
+}
+
+.jr-globe-warning {
+  position: absolute;
+  z-index: 10;
+  bottom: 30px;
+  left: 8px;
+  right: 8px;
+}
+
+.jr-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.jr-legend-row__name {
+  flex: 1;
+  text-transform: capitalize;
+}
+
+.jr-legend-row__value {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr-swatch {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+/* --------------------------------------------------------------- motion -- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .jr-pill,
+  .jr-btn,
+  .jr-form select,
+  .jr-form input {
+    transition:
+      background-color var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease);
+  }
+}
+
+/* --------------------------------------------------------------- charts -- */
+
+/* recharts chrome. CSS outranks SVG presentation attributes, so these win over
+   recharts' defaults without a prop on every chart. ONLY chrome is targeted:
+   never .recharts-line-curve, .recharts-bar-rectangle or .recharts-scatter,
+   whose colours are data (engine series, FD2320 classes from the payload). */
+.jr .recharts-cartesian-grid line {
+  stroke: var(--line);
+}
+
+.jr .recharts-cartesian-axis-line,
+.jr .recharts-cartesian-axis-tick-line {
+  stroke: var(--surface-4);
+}
+
+.jr .recharts-cartesian-axis-tick-value,
+.jr .recharts-label {
+  fill: var(--ink-2);
+  font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.jr .recharts-legend-item-text {
+  font-size: var(--fs-micro);
+}
+
+.jr .recharts-default-legend {
+  font-size: var(--fs-micro);
+}

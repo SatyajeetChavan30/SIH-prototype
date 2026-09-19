@@ -1,0 +1,83 @@
+/*
+ * Design tokens — values only, no selectors that style anything.
+ *
+ * Adapted from the andhüman visual language (docs/UI_Design_Language_Plan.md
+ * §3): near-monochrome chrome, one grotesque, colour reserved for data. The
+ * reference's fonts are commercial and CDN-served, so open substitutes are
+ * self-hosted from npm (see main.jsx) — nothing here reaches the network.
+ *
+ * Custom properties style nothing on their own, so declaring them on :root
+ * cannot leak into Leaflet's or Cesium's widget DOM.
+ *
+ * NO HAZARD COLOUR BELONGS IN THIS FILE. FD2320 class colours come from the run
+ * payload (and GaugesPanel's depth-only badge, which mirrors
+ * jalraksha/impact/hazard.py). A token here would be a sixth definition of the
+ * palette that validation_findings.md §10 reduced to one. Chart series
+ * colours are data too: they live in src/ui/chartTheme.js.
+ */
+:root {
+  /* Chrome palette. */
+  --ink: #242424;
+  /* Secondary text. The reference uses #999 for ledes, which is 2.85:1 on
+     white — below WCAG AA even for large text — so #666 (5.7:1) carries every
+     secondary label and --muted is kept for rules, icons and disabled states. */
+  --ink-2: #666666;
+  --muted: #999999;
+  --page: #ffffff;
+  --surface-1: #f9f9f9;
+  --surface-2: #f0f0f0;
+  --surface-3: #e6e6e6;
+  --surface-4: #d9d9d9;
+  --line: #e6e6e6;
+
+  /* Caveat tones. Every pairing is at least 7:1, so a warning is never
+     rendered as pale chrome. */
+  --caveat-bg: #fff4e5;
+  --caveat-ink: #7a3e00;
+  --caveat-rule: #e65100;
+  --danger-bg: #fdecea;
+  --danger-ink: #7f1d1d;
+  --danger-rule: #c62828;
+  --ok-bg: #edf7ed;
+  --ok-ink: #1b5e20;
+  --ok-rule: #2e7d32;
+  --info-bg: #f3f8fd;
+  --info-ink: #0d47a1;
+  --info-rule: #1565c0;
+
+  /* Type. Nothing ships below 12 px. */
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-accent: "Space Grotesk", var(--font-sans);
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --fs-display: 32px;
+  --lh-display: 36px;
+  --fs-h1: 20px;
+  --lh-h1: 26px;
+  --fs-h2: 16px;
+  --lh-h2: 22px;
+  --fs-body: 14px;
+  --lh-body: 20px;
+  --fs-meta: 13px;
+  --lh-meta: 18px;
+  --fs-micro: 12px;
+  --lh-micro: 16px;
+  --fs-eyebrow: 12px;
+
+  /* Geometry. */
+  --r-pill: 999px;
+  --r-card: 14px;
+  --r-control: 8px;
+  --r-chip: 4px;
+  --gutter: 8px;
+  --pad-card: 16px;
+  --pad-panel: 16px;
+  --topbar-h: 48px;
+  --sidebar-w: 300px;
+
+  /* Motion. Chrome only — never a map, globe or chart container. */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+}

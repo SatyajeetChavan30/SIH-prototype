@@ -1,0 +1,27 @@
+{
+  "name": "jalraksha-desktop",
+  "productName": "JalRaksha",
+  "version": "1.0.0",
+  "description": "JalRaksha dam-break screening dashboard for Windows (Electron shell over the FastAPI service)",
+  "author": "JalRaksha Team (SIH 2026)",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "smoke": "electron . --smoke",
+    "test": "node --test \"test/*.test.mjs\"",
+    "sync-version": "node scripts/sync-version.mjs",
+    "build": "node scripts/build.mjs --stage build",
+    "package": "node scripts/build.mjs --stage package",
+    "dist": "node scripts/build.mjs --stage dist --variant cpu && node scripts/build.mjs --stage dist --variant gpu --skip-frontend",
+    "dist:cpu": "node scripts/build.mjs --stage dist --variant cpu",
+    "dist:gpu": "node scripts/build.mjs --stage dist --variant gpu"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  }
+}

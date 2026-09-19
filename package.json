@@ -1,0 +1,19 @@
+{
+  "name": "jalraksha-workspace",
+  "private": true,
+  "description": "Convenience scripts only. The frontend lives in frontend/, the Windows desktop app in desktop/.",
+  "scripts": {
+    "desktop:install": "npm ci --prefix frontend && npm ci --prefix desktop",
+    "desktop:dev": "npm run dev --prefix desktop",
+    "desktop:smoke": "npm run smoke --prefix desktop",
+    "desktop:test": "npm test --prefix desktop",
+    "desktop:build": "npm run build --prefix desktop",
+    "desktop:package": "npm run package --prefix desktop",
+    "desktop:dist": "npm run dist --prefix desktop",
+    "desktop:dist:cpu": "npm run dist:cpu --prefix desktop",
+    "desktop:dist:gpu": "npm run dist:gpu --prefix desktop",
+    "desktop:pack:khadakwasla": "powershell -NoProfile -ExecutionPolicy Bypass -File desktop/scripts/make-khadakwasla-pack.ps1",
+    "version:sync": "node desktop/scripts/sync-version.mjs",
+    "version:check": "node desktop/scripts/sync-version.mjs --check"
+  }
+}

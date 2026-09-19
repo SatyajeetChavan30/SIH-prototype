@@ -1,0 +1,78 @@
+/*
+ * Base layer.
+ *
+ * html, body and #root are the only selectors here without a .jr scope: no
+ * third-party widget owns them.
+ *
+ * Scoping under .jr is NOT enough on its own. The Leaflet map and the Cesium
+ * viewer both render INSIDE .jr, so `.jr button {}` still reaches the Cesium
+ * toolbar and `.jr a {}` still outranks Leaflet's `.leaflet-bar a` (equal
+ * specificity, later in the cascade). Every element-level rule therefore also
+ * carries :not(MAP) — the two widget roots and everything under them — and
+ * only the inherited text properties (font, colour, size) are set on .jr itself.
+ * Both libraries set their own font on their root, so inheritance stops there.
+ * Class selectors (.jr-*) name elements this app owns and need no exclusion.
+ */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.jr {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  background: var(--page);
+}
+
+/* Each element rule is wrapped whole in :where(), so it has ZERO specificity
+   and any .jr-* component class overrides it without a fight. */
+:where(
+    .jr
+      :is(*, *::before, *::after):not(
+        .leaflet-container,
+        .leaflet-container *,
+        .cesium-viewer,
+        .cesium-viewer *
+      )
+  ) {
+  box-sizing: border-box;
+}
+
+/* Form controls do not inherit the page font by default. */
+:where(
+    .jr
+      :is(button, input, select, textarea):not(.leaflet-container *, .cesium-viewer *)
+  ) {
+  font: inherit;
+  color: inherit;
+}
+
+:where(.jr :is(code, .mono):not(.leaflet-container *, .cesium-viewer *)) {
+  font-family: var(--font-mono);
+  font-size: max(12px, 0.92em);
+}
+
+:where(.jr a:not(.leaflet-container *, .cesium-viewer *)) {
+  color: var(--ink);
+  text-underline-offset: 2px;
+}
+
+:where(.jr :focus-visible:not(.leaflet-container *, .cesium-viewer *)) {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.jr .num {
+  font-variant-numeric: tabular-nums;
+}

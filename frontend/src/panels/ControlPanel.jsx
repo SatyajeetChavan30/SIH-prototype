@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import {
   listDams, submitRun, pollUntilDone, getResult, openInParaview,
-  listRuns, getGeeStatus, getBlockageDetection, getSolverBackends,
+  listRuns, getGeeStatus, getBlockageDetection, getSolverBackends, getCapabilities,
 } from "../api.js";
 import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
+import { APP_NAME, APP_TAGLINE } from "../ui/brand.js";
+import { Button, Caveat, DataTable, SectionLabel, Stat } from "../ui/index.jsx";
+import { boundaryNote } from "../honesty.js";
 
 // Grid resolution every run is submitted at. Named rather than left to the
 // API's default because the blockage form has to state, live, how many cells a
@@ -48,6 +51,12 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // you leave the card free for a long ensemble already in flight.
   const [backend, setBackend] = useState("auto");
   const [backends, setBackends] = useState(null);
+  // "GPU only" must hold for EVERY solver in the run: near-field SPH is strict
+  // under cuda too, so a run with SPH needs the SPH GPU probe to pass as well.
+  const solverNeedsSph = solver === "sph" || solver === "both";
+  const gpuOnlyPossible = Boolean(
+    backends?.cuda_available && (!solverNeedsSph || backends?.sph_gpu_available !== false)
+  );
   // 180 min, not 30. At 30 minutes the flood covers ~3.7 km and Khadakwasla's
   // nearest gauge is 10.5 km away, so the default guaranteed an empty arrival
   // table and the message "The flood did not reach any gauge within the
@@ -61,6 +70,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // it, so both submit() and loadExisting() record it here.
   const [currentRunId, setCurrentRunId] = useState(null);
   const [pvStatus, setPvStatus] = useState("");
+  // Whether the API will open ParaView for THIS browser (GET /capabilities).
+  // null until answered, and treated as unavailable: a deployed dashboard, or a
+  // machine without ParaView, must not show a button that cannot work.
+  const [capabilities, setCapabilities] = useState(null);
   // Demo Mode: completed runs, loadable instantly with no compute. The only
   // way to load a previous run used to be typing a 32-character hex id.
   const [runs, setRuns] = useState([]);
@@ -74,8 +87,17 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       })
       .catch(() => setDams([]));
     refreshRuns();
+    const urlParams = new URLSearchParams(window.location.search);
+    const runToLoad = urlParams.get("run") || urlParams.get("run_id");
+    if (runToLoad) {
+      loadExisting(runToLoad);
+    }
     getGeeStatus().then(setGee).catch(() => setGee(null));
     getSolverBackends().then(setBackends).catch(() => setBackends(null));
+    getCapabilities().then(setCapabilities).catch((e) => setCapabilities({
+      paraview_available: false, paraview_reason: "unknown",
+      paraview_detail: `Could not ask the API whether ParaView is available: ${e.message}`,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -174,6 +196,7 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   // A run can open in ParaView only if it wrote an XDMF, which only the SWE
   // path does. Read it off the loaded result rather than guessing from solver.
   const hasXdmf = Boolean(result?.exports?.some((e) => e.kind === "xdmf"));
+  const paraviewAvailable = Boolean(capabilities?.paraview_available);
 
   const submit = async () => {
     setStatus("submitting");
@@ -279,8 +302,14 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   };
 
   return (
-    <div style={{ padding: 12, width: 280, overflowY: "auto", borderRight: "1px solid #ddd" }}>
-      <h3>JalRaksha</h3>
+    <div className="jr-sidebar jr-form">
+      <div className="jr-brand">
+        <span className="jr-brand__mark">{APP_NAME}</span>
+        <span className="jr-brand__tag">{APP_TAGLINE}</span>
+      </div>
+
+      <div className="jr-sidebar__section">
+      <SectionLabel>Scenario</SectionLabel>
       <label>Site</label>
       <select value={effectiveDamId || ""}
               onChange={(e) => selectDam(e.target.value)}>
@@ -317,16 +346,16 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         <option value="river_overflow">River overflow (screening)</option>
       </select>
       {selectedDam?.note && (
-        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+        <Caveat compact className="jr-mt-8">
           {selectedDam.note}
-        </div>
+        </Caveat>
       )}
       {scenarioType === "river_overflow" && (
-        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+        <Caveat compact className="jr-mt-8">
           Screening only. The release is volume-conserving and its shape is an
           assumption — modelling a controlled spillway release needs a gate
           rating curve and an operating rule, which this project does not have.
-        </div>
+        </Caveat>
       )}
 
       {!isBlockage && <>
@@ -362,7 +391,10 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
           <option value="piping">Piping</option>
         </select>
       </>}
+      </div>
 
+      <div className="jr-sidebar__section">
+      <SectionLabel>Model</SectionLabel>
       <label>Ensemble size: {ensemble}</label>
       <input type="range" min="1" max="10000" value={ensemble}
              onChange={(e) => setEnsemble(+e.target.value)} />
@@ -379,79 +411,105 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         <option value="sph">+ Near-field SPH (advanced)</option>
       </select>
       {solver === "sph" && (
-        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
-          Near-field only: a ~600 m window over 15 s at the breach, one-way
-          coupled from the SWE result. It resolves the breach jet — it does
-          <strong> not</strong> reach downstream gauges, and it is slow.
-        </div>
+        <Caveat compact className="jr-mt-8">
+          Near-field only: a 1.2 km window over 15 s at the breach, one-way
+          coupled from the SWE result, run in DualSPHysics on the GPU (about
+          90 s on an RTX 4050). It resolves the breach jet — it does
+          <strong> not</strong> reach downstream gauges.
+        </Caveat>
       )}
       {isRiverScenario && !["swe", "sph"].includes(solver) && (
-        <div style={{ fontSize: 10, color: "#b00020", marginTop: 4 }}>
+        <Caveat tone="danger" compact className="jr-mt-8">
           Select SWE or near-field SPH for this river scenario. Delft3D FM is
           configured for dam-break hydrographs only.
-        </div>
+        </Caveat>
       )}
 
       <label>Compute</label>
       <select value={backend} onChange={(e) => setBackend(e.target.value)}>
-        <option value="auto">Auto — GPU when available</option>
+        {/* GPU-first is the project default (2026-09-13): auto runs the SWE
+            ensemble AND the near-field SPH on the GPU, falling back to the CPU
+            with a stated reason only when the GPU cannot run. */}
+        <option value="auto">GPU (default) — CPU fallback if unavailable</option>
         {/* Disabled rather than hidden: an operator looking for the GPU should
             be told WHY it is not on offer, not left wondering. The reason is
             the probe's own words, from GET /backends. */}
-        <option value="cuda" disabled={backends ? !backends.cuda_available : false}>
-          {backends?.cuda_device ? `GPU — ${backends.cuda_device}` : "GPU (CUDA, float64)"}
+        <option value="cuda" disabled={backends ? !gpuOnlyPossible : false}>
+          {backends?.cuda_device
+            ? `GPU only — ${backends.cuda_device} (refuse if unavailable)`
+            : "GPU only — refuse if unavailable"}
         </option>
-        <option value="cpu">CPU (numba, float64)</option>
+        <option value="cpu">CPU (float64)</option>
       </select>
       {backends && !backends.cuda_available && (
-        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+        <Caveat compact className="jr-mt-8">
           No GPU available here: {backends.cuda_reason}
-        </div>
+        </Caveat>
+      )}
+      {backends && backends.cuda_available && solverNeedsSph && backends.sph_gpu_available === false && (
+        <Caveat compact className="jr-mt-8">
+          GPU only is unavailable with near-field SPH: {backends.sph_gpu_reason}
+        </Caveat>
+      )}
+      {backend === "cuda" && (
+        <p className="jr-hint">
+          Every solver in this run uses the GPU. If a GPU solve fails, the run
+          reports the failure — nothing is recomputed on the CPU.
+        </p>
+      )}
+      {backend === "auto" && (
+        <p className="jr-hint">
+          The SWE ensemble and the near-field SPH both run on the GPU. If the GPU
+          cannot run, they fall back to the CPU and the result says why.
+        </p>
       )}
       {backend === "cpu" && (
-        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+        <p className="jr-hint">
           Same float64 physics for the SWE ensemble and the near-field SPH,
           measured 11–20x slower than the GPU for the ensemble. Useful to keep
           the card free for a run already in flight.
-        </div>
+        </p>
       )}
       {backend !== "cpu" && backends && !backends.sph_gpu_available && (
-        <div style={{ fontSize: 10, color: "#7a3e00", marginTop: 4, lineHeight: 1.4 }}>
+        <Caveat compact className="jr-mt-8">
           Near-field SPH will run on the CPU: {backends.sph_gpu_reason}. The SWE
           ensemble still uses the GPU, and the SPH tab names whichever engine
           and backend actually produced its result.
-        </div>
+        </Caveat>
       )}
       {solver === "delft3d" && (
-        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+        <p className="jr-hint">
           The Deltares kernel is a CPU binary whatever this is set to; the
           choice applies to the SWE ensemble and the near-field SPH.
-        </div>
+        </p>
       )}
       {isBlockage && blockageIncomplete && (
-        <div style={{ fontSize: 10, color: "#b00020", marginTop: 4, lineHeight: 1.4 }}>
+        <Caveat tone="danger" compact className="jr-mt-8">
           Place the barrier before running: a blockage needs a position, a crest
           height above the valley floor, and a crest width across it. None of
           them can be taken from the site record — the deposit is not the dam.
-        </div>
+        </Caveat>
       )}
 
-      <button
+      <Button
+        variant="primary"
+        block
+        className="jr-mt-16"
         onClick={submit}
         disabled={
           (isRiverScenario && !["swe", "sph"].includes(solver)) ||
           (isBlockage && blockageIncomplete)
         }
-        style={{ marginTop: 10 }}
       >
         Run {scenarioType === "dam_break"
           ? "dam-break"
           : isBlockage ? "river-blockage" : "river-overflow"} simulation
-      </button>
-      <div style={{ marginTop: 8, fontSize: 12 }}>{status}</div>
+      </Button>
+      <RunStatus status={status} />
+      </div>
 
       {currentRunId && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee" }}>
+        <div className="jr-sidebar__section">
           {/*
             Whether a 3D dataset exists is knowable from the loaded result — the
             run carries an export of kind "xdmf" or it does not. The button used
@@ -460,19 +518,33 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
             button in front of an audience to be told it cannot work. Disable it
             up front and say why.
           */}
-          <button
+          <Button
+            block
             onClick={openParaview}
-            disabled={!hasXdmf || pvStatus === "launching ParaView…"}
+            disabled={!paraviewAvailable || !hasXdmf || pvStatus === "launching ParaView…"}
           >
             View in ParaView (3D)
-          </button>
-          <div style={{ marginTop: 4, fontSize: 11, color: "#666" }}>
-            {hasXdmf
-              ? "Opens the ParaView desktop app on the machine running the API."
-              : null}
-          </div>
+          </Button>
+          <p className="jr-hint">
+            {/* Availability is checked before the dataset: no dataset matters
+                only once there is a ParaView to open it in. */}
+            {!capabilities
+              ? "Checking whether ParaView is available…"
+              : !paraviewAvailable
+                ? capabilities.paraview_detail
+                : hasXdmf
+                  ? "Opens the ParaView desktop app on the machine running the API."
+                  : null}
+          </p>
+          {hasXdmf && result?.paraview_dataset_kind === "peak_envelope" && (
+            <p className="jr-hint">
+              This run&rsquo;s 3D view is its peak-depth envelope (ensemble
+              median) — one state, not an animation. The depth time series was
+              not kept.
+            </p>
+          )}
           {pvStatus && (
-            <div style={{ marginTop: 4, fontSize: 11 }}>{pvStatus}</div>
+            <p className="jr-hint jr-hint--ink">{pvStatus}</p>
           )}
         </div>
       )}
@@ -480,12 +552,11 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       {/* Demo Mode. A pre-baked run loads instantly with no compute, which is
           what makes the demo survive a slow laptop or no network. The free-text
           id box is kept below it for a run that is not in the list. */}
-      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #eee" }}>
-        <label>Load a completed run</label>
+      <div className="jr-sidebar__section">
+        <label className="jr-label-first">Load a completed run</label>
         <select
           value=""
           onChange={(e) => e.target.value && loadExisting(e.target.value)}
-          style={{ width: "100%", fontSize: 12 }}
         >
           <option value="">
             {runs.length ? `${runs.length} available…` : "none available yet"}
@@ -497,19 +568,20 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
             </option>
           ))}
         </select>
-        <div style={{ marginTop: 6 }}>
+        <div className="jr-field-row jr-mt-8">
           <input
+            type="text"
             placeholder="…or paste a run id"
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
-            style={{ width: "68%", fontSize: 12 }}
           />
-          <button onClick={() => loadExisting()} style={{ fontSize: 12 }}>Load</button>
+          <Button onClick={() => loadExisting()}>Load</Button>
         </div>
       </div>
 
-
-      <DamClassWarning hazard={result?.hazard_summary} />
+      {/* From the ensemble summary. It read hazard_summary, whose dam-class keys
+          are added after the keyframe manifest is written, so it never fired. */}
+      <DamClassWarning ensemble={result?.ensemble} />
 
       <PopulationAtRisk data={result?.population_at_risk} runId={result?.run_id} />
 
@@ -518,6 +590,19 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       <PlaybackControls />
     </div>
   );
+}
+
+/**
+ * The submit/load status line. A failure is shown as a danger caveat so it is
+ * not read as progress text; every other state is plain meta text. The words
+ * are exactly the status string, unchanged.
+ */
+function RunStatus({ status }) {
+  if (!status) return null;
+  if (/^(load )?failed/.test(status)) {
+    return <Caveat tone="danger" compact className="jr-mt-8">{status}</Caveat>;
+  }
+  return <p className="jr-meta num jr-mt-8">{status}</p>;
 }
 
 /**
@@ -564,26 +649,17 @@ function BlockageControls({
     }
   };
 
-  const label = { fontSize: 11, marginTop: 8, display: "block", color: "#444" };
-  const field = { width: "100%", boxSizing: "border-box" };
-
   return (
-    <fieldset style={{
-      marginTop: 10, padding: "8px 10px 10px", border: "1px solid #ddd",
-      borderRadius: 4,
-    }}>
-      <legend style={{ fontSize: 11, color: "#555" }}>Landslide barrier</legend>
+    <fieldset>
+      <legend>Landslide barrier</legend>
 
-      <div style={{ display: "flex", gap: 12, fontSize: 11 }}>
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <div className="jr-radio-row">
+        <label className="jr-inline">
           <input type="radio" checked={source === "manual"}
                  onChange={() => setSource("manual")} />
           Manual
         </label>
-        <label style={{
-          display: "flex", gap: 4, alignItems: "center",
-          color: geeReady ? "inherit" : "#999",
-        }}
+        <label className={geeReady ? "jr-inline" : "jr-inline is-disabled"}
           title={geeReady ? "" : (gee?.reason || "Earth Engine is not configured.")}>
           <input type="radio" checked={source === "detect"} disabled={!geeReady}
                  onChange={() => setSource("detect")} />
@@ -592,65 +668,60 @@ function BlockageControls({
       </div>
 
       {source === "detect" && (
-        <div style={{ marginTop: 8 }}>
-          <button onClick={detect} disabled={detecting} style={{ fontSize: 11 }}>
+        <div className="jr-mt-8">
+          <Button size="sm" onClick={detect} disabled={detecting}>
             {detecting ? "Differencing scenes…" : "Detect new water"}
-          </button>
+          </Button>
           {site?.blockage_date_post && (
-            <div style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+            <p className="jr-hint">
               Window: {site.blockage_date_pre} to {site.blockage_date_post}
-            </div>
+            </p>
           )}
           {detection && <DetectionResult detection={detection}
                                          onUseManual={() => setSource("manual")} />}
         </div>
       )}
 
-      <label style={label}>Barrier latitude</label>
-      <input style={field} type="number" step="0.0001" value={lat}
+      <label>Barrier latitude</label>
+      <input type="number" step="0.0001" value={lat}
              onChange={(e) => setLat(e.target.value)} />
 
-      <label style={label}>Barrier longitude</label>
-      <input style={field} type="number" step="0.0001" value={lon}
+      <label>Barrier longitude</label>
+      <input type="number" step="0.0001" value={lon}
              onChange={(e) => setLon(e.target.value)} />
 
-      <label style={label}>Crest height above the valley floor (m): {crestHeightM}</label>
+      <label>Crest height above the valley floor (m): {crestHeightM}</label>
       <input type="range" min="5" max="250" value={crestHeightM}
              onChange={(e) => setCrestHeightM(+e.target.value)} />
-      <div style={{ fontSize: 10, color: "#666", lineHeight: 1.4 }}>
+      <p className="jr-hint">
         A HEIGHT above the bed, not an elevation. The two differ by a kilometre
         or more in the Himalaya and both look plausible.
-      </div>
+      </p>
 
-      <label style={label}>Crest width across the valley (m): {widthM}</label>
+      <label>Crest width across the valley (m): {widthM}</label>
       <input type="range" min="100" max="4000" step="50" value={widthM}
              onChange={(e) => setWidthM(+e.target.value)} />
-      <div style={{
-        fontSize: 10, lineHeight: 1.4,
-        color: subGrid ? "#b00020" : "#666",
-      }}>
+      <p className={subGrid ? "jr-hint jr-hint--danger" : "jr-hint"}>
         {cells.toFixed(1)} cells at {targetResolution} m resolution
         {subGrid && " — too narrow to resolve; its outflow would be set by the grid rather than by the deposit."}
-      </div>
+      </p>
 
-      <label style={label}>Failure mode</label>
-      <select style={field} value={breachMode}
+      <label>Failure mode</label>
+      <select value={breachMode}
               onChange={(e) => setBreachMode(e.target.value)}>
         <option value="overtop">Overtop (barrier intact)</option>
         <option value="full_notch">Full notch (barrier cut to the valley floor)</option>
       </select>
-      <div style={{ fontSize: 10, color: "#666", marginTop: 4, lineHeight: 1.4 }}>
+      <p className="jr-hint">
         Changes the local cross-section, not the released volume — that comes
         from routing the lake measured off the updated DEM.
-      </div>
+      </p>
 
-      <div style={{
-        marginTop: 8, fontSize: 10, color: "#7a3e00", lineHeight: 1.4,
-      }}>
+      <Caveat compact className="jr-mt-8">
         The impounded volume is <strong>not</strong> set here. It is measured by
         filling the DEM behind this barrier, because a landslide dam has no
         published storage.
-      </div>
+      </Caveat>
     </fieldset>
   );
 }
@@ -666,18 +737,15 @@ function BlockageControls({
 function DetectionResult({ detection, onUseManual }) {
   const refused = detection.source === "unavailable";
   return (
-    <div style={{
-      marginTop: 6, padding: "6px 8px", fontSize: 10, borderRadius: 4,
-      border: `1px solid ${refused ? "#e65100" : "#2e7d32"}`,
-      background: refused ? "#fff4e5" : "#edf7ed",
-      color: refused ? "#7a3e00" : "#1b5e20", lineHeight: 1.45,
-    }}>
-      <strong>
-        {refused ? "No detection produced" : `Detected (${detection.source})`}
-      </strong>
-      {detection.reason && <div style={{ marginTop: 3 }}>{detection.reason}</div>}
+    <Caveat
+      compact
+      tone={refused ? "warn" : "ok"}
+      className="jr-mt-8"
+      title={refused ? "No detection produced" : `Detected (${detection.source})`}
+    >
+      {detection.reason && <div>{detection.reason}</div>}
       {!refused && (
-        <div style={{ marginTop: 3 }}>
+        <div className="jr-caveat__detail">
           <div>Post scene: {detection.scene_id_post}</div>
           <div>Acquired: {detection.acquired_at_post}</div>
           <div>
@@ -713,7 +781,7 @@ function DetectionResult({ detection, onUseManual }) {
             imply the half that is not built.
           */}
           {detection.terrain_correction && (
-            <div style={{ marginTop: 3, opacity: 0.85 }}>
+            <div className="jr-caveat__detail">
               Geometry-masked (not terrain-flattened):{" "}
               {((detection.geometry_valid_fraction ?? 0) * 100).toFixed(0)}% of the
               window usable —{" "}
@@ -736,17 +804,17 @@ function DetectionResult({ detection, onUseManual }) {
               )}
             </div>
           )}
-          <div style={{ marginTop: 3 }}>
+          <div className="jr-caveat__detail">
             Confirm the barrier position below — nothing is auto-selected.
           </div>
         </div>
       )}
       {refused && (
-        <button onClick={onUseManual} style={{ marginTop: 5, fontSize: 10 }}>
+        <Button size="sm" className="jr-mt-8" onClick={onUseManual}>
           Place the barrier manually
-        </button>
+        </Button>
       )}
-    </div>
+    </Caveat>
   );
 }
 
@@ -754,14 +822,9 @@ function GeeBadge({ gee }) {
   if (!gee) return null;
   const ok = gee.available;
   return (
-    <div style={{
-      marginTop: 12, padding: "6px 9px", fontSize: 10, borderRadius: 4,
-      border: `1px solid ${ok ? "#2e7d32" : "#e65100"}`,
-      background: ok ? "#edf7ed" : "#fff4e5",
-      color: ok ? "#1b5e20" : "#7a3e00", lineHeight: 1.4,
-    }}>
+    <Caveat compact tone={ok ? "ok" : "warn"} className="jr-mt-12">
       <strong>Sentinel-1 / Earth Engine: {ok ? "connected" : "not configured"}</strong>
-    </div>
+    </Caveat>
   );
 }
 
@@ -775,17 +838,20 @@ function GeeBadge({ gee }) {
  * being the wrong kind of structure. A number with no caveat next to it reads
  * as a result.
  */
-function DamClassWarning({ hazard }) {
-  if (!hazard?.dam_class_outside_fitted_population) return null;
+function DamClassWarning({ ensemble }) {
+  if (!ensemble?.dam_class_outside_fitted_population) return null;
   return (
-    <div style={{ marginTop: 12, padding: "8px 10px", fontSize: 11,
-                  border: "2px solid #e65100", background: "#fff4e5",
-                  borderRadius: 4, color: "#7a3e00" }}>
-      <div style={{ fontWeight: 700 }}>
-        Screening figure only — dam class outside fitted population
-        {hazard.dam_type ? ` (${hazard.dam_type})` : ""}
-      </div>
-      <div style={{ marginTop: 4 }}>{hazard.dam_class_note}</div>
+    <div className="jr-sidebar__section">
+      <Caveat
+        title={
+          <>
+            Screening figure only — dam class outside fitted population
+            {ensemble.dam_type ? ` (${ensemble.dam_type})` : ""}
+          </>
+        }
+      >
+        <div>{ensemble.dam_class_note}</div>
+      </Caveat>
     </div>
   );
 }
@@ -819,36 +885,52 @@ function GaugeArrivals({ gauges, damGauges }) {
   };
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <h4 style={{ marginBottom: 4 }}>
+    <div className="jr-sidebar__section">
+      <h4 className="jr-side-h">
         Gauges {hasRun ? "— arrival time" : ""}
       </h4>
       {!hasRun && (
-        <div style={{ fontSize: 11, color: "#777", marginBottom: 4 }}>
+        <p className="jr-hint jr-mb-8">
           Reference list. Run or load a simulation for arrival times.
-        </div>
+        </p>
       )}
-      <table style={{ fontSize: 12, width: "100%", borderCollapse: "collapse" }}>
+      <DataTable compact>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.gauge_name} style={{ borderBottom: "1px solid #f0f0f0" }}>
-              <td style={{ padding: "3px 0" }}>{row.gauge_name}</td>
-              <td style={{ padding: "3px 0", color: "#777", textAlign: "right" }}>
-                {row.distance_km?.toFixed?.(1) ?? row.distance_km} km
-              </td>
-              <td style={{ padding: "3px 0 3px 8px", textAlign: "right",
-                           fontWeight: row.arrival_time_s != null ? 700 : 400,
-                           color: row.arrival_time_s != null ? "#1565C0" : "#aaa" }}>
-                {arrival(row.arrival_time_s)}
-              </td>
-            </tr>
+            <React.Fragment key={row.gauge_name}>
+              <tr className={hasRun && (row.note || boundaryNote(row)) ? "has-note" : undefined}>
+                <td>{row.gauge_name}</td>
+                <td className="num muted">
+                  {row.distance_km?.toFixed?.(1) ?? row.distance_km} km
+                </td>
+                <td className={row.arrival_time_s != null ? "num strong" : "num muted"}>
+                  {arrival(row.arrival_time_s)}
+                </td>
+              </tr>
+              {/* A run's own notes only: the minority-arrival "1 of 4 members"
+                  and the boundary label change how the number beside them
+                  reads, and were invisible here. The pre-run reference list
+                  keeps its notes for the Gauges tab. */}
+              {hasRun && (row.note || boundaryNote(row)) && (
+                <tr className="jr-note-row">
+                  <td colSpan={3}>
+                    {row.note && <Caveat compact>{row.note}</Caveat>}
+                    {boundaryNote(row) && (
+                      <Caveat compact className={row.note ? "jr-mt-8" : undefined}>
+                        {boundaryNote(row)}
+                      </Caveat>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
-      </table>
+      </DataTable>
       {hasRun && rows.every((r) => r.arrival_time_s == null) && (
-        <div style={{ fontSize: 11, color: "#7a3e00", marginTop: 4 }}>
+        <Caveat compact className="jr-mt-8">
           The flood did not reach any gauge within the simulated time.
-        </div>
+        </Caveat>
       )}
     </div>
   );
@@ -875,21 +957,20 @@ export function PopulationAtRisk({ data, runId }) {
     const par = data.par || {};
     const n = (v) => (typeof v === "number" ? Math.round(v).toLocaleString() : "-");
     return (
-      <div style={{ marginTop: 12 }}>
-        <h4 style={{ marginBottom: 4 }}>Population at risk</h4>
-        <div style={{ fontSize: 22, fontWeight: 700 }}>{n(par.par_medium_urgency_15_60min)}</div>
+      <div className="jr-sidebar__section">
+        <h4 className="jr-side-h">Population at risk</h4>
+        <Stat plain value={n(par.par_medium_urgency_15_60min)} />
       </div>
     );
   }
 
   if (!data.available) {
     return (
-      <div style={{ marginTop: 12, padding: "8px 10px", fontSize: 11,
-                    border: "2px solid #e65100", background: "#fff4e5",
-                    borderRadius: 4, color: "#7a3e00" }}>
-        <div style={{ fontWeight: 700 }}>No population-at-risk figure</div>
-        <div style={{ marginTop: 4 }}>{data.reason}</div>
-        <div style={{ marginTop: 4 }}>No estimate is substituted.</div>
+      <div className="jr-sidebar__section">
+        <Caveat title="No population-at-risk figure">
+          <div>{data.reason}</div>
+          <div className="jr-caveat__detail">No estimate is substituted.</div>
+        </Caveat>
       </div>
     );
   }
@@ -898,22 +979,20 @@ export function PopulationAtRisk({ data, runId }) {
   const n = (v) => (typeof v === "number" ? Math.round(v).toLocaleString() : "-");
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <h4 style={{ marginBottom: 4 }}>Population at risk</h4>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>{n(par.total_par)}</div>
-      <div style={{ fontSize: 11, color: "#555" }}>
-        of {n(data.total_population_in_domain)} in the domain
-      </div>
-      <ul style={{ fontSize: 11, paddingLeft: 16, marginTop: 6 }}>
+    <div className="jr-sidebar__section">
+      <h4 className="jr-side-h">Population at risk</h4>
+      <Stat plain value={n(par.total_par)}
+            hint={`of ${n(data.total_population_in_domain)} in the domain`} />
+      <ul className="jr-list">
         <li>&lt; 15 min warning: <strong>{n(par.par_high_urgency_under_15min)}</strong></li>
         <li>15-60 min: <strong>{n(par.par_medium_urgency_15_60min)}</strong></li>
         <li>&gt; 60 min: <strong>{n(par.par_low_urgency_over_60min)}</strong></li>
       </ul>
-      <div style={{ fontSize: 10, color: "#777" }}>
+      <p className="jr-hint">
         {data.population_source}
         {data.population_epoch ? ` epoch ${data.population_epoch}` : ""} · assumes{" "}
         {Math.round((data.warning_lead_time_s || 0) / 60)} min warning lead time
-      </div>
+      </p>
     </div>
   );
 }
@@ -922,16 +1001,20 @@ function PlaybackControls() {
   const { keyframes, index, playing, setPlaying, prev, next, seekTo } = useSimulationClock();
   if (!keyframes.length) return null;
   return (
-    <div style={{ marginTop: 12 }}>
-      <h4>Playback</h4>
-      <button onClick={() => setPlaying((p) => !p)}>{playing ? "Pause" : "Play"}</button>
-      <button onClick={prev}>◀</button>
-      <button onClick={next}>▶</button>
-      <input type="range" min="0" max={keyframes.length - 1} value={index}
-             onChange={(e) => seekTo(+e.target.value)} style={{ width: "100%" }} />
-      <div style={{ fontSize: 12 }}>
-        t = {keyframes[index]?.time_s?.toFixed(0)} s ({index + 1}/{keyframes.length})
+    <div className="jr-sidebar__section">
+      <h4 className="jr-side-h">Playback</h4>
+      <div className="jr-playback">
+        <Button size="sm" variant="primary" onClick={() => setPlaying((p) => !p)}>
+          {playing ? "Pause" : "Play"}
+        </Button>
+        <Button size="sm" onClick={prev} aria-label="Previous frame">◀</Button>
+        <Button size="sm" onClick={next} aria-label="Next frame">▶</Button>
       </div>
+      <input type="range" min="0" max={keyframes.length - 1} value={index}
+             onChange={(e) => seekTo(+e.target.value)} />
+      <p className="jr-meta num jr-mt-8">
+        t = {keyframes[index]?.time_s?.toFixed(0)} s ({index + 1}/{keyframes.length})
+      </p>
     </div>
   );
 }

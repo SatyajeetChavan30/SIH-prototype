@@ -26,8 +26,10 @@ import pytest
 
 from jalraksha.sph.compyle_compat import (
     RESTORED_AST_NAMES,
+    compyle_config_isolated,
     compyle_python314_compat,
     compyle_python314_compat_if,
+    pysph_app_compat,
     restored_ast_aliases,
     restored_constant_visitors,
     visitor_repair_gaps,
@@ -208,3 +210,44 @@ class TestConditionalCompat:
         with compyle_python314_compat_if(True):
             assert hasattr(ast, "Str")
         assert not hasattr(ast, "Str")
+
+
+@requires_compyle
+class TestConfigIsolation:
+    """
+    compyle's config is a process-global singleton and PySPH never clears it.
+
+    Measured: a CPU PySPH run following a GPU one in the same process died in
+    compyle/translator.py with "module 'ast' has no attribute 'Str'" — a CPU run
+    failing inside the GPU code generator, because use_opencl was still set. The
+    documented SPH fallback runs exactly that sequence (try the GPU, then the
+    CPU), so this is a production property, not a test convenience.
+    """
+
+    def test_a_gpu_flag_does_not_survive_the_block(self):
+        from compyle.config import get_config
+
+        before = get_config().use_opencl
+        with compyle_config_isolated():
+            get_config().use_opencl = True
+        assert get_config().use_opencl == before
+
+    def test_the_cpu_path_still_gets_config_isolation(self):
+        """pysph_app_compat(False) installs no ast patches but must still isolate."""
+        from compyle.config import get_config
+
+        before = get_config().use_opencl
+        with pysph_app_compat(False):
+            assert not hasattr(ast, "Str")
+            get_config().use_opencl = True
+        assert get_config().use_opencl == before
+
+    def test_the_gpu_path_gets_both(self):
+        from compyle.config import get_config
+
+        before = get_config().use_opencl
+        with pysph_app_compat(True):
+            assert hasattr(ast, "Str")
+            get_config().use_opencl = True
+        assert not hasattr(ast, "Str")
+        assert get_config().use_opencl == before
