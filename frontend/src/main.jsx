@@ -23,8 +23,17 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/ui.css";
 
+// `?ui-preview` on the dev server shows the primitive gallery instead of the
+// app. Gated on DEV so a production build tree-shakes the preview away.
+const Root =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has("ui-preview")
+    ? React.lazy(() => import("./ui/Preview.jsx"))
+    : App;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    <React.Suspense fallback={null}>
+      <Root />
+    </React.Suspense>
   </React.StrictMode>
 );
