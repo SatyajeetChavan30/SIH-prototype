@@ -519,6 +519,14 @@
   font-weight: 600;
 }
 
+/* A file name or path: mono, secondary, allowed to break anywhere. */
+.jr-table .file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
 .jr-table--compact td {
   padding: 5px 6px;
 }
