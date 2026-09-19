@@ -1,5 +1,6 @@
 import React from "react";
 import { Caveat, Chip, DataTable, Empty } from "../ui/index.jsx";
+import { boundaryNote } from "../honesty.js";
 
 /**
  * Downstream gauge table — the headline output of the whole system.
@@ -64,6 +65,9 @@ export default function GaugesPanel({ result, dam }) {
                   {g.river && <span className="muted"> · {g.river}</span>}
                   {g.note && (
                     <Caveat compact className="jr-row-note">{g.note}</Caveat>
+                  )}
+                  {boundaryNote(g) && (
+                    <Caveat compact className="jr-row-note">{boundaryNote(g)}</Caveat>
                   )}
                 </td>
                 <td className="num">{fmtKm(g.distance_km)}</td>

@@ -7,6 +7,7 @@ import { useSimulationClock } from "../state/SimulationClock.jsx";
 import { GAUGES, DAM } from "../data/entities.js";
 import { APP_NAME, APP_TAGLINE } from "../ui/brand.js";
 import { Button, Caveat, DataTable, SectionLabel, Stat } from "../ui/index.jsx";
+import { boundaryNote } from "../honesty.js";
 
 // Grid resolution every run is submitted at. Named rather than left to the
 // API's default because the blockage form has to state, live, how many cells a
@@ -571,7 +572,9 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
         </div>
       </div>
 
-      <DamClassWarning hazard={result?.hazard_summary} />
+      {/* From the ensemble summary. It read hazard_summary, whose dam-class keys
+          are added after the keyframe manifest is written, so it never fired. */}
+      <DamClassWarning ensemble={result?.ensemble} />
 
       <PopulationAtRisk data={result?.population_at_risk} runId={result?.run_id} />
 
@@ -828,19 +831,19 @@ function GeeBadge({ gee }) {
  * being the wrong kind of structure. A number with no caveat next to it reads
  * as a result.
  */
-function DamClassWarning({ hazard }) {
-  if (!hazard?.dam_class_outside_fitted_population) return null;
+function DamClassWarning({ ensemble }) {
+  if (!ensemble?.dam_class_outside_fitted_population) return null;
   return (
     <div className="jr-sidebar__section">
       <Caveat
         title={
           <>
             Screening figure only — dam class outside fitted population
-            {hazard.dam_type ? ` (${hazard.dam_type})` : ""}
+            {ensemble.dam_type ? ` (${ensemble.dam_type})` : ""}
           </>
         }
       >
-        <div>{hazard.dam_class_note}</div>
+        <div>{ensemble.dam_class_note}</div>
       </Caveat>
     </div>
   );
@@ -887,15 +890,33 @@ function GaugeArrivals({ gauges, damGauges }) {
       <DataTable compact>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.gauge_name}>
-              <td>{row.gauge_name}</td>
-              <td className="num muted">
-                {row.distance_km?.toFixed?.(1) ?? row.distance_km} km
-              </td>
-              <td className={row.arrival_time_s != null ? "num strong" : "num muted"}>
-                {arrival(row.arrival_time_s)}
-              </td>
-            </tr>
+            <React.Fragment key={row.gauge_name}>
+              <tr className={hasRun && (row.note || boundaryNote(row)) ? "has-note" : undefined}>
+                <td>{row.gauge_name}</td>
+                <td className="num muted">
+                  {row.distance_km?.toFixed?.(1) ?? row.distance_km} km
+                </td>
+                <td className={row.arrival_time_s != null ? "num strong" : "num muted"}>
+                  {arrival(row.arrival_time_s)}
+                </td>
+              </tr>
+              {/* A run's own notes only: the minority-arrival "1 of 4 members"
+                  and the boundary label change how the number beside them
+                  reads, and were invisible here. The pre-run reference list
+                  keeps its notes for the Gauges tab. */}
+              {hasRun && (row.note || boundaryNote(row)) && (
+                <tr className="jr-note-row">
+                  <td colSpan={3}>
+                    {row.note && <Caveat compact>{row.note}</Caveat>}
+                    {boundaryNote(row) && (
+                      <Caveat compact className={row.note ? "jr-mt-8" : undefined}>
+                        {boundaryNote(row)}
+                      </Caveat>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </DataTable>

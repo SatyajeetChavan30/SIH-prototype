@@ -389,6 +389,23 @@ def insert_gauge_results(run_id: str, gauges: List[Dict[str, Any]]) -> None:
         conn.close()
 
 
+def set_gauge_boundary(run_id: str, gauge_name: str,
+                       clearance_km: Optional[float], near: Optional[bool]) -> None:
+    """Fill the boundary columns of one existing gauge row (backfill only)."""
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE gauge_results SET boundary_clearance_km = {_placeholder(1)}, "
+            f"near_boundary = {_placeholder(1)} "
+            f"WHERE run_id = {_placeholder(1)} AND gauge_name = {_placeholder(1)}",
+            (clearance_km, _bool_to_int(near), run_id, gauge_name),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_gauge_results(run_id: str) -> List[Dict[str, Any]]:
     conn = _connect()
     try:

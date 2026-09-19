@@ -146,6 +146,18 @@ class TestBoundaryClearance:
         assert rows["Swargate"]["near_boundary"] is None
         assert rows["Swargate"]["boundary_clearance_km"] is None
 
+    def test_the_backfill_writer_fills_one_row_only(self, service):
+        run_id = service.create_run("khadakwasla", {"name": "t"}, "swe")
+        service.insert_gauge_results(run_id, [
+            {"gauge_name": "Hadapsar", "distance_km": 18.6},
+            {"gauge_name": "Swargate", "distance_km": 11.5},
+        ])
+        service.set_gauge_boundary(run_id, "Hadapsar", 2.91, True)
+        rows = {r["gauge_name"]: r for r in service.get_gauge_results(run_id)}
+        assert rows["Hadapsar"]["near_boundary"] is True
+        assert rows["Hadapsar"]["boundary_clearance_km"] == pytest.approx(2.91)
+        assert rows["Swargate"]["near_boundary"] is None
+
 
 # --------------------------------------------------- unverified regressions
 

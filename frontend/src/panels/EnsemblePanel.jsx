@@ -22,6 +22,17 @@ import { Caveat, Empty, Stat } from "../ui/index.jsx";
 export default function EnsemblePanel({ result }) {
   const ensemble = result?.ensemble;
 
+  if (!ensemble && result?.is_synthetic) {
+    // A painted wave has no breach ensemble to report. The "predates" message
+    // below would send a reader looking for a re-run that cannot exist.
+    return (
+      <Empty>
+        This is a synthetic demo run — no solver ran, so there is no breach
+        ensemble and no percentile band to show.
+      </Empty>
+    );
+  }
+
   if (!ensemble) {
     // Distinguish the two reasons this is empty. The old message blamed the
     // solver unconditionally, which was wrong and misleading for the far more
@@ -109,6 +120,18 @@ export default function EnsemblePanel({ result }) {
         </Caveat>
       )}
 
+      {ensemble.uses_unverified_regression && (
+        <Caveat
+          className="jr-measure-wide jr-mb-12"
+          title={`Unverified regression in this ensemble: ${(ensemble.unverified_regressions || []).join(", ")}`}
+        >
+          <div>
+            {ensemble.unverified_regression_note ||
+              "A quarantined regression contributed members to this band."}
+          </div>
+        </Caveat>
+      )}
+
       <div className="jr-row jr-measure-wide">
         <Band
           title="Peak breach outflow"
@@ -184,6 +207,16 @@ export default function EnsemblePanel({ result }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {plottable.some((g) => g.note) && (
+        <p className="jr-note jr-measure">
+          Notes on plotted gauges:{" "}
+          {plottable
+            .filter((g) => g.note)
+            .map((g) => `${g.name} (${g.note})`)
+            .join("; ")}
+        </p>
       )}
 
       {gauges.some((g) => g.median == null) && (

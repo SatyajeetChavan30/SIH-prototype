@@ -10,6 +10,7 @@ import ImpactPanel from "./panels/ImpactPanel.jsx";
 import ValidationPanel from "./panels/ValidationPanel.jsx";
 import SphPanel from "./panels/SphPanel.jsx";
 import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
+import SyntheticRunBanner from "./panels/SyntheticRunBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
 import { resolveApiUrl } from "./api.js";
 import { DAM, GAUGES } from "./data/entities.js";
@@ -107,6 +108,7 @@ function Workspace() {
             visible wherever the viewer is looking. Renders nothing at all when
             the run's terrain was not touched.
           */}
+          <SyntheticRunBanner result={result} />
           <DemUpdateBanner demUpdate={result?.dem_update} />
 
           {/*
