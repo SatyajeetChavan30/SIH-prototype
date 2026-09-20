@@ -57,6 +57,9 @@ for package in (
     "fastapi", "starlette", "pydantic", "uvicorn",
     "celery", "kombu", "billiard", "vine", "redis",
     "yaml", "requests", "tqdm",
+    # python-docx: imported as "docx". collect_all takes its default.docx
+    # template with it; without that a frozen report dies at Document().
+    "docx",
 ):
     try:
         take(package)

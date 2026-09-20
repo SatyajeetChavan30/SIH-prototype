@@ -135,6 +135,27 @@ export async function getCapabilities() {
 // operational failures (no dataset, ParaView missing), because those are
 // expected states a user needs to read, not exceptions. Genuine HTTP errors
 // (404 unknown run) still surface as thrown Errors carrying FastAPI's `detail`.
+/**
+ * Build this run's Word report and register it as an export.
+ *
+ * POST, not GET: it writes an artifact and replaces the run's previous report
+ * row. Shaped like openInParaview because that is this file's existing pattern
+ * for a POST whose failure body carries the reason.
+ */
+export async function generateReport(runId) {
+  const r = await fetch(`${API}/runs/${runId}/report`, { method: "POST" });
+  let body = null;
+  try {
+    body = await r.json();
+  } catch {
+    body = null;
+  }
+  if (!r.ok) {
+    throw new Error(body?.detail || `Report generation failed (HTTP ${r.status})`);
+  }
+  return body;
+}
+
 export async function openInParaview(runId) {
   const r = await fetch(`${API}/runs/${runId}/open-paraview`, { method: "POST" });
   let body = null;

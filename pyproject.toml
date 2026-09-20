@@ -77,6 +77,13 @@ viz = [
     "cartopy>=0.21.0",
 ]
 
+# Word (.docx) run report (optional). Pure Python, works offline; kept out of
+# the core dependencies because nothing in the solver path needs it and the
+# frozen desktop backend pins it separately.
+report = [
+    "python-docx>=1.1",
+]
+
 # GPU backend (optional; the CPU numba path needs none of this).
 # numba-cuda[cu12] ships NVVM/NVRTC as pip wheels, so no CUDA toolkit install
 # is needed, only an NVIDIA driver. pyopencl runs PySPH's OpenCL backend on the

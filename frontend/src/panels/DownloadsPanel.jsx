@@ -1,6 +1,6 @@
-import React from "react";
-import { resolveApiUrl } from "../api.js";
-import { DataTable, Empty } from "../ui/index.jsx";
+import React, { useState } from "react";
+import { generateReport, resolveApiUrl } from "../api.js";
+import { Button, Caveat, DataTable, Empty } from "../ui/index.jsx";
 
 /**
  * Downloads tab — the problem statement's ".shp or .Kml" deliverable, made
@@ -53,6 +53,16 @@ const GROUPS = [
     match: (kind) => kind.startsWith("dem_update"),
   },
   {
+    id: "report",
+    title: "Report — Word (.docx)",
+    blurb:
+      "One document per run, written from what the run recorded. Every figure " +
+      "and every number traces to a stored artifact, a field the run never " +
+      "recorded says so rather than printing a default, and the honesty labels " +
+      "sit on page two rather than in an appendix.",
+    match: (kind) => kind === "report_docx",
+  },
+  {
     id: "other",
     title: "Other artifacts",
     blurb: "Playback manifest, 3D dataset and comparison metrics.",
@@ -87,6 +97,7 @@ const LABELS = {
   dem_update: "Observation-conditioned DEM (GeoTIFF)",
   dem_update_provenance: "DEM modification provenance (JSON)",
   dem_update_lake: "Impounded lake extent — initial condition, not a solver output",
+  report_docx: "Run report (Word .docx)",
 };
 
 function label(kind) {
@@ -115,6 +126,10 @@ function filename(pathOrUrl) {
 }
 
 export default function DownloadsPanel({ result }) {
+  // The report is generated on demand: writing one for every run would spend
+  // seconds of a solve's tail on a document most runs never need.
+  const [reportState, setReportState] = useState({ status: "idle" });
+
   if (!result) {
     return <Empty>Run a simulation first, or load a run id.</Empty>;
   }
@@ -150,6 +165,43 @@ export default function DownloadsPanel({ result }) {
         GLO-30 — read the arrival times and inundation extent; point depths are
         indicative only.
       </p>
+
+      <section className="jr-section jr-measure">
+        <h4 className="jr-h2">Run report</h4>
+        <p className="jr-lede">
+          A single Word document for this run: inputs, results, gauges and
+          directives, impact, and the validation gates as they last ran. It
+          prints only what this run recorded.
+        </p>
+        <Button
+          variant="primary"
+          onClick={async () => {
+            setReportState({ status: "working" });
+            try {
+              const ref = await generateReport(result.run_id);
+              setReportState({ status: "done", url: ref.path_or_url });
+            } catch (err) {
+              setReportState({ status: "failed", error: String(err.message || err) });
+            }
+          }}
+          disabled={reportState.status === "working"}
+        >
+          {reportState.status === "working" ? "Writing…" : "Generate report"}
+        </Button>
+        {reportState.status === "done" && (
+          <p className="jr-note">
+            <a href={resolveApiUrl(reportState.url)} download>
+              Download the report
+            </a>{" "}
+            — it is also listed below, and is replaced each time you regenerate it.
+          </p>
+        )}
+        {reportState.status === "failed" && (
+          <Caveat className="jr-mt-8" title="The report was not written">
+            {reportState.error}
+          </Caveat>
+        )}
+      </section>
 
       {grouped.map((group) => (
         <section key={group.id} className="jr-section jr-measure">

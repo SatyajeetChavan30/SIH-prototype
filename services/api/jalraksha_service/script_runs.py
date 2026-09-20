@@ -206,6 +206,12 @@ def write_run_summary(
         "solver_backend": result.get("solver_backend") if isinstance(result, dict) else None,
         # The Manning field the members were solved with (terrain/roughness.py).
         "roughness": result.get("roughness") if isinstance(result, dict) else None,
+        # WHERE THE WATER WENT. run.py computes this every run and it used to be
+        # discarded the moment the task returned, so the one number that says
+        # whether drainage was tested at all survived for exactly one run, in a
+        # script's own hazard_series.json. A run that exported no water never
+        # tested drainage, whatever its hazard counts say.
+        "volume_balance": result.get("volume_balance") if isinstance(result, dict) else None,
         "dem": {
             "dem_used": dem_path,
             "dem_update": (

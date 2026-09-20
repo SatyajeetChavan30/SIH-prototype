@@ -52,6 +52,11 @@ pytools==2026.1.1
 setuptools
 wheel
 
+# Word report export (jalraksha/export/docx_report.py). Pure Python; its
+# default.docx template is package DATA, which PyInstaller's module analysis
+# drops unless the spec collects it - see jalraksha-backend.spec.
+python-docx==1.2.0
+
 # Earth Engine (credentials and project are the user's own; nothing is bundled)
 earthengine-api==1.7.41
 

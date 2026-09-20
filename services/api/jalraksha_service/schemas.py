@@ -514,6 +514,10 @@ class RunResult(BaseModel):
     impact: Optional[Dict[str, Any]] = None
     sph: Optional[Dict[str, Any]] = None
     rapid_estimate: Optional[Dict[str, Any]] = None
+    # released / exited / retained MCM and the closure error, from the solver's
+    # own per-member balances. None means the run predates 2026-09-20, when the
+    # shared summary writer started keeping it - not that nothing drained.
+    volume_balance: Optional[Dict[str, Any]] = None
     solver: Optional[str] = None
     # Which hardware produced the ensemble: solver_backend ("cuda" or "cpu"),
     # solver_backend_label, solver_backend_reason, solver_device. Taken from

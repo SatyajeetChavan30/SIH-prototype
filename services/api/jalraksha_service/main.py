@@ -552,6 +552,7 @@ def run_result(run_id: str) -> RunResult:
         grid=GridSummary(**summary["grid"]) if summary.get("grid") else None,
         engine=EngineInfo(**engine) if engine else None,
         rapid_estimate=summary.get("rapid_estimate"),
+        volume_balance=summary.get("volume_balance"),
         impact=impact,
         sph=sph,
         solver=run.get("solver"),
@@ -649,6 +650,130 @@ def run_comparison(run_id: str) -> ComparisonResult:
         except Exception:
             pass
     return ComparisonResult(run_id=run_id, metrics=metrics, maps=[ExportRef(**m) for m in maps])
+
+
+# --------------------------------------------------------------------------- #
+# The Word report
+# --------------------------------------------------------------------------- #
+
+#: Wet FD2320 classes, including the class retired on 2026-09-11 so a
+#: pre-unification run's frames still count their water.
+_WET_CLASSES = ("low", "moderate", "significant", "severe", "extreme")
+
+
+def _peak_wet_index(keyframes: List[Dict[str, Any]]) -> int | None:
+    """
+    The frame with the most wet cells, or None when no frame carries counts.
+
+    Same rule the dashboard's phase markers use (frontend/src/playback.js), so
+    the figure captioned "peak wet extent" in the document is the frame the
+    scrubber jumps to. Guessed nowhere: without hazard summaries there is no
+    peak frame and the document simply has one fewer figure.
+    """
+    best_index, best_cells = None, 0
+    for index, keyframe in enumerate(keyframes):
+        summary = keyframe.get("hazard_summary") or {}
+        counts = [(summary.get(level) or {}).get("count") for level in _WET_CLASSES]
+        wet = sum(c for c in counts if isinstance(c, (int, float)))
+        if wet > best_cells:
+            best_index, best_cells = index, wet
+    return best_index
+
+
+def _figure_path(raw: str, run_id: str) -> Path | None:
+    """Resolve a recorded figure path; comparison rows store it relative to the cwd."""
+    candidates = [Path(raw), settings.DATA_DIR / "exports" / run_id / Path(raw).name]
+    return next((c for c in candidates if c.exists()), None)
+
+
+def _report_figures(run_id: str, exports_rows: List[Dict[str, Any]],
+                    comparison: Dict[str, Any] | None) -> List[Dict[str, str]]:
+    """
+    At most five existing images for the document. No new rendering pipeline.
+
+    Keyframe PNGs are siblings of their manifest (the frontend resolves them the
+    same way), so they are located from the manifest's own directory rather than
+    from a path nobody recorded.
+    """
+    figures: List[Dict[str, str]] = []
+    manifest_path = next(
+        (e["path_or_url"] for e in exports_rows if e["kind"] == "keyframe_manifest"), None)
+    if manifest_path and Path(manifest_path).exists():
+        try:
+            manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"[report] run {run_id}: manifest unreadable - {type(exc).__name__}: {exc}")
+            manifest = {}
+        keyframes = manifest.get("keyframes") or []
+        picks: Dict[int, str] = {}
+        if keyframes:
+            picks[0] = "First frame"
+            peak = _peak_wet_index(keyframes)
+            if peak:
+                picks[peak] = "Peak wet extent"
+            picks[len(keyframes) - 1] = "Last frame"
+        for index in sorted(picks):
+            keyframe = keyframes[index]
+            png = Path(manifest_path).parent / str(keyframe.get("png_url") or "")
+            if png.exists():
+                figures.append({
+                    "path": str(png),
+                    "caption": f"{picks[index]} - t = {float(keyframe.get('time_s') or 0):.0f} s",
+                })
+    for key, caption in (("depth_map_url", "Depth field, engine comparison"),
+                         ("hydrograph_url", "Breach hydrograph, engine comparison")):
+        raw = (comparison or {}).get(key)
+        resolved = _figure_path(str(raw), run_id) if raw else None
+        if resolved:
+            figures.append({"path": str(resolved), "caption": caption})
+    return figures
+
+
+@app.post("/runs/{run_id}/report", response_model=ExportRef)
+def generate_report(run_id: str) -> ExportRef:
+    """
+    Write this run's Word report and register it as an export.
+
+    Everything in the document was read from what the run recorded; nothing is
+    recomputed here, and a field the run never wrote prints "not recorded for
+    this run" rather than a plausible default.
+
+    Registered with replace_export, not insert_exports: regenerating a report
+    must leave ONE row, or the Downloads tab lists the same product twice.
+    """
+    from jalraksha.export.docx_report import ReportUnavailableError, build_report
+
+    result = run_result(run_id)  # 409s unless the run is exactly "done"
+    exports_rows = db.get_exports(run_id)
+    run = db.get_run(run_id) or {}
+    summary = _read_export_json(exports_rows, "run_summary", run_id) or {}
+    comparison = _read_export_json(exports_rows, "comparison_metrics", run_id)
+    # Written only by the drainage script, and only for one run so far: it is
+    # where the flagship's volume balance, safe_at_s and wall clock live.
+    hazard_series = _read_export_json(exports_rows, "hazard_series", run_id)
+
+    payload = {
+        "run": result.model_dump(),
+        "params": run.get("params") or {},
+        "solver_params": summary.get("solver_params") or {},
+        "roughness": summary.get("roughness"),
+        "comparison": comparison,
+        "hazard_series": hazard_series,
+        # One global artifact, not this run's: the document says so.
+        "validation": _load_validation_cache(),
+        "figures": _report_figures(run_id, exports_rows, comparison),
+        "wall_clock_s": (hazard_series or {}).get("wall_clock_s"),
+        "version": jalraksha.__version__,
+    }
+
+    out_path = settings.DATA_DIR / "exports" / run_id / f"report_{run_id}.docx"
+    try:
+        build_report(payload, out_path)
+    except ReportUnavailableError as exc:
+        raise HTTPException(503, str(exc))
+
+    db.replace_export(run_id, "report_docx", str(out_path))
+    return ExportRef(kind="report_docx", path_or_url=_to_file_url(str(out_path)))
 
 
 @app.get("/gauges/{run_id}", response_model=List[GaugeResult])
