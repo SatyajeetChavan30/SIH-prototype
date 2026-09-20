@@ -343,6 +343,57 @@ is the queue now (row 39 is the newest).
   `src/*.test.js` helpers, with no test dependency. Keep new frontend logic in
   such helpers, not inside JSX, if it needs a test.
 
+## Aazhi integration, slice 2 — report, registry, catalogue (2026-09-20)
+
+Three more workstreams of the slice-2 spec are built. Five are designed and not
+started: weather/inflow, breach risk, named scenarios, the survey cards, the
+reservoir state strip.
+
+- **`POST /runs/{id}/report` writes a Word document** (`jalraksha/export/docx_report.py`,
+  button on the Downloads tab). It prints only what the run recorded: a missing
+  field renders `NOT_RECORDED` ("not recorded for this run"), the same wording
+  the Provenance tab uses, while a measured zero still prints as zero. The
+  honesty page is SECOND, never an appendix.
+  - Registered with `db.replace_export`, so regenerating leaves ONE row.
+  - Validation in the document is the GLOBAL `data/validation_cache.json` with
+    its date, never "this run's gates".
+  - Delft3D is named only when `comparison_metrics.json` says
+    `delft3d_binary_used`.
+  - Figures are existing keyframe PNGs (first, peak wet extent by the same rule
+    `playback.js` uses, last) plus the comparison images. No new rendering.
+  - `python-docx` is the optional `[report]` extra, pinned in
+    `desktop/backend/requirements-cpu.txt` and collected in the PyInstaller
+    spec. **Proved frozen**: the packaged `jalraksha-backend.exe` wrote a
+    report in 1.16 s.
+- **`volume_balance` is persisted now.** `run.py` always computed it and
+  `write_run_summary` dropped it, so the number that says whether drainage was
+  tested at all survived for exactly ONE run, inside the drainage script's
+  `hazard_series.json`. It is in `run_summary.json` and on `RunResult` from
+  2026-09-20; older runs read None and every surface says so.
+- **`GET /registry` + a Registry tab** list the four sites with terrain behind
+  them (khadakwasla, tehri, rishi_ganga, mutha_temghar). Readiness is COMPUTED:
+  the run's own `_resolve_dem`, then `dem._window_covers` against the domain box
+  widened by root two, plus gauge counts from the presets and done-with-exports
+  runs from the database. **Measured: Tehri's staged DEM does not cover its
+  60 km domain**, and the tab says so. Selecting a row sets the site and starts
+  nothing.
+- **bhakra / idukki / hirakud stay in `DEMO_DAMS` with `runnable: false`** and
+  the reason. The dashboard disables them and `POST /runs` refuses one at
+  submission. `schemas.DamPreset` had to declare both fields, because
+  `response_model` drops what a model does not declare.
+- **`GET /datasets` + a "Datasets on this machine" section** on the Provenance
+  tab (extends W8, does not fork it). A row exists only if the file exists;
+  licences are named; pre-2026-09-06 GHSL rasters are labelled superseded and
+  kept. sha256 runs in a background thread and **checkpoints every eight
+  files** — writing only at the end meant three short-lived processes hashed
+  2.8 GB and discarded all of it. Engine probes are memoised per process
+  (they glob Program Files).
+- **Measured while a 2-member GPU run was solving**: `/dams` 2 ms, `/registry`
+  23 ms, `/datasets` 138 ms, `POST report` 183 ms. Beware measuring against
+  `localhost` from Python on this machine: every request then costs a constant
+  ~2.05 s in name resolution, which looks exactly like a slow server. Use
+  `127.0.0.1`.
+
 ## Dashboard styling — a design system, scoped away from the maps
 
 Plan and rationale: `docs/UI_Design_Language_Plan.md` (the andhüman-derived

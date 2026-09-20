@@ -37,6 +37,8 @@ FORBIDDEN = [
      "the solver must not depend on consequence analysis"),
     ("jalraksha.solver", "jalraksha.gee",
      "the solver must run offline"),
+    ("jalraksha.export", "jalraksha.gee",
+     "an export writes what a run recorded; it must not fetch anything"),
     ("jalraksha.presets", "jalraksha.",
      "presets.py is Phase 0 data and imports nothing else from jalraksha"),
 ]

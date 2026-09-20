@@ -640,6 +640,49 @@ flood reached it so no figure was produced and none is invented here. They were 
 into plausibility; three DEM-traced thalweg points that name no town replaced
 them, each labelled `TERRAIN-DERIVED`.
 
+## Slice 2: the report, the registry and the catalogue (2026-09-20)
+
+Three surfaces, all read-only over what runs already recorded.
+
+**Downloads tab — "Generate report".** `POST /runs/{id}/report` builds a Word
+document from the run's own artifacts and registers it as `report_docx` with
+`db.replace_export`, so regenerating replaces the row instead of listing the
+document twice. The button reports its own states (writing, link, failure
+reason). Measured end to end from the browser: 0.50 s.
+
+The document's rules are the same ones the Provenance tab follows. A field the
+run never recorded prints "not recorded for this run"; a measured zero prints as
+zero. Two defects were found by its tests while it was being written: a price
+year rendered "2,024" in the very line that exists so a reader can divide the
+unit cost back out, and a corridor sentence that read "removing not recorded for
+this run of closed capacity".
+
+**Registry tab.** `GET /registry` lists the four sites this install can model
+and computes their readiness rather than asserting it: the DEM check calls the
+run's own resolver and then reads the raster's bounds against the domain box,
+widened by root two because a square domain reaches its radius times root two at
+the corners. On this machine that immediately surfaced a real gap — Tehri's
+staged DEM does not cover its 60 km domain. Selecting a row sets the active site
+in the control panel and starts nothing.
+
+bhakra, idukki and hirakud remain in `GET /dams` with `runnable: false` and a
+reason; the site selector disables them and `POST /runs` refuses one at
+submission with that reason, on the precedent of the cuda refusal.
+
+**Provenance tab — "Datasets on this machine".** `GET /datasets` inventories
+what is on disk: Copernicus windows and clips, observation-conditioned DEMs,
+GHSL, WorldCover and Sentinel-1 caches, and the two external engines as
+present-or-absent with the path checked. Fetched when the tab is first opened,
+not at app start. sha256 is computed off the request thread and cached by path,
+size and mtime; the section re-fetches once to pick the values up.
+
+**Latency, measured while a 2-member GPU run was solving**: `/dams` 2 ms,
+`/registry` 23 ms, `/datasets` 138 ms, `POST /runs/{id}/report` 183 ms. A
+caution for anyone repeating this: measuring against `localhost` rather than
+`127.0.0.1` from Python on this machine adds a constant ~2.05 s to every
+request, including endpoints that return a constant, and it looks exactly like a
+server stalled by the solver.
+
 ## Known gaps
 
 - **Cesium 3D terrain needs an Ion access token** (`VITE_CESIUM_ION_TOKEN`).
