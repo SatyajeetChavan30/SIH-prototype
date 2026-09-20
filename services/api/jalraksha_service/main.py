@@ -193,6 +193,21 @@ def list_dams() -> List[Dict[str, Any]]:
     return settings.DEMO_DAMS
 
 
+@app.get("/registry")
+def registry() -> List[Dict[str, Any]]:
+    """
+    Every site this install can model, with readiness COMPUTED from three facts:
+    whether a DEM is staged and covers the domain, how many gauges the preset
+    carries, and how many runs finished with exports.
+
+    Selecting a row is not submitting a run. The tier is what POST /runs would
+    find, because the DEM check calls the same resolver the run does.
+    """
+    from jalraksha_service.registry import registry_rows
+
+    return registry_rows()
+
+
 @app.post("/runs", response_model=RunStatus)
 def submit_run(req: RunRequest):
     if req.solver not in settings.SOLVERS:
@@ -233,6 +248,20 @@ def submit_run(req: RunRequest):
             "pipeline (or SWE + near-field SPH). Delft3D comparison is only "
             "configured for dam-break hydrographs.",
         )
+    # A record this install cannot model is refused HERE, not after the terrain
+    # and the breach ensemble are built - the same precedent as the cuda check
+    # above. bhakra, idukki and hirakud are published by GET /dams with
+    # runnable: false so the list stays honest about what exists, and this is
+    # what stops one being submitted anyway.
+    if req.dam_id:
+        record = next((d for d in settings.DEMO_DAMS if d["id"] == req.dam_id), None)
+        if record is not None and record.get("runnable") is False:
+            raise HTTPException(
+                422,
+                f"{record.get('name', req.dam_id)} cannot be run on this install: "
+                f"{record.get('unrunnable_reason')}",
+            )
+
     try:
         dam_config = req.to_dam_config()
     except ValueError as e:

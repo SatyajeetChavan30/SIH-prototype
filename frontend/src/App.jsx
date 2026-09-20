@@ -10,6 +10,7 @@ import ImpactPanel from "./panels/ImpactPanel.jsx";
 import ValidationPanel from "./panels/ValidationPanel.jsx";
 import SphPanel from "./panels/SphPanel.jsx";
 import ProvenancePanel from "./panels/ProvenancePanel.jsx";
+import RegistryPanel from "./panels/RegistryPanel.jsx";
 import DemUpdateBanner from "./panels/DemUpdateBanner.jsx";
 import SyntheticRunBanner from "./panels/SyntheticRunBanner.jsx";
 import { SimulationClockProvider, useSimulationClock } from "./state/SimulationClock.jsx";
@@ -49,6 +50,9 @@ function Workspace() {
   // the hardcoded Tehri constants, so selecting another dam moved nothing on
   // screen. null means "custom", or /dams has not resolved yet.
   const [selectedDam, setSelectedDam] = useState(null);
+  // A site id asked for from the Registry tab. It selects a site in the
+  // control panel and starts nothing.
+  const [requestedDamId, setRequestedDamId] = useState(null);
   const dam = selectedDam || DAM;
   const gauges = selectedDam ? (selectedDam.gauges || []) : GAUGES;
 
@@ -89,6 +93,7 @@ function Workspace() {
     ...(result?.sph ? [{ id: "sph", label: "SPH" }] : []),
     { id: "comparison", label: "Comparison" },
     { id: "validation", label: "Validation" },
+    { id: "registry", label: "Registry" },
     { id: "provenance", label: "Provenance" },
     { id: "downloads", label: "Downloads", badge: result?.exports?.length },
   ];
@@ -97,7 +102,8 @@ function Workspace() {
     <SimulationClockProvider manifest={manifest}>
       <PlaybackDriver />
       <div className="jr jr-shell">
-        <ControlPanel onRunLoaded={onRunLoaded} onDamChange={setSelectedDam} result={result} />
+        <ControlPanel onRunLoaded={onRunLoaded} onDamChange={setSelectedDam} result={result}
+                      requestedDamId={requestedDamId} />
         <div className="jr-main">
           <div className="jr-topbar" role="tablist" aria-label="Result views">
             {tabs.map((t) => (
@@ -169,6 +175,9 @@ function Workspace() {
             </Pane>
             <Pane active={tab === "validation"}>
               <ValidationPanel result={result} />
+            </Pane>
+            <Pane active={tab === "registry"}>
+              <RegistryPanel onSelectSite={setRequestedDamId} selectedId={selectedDam?.id} />
             </Pane>
             <Pane active={tab === "provenance"}>
               <ProvenancePanel result={result} />

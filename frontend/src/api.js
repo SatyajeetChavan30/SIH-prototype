@@ -21,6 +21,13 @@ export async function listDams() {
 // Which compute backends this machine can actually run, for the Compute
 // selector. "cuda" appears only when a float64 CUDA kernel really compiles and
 // runs there -- a present NVIDIA driver is not enough.
+/** GET /registry — the sites this install can model, with computed readiness. */
+export async function listRegistry() {
+  const r = await fetch(`${API}/registry`);
+  if (!r.ok) throw new Error(`Registry unavailable (HTTP ${r.status})`);
+  return r.json();
+}
+
 export async function getSolverBackends() {
   const r = await fetch(`${API}/backends`);
   if (!r.ok) throw new Error(`Could not read solver backends (${r.status})`);

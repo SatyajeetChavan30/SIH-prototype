@@ -256,6 +256,25 @@
   margin-bottom: 4px;
 }
 
+/* A button that reads as a link: the registry's site cells act, so they are
+   buttons, but they sit in a table where a button chrome would shout. */
+.jr-linkish {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.jr-linkish[aria-pressed="true"] {
+  text-decoration: none;
+}
+
 /* Phase markers carry a label and a time each; let them wrap in the sidebar. */
 .jr-playback--wrap {
   flex-wrap: wrap;

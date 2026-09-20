@@ -790,6 +790,13 @@ class DamPreset(BaseModel):
     # "dam" | "blockage". A blockage site publishes no height, storage or dam
     # type by nature, and this is what tells to_dam_config to skip the
     # vetted-figures refusal rather than 422 the record for being correct.
+    # Whether this record can actually be submitted to POST /runs. False means
+    # the row exists (the dam is real) but this install has no terrain, no
+    # corridor and no vetted figures for it, so the dashboard must not offer
+    # it. FastAPI's response_model DROPS any field a model does not declare,
+    # which is why this lives here and not only in the dict.
+    runnable: Optional[bool] = None
+    unrunnable_reason: Optional[str] = None
     record_type: Optional[str] = None
     # Which incidents this site can model, so the scenario selector can be gated
     # per site instead of pinning every river scenario to one dam.

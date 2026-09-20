@@ -23,7 +23,7 @@ const TARGET_RESOLUTION_M = 100;
  * toggle, export buttons. On submit it enqueues a run and, once done, loads the
  * keyframe manifest into the shared SimulationClock so both panels animate.
  */
-export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
+export default function ControlPanel({ onRunLoaded, onDamChange, result, requestedDamId }) {
   const clock = useSimulationClock();
   const [dams, setDams] = useState([]);
   // No hardcoded "tehri" default: it disagreed with the backend's own
@@ -136,6 +136,15 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
   };
 
   const selectedDam = dams.find((d) => d.id === damId) || null;
+
+  // The Registry tab asks for a site by id. Selecting there sets the active
+  // site here and nothing more: it never submits a run.
+  React.useEffect(() => {
+    if (requestedDamId && requestedDamId !== damId && dams.some((d) => d.id === requestedDamId)) {
+      selectDam(requestedDamId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedDamId, dams]);
 
   // Which scenarios this site can model, read from the registry.
   //
@@ -315,9 +324,13 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result }) {
       <select value={effectiveDamId || ""}
               onChange={(e) => selectDam(e.target.value)}>
         {dams.map((d) => (
+          // runnable === false means this install has no terrain, no corridor
+          // and no vetted figures for that dam. Offering it produces a run that
+          // dies in the worker minutes later; POST /runs refuses it too.
           <option key={d.id} value={d.id}
-                  disabled={!scenariosFor(d).includes(scenarioType)}>
+                  disabled={d.runnable === false || !scenariosFor(d).includes(scenarioType)}>
             {d.name}{d.record_type === "blockage" ? " (blockage site)" : ""}
+            {d.runnable === false ? " — not available on this install" : ""}
           </option>
         ))}
         <option value="custom">Custom</option>

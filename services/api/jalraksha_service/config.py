@@ -96,6 +96,10 @@ def _demo_dam_from_preset(preset: Any) -> Dict[str, Any]:
         # non-dam-break scenario to one dam, which is what it used to do.
         "record_type": "dam",
         "scenario_types": ["dam_break", "river_blockage", "river_overflow"],
+        # Backed by a library preset, so the solver has terrain, a corridor and
+        # vetted-enough figures to work with. GET /registry says how ready.
+        "runnable": True,
+        "unrunnable_reason": None,
     }
 
 
@@ -145,6 +149,8 @@ def _demo_blockage_from_preset(preset: Any) -> Dict[str, Any]:
         "blockage_date_pre": preset.detect_date_pre,
         "blockage_date_post": preset.detect_date_post,
         "note": preset.note,
+        "runnable": True,
+        "unrunnable_reason": None,
     }
 
 
@@ -186,6 +192,8 @@ class Settings:
                 }
                 for g in get_gauges("tehri")
             ],
+            "runnable": True,
+            "unrunnable_reason": None,
         },
         {
             "id": "bhakra",
@@ -203,6 +211,14 @@ class Settings:
             # answer; publishing Tehri's towns here is what the old duplicated
             # gauge lists effectively did.
             "gauges": [],
+            # NOT SELECTABLE for a run. The dashboard disables it and the
+            # registry never lists it; keeping the row with its reason is more
+            # honest than deleting it, because the dam does exist - this
+            # install simply has nothing to model it with.
+            "runnable": False,
+            "unrunnable_reason": (
+                "No library preset, no cached DEM and no surveyed corridor for this dam. Every figure on a page for it would be hand-typed, and _resolve_dem refuses rather than picking up whichever raster sorts first - the Bhakra-over-a-Pune-tile failure. Published here so the list is honest about what exists, not because it can be run."
+            ),
         },
         {
             "id": "idukki",
@@ -220,6 +236,14 @@ class Settings:
             # answer; publishing Tehri's towns here is what the old duplicated
             # gauge lists effectively did.
             "gauges": [],
+            # NOT SELECTABLE for a run. The dashboard disables it and the
+            # registry never lists it; keeping the row with its reason is more
+            # honest than deleting it, because the dam does exist - this
+            # install simply has nothing to model it with.
+            "runnable": False,
+            "unrunnable_reason": (
+                "No library preset, no cached DEM and no surveyed corridor for this dam. Every figure on a page for it would be hand-typed, and _resolve_dem refuses rather than picking up whichever raster sorts first - the Bhakra-over-a-Pune-tile failure. Published here so the list is honest about what exists, not because it can be run."
+            ),
         },
         {
             "id": "hirakud",
@@ -237,6 +261,14 @@ class Settings:
             # answer; publishing Tehri's towns here is what the old duplicated
             # gauge lists effectively did.
             "gauges": [],
+            # NOT SELECTABLE for a run. The dashboard disables it and the
+            # registry never lists it; keeping the row with its reason is more
+            # honest than deleting it, because the dam does exist - this
+            # install simply has nothing to model it with.
+            "runnable": False,
+            "unrunnable_reason": (
+                "No library preset, no cached DEM and no surveyed corridor for this dam. Every figure on a page for it would be hand-typed, and _resolve_dem refuses rather than picking up whichever raster sorts first - the Bhakra-over-a-Pune-tile failure. Published here so the list is honest about what exists, not because it can be run."
+            ),
         },
         # Sourced from jalraksha/presets.py rather than retyped, so the preset
         # and the API cannot disagree about where this dam is.
