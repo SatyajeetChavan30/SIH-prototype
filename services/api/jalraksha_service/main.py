@@ -193,6 +193,21 @@ def list_dams() -> List[Dict[str, Any]]:
     return settings.DEMO_DAMS
 
 
+@app.get("/datasets")
+def datasets() -> Dict[str, Any]:
+    """
+    What data is on THIS machine, with its licence and its provenance.
+
+    A row exists only if the file exists: nothing here lists a dataset the
+    system would fetch. sha256 is computed in a background thread and cached by
+    (path, size, mtime), because hashing half a gigabyte inside a request would
+    hold a worker while a run is solving.
+    """
+    from jalraksha_service.datasets import dataset_rows
+
+    return dataset_rows()
+
+
 @app.get("/registry")
 def registry() -> List[Dict[str, Any]]:
     """

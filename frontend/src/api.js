@@ -28,6 +28,13 @@ export async function listRegistry() {
   return r.json();
 }
 
+/** GET /datasets — what data is on the machine the API runs on. */
+export async function listDatasets() {
+  const r = await fetch(`${API}/datasets`);
+  if (!r.ok) throw new Error(`Dataset catalogue unavailable (HTTP ${r.status})`);
+  return r.json();
+}
+
 export async function getSolverBackends() {
   const r = await fetch(`${API}/backends`);
   if (!r.ok) throw new Error(`Could not read solver backends (${r.status})`);

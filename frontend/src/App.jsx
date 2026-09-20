@@ -180,7 +180,7 @@ function Workspace() {
               <RegistryPanel onSelectSite={setRequestedDamId} selectedId={selectedDam?.id} />
             </Pane>
             <Pane active={tab === "provenance"}>
-              <ProvenancePanel result={result} />
+              <ProvenancePanel result={result} active={tab === "provenance"} />
             </Pane>
             <Pane active={tab === "downloads"}>
               <DownloadsPanel result={result} />
