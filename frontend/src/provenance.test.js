@@ -111,3 +111,10 @@ test("a refused exposure sector shows its reason, not 'not recorded'", () => {
   }).find((r) => r.path === "impact.exposure_provenance.cropland");
   assert.equal(cropland.value, "refused — no WorldCover grid");
 });
+
+test("a fallback reason row appears only where something fell back", () => {
+  const has = (engine) => allRows({ ...OLD_RUN, engine })
+    .some((r) => r.path === "engine.fallback_reason");
+  assert.equal(has({ delft3d_binary_used: true, label: "Delft3D FM" }), false);
+  assert.equal(has({ delft3d_binary_used: false, fallback_reason: "kernel missing" }), true);
+});

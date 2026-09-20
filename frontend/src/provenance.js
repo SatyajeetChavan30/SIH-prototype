@@ -84,7 +84,11 @@ export function provenanceSections(result) {
       row("Device", backend.solver_device, "solver_backend.solver_device"),
       row("Engine", engine.label || engine.name, "engine.label"),
       row("Delft3D FM kernel ran", engine.delft3d_binary_used, "engine.delft3d_binary_used"),
-      row("Fallback reason", engine.fallback_reason, "engine.fallback_reason"),
+      // Only where something fell back. On a run where the kernel ran, a
+      // "not recorded" fallback row reads as a lost explanation.
+      ...(engine.fallback_reason
+        ? [row("Fallback reason", engine.fallback_reason, "engine.fallback_reason")]
+        : []),
       // Only a run that carried a near-field handoff has an SPH engine; a
       // "not recorded" row on every other run would read as a lost field.
       ...(result.sph ? [row("Near-field SPH engine", result.sph.engine_label || result.sph.engine, "sph.engine_label")] : []),

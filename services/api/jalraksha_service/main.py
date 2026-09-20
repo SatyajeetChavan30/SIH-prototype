@@ -500,6 +500,23 @@ def run_result(run_id: str) -> RunResult:
     if any(e["kind"] == "comparison_metrics" for e in exports_rows):
         comparison_url = f"/runs/{run_id}/comparison"
 
+    # Which engine produced the depth field. write_run_summary does not record
+    # an "engine" block, so for a solver="both" run the only place the Deltares
+    # facts are written down is the comparison artifact — and the naming rule in
+    # CLAUDE.md turns on delft3d_binary_used. Without this, a run that genuinely
+    # ran dflowfm reported "not recorded" on the Provenance tab while the
+    # Comparison tab named the kernel, which is the same fact in two states.
+    engine = summary.get("engine")
+    if not engine:
+        comparison = _read_export_json(exports_rows, "comparison_metrics", run_id) or {}
+        if comparison.get("delft3d_engine_label"):
+            engine = {
+                "name": comparison.get("delft3d_engine"),
+                "label": comparison.get("delft3d_engine_label"),
+                "delft3d_binary_used": comparison.get("delft3d_binary_used"),
+                "fallback_reason": comparison.get("delft3d_fallback_reason"),
+            }
+
     # Which terrain this run was computed over, and whether it was modified.
     # Runs written before this existed have no "dem" block and report None,
     # which is the honest answer: nobody recorded it at the time.
@@ -533,7 +550,7 @@ def run_result(run_id: str) -> RunResult:
         population_at_risk=population_at_risk,
         ensemble=EnsembleSummary(**summary["ensemble"]) if summary.get("ensemble") else None,
         grid=GridSummary(**summary["grid"]) if summary.get("grid") else None,
-        engine=EngineInfo(**summary["engine"]) if summary.get("engine") else None,
+        engine=EngineInfo(**engine) if engine else None,
         rapid_estimate=summary.get("rapid_estimate"),
         impact=impact,
         sph=sph,
