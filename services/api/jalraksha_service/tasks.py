@@ -1107,7 +1107,9 @@ def _gauge_xy(gauge: Dict[str, Any], dam_config: Dict[str, Any],
 
 
 def _run_comparison(run_id: str, dam_config: Dict[str, Any],
-                    with_sph: bool = True) -> Dict[str, Any] | None:
+                    with_sph: bool = True,
+                    extra_exports: List[Dict[str, str]] | None = None
+                    ) -> Dict[str, Any] | None:
     """
     SPH vs Delft3D-class comparison, in the service layer so the
     React Comparison tab (brief §5.7) has real data via GET /runs/{id}/comparison.
@@ -1164,6 +1166,23 @@ def _run_comparison(run_id: str, dam_config: Dict[str, Any],
         # doing something the user did not ask for and the tab does not need.
         if with_sph:
             sph_res, sph_error = _run_near_field_sph(dam_config)
+            # The SPH tab reads an export of kind "sph_near_field", which was
+            # written ONLY on the solver="sph" path. So a solver="both" run did
+            # the full near-field simulation - 232,426 particles on the GPU in
+            # one measured case - and then had no SPH tab at all, because the
+            # only surviving copy was the reduced summary inside
+            # comparison_metrics.json. Same payload, same shape, written once
+            # here when the caller asks for it; old callers pass nothing and
+            # behave exactly as before.
+            if extra_exports is not None:
+                sph_dir = settings.DATA_DIR / "exports" / run_id
+                sph_dir.mkdir(parents=True, exist_ok=True)
+                sph_path = sph_dir / "sph_near_field.json"
+                sph_path.write_text(
+                    _json.dumps(_sph_summary(sph_res, sph_error), indent=2, default=str),
+                    encoding="utf-8")
+                extra_exports.append({"kind": "sph_near_field",
+                                      "path_or_url": str(sph_path)})
         else:
             sph_res, sph_error = None, (
                 "Near-field SPH was not requested. Choose the 'Both (compare)' "
@@ -1754,7 +1773,7 @@ def run_dam_break_task(
                 # rapid_estimate result it used to sit beside.
                 report(88.0, "Running Delft3D FM and near-field SPH")
                 comp_export = _run_comparison(run_id, dict(dam_config),
-                                              with_sph=True)
+                                              with_sph=True, extra_exports=exports)
                 if comp_export:
                     exports.append(comp_export)
 
