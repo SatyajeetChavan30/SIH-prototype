@@ -286,9 +286,24 @@ export default function ControlPanel({ onRunLoaded, onDamChange, result, request
       // Tehri Dam" above seven Pune towns, a map still centred on the
       // Bhagirathi, and Tehri's camera presets. Every one of those is wrong for
       // the run on screen.
-      const row = runs.find((r) => r.run_id === id);
+      // ...and it still did, when a run was opened by URL. The mount effect
+      // calls this BEFORE refreshRuns() has resolved, so `runs` is empty, the
+      // row is undefined and the dam is never adopted: run 204cd7da opened
+      // from ?run= showed "Downstream gauges - Tehri Dam" over Pune's towns.
+      // Fall back to a fresh list rather than trusting the one in state.
+      let row = runs.find((r) => r.run_id === id);
+      if (!row) {
+        row = (await listRuns(50).catch(() => [])).find((r) => r.run_id === id);
+      }
       const damId = row?.dam_id;
-      if (damId && damId !== damIdRef.current) selectDam(damId);
+      if (damId && damId !== damIdRef.current) {
+        // selectDam looks the dam up in `dams`, which at mount is ALSO still
+        // empty: the id was adopted while the panel's own dam object was not,
+        // so Map2D, Scene3D and the Gauges heading kept the previous site.
+        const list = dams.length ? dams : await listDams().catch(() => []);
+        if (!dams.length && list.length) setDams(list);
+        selectDam(damId, list);
+      }
 
       setCurrentRunId(id);
       setPvStatus("");
