@@ -414,6 +414,15 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
     the Deltares kernel — which is exactly the claim CLAUDE.md makes
     conditional on ``delft3d_binary_used``.
 
+    ``extra_exports`` is what gives this path an SPH TAB. The near-field run
+    happens either way - 232,426 particles on run e83a8fb6 - but the panel
+    reads an export of kind ``sph_near_field``, and until the list was passed
+    in, the only surviving copy was the reduced summary inside
+    ``comparison_metrics.json``, which carries neither the front history nor
+    the particle cloud the panel draws. The API path was fixed first; a script
+    run is the path used for anything long enough to be worth keeping, so it
+    is the one that could least afford to lose the artifact.
+
     Failure is recorded, not raised: the far-field result is already complete
     and registering it matters more than the comparison tab.
     """
@@ -421,11 +430,17 @@ def _add_comparison_and_sph(run, dam_config, progress) -> None:
     try:
         from jalraksha_service.tasks import _run_comparison
 
-        comp_export = _run_comparison(run.run_id, dict(dam_config), with_sph=True)
+        extra_exports: list = []
+        comp_export = _run_comparison(run.run_id, dict(dam_config),
+                                      with_sph=True, extra_exports=extra_exports)
         if comp_export:
             run.add_export(comp_export["kind"], comp_export["path_or_url"])
             print(f"[drainage-check] comparison export: "
                   f"{comp_export['path_or_url']}")
+        for row in extra_exports:
+            run.add_export(row["kind"], row["path_or_url"])
+            print(f"[drainage-check] {row['kind']} export: "
+                  f"{row['path_or_url']}")
     except Exception as exc:
         print(f"[drainage-check] comparison/SPH failed "
               f"({type(exc).__name__}: {exc}); far-field result is unaffected")

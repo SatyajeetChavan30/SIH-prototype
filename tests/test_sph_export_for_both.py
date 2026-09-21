@@ -92,7 +92,7 @@ def test_the_comparison_path_writes_the_sph_artifact_when_asked(stubbed, tmp_pat
 
 
 def test_old_callers_are_unchanged(stubbed, tmp_path):
-    """rerun_comparison.py and the drainage script pass no extra_exports."""
+    """rerun_comparison.py passes no extra_exports, and writes nothing new."""
     comp_export = stubbed._run_comparison("run-plain", dict(DAM_CONFIG), with_sph=True)
 
     assert comp_export["kind"] == "comparison_metrics"
@@ -105,3 +105,20 @@ def test_the_run_task_passes_its_own_export_list(stubbed):
 
     source = inspect.getsource(stubbed.run_dam_break_task)
     assert "extra_exports=exports" in source
+
+
+def test_the_script_path_passes_its_own_export_list():
+    """
+    The long runs live in scripts/, not POST /runs, so the script path is the
+    one that could least afford to lose the artifact. It registers every row
+    the comparison hands back, beside comparison_metrics itself.
+    """
+    import inspect
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import run_khadakwasla_drainage_check as script
+
+    source = inspect.getsource(script._add_comparison_and_sph)
+    assert "extra_exports=extra_exports" in source
+    assert 'run.add_export(row["kind"], row["path_or_url"])' in source
