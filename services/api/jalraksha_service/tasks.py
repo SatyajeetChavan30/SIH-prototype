@@ -1711,6 +1711,12 @@ def run_dam_break_task(
                 margins_km=dam_config.get("domain_margins_km"),
                 fill_max_depth_m=float(dam_config.get("fill_max_depth_m", 3.0)),
                 notch_breach=bool(dam_config.get("notch_breach", True)),
+                # Corridor conditioning, off by default. run.py has taken this
+                # since it was built, but nothing on the API path passed it, so
+                # the flagship drainage run (corridor 10 m) could be produced
+                # only by a script. A conditioned run is MODIFIED TERRAIN and
+                # says so in its label, its fill stats and its dam_config.
+                condition_corridor_m=float(dam_config.get("condition_corridor_m", 0.0)),
                 # Per-request compute backend (main.py::submit_run), on the same
                 # dam_config channel as the domain-shape overrides above. The
                 # Delft3D branch below is unaffected: that kernel is a CPU

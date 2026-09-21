@@ -289,6 +289,9 @@ def submit_run(req: RunRequest):
         dam_config["domain_margins_km"] = req.domain_margins_km
     dam_config["fill_max_depth_m"] = req.fill_max_depth_m
     dam_config["notch_breach"] = req.notch_breach
+    # MODIFIED TERRAIN when above 0; the pipeline labels every product it
+    # produces. Default 0 leaves a run byte-identical to before this existed.
+    dam_config["condition_corridor_m"] = req.condition_corridor_m
     dam_config["solver_backend"] = req.backend
 
     # Detection needs Earth Engine, and a run that cannot detect and has no

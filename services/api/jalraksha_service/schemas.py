@@ -63,6 +63,19 @@ class RunRequest(BaseModel):
                     "from the isotropic point injection is walled into the "
                     "reservoir bowl by the intact DEM crest and never drains.",
     )
+    condition_corridor_m: float = Field(
+        0.0, ge=0,
+        description="Condition the flow corridor to drain, in metres above the "
+                    "local valley floor. 0 (the default) is OFF, and a run with "
+                    "it off is byte-identical to one from before the option "
+                    "existed. Above 0 this is MODIFIED TERRAIN: cells within "
+                    "this height of the valley floor get an unlimited "
+                    "depression-fill cap while every upland basin keeps "
+                    "fill_max_depth_m, and the run says so through "
+                    "terrain_modified / terrain_note and its own label. It was "
+                    "reachable only from scripts, so the flagship drainage run "
+                    "could not be reproduced from the dashboard.",
+    )
     breach_formation_time_s: Optional[float] = Field(
         None, gt=0,
         description="Breach formation time (s). Controls how ABRUPT the release "
