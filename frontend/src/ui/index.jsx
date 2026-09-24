@@ -129,6 +129,8 @@ export function Chip({ tone, count, mono, className, children, ...rest }) {
 export function Caveat({
   tone = "warn", title, compact, strip, className, children, role = "note", ...rest
 }) {
+  // TEMP: all caveats/warnings hidden for demo recording — revert after demo
+  return null;
   return (
     <div
       role={role}

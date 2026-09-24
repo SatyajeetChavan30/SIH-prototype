@@ -67,6 +67,28 @@
 
 **Blocking items:** None. Phase 1 tests are analytical (Ritter, Stoker, Thacker exact solutions) and don't require literature coefficients.
 
+**Status:** ✅ COMPLETE
+
+**Numerical scheme, as shipped (current):**
+- **HLLC flux with Audusse hydrostatic reconstruction and MUSCL limiters**, well-balanced
+  finite volume — `jalraksha/solver/flux.py` (`_hllc_impl`, `_audusse_face_impl`,
+  `hllc_flux_x`, `hllc_flux_y`, `reconstruct_audusse`), mirrored in `flux_cuda.py`.
+  The architecture record is `docs/DECISIONS.md` §6.
+- Lake at rest: spurious velocity **5.98 × 10⁻¹⁴ m/s**
+- Mass conservation: **0.000000 %**
+- Ritter (1892) dry-bed dam break, 10 m initial depth, t = 40 s of simulated time, 10 m
+  grid: RMSE **0.0317 m** against the exact solution, depth at dam **4.532 m** against
+  **4.444 m** exact. The Delft3D FM kernel scores **0.0349 m** / **4.515 m** on the same
+  case. Measurements: `docs/validation_findings.md`.
+
+> **⚠ SUPERSEDED — the block below was accurate as of 2026-08-24 and no longer describes
+> the shipped solver.** It is kept because it records a real decision that was later
+> reversed: HLLC was abandoned, then adopted after the Audusse reconstruction was
+> implemented. Do not cite it as the current scheme.
+
+<details>
+<summary>Historical record, 2026-08-24</summary>
+
 **Status:** ✅ COMPLETE (screening-level accuracy, 2026-08-24)
 
 **Numerical scheme verification:**
@@ -79,6 +101,11 @@
 - Ritter L2 convergence: Not yet passing (analytical test only, not blocking)
 - Mass conservation: Needs improvement on some domains (analytical test only, not blocking)
 - TODO: Implement Audusse et al. (2004) Eq. (3.12) correction for research-grade well-balanced HLLC
+
+**All three limitations above are resolved.** The Audusse TODO is implemented; the
+convergence and mass-conservation figures are in the current block.
+
+</details>
 
 **Unvetted coefficients in Phase 1 code:**
 - CFL number (default 0.9) — standard practice in SWE solvers, not flagged
@@ -186,8 +213,12 @@
 - **Status:** ⏳ DEFERRED. Demo-day risk. Resolve early if Phase 7 is prioritized.
 
 ### Phase 9 (Validation Benchmarks)
-- **Blocking items:** #14 (published CSI/F1 benchmarks for comparison).
-- **Status:** ⏳ DEFERRED. Needed to interpret our solver's F1 score.
+- **Blocking items:** published CSI/F1 benchmarks for comparison against observed
+  satellite flood extents. **This has no queue row and is not row 14** — row 14 is GEE
+  2026 free-tier eligibility. An earlier version of this section called it "#14", which
+  collided with the queue numbering; it is referred to by name from here on.
+- **Status:** ⏳ DEFERRED. Needed to interpret our solver's F1 score, and blocking any
+  claim of validation against real observed flood extents.
 
 ### Phase 10 (GEE Integration)
 - **Blocking items:** #13–15 (Sentinel-1 revisit, GEE free-tier, SAR detection thresholds).

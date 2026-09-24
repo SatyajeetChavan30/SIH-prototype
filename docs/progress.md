@@ -7,6 +7,10 @@ The body below was written on 2026-09-06 and still reads true; the GPU backend
 section near the end is the 2026-09-12 addition, and the "Next step" list under
 it supersedes the one that stood before.
 
+> **Current test count, measured 2026-09-20: `960 passed, 7 skipped`**
+> (`python -m pytest -q`, 435.67 s, 71 % line coverage). Any older count in this
+> file is the count on the date it was written and is not the current figure.
+
 ## Servers, verified running
 
 ```bash
@@ -138,7 +142,7 @@ failures. Full record in CLAUDE.md; measurements in `validation_findings.md`
 
 **Verified end to end** through the API on the Rishi Ganga: 25 exports,
 provenance banner, DEM-update panel with stage-storage chart, downloadable
-GeoTIFF + sidecar + lake mask. All blocking gates pass. Suite now at **600 passed, 4 skipped**.
+GeoTIFF + sidecar + lake mask. All blocking gates pass. Suite stood at **600 passed, 4 skipped** on that date (2026-09-03); see the current count at the top of this file.
 
 **Five defects found along the way, none introduced by this work:**
 

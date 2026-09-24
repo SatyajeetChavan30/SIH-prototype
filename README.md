@@ -2,7 +2,7 @@
 
 *Formerly FloodView — renamed 2026-09-11. Environment variables and the database file still accept the old names; see `CLAUDE.md`.*
 
-JalRaksha is a high-performance Python package for dam-break inundation modelling, simulation, hazard mapping, and impact assessment. Developed specifically for the **Smart India Hackathon 2026 (Problem Statement 26161, sponsored by NTRO)**, JalRaksha utilizes a unique dual-engine numerical scheme (2D Shallow Water Equations for far-field propagation coupled with 3D Smoothed Particle Hydrodynamics for violent near-field breach dynamics) to deliver rapid Tier-1 screening forecasts.
+JalRaksha is a high-performance Python package for dam-break inundation modelling, simulation, hazard mapping, and impact assessment. Developed specifically for the **Smart India Hackathon 2026 (Problem Statement 26161, sponsored by NTRO)**, JalRaksha uses a dual-engine numerical scheme — 2D Shallow Water Equations for far-field propagation, and 3D Smoothed Particle Hydrodynamics for violent near-field breach dynamics, fed by a **one-way handoff (SWE → SPH)**. The two engines are not coupled and there is no feedback from SPH back into the SWE field. Together they deliver rapid Tier-1 screening forecasts.
 
 ---
 
@@ -10,15 +10,15 @@ JalRaksha is a high-performance Python package for dam-break inundation modellin
 
 *   **Dual-Engine Solver**:
     *   *Far-Field*: Well-balanced 2D Shallow Water Equation (SWE) solver utilizing HLLC flux schemes, Audusse hydrostatic reconstruction, and MUSCL reconstruction with Manning's friction.
-    *   *Near-Field*: Weakly Compressible Smoothed Particle Hydrodynamics (WCSPH) solver utilizing a Tait equation of state, hand-off boundary coupling, and PySPH integration.
+    *   *Near-Field*: Weakly Compressible Smoothed Particle Hydrodynamics (WCSPH) with a Tait equation of state, driven by a one-way handoff from the 2D solver at breach time. **DualSPHysics v5.4 is the default near-field engine** — its CUDA build where a usable device exists, its own CPU build otherwise, with the reason recorded on the result. **PySPH remains the reference engine and the fallback** where DualSPHysics is not installed. DualSPHysics is LGPL-2.1 and is **run as a separate program** — never linked, never redistributed, not carried in the installers; point `JALRAKSHA_DUALSPHYSICS_DIR` at your own copy. Cite Dominguez et al. (2022), *Computational Particle Mechanics* 9:867–895 for any result produced with it. DualSPHysics and PySPH are different engines with different `c0` and smoothing-length rules, not one engine made faster, so their timings are comparable only to themselves. **No GPU speed-up is claimed for PySPH** — its GPU path is host-bound and unmeasured as a speed-up.
 *   **Offline-First & Local Caching**: Automated DEM tile cache retrieval (Copernicus GLO-30 DEM from public AWS COG servers) with local fallbacks, assuming zero network reliability on site.
-*   **Probabilistic Monte Carlo Breach Ensemble**: Generates 100-member breach hydrograph ensembles drawing on Froehlich (1995), MacDonald & Langridge-Monopolis (1984), Costa (1985) and Von Thun & Gillette (1990) with Wahl (2004) uncertainty bands. Xu & Zhang (2009) is implemented but quarantined — it fails a back-check against Teton — and is refused unless `allow_unverified_regressions=True` is passed.
+*   **Probabilistic Monte Carlo Breach Ensemble**: Generates breach hydrograph ensembles of a size set per run (`ensemble_size`); the largest ensembles run to date are **40 members**, and most runs are 2–6. Draws on Froehlich (1995), MacDonald & Langridge-Monopolis (1984), Costa (1985) and Von Thun & Gillette (1990) with Wahl (2004) uncertainty bands. Xu & Zhang (2009) is implemented but quarantined — it fails a back-check against Teton — and is refused unless `allow_unverified_regressions=True` is passed.
 *   **River Blockage (Landslide Dam) Scenario**: Half the events PS-26161 names are natural blockages rather than dam failures. A landslide barrier is burned into the terrain, *proven* to span the valley, and its impounded volume **measured** by hypsometric fill of the modified DEM — a natural dam has no published gross storage, so the pipeline refuses to run one whose storage came from a slider. Released through Costa (1985), the one transcribed regression whose fitting population included natural dams.
 *   **Observation-Conditioned DEM Update**: A landslide changes the terrain, and the cached DEM predates it. Copernicus GLO-30 is rewritten with the barrier burned in and written as a new GeoTIFF carrying full provenance. Every pixel outside the modified footprint stays bit-identical to the Copernicus source. It is **not** photogrammetry and every product says so — see the note below.
 *   **Automated Impact & Fatality Assessment**:
     *   FD2320 Flood Hazard Classification — the published hazard rating HR = d(|V| + 0.5) + DF, classed Low / Moderate / Significant / Extreme at 0.75 / 1.25 / 2.5.
-    *   Jonkman (2008), Graham (1999), and DeKay-McClelland (1993) fatality models.
-    *   India-specific JRC depth-damage economic loss curves.
+    *   Loss-of-life ranges from `estimate_loss_of_life_depth_velocity`, which returns `model_is_published: False` — it is **not** a published model and every payload says so. The published Jonkman (2008), Walder & O'Connor (1997), Peng & Zhang (2012) and Huizinga (2017) forms exist **in shape only** and are **quarantined behind `*_VERIFIED = False` flags that raise when called.**
+    *   Depth-damage economic loss curves are an **unvetted placeholder coefficient set**, labelled as such in the run payload. The same applies to the damage and evacuation-directive coefficients. See `docs/VERIFICATION_LOG.md` rows 32, 35, 36 and 39.
 *   **Interactive Web Dashboard**: React + Vite frontend (Leaflet 2D map, Cesium 3D globe, playback timeline) served by a FastAPI backend, with peak discharge histograms, gauge arrival time envelopes, and export tools.
 *   **REST API Layer**: Standard-library HTTP server with endpoints (`/health`, `/api/v1/dams`, `/api/v1/gauges`, `/api/v1/simulate`) to integrate with external systems.
 
@@ -134,8 +134,8 @@ floor.**
 ```bash
 sudo apt-get update
 sudo apt-get install -y gdal-bin libgdal-dev
-git clone https://github.com/sih2026/jalraksha.git
-cd jalraksha
+git clone https://github.com/SatyajeetChavan30/SIH-prototype.git
+cd SIH-prototype
 pip install -e .[dev,viz]
 ```
 
@@ -393,7 +393,7 @@ python -m pytest tests/test_validation.py -v --tb=short
 ## ⚠️ Important Guidelines & Constraints
 
 1.  **Approved Open Data Sources Only**: Under NTRO directives, geofenced, broken, or login-gated services (such as India-WRIS, ffs.india-water.gov.in, Bhuvan, or CartoDEM) are **strictly forbidden**. JalRaksha uses Copernicus GLO-30 DEM and GHSL Global Human Settlement layers via public AWS storage.
-2.  **Mullaperiyar Dam**: Explicitly forbidden from simulation due to active litigation. All demonstrations must utilize **Tehri Dam** as the reference benchmark case.
+2.  **Mullaperiyar Dam**: Explicitly forbidden from simulation due to active litigation. The demonstration cases are **Khadakwasla (Pune, Maharashtra)** for dam break and **Rishi Ganga (Chamoli, Uttarakhand)** for river blockage; Tehri remains available as a reference case.
 3.  **Tier-1 Scope**: JalRaksha is built as a rapid screening instrument. Flood forecasts represent indicative envelopes and arrival times rather than absolute point depths. Always consult CWC Tier-2/3 detailed studies for emergency planning.
 
 ---
